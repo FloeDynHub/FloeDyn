@@ -147,8 +147,8 @@ private:
         else 
         {
             //! \warning To compare results with Matlab code, choose Gauss-Legendre quadrature with 1 point instead of 3 points here.
-            //const auto strategy = integration::RefGaussLegendre<value_type, 2, 1>(); // Same as the Matlab code.
-            const auto strategy = integration::RefGaussLegendre<value_type, 2, 2>(); // Greater precision.
+            const auto strategy = integration::RefGaussLegendre<value_type, 2, 1>(); // Same as the Matlab code.
+            //const auto strategy = integration::RefGaussLegendre<value_type, 2, 2>(); // Greater precision.
             const density_type& density = m_density;
 
             m_moment_cst = integration::integrate(

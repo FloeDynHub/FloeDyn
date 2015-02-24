@@ -17,19 +17,61 @@
  * Contact: Vincent ACARY, siconos-team@lists.gforge.inria.fr
  */
 
-#include <math.h>
-#include <string.h>
-#include <assert.h>
-#include <stdio.h>
-#include <stdlib.h>
+#ifndef FLOE_LCP_SOLVER_LEXICOLEMKE_HPP
+#define FLOE_LCP_SOLVER_LEXICOLEMKE_HPP
+
+#include <cmath>
+#include <cassert>
+#include <cstdio>
+#include <cstdlib>
+
+#include "floe/lcp/lcp.hpp"
 
 namespace floe { namespace lcp { namespace solver
 {
 
+/*! LCP solver using Lemke algorithm with lexicographical ordering to avoid degenerate cases
+ *
+ * Original from SICONOS projet (see licence above).
+ *
+ * \param dim   Dimension of the LCP(M,q).
+ * \param M     Pointer to M.
+ * \param q     Pointer to q.
+ * \param[out]  zlem    Pointer to z in which the solution will be stored.
+ * \param[out]  wlen    Pointer to w in which Mz+q will be stored.
+ * \param[out]  info    Equals 0 if solver successed.
+ */
+void lcp_lexicolemke(int dim, const double * M, const double * q, double *zlem , double *wlem , int *info);
+
+/*! Frontend to the lexicolemke LCP solver.
+ * 
+ * \tparam T    Fundamental type.
+ * \param lcp   The linear complementarity problem to solve.
+ * \return      true if the solver successed.
+ */
+template < typename T>
+bool lexicolemke( floe::lcp::LCP<T>& lcp );
+
+//! Frontend specialization for double fundamental type.
+template <>
+bool lexicolemke<double>( floe::lcp::LCP<double>& lcp)
+{
+    int info;
+    lcp_lexicolemke( 
+        lcp.dim, 
+        lcp.A.data().begin(), 
+        lcp.q.data().begin(), 
+        lcp.z.data().begin(),
+        lcp.w.data().begin(), 
+        &info 
+    );
+
+    return info == 0;
+}
 
 void lcp_lexicolemke(int dim, const double * M, const double * q, double *zlem , double *wlem , int *info)
 {
-    double tol = 1e-8;
+    double tol = 0;
 
     /* matrix M of the lcp */
     //double * M = problem->M->matrix0;
@@ -68,7 +110,7 @@ void lcp_lexicolemke(int dim, const double * M, const double * q, double *zlem ,
         //options->iparam[1] = 0;   /* Number of iterations done */
         //options->dparam[1] = 0.0; /* Error */
         //if (verbose > 0)
-        printf("lcp_lexicolemke: found trivial solution for the LCP (positive vector q => z = 0 and w = q). \n");
+        //printf("lcp_lexicolemke: found trivial solution for the LCP (positive vector q => z = 0 and w = q). \n");
         return ;
     }
 
@@ -86,18 +128,17 @@ void lcp_lexicolemke(int dim, const double * M, const double * q, double *zlem ,
 
     basis = (int *)malloc(dim * sizeof(int));
 
-    /*
     A = (double **)malloc(dim * sizeof(double*));
     for (ic = 0 ; ic < dim; ++ic)
     A[ic] = (double *)malloc(dim2 * sizeof(double));
-    */
 
     // Better allocation
+    /*
     A = (double **) malloc( dim * sizeof(double*) );
-    A[0] = (double **) malloc( dim*dim2 * sizeof(double) );
+    A[0] = (double *) malloc( dim*dim2 * sizeof(double) );
     for (ic = 1; ic < dim; ++ic)
         A[ic] = A[ic-1] + dim2*sizeof(double);
-
+    */
 
     /* construction of A matrix such that
      * A = [ q | Id | -d | -M ] with d = (1,...1)
@@ -319,4 +360,6 @@ void lcp_lexicolemke(int dim, const double * M, const double * q, double *zlem ,
    */
 
 }}} // namespace floe::lcp::solver
+
+#endif // FLOE_LCP_SOLVER_LEXICOLEMKE_HPP
 

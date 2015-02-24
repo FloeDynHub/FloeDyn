@@ -16,12 +16,14 @@
 #include <boost/numeric/ublas/matrix.hpp>
 #include <boost/numeric/ublas/matrix_sparse.hpp>
 #include <boost/numeric/ublas/operation_blocked.hpp>
+#include <boost/numeric/ublas/vector.hpp>
 
 #include <boost/graph/graph_utility.hpp>
 
 #include "floe/geometry/core/access.hpp"
 #include "floe/geometry/arithmetic/arithmetic.hpp"
 #include "floe/geometry/arithmetic/determinant.hpp"
+#include "floe/lcp/lcp.hpp"
 
 namespace floe { namespace lcp { namespace builder
 {
@@ -58,8 +60,9 @@ public:
     //! Initialize internal matrices need to build a LCP.
     void init();
 
-    //! (1st draft) Return the main matrix of the LCP
-    ublas::matrix<T> getLCP() const;
+    //! Return the main matrix of the LCP
+    //! \todo parameter for decompression
+    lcp::LCP<T> getLCP() const;
 
     ublas::diagonal_matrix<T>   M;   //!< Mass and momentum matrix.
     ublas::diagonal_matrix<T>   invM;  //!< Inverse of the mass/momentum matrix.
@@ -183,7 +186,7 @@ init()
 }
 
 template <typename T, typename TGraph>
-ublas::matrix<T>
+floe::lcp::LCP<T>
 GraphLCP<T, TGraph>::
 getLCP() const
 {
@@ -193,7 +196,8 @@ getLCP() const
     const std::size_t m = J.size2();
     
     // LCP main matrix
-    matrix<T> A(4*m, 4*m);
+    lcp::LCP<T> lcp(4*m);
+    auto & A = lcp.A;
 
     // Temporaries
     decltype(J) iMJ(3*n, m);        axpy_prod(invM, J, iMJ, true);
@@ -233,8 +237,28 @@ getLCP() const
     project( A, range(3*m, 4*m), range(m, 3*m) ) = -trans(E);
     project( A, range(3*m, 4*m), range(3*m, 4*m) ) = zero_matrix<T>(m,m);
 
-    return A;
 
+    // And now, the q vector !!
+    vector<T> W(3*n);
+
+    // The speed vector is not prepared before to be sync with the actual floes states
+    namespace fg = floe::geometry;
+    for (std::size_t i = 0; i < 3*n; i+=3)
+    {
+        auto const state = m_graph[i/3]->state();
+        W(i)   = fg::get<0>(state.speed);
+        W(i+1) = fg::get<1>(state.speed);
+        W(i+2) = state.rot;
+    }
+
+    // Filling q
+    auto& q = lcp.q;
+    project(q, range(0, m))   = prod( trans(J), W );
+    project(q, range(m, 3*m)) = prod( trans(D), W );
+    project(q, range(3*m, 4*m)) = zero_vector<T>(m);
+
+    // Job done !
+    return lcp;
 }
 
 }}} // namespace floe::lcp::builder

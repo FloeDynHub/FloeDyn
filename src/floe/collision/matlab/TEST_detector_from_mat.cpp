@@ -23,6 +23,7 @@
 #include "floe/collision/matlab/detector.hpp"
 
 #include "floe/lcp/builder/graph_to_lcp.hpp"
+#include "floe/lcp/solver/lexicolemke.hpp"
 
 int main( int argc, char* argv[] )
 {
@@ -140,16 +141,27 @@ int main( int argc, char* argv[] )
     cout << "\t" << timer.format();
 
     timer.start();
-    auto const A = graph_lcp.getLCP();
+    auto lcp = graph_lcp.getLCP();
     timer.stop();
     cout << "\t" << timer.format();
-    cout << "\t of size " << A.size1() << "x" << A.size2() << endl;
-    
+    cout << "\t of size " << lcp.A.size1() << "x" << lcp.A.size2() << endl;
+   
     cout << "M = " << graph_lcp.M << endl;
     cout << "J = " << graph_lcp.J << endl;
     cout << "D = " << graph_lcp.D << endl;
-    cout << "A = " << A << endl;
+    cout << "A = " << lcp.A << endl;
+    cout << "q = " << lcp.q << endl;
     
+    cout << "Solving it ... " << flush;
+    timer.start();
+    const bool success = floe::lcp::solver::lexicolemke(lcp);
+    timer.stop();
+    cout << success << endl;
+    cout << "\t" << timer.format();
+    cout << "\tErr = " << LCP_error(lcp) << endl;
+    cout << "z = " << lcp.z << endl;
+    
+    cout << endl;
     }
 
     cout << "Preparation of one big LCP ..." << endl;
@@ -161,10 +173,11 @@ int main( int argc, char* argv[] )
     cout << "\t" << timer.format();
 
     timer.start();
-    auto const A = graph_lcp.getLCP();
+    auto lcp = graph_lcp.getLCP();
     timer.stop();
     cout << "\t" << timer.format();
-    cout << "\t of size " << A.size1() << "x" << A.size2() << endl;
+    cout << "\t of size " << lcp.A.size1() << "x" << lcp.A.size2() << endl;
+    cout << endl;
     }
 
     cout << "Finding all active connected components and building all LCPs ..." << endl;
@@ -178,18 +191,43 @@ int main( int argc, char* argv[] )
             for ( auto const& graph : asubgraphs )
             {
                 floe::lcp::builder::GraphLCP<real, decltype(graph)> graph_lcp( graph );
-                auto const A = graph_lcp.getLCP();
+                auto lcp = graph_lcp.getLCP();
                 ++lcp_cnt;
-                pt_cnt += A.size1()*A.size2();
-
+                pt_cnt += lcp.A.size1() * lcp.A.size2();
             }
         }
         timer.stop();
+        cout << endl;
         cout << "\t" << timer.format();
         cout << "\t" << lcp_cnt << " LCPs with " << pt_cnt << " values." << endl;
+        cout << endl;
     }
 
-    
+    cout << "Finding all active connected components, building all LCPs and solving it ..." << endl;
+    {
+        size_t lcp_cnt = 0;
+        size_t pt_cnt = 0;
+        timer.start();
+        for ( size_t i = 0; i < subgraphs.size(); ++i )
+        {
+            auto const asubgraphs = active_subgraphs( subgraphs[i] );
+            for ( auto const& graph : asubgraphs )
+            {
+                floe::lcp::builder::GraphLCP<real, decltype(graph)> graph_lcp( graph );
+                auto lcp = graph_lcp.getLCP();
+                ++lcp_cnt;
+                pt_cnt += lcp.A.size1() * lcp.A.size2();
+                
+                const bool success = floe::lcp::solver::lexicolemke(lcp);
+                cout << success << flush;
+            }
+        }
+        timer.stop();
+        cout << endl;
+        cout << "\t" << timer.format();
+        cout << "\t" << lcp_cnt << " LCPs with " << pt_cnt << " values." << endl;
+        cout << endl;
+    }
 
 
     // Freeing memory

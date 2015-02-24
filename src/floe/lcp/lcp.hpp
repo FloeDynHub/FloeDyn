@@ -7,7 +7,9 @@
 #ifndef FLOE_LCP_LCP_HPP
 #define FLOE_LCP_LCP_HPP
 
+#include <cstddef>
 #include <boost/numeric/ublas/matrix.hpp>
+#include <boost/numeric/ublas/vector.hpp>
 
 namespace floe { namespace lcp
 {
@@ -27,8 +29,15 @@ template <
 struct LCP
 {
     typedef boost::numeric::ublas::matrix<T> array_type;
+    typedef boost::numeric::ublas::vector<T> vector_type;
 
-    array_type A, q, w, z;
+    std::size_t dim;
+    array_type A;
+    vector_type q, w, z;
+
+    LCP( std::size_t n )
+        : dim(n), A(n, n), q(n), w(n), z(n)
+    {}
 };
 
 /*! Return the solution error for a LCP
@@ -40,13 +49,13 @@ struct LCP
 template < typename T>
 T LCP_error( LCP<T> const& lcp, bool calc_w = true )
 {
-    typedef typename LCP<T>::array_type array_type;
+    typedef typename LCP<T>::vector_type vector_type;
     using namespace boost::numeric::ublas;
 
     // Calculating w = Az + q
-    array_type w;
+    vector_type w;
     if ( calc_w )
-        noalias(w) = prod(A,z) + q;
+        w = prod(lcp.A, lcp.z) + lcp.q;
     else
         w = lcp.w;
 
@@ -56,12 +65,17 @@ T LCP_error( LCP<T> const& lcp, bool calc_w = true )
 
     // Error on z
     T z_err = 0;
-    for ( T value : z ) if (value < 0) z_err -= value;
+    for ( T value : lcp.z ) if (value < 0) z_err -= value;
 
     // Error on z.w
     T zw_err = 0;
-    for ( auto itz = std::begin(z), auto itw = std::begin(w); itz != std::end(z); ++itz, ++itw )
-        if (*itz != 0 && *itw != 0) zw_err += abs( (*itz) * (*itw) );
+    auto itz = lcp.z.begin();
+    auto itw = w.begin();
+    for ( ; itz != lcp.z.end(); ++itz, ++itw )
+    {
+        if (*itz != 0 && *itw != 0) 
+            zw_err += std::abs( (*itz) * (*itw) );
+    }
 
     return w_err + z_err + zw_err;
 }
