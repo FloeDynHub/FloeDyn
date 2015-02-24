@@ -144,6 +144,12 @@ int main( int argc, char* argv[] )
     timer.stop();
     cout << "\t" << timer.format();
     cout << "\t of size " << A.size1() << "x" << A.size2() << endl;
+    
+    cout << "M = " << graph_lcp.M << endl;
+    cout << "J = " << graph_lcp.J << endl;
+    cout << "D = " << graph_lcp.D << endl;
+    cout << "A = " << A << endl;
+    
     }
 
     cout << "Preparation of one big LCP ..." << endl;
@@ -184,12 +190,6 @@ int main( int argc, char* argv[] )
     }
 
     
-    /*
-    cout << "M = " << graph_lcp.M << endl;
-    cout << "J = " << graph_lcp.J << endl;
-    cout << "D = " << graph_lcp.D << endl;
-    cout << "A = " << A << endl;
-    */
 
 
     // Freeing memory

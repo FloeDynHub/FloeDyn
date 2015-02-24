@@ -15,6 +15,7 @@
 #include <boost/numeric/ublas/banded.hpp>
 #include <boost/numeric/ublas/matrix.hpp>
 #include <boost/numeric/ublas/matrix_sparse.hpp>
+#include <boost/numeric/ublas/operation_blocked.hpp>
 
 #include <boost/graph/graph_utility.hpp>
 
@@ -200,17 +201,33 @@ getLCP() const
 
     // Filling by blocks
     //      1st row
+    
     //axpy_prod( trans(J), iMJ, project( A, range(0, m), range(0, m) ),   true );
-    //axpy_prod( trans(J), iMD, project( A, range(0, m), range(m, 3*m) ), true );
     project(A, range(0, m), range(0, m)) = prod(trans(J), iMJ);
+    //matrix<T> block11(m,m); axpy_prod( trans(J), iMJ, block11, true ); project(A, range(0,m), range(0, m)) = block11;
+    //matrix<T> block11 = block_prod<matrix<T>,16>( trans(J), iMJ); project(A, range(0,m), range(0, m)) = block11;
+    
+    //axpy_prod( trans(J), iMD, project( A, range(0, m), range(m, 3*m) ), true );
     project(A, range(0, m), range(m, 3*m)) = prod(trans(J), iMD);
+    //matrix<T> block12(m, 2*m); axpy_prod( trans(J), iMD, block12, true); project(A, range(0,m), range(m,3*m)) = block12;
+    //matrix<T> block12 = block_prod<matrix<T>,16>( trans(J), iMD); project(A, range(0,m), range(m,3*m)) = block12;
+
     project( A, range(0, m), range(3*m, 4*m) ) = zero_matrix<T>(m, m);
+
     //      2nd row
+    
     //axpy_prod( trans(D), iMJ, project( A, range(m, 3*m), range(0, m) ),   true );
+    //project(A, range(m, 3*m), range(0, m)) = prod(trans(D), iMJ);
+    project(A, range(m, 3*m), range(0, m)) = trans(project(A, range(0, m), range(m, 3*m))); // It is faster to transpose already calculated block
+    //project(A, range(m, 3*m), range(0, m)) = trans(block12);
+    
     //axpy_prod( trand(D), iMD, project( A, range(m, 3*m), range(m, 3*m) ), true );
-    project(A, range(m, 3*m), range(0, m)) = prod(trans(D), iMJ);
     project(A, range(m, 3*m), range(m, 3*m)) = prod(trans(D), iMD);
+    //matrix<T> block22(2*m, 2*m); axpy_prod( trans(D), iMD, block22, true); project(A, range(m, 3*m), range(m, 3*m)) = block22;
+    //matrix<T> block22 = block_prod<matrix<T>,16>( trans(D), iMD); project(A, range(m, 3*m), range(m, 3*m)) = block22;
+
     project( A, range(m, 3*m), range(3*m, 4*m) ) = E;
+
     //      3th row
     project( A, range(3*m, 4*m), range(0, m) ) = mu;
     project( A, range(3*m, 4*m), range(m, 3*m) ) = -trans(E);
