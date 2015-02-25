@@ -71,7 +71,7 @@ bool lexicolemke<double>( floe::lcp::LCP<double>& lcp)
 
 void lcp_lexicolemke(int dim, const double * M, const double * q, double *zlem , double *wlem , int *info)
 {
-    double tol = 1e-15;
+    double tol = 1e-20;
 
     /* matrix M of the lcp */
     //double * M = problem->M->matrix0;
