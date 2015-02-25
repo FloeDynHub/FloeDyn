@@ -145,13 +145,15 @@ int main( int argc, char* argv[] )
     timer.stop();
     cout << "\t" << timer.format();
     cout << "\t of size " << lcp.A.size1() << "x" << lcp.A.size2() << endl;
-   
+
+    /*
     cout << "M = " << graph_lcp.M << endl;
     cout << "J = " << graph_lcp.J << endl;
     cout << "D = " << graph_lcp.D << endl;
     cout << "A = " << lcp.A << endl;
     cout << "q = " << lcp.q << endl;
-    
+    */
+
     cout << "Solving it ... " << flush;
     timer.start();
     const bool success = floe::lcp::solver::lexicolemke(lcp);
@@ -215,11 +217,14 @@ int main( int argc, char* argv[] )
             {
                 floe::lcp::builder::GraphLCP<real, decltype(graph)> graph_lcp( graph );
                 auto lcp = graph_lcp.getLCP();
+
                 ++lcp_cnt;
                 pt_cnt += lcp.A.size1() * lcp.A.size2();
                 
+                boost::timer::cpu_timer timer2;
                 const bool success = floe::lcp::solver::lexicolemke(lcp);
-                cout << success << flush;
+                timer2.stop();
+                cout << "\t" << lcp.A.size1() << "x" << lcp.A.size2() << " : Err = " << LCP_error(lcp) << " ; " << timer2.format();
             }
         }
         timer.stop();

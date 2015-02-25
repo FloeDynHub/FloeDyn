@@ -71,7 +71,7 @@ bool lexicolemke<double>( floe::lcp::LCP<double>& lcp)
 
 void lcp_lexicolemke(int dim, const double * M, const double * q, double *zlem , double *wlem , int *info)
 {
-    double tol = 0;
+    double tol = 1e-15;
 
     /* matrix M of the lcp */
     //double * M = problem->M->matrix0;
@@ -151,7 +151,8 @@ void lcp_lexicolemke(int dim, const double * M, const double * q, double *zlem ,
 
     for (ic = 0 ; ic < dim; ++ic)
         for (jc = 0 ; jc < dim; ++jc)
-            A[ic][jc + dim + 2] = -M[dim * jc + ic];
+            A[ic][jc + dim + 2] = -M[dim * ic + jc];
+            //A[ic][jc + dim + 2] = -M[dim * jc + ic];
 
     assert(q);
 
