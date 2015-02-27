@@ -1,3 +1,9 @@
+/*!
+ * \file floe/floes/TEST_mixin.cpp
+ * \brief Test file for mixin technics.
+ * \author Roland Denis
+ */
+
 #include <iostream>
 #include <cstddef>
 

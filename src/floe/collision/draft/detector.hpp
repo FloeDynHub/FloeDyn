@@ -1,10 +1,16 @@
+/*!
+ * \file floe/collision/draft/collision_detector.hpp
+ * \brief Draft base class for a detector.
+ * \author Roland Denis
+ */
+
 #ifndef COLLISION_DETECTOR_HPP_INCLUDED
 #define COLLISION_DETECTOR_HPP_INCLUDED
 
 #include <vector>
 #include <utility>
 
-namespace collision {
+namespace floe { namespace collision { namespace draft {
 
 /*! Abstract class for filtering collision.
  * \tparam Object Type of object involved in collision.
@@ -82,6 +88,6 @@ public :
 
 };
 
-} // namespace collision
+}}} // namespace floe::collision::draft
 
 #endif

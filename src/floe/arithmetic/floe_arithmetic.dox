@@ -1,0 +1,4 @@
+/*!
+ * \namespace floe::arithmetic
+ * \brief Some arithmetic toolbox for various objects.
+ */

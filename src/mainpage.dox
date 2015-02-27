@@ -1,0 +1,49 @@
+/*!
+ *
+ * \mainpage Code C++ de simulation de floes
+ *
+ * \section todo À faire
+ *
+ * \section example Un exemple
+ *
+ * Nous ici détailler le fonction d'un exemple, le fichier floe/collision/matlab/TEST_detector_from_mat.cpp .
+ * Cet exemple charge une configuration de floes depuis un fichier Matlab et en détecte les points de collisions. 
+ * Il construit ensuite les différents LCP associés au composantes connexes des contacts actifs, et en tente la résolution par la méthode de Lemke.
+ *
+ * Commençons par déclarer le type principal sur lequel on va baser tout le code, l'ensemble des réels :
+ * \code
+ * using real = double;
+ * \endcode
+ *
+ * De là, on va déduire les classes que l'on va utiliser, tout d'abord celle des floes statiques :
+ * \code
+ * namespace ff = floe::geometry;
+ * using TStaticFloe = ff::StaticFloe<real>;
+ * \endcode
+ * puis celle des floes cinématiques, qui dépend des floes statiques :
+ * \code
+ * using TKinematicFloe = ff::KinematicFloe< TStaticFloe >;
+ * \endcode
+ *
+ * Enfin, il faut un détecteur de collision qui va travailler au niveau cinématique :
+ * \code
+ * using TDetector = floe::collision::matlab::MatlabDetector< TKinematicFloe >;
+ * \endcode
+ *
+ * Une fois cela fait, on peut commencer le programme en récupérant les paramètres en ligne de commande :
+ * \code
+ *  if ( argc < 2 )
+ *  {
+ *      cout << "Usage: " << argv[0] << " <matlab_file_name>" << endl;
+ *      return 1;
+ *  }
+ * \endcode
+ *
+ * La première étape va alors consister à charger le fichier Matlab fourni en paramètre et à en extraire la liste des floes.
+ * On va tout d'abord charger la variable list_so dans une structure, floe::io::matlab::MatlabListSolid, qui reproduit fidèlement la structure de la variable Matlab :
+ * \code
+ *
+ *
+ *
+ *
+ */

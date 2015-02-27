@@ -1,3 +1,9 @@
+/*!
+ * \file floe/collision/draft/MODEL_detector.cpp
+ * \brief Brainstorming about collision detector. See source code.
+ * \author Roland Denis
+ */
+
 // Tentative de modèle pour la détection de collision
 // Principe : pouvoir enchevetrer les détecteurs pour simuler les différents niveaux de détection
 // La liste des collisions doit être itérable (lazy evaluation)

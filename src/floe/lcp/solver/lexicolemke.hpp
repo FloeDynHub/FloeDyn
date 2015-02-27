@@ -17,6 +17,12 @@
  * Contact: Vincent ACARY, siconos-team@lists.gforge.inria.fr
  */
 
+/*!
+ * \file floe/lcp/solver/lexicolemke.hpp
+ * \brief LCP Solver using Lemke algorithm with lexicographical ordering.
+ * \author Roland Denis
+ */
+
 #ifndef FLOE_LCP_SOLVER_LEXICOLEMKE_HPP
 #define FLOE_LCP_SOLVER_LEXICOLEMKE_HPP
 
@@ -71,7 +77,7 @@ bool lexicolemke<double>( floe::lcp::LCP<double>& lcp)
 
 void lcp_lexicolemke(int dim, const double * M, const double * q, double *zlem , double *wlem , int *info)
 {
-    double tol = 1e-20;
+    double tol = 0;
 
     /* matrix M of the lcp */
     //double * M = problem->M->matrix0;
@@ -128,17 +134,18 @@ void lcp_lexicolemke(int dim, const double * M, const double * q, double *zlem ,
 
     basis = (int *)malloc(dim * sizeof(int));
 
+    /*
     A = (double **)malloc(dim * sizeof(double*));
     for (ic = 0 ; ic < dim; ++ic)
     A[ic] = (double *)malloc(dim2 * sizeof(double));
+    */
 
     // Better allocation
-    /*
     A = (double **) malloc( dim * sizeof(double*) );
     A[0] = (double *) malloc( dim*dim2 * sizeof(double) );
     for (ic = 1; ic < dim; ++ic)
-        A[ic] = A[ic-1] + dim2*sizeof(double);
-    */
+        A[ic] = A[ic-1] + dim2;
+
 
     /* construction of A matrix such that
      * A = [ q | Id | -d | -M ] with d = (1,...1)
@@ -152,7 +159,6 @@ void lcp_lexicolemke(int dim, const double * M, const double * q, double *zlem ,
     for (ic = 0 ; ic < dim; ++ic)
         for (jc = 0 ; jc < dim; ++jc)
             A[ic][jc + dim + 2] = -M[dim * ic + jc];
-            //A[ic][jc + dim + 2] = -M[dim * jc + ic];
 
     assert(q);
 
@@ -297,6 +303,7 @@ void lcp_lexicolemke(int dim, const double * M, const double * q, double *zlem ,
         {
             tmp = A[ic][drive];
             for (jc = 0 ; jc < dim2 ; ++jc) A[ic][jc] -=  tmp * A[block][jc];
+            
         }
         for (ic = block + 1 ; ic < dim ; ++ic)
         {
@@ -331,7 +338,6 @@ void lcp_lexicolemke(int dim, const double * M, const double * q, double *zlem ,
 
     free(basis);
 
-    //for (i = 0 ; i < dim ; ++i) free(A[i]);
     free(A[0]);
     free(A);
 }

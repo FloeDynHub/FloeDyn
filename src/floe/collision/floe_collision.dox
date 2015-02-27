@@ -4,5 +4,3 @@
  *
  * It also includes maximum time step estimation.
  */
-
-#error Documentation of floe::collision namespace

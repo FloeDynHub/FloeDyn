@@ -1,8 +1,11 @@
-/*!\file container_operators.hpp
+/*!\file floe/arithmetic/container_operators.hpp
  * \brief Bunch of generic operators for containers.
  * \author Roland Denis
  *
  * Originates from FIRST project.
+ *
+ * \namespace container_operators
+ * \brief Generic operators for containers.
  */
 
 // #ifndef FLOE_ARITHMETIC_CONTAINER_OPERATORS_HPP

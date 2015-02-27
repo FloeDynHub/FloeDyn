@@ -1,3 +1,9 @@
+/*!
+ * \file floe/collision/draft/naive_detector.hpp
+ * \brief Naive implementation of a detector based on the draft base class.
+ * \author Roland Denis
+ */
+
 #ifndef COLLISION_NAIVE_DETECTOR_HPP_INCLUDED
 #define COLLISION_NAIVE_DETECTOR_HPP_INCLUDED
 
@@ -5,7 +11,7 @@
 
 #include "collision/detector.hpp"
 
-namespace collision {
+namespace floe { collision { draft {
 
 /*! Naive (but usefull) implementation of a detector.
  *
@@ -71,6 +77,6 @@ public :
 
 };
 
-} // namespace collision
+}}} // namespace floe::collision::draft
 
 #endif

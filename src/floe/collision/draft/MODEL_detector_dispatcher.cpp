@@ -1,3 +1,9 @@
+/*!
+ * \file floe/collision/draft/MODEL_detector_dispatcher.cpp
+ * \brief Erzatz of a multi-level detector.
+ * \author Roland Denis
+ */
+
 // Tentative de modèle pour gérer les niveaux de détecteurs
 
 #include "collision/detector.hpp"
