@@ -2,7 +2,7 @@
  *
  * \mainpage Code C++ de simulation de floes
  *
- * \section todo À faire
+ * \section dev_todo À faire dans le code.
  *
  * \section example Un exemple
  *
@@ -17,12 +17,11 @@
  *
  * De là, on va déduire les classes que l'on va utiliser, tout d'abord celle des floes statiques :
  * \code
- * namespace ff = floe::geometry;
- * using TStaticFloe = ff::StaticFloe<real>;
+ * using TStaticFloe = floe::floes::StaticFloe<real>;
  * \endcode
  * puis celle des floes cinématiques, qui dépend des floes statiques :
  * \code
- * using TKinematicFloe = ff::KinematicFloe< TStaticFloe >;
+ * using TKinematicFloe = floe::floes::KinematicFloe< TStaticFloe >;
  * \endcode
  *
  * Enfin, il faut un détecteur de collision qui va travailler au niveau cinématique :
@@ -42,8 +41,72 @@
  * La première étape va alors consister à charger le fichier Matlab fourni en paramètre et à en extraire la liste des floes.
  * On va tout d'abord charger la variable list_so dans une structure, floe::io::matlab::MatlabListSolid, qui reproduit fidèlement la structure de la variable Matlab :
  * \code
+ * floe::io::matlab::MatlabListSolid<double> list_so;
+ * read_list_so_from_file( argv[1], list_so );
+ * \endcode
+ * La structure floe::io::matlab::MatlabListSolid est ici templatée par double au lieu de real (qui peut être différent d'un double) pour refléter la représentation utilisée par Matlab. La conversion vers le type real sera effectué lors de l'étape suivante.
  *
+ * La variable list_so contient maintenant l'équivalent de la variable Matlab de même nom. On peut maintenant convertir cette structure en liste de floes cinématiques :
+ * \code
+ * auto floe_list = list_so_to_floes<TKinematicFloe>( list_so );
+ * \endcode
+ * La variable floe_list est en fait de type <a href="http://en.cppreference.com/w/cpp/container/vector">std::vector<TKinematicFloe*></a>, c'est à dire une liste de pointeur vers des floes cinématiques. Il faudra donc penser à libérer la mémoire associée quand cette liste ne sera plus utile (ou utiliser des <a href="http://en.cppreference.com/w/cpp/memory/shared_ptr">Smart Pointer</a>). (surtout que le mot-clé <a href="http://en.cppreference.com/w/cpp/language/auto">auto</a> ne permet pas de s'en rendre compte ...)
  *
+ * On va ensuite indiqué au détecteur de collision quels floes il doit surveiller, en l'occurence tous les floes :
+ * \code
+ * TDetector detector;
+ * for ( auto const& floe_ptr : floe_list )
+ *      detector.push_back( floe_ptr );
+ * \endcode
+ * On utilise ici la syntaxe <a href="http://en.cppreference.com/w/cpp/language/range-for">de boucle for pour les listes</a> de la norme C++11.
+ * Le détecteur va ici créer une structure d'optimisation pour chacun des floes.
  *
+ * On demande maintenant au détecteur de mettre à jour ces structures (si les floes se sont déplacés entre temps), de calculer les distances entre les floes et d'enregistrer les éventuelles collisions :
+ * \code
+ * detector.update();
+ * \endcode
+ *
+ * Les collisions sont enregistrées dans un <a href="http://www.boost.org/doc/libs/1_57_0/libs/graph/doc/index.html">graphe</a> de type floe::collision::ContactGraph dont :
+ * - chaque noeud représente un floe et possède un pointeur vers ce dernier;
+ * - chaque arête représente une collision entre deux floes et est associée à un vecteur de points de contact de type floe::collision::ContactPoint.
+ *
+ * Ce graphe est ainsi indépendant du détecteur de collision et contient l'ensemble des informations nécessaires à la résolution de ces contacts.
+ *
+ * Plusieurs fonctions permettent de manipuler les graphes de contacts (voir le fichier floe/collision/contact_graph.hpp), comme par exemple récupérer le nombre de points de contacts :
+ * \code
+ * const std::size_t num = num_contacts( detector.contact_graph() );
+ * \endcode
+ *
+ * Mais le principal intérêt est de pouvoir utiliser l'ensemble des outils disponibles pour les graphes, comme :
+ * - l'extraction des <a href="http://www.boost.org/doc/libs/1_57_0/libs/graph/doc/connected_components.html">composantes connexes</a>, pour obtenir par exemple les groupes de floes en contact;
+ * - le <a href="http://www.boost.org/doc/libs/1_57_0/libs/graph/doc/filtered_graph.html">filtrage d'un graphe</a> selon des prédicats sur les noeuds et/ou les arêtes, pour obtenir le graphe des collisions n'impliquant que des contacts actifs;
+ * - l'extraction de <a href="http://www.boost.org/doc/libs/1_57_0/libs/graph/doc/subgraph.html">sous-graphe</a> pour, par exemple, manipuler les composantes connexes comme des graphes.
+ *
+ * On va donc commencer par l'extraction des groupes de floes en contact, représentant les composantes connexes du graphe :
+ * \code
+ * auto const subgraphs = collision_subgraphs( detector.contact_graph() );
+ * \endcode
+ * La variable subgraphs est maintenant une liste de sous-graphes, chacun représentant une composante connexe.
+ *
+ * Pour chacun de ces graphes, on va extraire les groupes de floes impliquant des contacts actifs (vitesse relative strictement négative) :
+ * \code
+ *  for ( auto const& connected_graph : subgraphs )
+ *  {
+ *      auto const& active_graph_list = active_subgraphs( connected_graph );
+ * \endcode
+ *
+ * Une fois un graphe de contact extrait (quelque soit sa propriété), il faut résoudre les collisions associées en posant un <a href="http://en.wikipedia.org/wiki/Linear_complementarity_problem">problème linéaire complémentaire</a>. Pour cela, la classe floe::lcp::builder::GraphLCP permet de construire un floe::lcp::LCP à partir d'un graphe de contacts :
+ * \code
+ *      for ( auto const& active_graph : active_graph_list )
+ *      {
+ *          floe::lcp::builder::GraphLCP<real, decltype(graph)> graph_lcp( active_graph );
+ * \endcode
+ * Cette fabrique à LCP doit être templatée par le type fondamental (real) et le type de graphe de contacts que l'on récupère grâce au mot-clé <a href="http://en.cppreference.com/w/cpp/language/decltype">decltype</a>.
+ * Une référence vers le graphe est stockée dans la classe afin d'imaginer pouvoir construire rapidement le LCP associé à un sous-graphe de contacts.
+ *
+ * Le LCP est ensuite récupéré via la commande :
+ * \code
+ * auto lcp = graph_lcp.getLCP();
+ * \endcode
  *
  */

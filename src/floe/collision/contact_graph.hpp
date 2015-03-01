@@ -1,5 +1,5 @@
 /*!
- * \file floe/collisions/contact_graph.hpp
+ * \file floe/collision/contact_graph.hpp
  * \brief Contact graph definition and manipulation.
  * \author Roland Denis
  * \see <a href="http://www.boost.org/doc/libs/1_57_0/libs/graph/doc/index.html">boost::graph</a>
