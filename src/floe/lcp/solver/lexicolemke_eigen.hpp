@@ -23,13 +23,13 @@
  * \author Roland Denis
  */
 
-#ifndef FLOE_LCP_SOLVER_LEXICOLEMKE_HPP
-#define FLOE_LCP_SOLVER_LEXICOLEMKE_HPP
+#ifndef FLOE_LCP_SOLVER_LEXICOLEMKE_EIGEN_HPP
+#define FLOE_LCP_SOLVER_LEXICOLEMKE_EIGEN_HPP
 
 #include <cmath>
 #include <cassert>
-#include <cstdio>
-#include <cstdlib>
+#include <cstddef>
+#include <Eigen/Dense>
 
 #include "floe/lcp/lcp.hpp"
 
@@ -62,6 +62,7 @@ bool lexicolemke( floe::lcp::LCP<T>& lcp );
 template <>
 bool lexicolemke<double>( floe::lcp::LCP<double>& lcp)
 {
+
     int info;
     lcp_lexicolemke( 
         lcp.dim, 
@@ -77,6 +78,8 @@ bool lexicolemke<double>( floe::lcp::LCP<double>& lcp)
 
 void lcp_lexicolemke(int dim, const double * M, const double * q, double *zlem , double *wlem , int *info)
 {
+    using namespace Eigen;
+    
     double tol = 0;
 
     /* matrix M of the lcp */
@@ -123,60 +126,38 @@ void lcp_lexicolemke(int dim, const double * M, const double * q, double *zlem ,
     double z0, zb, dblock;
     double pivot, tovip;
     double tmp;
-    int *basis;
-    double** A;
 
-    /*output*/
-
-    //options->iparam[1] = 0;
-
-    /* Allocation */
-
-    basis = (int *)malloc(dim * sizeof(int));
-
-    /*
-    A = (double **)malloc(dim * sizeof(double*));
-    for (ic = 0 ; ic < dim; ++ic)
-    A[ic] = (double *)malloc(dim2 * sizeof(double));
-    */
-
-    // Better allocation
-    A = (double **) malloc( dim * sizeof(double*) );
-    A[0] = (double *) malloc( dim*dim2 * sizeof(double) );
-    for (ic = 1; ic < dim; ++ic)
-        A[ic] = A[ic-1] + dim2;
-
+    Matrix<std::size_t, Dynamic, 1>     basis(dim);
+    Matrix<double, Dynamic, Dynamic>    A(dim, dim2);
 
     /* construction of A matrix such that
      * A = [ q | Id | -d | -M ] with d = (1,...1)
      */
 
     /* We need to init only the part corresponding to Id */
-    for (ic = 0 ; ic < dim; ++ic)
-        for (jc = 1 ; jc <= dim; ++jc)
-            A[ic][jc] = 0.0;
-
+    A.block(0, 1, dim, dim) = MatrixXd::Zero(dim,dim);
+    
     for (ic = 0 ; ic < dim; ++ic)
         for (jc = 0 ; jc < dim; ++jc)
-            A[ic][jc + dim + 2] = -M[dim * ic + jc];
+            A(ic, jc + dim + 2) = -M[dim * ic + jc];
 
     assert(q);
 
-    for (ic = 0 ; ic < dim; ++ic) A[ic][0] = q[ic];
+    for (ic = 0 ; ic < dim; ++ic) A(ic,0) = q[ic];
 
-    for (ic = 0 ; ic < dim; ++ic) A[ic][ic + 1 ] =  1.0;
-    for (ic = 0 ; ic < dim; ++ic) A[ic][dim + 1] = -1.0;
+    for (ic = 0 ; ic < dim; ++ic) A(ic, ic + 1) =  1.0;
+    for (ic = 0 ; ic < dim; ++ic) A(ic, dim + 1) = -1.0;
 
     /* End of construction of A */
 
     Ifound = 0;
 
 
-    for (ic = 0 ; ic < dim  ; ++ic) basis[ic] = ic + 1;
+    for (ic = 0 ; ic < dim  ; ++ic) basis(ic) = ic + 1;
 
     drive = dim + 1;
     block = 0;
-    z0 = A[block][0];
+    z0 = A(block,0);
     ITER = 0;
 
     /* Start research of argmin lexico */
@@ -184,7 +165,7 @@ void lcp_lexicolemke(int dim, const double * M, const double * q, double *zlem ,
 
     for (ic = 1 ; ic < dim ; ++ic)
     {
-        zb = A[ic][0];
+        zb = A(ic, 0);
         if (zb < z0)
         {
             z0    = zb;
@@ -194,7 +175,7 @@ void lcp_lexicolemke(int dim, const double * M, const double * q, double *zlem ,
         {
             for (jc = 0 ; jc < dim ; ++jc)
             {
-                dblock = A[block][1 + jc] - A[ic][1 + jc];
+                dblock = A(block, 1 + jc) - A(ic, 1 + jc);
                 if (dblock < 0)
                 {
                     break;
@@ -210,30 +191,20 @@ void lcp_lexicolemke(int dim, const double * M, const double * q, double *zlem ,
 
     /* Stop research of argmin lexico */
 
-    pivot = A[block][drive];
+    pivot = A(block, drive);
     tovip = 1.0 / pivot;
 
     /* Pivot < block , drive > */
 
-    A[block][drive] = 1;
-    for (ic = 0       ; ic < drive ; ++ic) A[block][ic] = A[block][ic] * tovip;
-    for (ic = drive + 1 ; ic < dim2  ; ++ic) A[block][ic] = A[block][ic] * tovip;
+    A.row(block) *= tovip;
+    Matrix<double, 1, Dynamic> A_row = A.row(block);
+    //A = (A - tovip * A.col(drive) * A.row(block)).eval();
+    //A.row(block) = A_row;
+    A.topRows(block) -= (A.col(drive).head(block) * A.row(block)).eval();
+    A.bottomRows(dim-block-1) -= (A.col(drive).tail(dim-block-1) * A.row(block)).eval();
 
-    /* */
-
-    for (ic = 0 ; ic < block ; ++ic)
-    {
-        tmp = A[ic][drive];
-        for (jc = 0 ; jc < dim2 ; ++jc) A[ic][jc] -=  tmp * A[block][jc];
-    }
-    for (ic = block + 1 ; ic < dim ; ++ic)
-    {
-        tmp = A[ic][drive];
-        for (jc = 0 ; jc < dim2 ; ++jc) A[ic][jc] -=  tmp * A[block][jc];
-    }
-
-    nobasis = basis[block];
-    basis[block] = drive;
+    nobasis = basis(block);
+    basis(block) = drive;
 
     while (ITER < itermax && !Ifound)
     {
@@ -249,10 +220,10 @@ void lcp_lexicolemke(int dim, const double * M, const double * q, double *zlem ,
 
         for (ic = 0 ; ic < dim ; ++ic)
         {
-            zb = A[ic][drive];
+            zb = A(ic, drive);
             if (zb > 0.0)
             {
-                z0 = A[ic][0] / zb;
+                z0 = A(ic, 0) / zb;
                 if (z0 > pivot+tol) continue;
                 if (z0 < pivot-tol)
                 {
@@ -264,7 +235,7 @@ void lcp_lexicolemke(int dim, const double * M, const double * q, double *zlem ,
                     for (jc = 1 ; jc < dim + 1 ; ++jc)
                     {
                         assert(block >=0 && "lcp_lexicolemke: block <0");
-                        dblock = A[block][jc] / pivot - A[ic][jc] / zb;
+                        dblock = A(block, jc) / pivot - A(ic, jc) / zb;
                         if (dblock < 0.0-tol) break;
                         else if (dblock > 0.0+tol)
                         {
@@ -286,49 +257,49 @@ void lcp_lexicolemke(int dim, const double * M, const double * q, double *zlem ,
             break;
         }
 
-        if (basis[block] == dim + 1) Ifound = 1;
+        if (basis(block) == dim + 1) Ifound = 1;
 
         /* Pivot < block , drive > */
 
-        pivot = A[block][drive];
+        pivot = A(block, drive);
         tovip = 1.0 / pivot;
-        A[block][drive] = 1;
+        
+        A.row(block) *= tovip;
+        //A_row = A.row(block);
 
-        for (ic = 0       ; ic < drive ; ++ic) A[block][ic] = A[block][ic] * tovip;
-        for (ic = drive + 1 ; ic < dim2  ; ++ic) A[block][ic] = A[block][ic] * tovip;
+        //A = (A - tovip * A.col(drive) * A.row(block)).eval();
+        //A.row(block) = A_row;
+        
+        //A.topRows(block) -= A.col(drive).head(block) * A.row(block);
+        //A.bottomRows(dim-block-1) -= A.col(drive).tail(dim-block-1) * A.row(block);
+        
+        MatrixXd A_block = A.block(0, drive, block, 1);
+        A.topRows(block).noalias() -= A_block * A.row(block);
+        A_block = A.block(block+1, drive, dim-block-1,1);
+        A.bottomRows(dim-block-1).noalias() -= A_block * A.row(block);
 
-        /* */
+        /*
+        MatrixXd A_col = A.col(drive);
+        A.noalias() -= A_col * A_row;
+        A.row(block) = A_row;
+        */
 
-        for (ic = 0 ; ic < block ; ++ic)
-        {
-            tmp = A[ic][drive];
-            for (jc = 0 ; jc < dim2 ; ++jc) A[ic][jc] -=  tmp * A[block][jc];
-            //for (jc = 0; jc < dim2; ++jc) A[0][ic*dim2+jc] -= tmp * A[0][block*dim2+jc];
-            
-        }
-        for (ic = block + 1 ; ic < dim ; ++ic)
-        {
-            tmp = A[ic][drive];
-            for (jc = 0 ; jc < dim2 ; ++jc) A[ic][jc] -=  tmp * A[block][jc];
-            //for (jc = 0; jc < dim2; ++jc) A[0][ic*dim2+jc] -= tmp * A[0][block*dim2+jc];
-        }
-
-        nobasis = basis[block];
-        basis[block] = drive;
+        nobasis = basis(block);
+        basis(block) = drive;
 
     } /* end while*/
 
     for (ic = 0 ; ic < dim; ++ic)
     {
-        drive = basis[ic];
+        drive = basis(ic);
         if (drive < dim + 1)
         {
             zlem[drive - 1] = 0.0;
-            wlem[drive - 1] = A[ic][0];
+            wlem[drive - 1] = A(ic, 0);
         }
         else if (drive > dim + 1)
         {
-            zlem[drive - dim - 2] = A[ic][0];
+            zlem[drive - dim - 2] = A(ic, 0);
             wlem[drive - dim - 2] = 0.0;
         }
     }
@@ -338,10 +309,6 @@ void lcp_lexicolemke(int dim, const double * M, const double * q, double *zlem ,
     if (Ifound) *info = 0;
     else *info = 1;
 
-    free(basis);
-
-    free(A[0]);
-    free(A);
 }
 
 /*
@@ -370,5 +337,5 @@ void lcp_lexicolemke(int dim, const double * M, const double * q, double *zlem ,
 
 }}} // namespace floe::lcp::solver
 
-#endif // FLOE_LCP_SOLVER_LEXICOLEMKE_HPP
+#endif // FLOE_LCP_SOLVER_LEXICOLEMKE_EIGEN_HPP
 

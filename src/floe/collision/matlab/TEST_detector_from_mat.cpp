@@ -23,7 +23,9 @@
 #include "floe/collision/matlab/detector.hpp"
 
 #include "floe/lcp/builder/graph_to_lcp.hpp"
-#include "floe/lcp/solver/lexicolemke.hpp"
+#include "floe/lcp/solver/lexicolemke_eigen.hpp"
+//#include "floe/lcp/solver/lexicolemke.hpp"
+#include "floe/lcp/solver/lemke_eigen.hpp"
 
 int main( int argc, char* argv[] )
 {
@@ -223,6 +225,7 @@ int main( int argc, char* argv[] )
                 
                 boost::timer::cpu_timer timer2;
                 const bool success = floe::lcp::solver::lexicolemke(lcp);
+                //const bool success = floe::lcp::solver::lemke(lcp);
                 timer2.stop();
                 cout << "\t" << lcp.A.size1() << "x" << lcp.A.size2() << " : Err = " << LCP_error(lcp) << " ; " << timer2.format();
             }

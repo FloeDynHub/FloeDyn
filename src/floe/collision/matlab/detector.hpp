@@ -452,7 +452,7 @@ detect_step4(
             }
 
             // Add contact if any
-            // if (min_dist <= opt2.cdist)
+            //if (min_dist <= opt2.cdist)
             if (min_dist <= std::min( opt1.cdist, opt2.cdist ) )
             {
                 contact_list.push_back(min_contact);
