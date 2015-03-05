@@ -127,7 +127,7 @@ void lcp_lexicolemke(int dim, const double * M, const double * q, double *zlem ,
     double pivot, tovip;
     double tmp;
 
-    Matrix<std::size_t, Dynamic, 1>     basis(dim);
+    Matrix<int, Dynamic, 1>     basis(dim);
     Matrix<double, Dynamic, Dynamic>    A(dim, dim2);
 
     /* construction of A matrix such that

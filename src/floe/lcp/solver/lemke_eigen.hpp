@@ -43,6 +43,8 @@
 #include <vector>
 
 #include <Eigen/Dense>
+#include <Eigen/Sparse>
+#include "unsupported/Eigen/src/IterativeSolvers/Scaling.h"
 
 #ifndef isnan
 # define isnan(x) \
@@ -136,13 +138,32 @@ int lcp_lemke(const Eigen::MatrixXd& _M, const Eigen::VectorXd& _q,
     bas.push_back(i);
   }
 
-  Eigen::MatrixXd B = -Eigen::MatrixXd::Identity(n, n);
+  //Eigen::MatrixXd B = -Eigen::MatrixXd::Identity(n, n);
+  Eigen::SparseMatrix<double> B(n, n);
+  B.reserve(_M.nonZeros());
+  B.setIdentity(); B = -B;
+  B.makeCompressed();
 
   for (size_t i = 0; i < bas.size(); ++i) {
-    B.col(bas[i]) = _M.col(bas[i]);
+    B.col(bas[i]) = _M.col(bas[i]).sparseView();
+    //B.col(bas[i]) = _M.col(bas[i]);
   }
 
-  x = -B.partialPivLu().solve(_q);
+  //x = -B.partialPivLu().solve(_q);
+  //x = -B.fullPivLu().solve(_q);
+  {
+  std::cout << "Creating solver ..." << std::endl;
+  Eigen::SparseLU<decltype(B), Eigen::COLAMDOrdering<int> > solver;
+  std::cout << "Analyzing pattern ..." << std::endl;
+  solver.analyzePattern(B);
+  std::cout << "Factorizing ..." << std::endl;
+  solver.factorize(B);
+  //solver.compute(B);
+  std::cout << "Solving ..." << std::endl;
+  x = - solver.solve(_q);
+  std::cout << "Done." << std::endl;
+  }
+
 
   Eigen::VectorXd minuxX = -x;
   int lvindex;
@@ -158,7 +179,9 @@ int lcp_lemke(const Eigen::MatrixXd& _M, const Eigen::VectorXd& _q,
   Be = -(B * U);
   x += tval * U;
   x[lvindex] = tval;
-  B.col(lvindex) = Be;
+  
+  //B.col(lvindex) = Be;
+  B.col(lvindex) = Be.sparseView();
 
   for (iter = 0; iter < maxiter; ++iter) {
     if (leaving == t) {
@@ -172,7 +195,23 @@ int lcp_lemke(const Eigen::MatrixXd& _M, const Eigen::VectorXd& _q,
       Be = _M.col(entering);
     }
 
-    Eigen::VectorXd d = B.partialPivLu().solve(Be);
+    //Eigen::VectorXd d = B.partialPivLu().solve(Be);
+    //Eigen::VectorXd d = B.fullPivLu().solve(Be);
+    Eigen::VectorXd d;
+    {
+      std::cout << "Creating solver ..." << std::endl;
+      Eigen::SparseLU<decltype(B), Eigen::COLAMDOrdering<int> > solver;
+      std::cout << "Analyzing pattern ..." << std::endl;
+      solver.analyzePattern(B);
+      std::cout << "Factorizing ..." << std::endl;
+      solver.factorize(B);
+      //solver.compute(B);
+      std::cout << solver.info() << std::endl;
+      std::cout << "Solving ..." << std::endl;
+      d = solver.solve(Be);
+      std::cout << "Done." << std::endl;
+      
+    }
 
     std::vector<int> j;
     for (int i = 0; i < n; ++i) {
@@ -254,7 +293,8 @@ int lcp_lemke(const Eigen::MatrixXd& _M, const Eigen::VectorXd& _q,
     }
     x = x - ratio * d;
     x[lvindex] = ratio;
-    B.col(lvindex) = Be;
+    //B.col(lvindex) = Be;
+    B.col(lvindex) = Be.sparseView();
     bas[lvindex] = entering;
   }
 
@@ -311,5 +351,5 @@ bool validate(const Eigen::MatrixXd& _M, const Eigen::VectorXd& _z,
 
 }}} // namespace floe::lcp::solver
 
-#define // FLOE_LCP_SOLVER_LEMKE_EIGEN_HPP
+#endif // FLOE_LCP_SOLVER_LEMKE_EIGEN_HPP
 

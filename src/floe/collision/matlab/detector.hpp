@@ -345,6 +345,9 @@ detect_step4(
     contact_list_type contact_list;
 
     value_type global_min_dist = std::numeric_limits<value_type>::max(); // Minimum distance from any points of obj1 to obj2
+
+    // !!! TEST !!!
+    // std::vector<unsigned char> segment_cnt(m_floes[n2]->static_floe().geometry().outer().size(), 0);
     
     // Loop over disks of obj1
     for ( auto it1 = adjacency.begin1(); it1 != adjacency.end1(); ++it1 )
@@ -359,6 +362,7 @@ detect_step4(
             // Best contact
             value_type min_dist = std::numeric_limits<value_type>::max(); // Minimum distance from this point to the other floe 
             contact_type min_contact;
+            // int seg_id = -1; // !!!! TEST !!!!
 
             bool dangling_point = false;    // Indicate a point that is mayby in the sub-derivative of the other floe
             std::size_t dangling_id = 0;    // Id of the point around which there is a dangling point
@@ -399,6 +403,7 @@ detect_step4(
                                 {
                                     min_contact = { m_floes[n1], m_floes[n2], point1, point2 };
                                     min_dist = dist;
+                                    // seg_id = -1; // TEST
                                 }
 
                                 dangling_point = false;
@@ -412,7 +417,9 @@ detect_step4(
                             if ( dist < min_dist )
                             {
                                 min_contact = { m_floes[n1], m_floes[n2], point1, point2 };
+                                // min_contact = { m_floes[n2], m_floes[n1], point2, point1 }; // TEST
                                 min_dist = dist;
+                                // seg_id = ipt2; // TEST
                             }
                             dangling_point = false; 
                         } 
@@ -447,6 +454,7 @@ detect_step4(
                     {
                         min_contact = { m_floes[n1], m_floes[n2], point1, point2 };
                         min_dist = dist;
+                        // seg_id = -1; // TEST
                     }
                 }
             }
@@ -455,6 +463,18 @@ detect_step4(
             //if (min_dist <= opt2.cdist)
             if (min_dist <= std::min( opt1.cdist, opt2.cdist ) )
             {
+                /*
+                // TEST
+                if (seg_id >= 0)
+                {
+                    if (segment_cnt[seg_id] < 2)
+                    {
+                        contact_list.push_back(min_contact);
+                        ++segment_cnt[seg_id];
+                    }
+                } else
+                    contact_list.push_back(min_contact);
+                */
                 contact_list.push_back(min_contact);
             }
 
