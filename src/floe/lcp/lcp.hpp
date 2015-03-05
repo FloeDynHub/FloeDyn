@@ -28,13 +28,16 @@ template <
 >
 struct LCP
 {
-    typedef boost::numeric::ublas::matrix<T> array_type;
-    typedef boost::numeric::ublas::vector<T> vector_type;
+    typedef boost::numeric::ublas::matrix<T> array_type;    //!< Type of array.
+    typedef boost::numeric::ublas::vector<T> vector_type;   //!< Type of vector.
 
-    std::size_t dim;
-    array_type A;
-    vector_type q, w, z;
+    std::size_t dim;    //!< Dimension of the problem.
+    array_type A;       //!< The matrix of the problem.
+    vector_type q;      //!< The vector of the problem.
+    vector_type w;      //!< The vector complementary to the LCP solution.
+    vector_type z;      //!< The solution of the LCP.
 
+    //! Constructor given the dimension of the problem.
     LCP( std::size_t n )
         : dim(n), A(n, n), q(n), w(n), z(n)
     {}
@@ -45,6 +48,7 @@ struct LCP
  * \tparam T    Fundamental type (auto-deduced).
  * \param  lcp   The linear complementary problem.
  * \param  calc_w   True for recalculate w = Az + q
+ * \return |w^-|_0 + |z^-|_0 + |w.z|
  */
 template < typename T>
 T LCP_error( LCP<T> const& lcp, bool calc_w = true )
