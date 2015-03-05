@@ -34,6 +34,8 @@ using namespace boost;
  * \tparam TContactPoint    Type of contact point.
  *
  * \see <a href="http://www.boost.org/doc/libs/1_57_0/libs/graph/doc/adjacency_list.html">boost/graph/adjacency_list.hpp</a>
+ *
+ * \remark Why not using std::list (or forward_list) for contact list ?
  */
 template <
     typename TContactPoint

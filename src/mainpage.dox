@@ -2,22 +2,46 @@
  *
  * \mainpage Code C++ de simulation de floes
  *
+ * \tableofcontents
+ *
  * \section dev_todo À faire dans le code.
  *
+ * \subsection dev_first Nécessaire à la simulation
  * Ce qui va être fait prochainement (Roland) :
  * - catalogue de solveurs LCP pour l'équivalent de SolveLCPV4.m
- * - mise à jour des états de floes à partir des solutions des LCPs et boucle sur les contacts actifs.
- * - définition des forces extérieurs et intégration en espace (voir floe/integration/TEST_integrate.cpp).
+ * - phases de compression et de décompression,
+ * - mise à jour des états de floes à partir des solutions des LCPs et boucle sur les contacts actifs,
+ * - définition des forces extérieurs et intégration en espace (voir floe/integration/TEST_integrate.cpp),
  * - intégration en temps, utilisant la libraire <a href="http://www.boost.org/doc/libs/1_57_0/libs/numeric/odeint/doc/html/index.html">Boost::OdeInt</a>.
  *
+ * \subsection Enrobage
  * Ce qui restera à faire :
  * - la génération de maillage,
+ * - la génération de floe (automatique ou à partir d'une image),
  * - la paramétrage en ligne de commande,
- * - les sorties graphiques,
+ * - les exports des résultats (Matlab, Gnuplot, Paraview, ...),
  * - les outils d'analyses des résultats,
  * - la surcouche objet (voir les documents de Stéphane).
  *
- * \section example Un exemple
+ * \subsection dev_design Code design
+ * Voir la page la Todo List.
+ *
+ * \subsection dev_optim Optimisation
+ * 
+ * \subsubsection dev_solver Solveur LCP
+ * - voir la méthode de réduction de dimension de Lloyd 2005 (O(n^3) -> O(n))
+ * - rendre plus propre la résolution des LCP par le développements des outils de base nécessaires : recherche de la variable bloquante, pivot, etc ...
+ * - ensuite, permettre de modifier le comportement de ces outils, pour par exemple utiliser l'algo d'expansion du LCP de Lloyd 2005.
+ *
+ * \subsubsection dev_multithread Parallélisation
+ * - on peut facilement paralléliser la détection de contact,
+ * - de même pour la résolution des contacts : à une étape donnée (groupes de contacts actifs), tous les LCPs peuvent se résoudre indépendamment les uns des autres ;
+ * - les floes peuvent avoir un temps propre différent du temps global, ceci afin de se concentrer uniquement sur les floes nécessitant un pas de temps faible.
+ * - à plus grande échelle, il faudrait pouvoir gérer l'ensemble des floes par groupes. On peut déjà avoir un détecteur de collision indépendant par groupe, il faut alors un autre détecteur sur les groupes eux-mêmes. Il faut également pouvoir détecter les "influences" entre groupes. 
+ *
+ * \section Compilation
+ *
+ * \section example Un exemple expliqué
  *
  * Nous ici détailler le fonction d'un exemple, le fichier floe/collision/matlab/TEST_detector_from_mat.cpp .
  * Cet exemple charge une configuration de floes depuis un fichier Matlab et en détecte les points de collisions. 
