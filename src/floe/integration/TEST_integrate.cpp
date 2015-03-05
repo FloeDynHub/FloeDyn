@@ -1,5 +1,5 @@
 /*!
- * \file floe/integration/TEST_integrate.hpp
+ * \file floe/integration/TEST_integrate.cpp
  * \brief Test file for integrate overs a various set of geometrical objects.
  * \author Roland Denis
  */
