@@ -50,7 +50,6 @@ def list_test_cpp(pattern=""):
         for filename in fnmatch.filter(filenames, 'test*.cpp'):
             if pattern in filename:
                 cpp_list.append(os.path.join(root, filename))
-    print cpp_list
     return cpp_list
 
 
@@ -111,7 +110,8 @@ def build(bld):
 
 def test(ctx):
     """Build, run and clean tests using Catch Framework"""
-    ctx.exec_command('waf build --target unittests --name %s' % ctx.options.name)
+    name_opt = "--name %s" % ctx.options.name if ctx.options.name else ""
+    ctx.exec_command('waf build --target unittests %s' % name_opt)
     # ctx.exec_command('waf run_tests')
     ctx.exec_command('waf clean_tests')
 
