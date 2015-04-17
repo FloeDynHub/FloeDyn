@@ -3,3 +3,7 @@
 **/*.swp
 doc
 bin
+.DS_Store
+build/
+FloeCpp.xcodeproj/
+.lock-waf_darwin_build
