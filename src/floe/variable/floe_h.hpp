@@ -30,16 +30,18 @@ class Floe_h
 
 public:
 
+    using floe_alg_type = TFloe_alg;
+
     // inline TMesh& kinematic_mesh() const { return m_kinematic_mesh; }
     TMesh m_kinematic_mesh;
     TMesh m_static_mesh;
 
     //! Floe_alg accessor
-    inline TFloe_alg& get_floe_alg() { return m_floe_alg; }
+    inline floe_alg_type& get_floe_alg() { return m_floe_alg; }
 
 private:
 
-    TFloe_alg m_floe_alg;
+    floe_alg_type m_floe_alg;
 
 };
 

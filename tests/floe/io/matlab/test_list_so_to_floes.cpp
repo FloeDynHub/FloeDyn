@@ -41,7 +41,10 @@ TEST_CASE( "Test list_so_to_floes", "[io/matlab]" )
 
     REQUIRE(floes.size() == 350);
 
-    cout << floes[0]->area() << endl;
-    cout << fg::dsv(floes[0]->geometry().outer()[0]) << endl;
+    for (auto& floe : floes)
+        floe.update(); // TODO Avoid that ! (move doesn't move internal pointers)
+
+    cout << floes[0].area() << endl;
+    cout << fg::dsv(floes[0].geometry().outer()[0]) << endl;
 
 }

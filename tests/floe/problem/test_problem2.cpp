@@ -22,9 +22,9 @@ void Problem<TFloe,TProxymityDetector,TCollisionManager,
 
 TEST_CASE( "Test Problem 2", "[problem]" ) {
 
-    std::string mat_file_name = "tests/floe/io/matlab/r1day_set_up_250sm_sz_60_list_so_350_str.mat";
+    // std::string mat_file_name = "tests/floe/io/matlab/r1day_set_up_250sm_sz_60_list_so_350_str.mat";
     // std::string mat_file_name = "tests/floe/io/matlab/matlabv6.mat";
-    // std::string mat_file_name = "tests/floe/io/matlab/config_q2_str.mat";
+    std::string mat_file_name = "tests/floe/io/matlab/config_q2_str.mat";
 
     problem_type P;
     P.load_matlab_config(mat_file_name);

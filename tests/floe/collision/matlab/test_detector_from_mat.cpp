@@ -9,7 +9,6 @@
 #include <iostream>
 
 #include <boost/timer/timer.hpp>
-// #include <boost/numeric/ublas/io.hpp>
 
 #include "floe/geometry/geometry.hpp"
 
@@ -23,9 +22,10 @@
 #include "floe/collision/matlab/detector.hpp"
 
 #include "floe/lcp/builder/graph_to_lcp.hpp"
-//#include "floe/lcp/solver/lexicolemke_eigen.hpp"
+// #include "floe/lcp/solver/lexicolemke_eigen.hpp"
 #include "floe/lcp/solver/lexicolemke.hpp"
-//#include "floe/lcp/solver/lemke_eigen.hpp"
+#include "floe/lcp/solver/lemke_eigen.hpp"
+#include <boost/numeric/ublas/io.hpp>
 
 TEST_CASE( "Test Detector from matlab", "[collision]" ) {
     using namespace std;
@@ -57,8 +57,11 @@ TEST_CASE( "Test Detector from matlab", "[collision]" ) {
     cout << "Linking floes to detector ..." << endl;
     timer.start();
     TDetector detector;
-    for (auto& floe_ptr : floe_list)
-        detector.push_back(&floe_ptr);
+    for (auto& floe : floe_list)
+    {
+        floe.update(); // TODO Avoid that ! (move doesn't move internal pointers)
+        detector.push_back(&floe);
+    }
     timer.stop();
     cout << "\t" << timer.format() << endl;
 
@@ -220,8 +223,10 @@ TEST_CASE( "Test Detector from matlab", "[collision]" ) {
                 
                 boost::timer::cpu_timer timer2;
                 const bool success = floe::lcp::solver::lexicolemke(lcp);
-                //const bool success = floe::lcp::solver::lemke(lcp);
+                // const bool success = floe::lcp::solver::lemke(lcp);
+                // const bool success = (floe::lcp::solver::lemke(lcp) || floe::lcp::solver::lexicolemke(lcp))
                 timer2.stop();
+                cout << success << " | " ;//<< success2 << " | ";
                 cout << "\t" << lcp.A.size1() << "x" << lcp.A.size2() << " : Err = " << LCP_error(lcp) << " ; " << timer2.format();
             }
         }

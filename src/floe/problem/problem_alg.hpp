@@ -10,6 +10,7 @@
 
 #include "floe/floes/static_floe.hpp"
 #include "floe/floes/floe_exception.hpp"
+#include <iostream> // DEBUG
 
 
 namespace floe { namespace problem
@@ -27,47 +28,59 @@ namespace floe { namespace problem
  *
  */
 template <
-    typename TFloeConfig_alg,
-    typename TDomain_h,
-    typename TExternalForces_alg,
-    typename TCollisionSolver,
-    typename TForceIntegrator_alg,
+    typename TFloeGroup_alg,
+    // typename TDomain_h,
+    // typename TExternalForces_alg,
+    typename TCollisionSolver
+    // typename TForceIntegrator_alg,
 >
 class Problem_alg
 {
 
 public:
 
+    using floe_group_alg_type = TFloeGroup_alg;
+
     //! Default constructor.
-    // Problem_alg()
+    Problem_alg() : m_floe_group_alg{nullptr}, m_collision_solver{nullptr} {}
 
     //! Solver
-    auto solve() {
+    bool solve() {
         // LCP solve
-        for (auto lcp : m_floe_config_alg->m_list_LCP){
-            auto solution = m_collision_solver.solve_lcp(lcp);
+        std::cout << m_floe_group_alg->get_list_LCP().size() << " LCP :"; //DEBUG
+        int nb_success = 0;
+        for (auto& lcp : m_floe_group_alg->get_list_LCP()){
+            auto success = m_collision_solver->solve(lcp);
+            // std::cout << std::endl << "LCP SOLVE SUCCESS : " << success << std::endl; // DEBUG
+            if (success){ nb_success++; }
             // update floes (maybe LCPSolver can do it)
-
         }
-        // Fext integration
-        m_force_integrator_alg->integrate(m_floe_config_alg->list_floe_alg,
-                                          m_external_forces_alg,
-                                          m_domain->m_time_delta)
-        // update floes (a priori integrator does it)
+
+        // clearing LCP list
+        // m_floe_group_alg->empty_list_LCP();
+
+        std::cout << nb_success << " SUCCESS"; //DEBUG
+        return (nb_success != 0);
+
     };
+
+    inline TFloeGroup_alg& get_floe_group_alg(){ return *m_floe_group_alg; }
+    inline void set_floe_group_alg( TFloeGroup_alg& floe_group_alg){ m_floe_group_alg = &floe_group_alg; }
+
+    inline void set_collision_solver( TCollisionSolver& solver){ m_collision_solver = &solver; }
 
 private:
 
     // domain
-    TDomain_h* m_domain;
+    // TDomain_h* m_domain;
 
     // variable
-    TFloeConfig_alg* m_floe_config_alg;
-    TExternalForces_alg* m_external_forces_alg;
+    TFloeGroup_alg* m_floe_group_alg;
+    // TExternalForces_alg* m_external_forces_alg;
 
     // operators
     TCollisionSolver* m_collision_solver;
-    TForceIntegrator_alg* m_force_integrator_alg;
+    // TForceIntegrator_alg* m_force_integrator_alg;
 
 };
 

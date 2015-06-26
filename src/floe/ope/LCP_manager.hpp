@@ -52,34 +52,31 @@ template<typename TContactGraph>
 void LCPManager::solve_contacts(TContactGraph& contact_graph)
 {
     auto const subgraphs = collision_subgraphs( contact_graph );
-    // std::cout << "subgraphs : "<< subgraphs.size() << std::endl;
+    int LCP_count = 0, nb_success = 0;
     bool r = 1;
     for ( auto& subgraph : subgraphs )
     {
         auto asubgraphs = active_subgraphs( subgraph );
         int loop_cnt = 0;
-        // int nb_success;
-        while (asubgraphs.size() != 0 && r && loop_cnt < 50)
+        while (asubgraphs.size() != 0 && r && loop_cnt < 100)
         {
-            // nb_success = 0;
-            // std::cout << "#LCP : "<< asubgraphs.size();
+            LCP_count += asubgraphs.size();
             for ( auto const& graph : asubgraphs )
             {
             //     floe::lcp::builder::GraphLCP<real, decltype(graph)> graph_lcp( graph );
             //     auto lcp = graph_lcp.getLCP();
             //     r = m_solver.solve( lcp );
-                auto& Sol = m_solver.solve( graph );
-                // if (LCP_error(lcp) < 1e-1)
-                // {
-                    update_floes_state(graph, Sol);
-                    // nb_success++;
-                // }
+                bool success;
+                auto Sol = m_solver.solve( graph, success );
+                if (success) nb_success++;
+                update_floes_state(graph, Sol);
             }
-            // std::cout << " -> #success : "<< asubgraphs.size() << std::endl;
             asubgraphs = active_subgraphs( subgraph );
             loop_cnt++;
         }
     }
+    if (LCP_count)
+        std::cout << " #LCP solve: "<< nb_success << " / " <<LCP_count <<std::endl;
 }
 
 

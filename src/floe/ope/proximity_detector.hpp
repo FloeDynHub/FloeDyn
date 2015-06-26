@@ -33,6 +33,7 @@ class ProximityDetector
 {
 
 public:
+    using detector_h_type = TDetector_h;
 
     TDetector_h m_detector_h;
 

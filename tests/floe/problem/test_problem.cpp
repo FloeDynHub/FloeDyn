@@ -1,22 +1,37 @@
 #include "../tests/catch.hpp"
 #include <iostream>
-#include "floe/problem/problem.hpp"
-#include "floe/floes/static_floe.hpp"
-#include "floe/floes/kinematic_floe.hpp"
-#include "floe/ope/proximity_detector.hpp"
-#include "floe/collision/matlab/detector.hpp"
+#include "../tests/floe/config.hpp"
 
-namespace ff = floe::floes;
+double cst_fun (double /* x */, double /* y */) {
+    return 1.;
+}
+
+namespace floe { namespace problem{
+
+template <
+    typename TFloe,
+    typename TProxymityDetector,
+    typename TCollisionManager,
+    typename TDynamicsManager,
+    typename TDomain
+>
+void Problem<TFloe,TProxymityDetector,TCollisionManager,
+             TDynamicsManager, TDomain>::test(){
+    REQUIRE(m_floe_group.get_floes().size() ==
+            m_floe_group.get_floe_group_h().m_list_floe_h.size());
+}
+
+}} // namespace floe::problem
 
 TEST_CASE( "Test Problem", "[problem]" ) {
-    using namespace floe::problem;
 
-    using floe_type = ff::KinematicFloe<ff::StaticFloe<double>>;
-    using proximity_detector_type = floe::ope::ProximityDetector<floe::collision::matlab::MatlabDetector<floe_type>>;
-    using problem_type = Problem<floe_type, proximity_detector_type>;
-    std::string mat_file_name = "tests/floe/io/matlab/r1day_set_up_250sm_sz_60_list_so_350_str.mat";
+    // std::string mat_file_name = "tests/floe/io/matlab/r1day_set_up_250sm_sz_60_list_so_350_str.mat";
+    std::string mat_file_name = "tests/floe/io/matlab/matlabv6.mat";
 
     problem_type P;
     P.load_matlab_config(mat_file_name);
-    P.solve();
+
+    P.test();
+    P.solve(10);
+
 }

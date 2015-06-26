@@ -7,7 +7,6 @@
 #ifndef OPE_TIME_SCALE_MANAGER_HPP
 #define OPE_TIME_SCALE_MANAGER_HPP
 
-#include "floe/geometry/frame/theta_frame.hpp"
 #include "floe/geometry/geometry.hpp"
 #include "floe/geometry/geometries/multi_point.hpp"
 #include "floe/geometry/frame/frame_transformers.hpp"
@@ -87,7 +86,7 @@ TimeScaleManager<TDomain, TDetector>::delta_t_secu(TDomain* domain, TDetector* m
     auto& optims = m_detector->get_optims();
 
     value_type global_min_dt = m_domain->default_time_step();
-    // int nb{0}, nb_f{0};
+    int nb{0}, nb_f{0};
 
     for (std::size_t i = 1; i!= dist_secu.size1(); ++i)
     {
@@ -107,14 +106,15 @@ TimeScaleManager<TDomain, TDetector>::delta_t_secu(TDomain* domain, TDetector* m
                     global_min_dt,
                     delta_t_secu(indics(i,j), dist_secu(i,j), dist_opt(i,j),
                          *floes[i], *floes[j], *optims[i], *optims[j])
-                ); //nb++;
+                ); nb++;
             }
         }
     }
 
-    // std::cout << nb << " " << nb_f << std::endl; // DEBUG
+    std::cout << "nb call dt_secu: " << nb << std::endl; // DEBUG
 
-    return std::max(global_min_dt, 1e-3);
+    // return std::max(global_min_dt, 1e-3);
+    return global_min_dt;
 }
 
 
@@ -185,7 +185,7 @@ TimeScaleManager<TDomain, TDetector>::delta_t_secu(
     for (std::size_t i = 0; i != Belt_P2.size(); ++i)
         dist2 = std::max(dist2, distance(Belt_P2_be[i], Belt_P2_af[i]));
     */
-
+    /*
     // version raccourcie
     geometry::transform( Belt_P1, Belt_P1_af, transformer( frame_type{C1 - G1, 0} ));
     geometry::transform( Belt_P2, Belt_P2_af, transformer( frame_type{C2 - G2, 0} ));
@@ -198,6 +198,22 @@ TimeScaleManager<TDomain, TDetector>::delta_t_secu(
     for (std::size_t i = 0; i != Belt_P2.size(); ++i)
         dist2 = std::max(dist2, distance(Belt_P2[i] + C2, Belt_P2_af[i] + G1));
     // version raccourcie
+    */
+    
+    // version raccourcie + modifiée car transform(A, B, strategy) anormalement lent
+    multi_point_type Belt_P1_copy{Belt_P1}, Belt_P2_copy{Belt_P2}; // waiting for transform optimization !
+    geometry::transform( Belt_P1, Belt_P1, transformer( frame_type{C1 - G1, 0} ));
+    geometry::transform( Belt_P2, Belt_P2, transformer( frame_type{C2 - G2, 0} ));
+    geometry::transform( Belt_P1, Belt_P1, transformer( mark1, mark2 ));
+    geometry::transform( Belt_P2, Belt_P2, transformer( mark2, mark1 ));
+
+    value_type dist1 = 0, dist2 = 0;
+    for (std::size_t i = 0; i != Belt_P1.size(); ++i)
+        dist1 = std::max(dist1, distance(Belt_P1_copy[i] + C1, Belt_P1[i] + G2));
+    for (std::size_t i = 0; i != Belt_P2.size(); ++i)
+        dist2 = std::max(dist2, distance(Belt_P2_copy[i] + C2, Belt_P2[i] + G1));
+    // version raccourcie + modifiée
+    
 
     // %%%%%%%%%% Cas obj1 %%%%%%%%%%
     value_type calc;
@@ -215,6 +231,13 @@ TimeScaleManager<TDomain, TDetector>::delta_t_secu(
         calc = ((d - lambda) / 2) * (dt_defaut / dist2);
     value_type dt21 = std::min(dt_defaut, calc);
     // %%%%%%%%%% Fin %%%%%%%%%%
+
+    // assert( std::min(dt12, dt21) > 0 );
+    if (std::min(dt12, dt21) < 0)
+    {
+        std::cout << d << " " << dist1 << " " << dist2;
+        return 1e-4;
+    }
 
     return std::min(dt12, dt21);
 }
@@ -248,7 +271,8 @@ TimeScaleManager<TDomain, TDetector>::delta_t_secu_fast(
     if (VRel < 0)
     {
         // Collision possible
-        delta_t = - ( dist_secu - lambda ) / VRel;
+        delta_t = - (( dist_secu - lambda ) / 2) / VRel;
+        // delta_t = - ( dist_secu - lambda ) / VRel; // too much ?
     } else
     {
         // Collision impossible
