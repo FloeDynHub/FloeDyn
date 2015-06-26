@@ -65,6 +65,9 @@ public:
     typedef ContactGraph<contact_type>          contact_graph_type;
     typedef typename contact_graph_type::edge_property_type    contact_list_type;
 
+    typedef ublas::symmetric_matrix<value_type, ublas::lower> dist_matrix_type; //!< Type of distance matrix
+    typedef ublas::symmetric_matrix<std::size_t, ublas::lower> indic_matrix_type; //!< Type of indicator matrix
+
 
     //! Default constructor
     MatlabDetector()
@@ -104,12 +107,17 @@ public:
     std::size_t num_local_disks() const { std::size_t cnt = 0; for (auto const& opt : m_optims) cnt += opt->local_disks().size(); return cnt; }
     std::size_t num_points() const { std::size_t cnt = 0; for (auto const& floe : m_floes) cnt += floe->geometry().outer().size(); return cnt; }
 
+    // Accessors for time_scale_manager
+    inline dist_matrix_type const& get_dist_secu() const { return m_dist_secu; }
+    inline dist_matrix_type const& get_dist_opt() const { return m_dist_opt; }
+    inline indic_matrix_type const& get_indic() const { return m_indic; }
+    inline std::vector<floe_type const*> const& get_floes() const { return m_floes; }
+    inline std::vector<optim_type*> const& get_optims() const { return m_optims; }
+    // Accessors for time_scale_manager
+
 private:
     std::vector<floe_type const*>     m_floes; //!< Floes list.
     std::vector<optim_type*>    m_optims; //!< Optimization datas list.
-
-    typedef ublas::symmetric_matrix<value_type, ublas::lower> dist_matrix_type; //!< Type of distance matrix
-    typedef ublas::symmetric_matrix<std::size_t, ublas::lower> indic_matrix_type; //!< Type of indicator matrix
 
     indic_matrix_type m_indic; //!< Indicator of collision (0=far away, 1=close, 2=contact)
     dist_matrix_type m_dist_secu; //!< Security distance
@@ -162,16 +170,16 @@ void
 MatlabDetector<TFloe>::update()
 {
     // Update floe optimizers
-    std::cout << "\tUpdating optimizers ..." << std::flush;
-    boost::timer::cpu_timer timer;
+    // std::cout << "\tUpdating optimizers ..." << std::flush;
+    // boost::timer::cpu_timer timer;
     for ( auto optim_ptr : m_optims )
         optim_ptr->update();
-    timer.stop();
-    std::cout << timer.format();
+    // timer.stop();
+    // std::cout << timer.format();
 
     // Launch collisions detection
-    std::cout << "\tContacts detection ..." << std::flush;
-    timer.start();
+    // std::cout << "\tContacts detection ..." << std::flush;
+    // timer.start();
 
     // Initializing graph
     m_contacts.clear();
@@ -181,8 +189,8 @@ MatlabDetector<TFloe>::update()
     // Detection
     detect_step1();
 
-    timer.stop();
-    std::cout << timer.format();
+    // timer.stop();
+    // std::cout << timer.format();
 }
 
 
@@ -196,8 +204,11 @@ MatlabDetector<TFloe>::detect_step1()
 
     // Resize matrix
     m_indic.resize(N, N);
-    m_dist_secu.resize(N, N);
-    m_dist_opt.resize(N, N);
+    // m_dist_secu.resize(N, N);
+    // m_dist_opt.resize(N, N);
+    m_dist_opt = ublas::scalar_matrix<value_type>(N, N, 0);
+    m_dist_secu = ublas::scalar_matrix<value_type>(N, N, 0);
+
 
     // Level 1 loop
     // TODO: intersects -like for multi_circle !!
@@ -301,7 +312,7 @@ MatlabDetector<TFloe>::detect_step3(
         {
             const circle_type d2 = opt2.local_disks()[ldisks2[j]];
             const value_type dist = distance_circle_circle( d1, d2 );
-            dist_o = std::min( dist_o, dist ); // Not exactly like in the matlab code
+            dist_o = std::min( dist_o, dist + std::min(d1.radius, d2.radius) ); // Not exactly like in the matlab code // quentin : can be optimized
 
             if ( dist < 0 )
             {
@@ -376,7 +387,7 @@ detect_step4(
                 if (id2 != last_id2+1) dangling_point = false; // Discontinuity in the disk list
                 last_id2 = id2;
                 
-                // If the point is in this disk, they may be a contact
+                // If the point is in this disk, there may be a contact
                 if ( distance_point_circle(point1, opt2.local_disks()[id2]) <= 0 )
                 {
                     // Loop over points of this disk
@@ -491,6 +502,7 @@ detect_step4(
     // Return minimal distance between the 2 floes
     return global_min_dist;
 }
+
 
 /*! Relative position of the projection of point on the segment
  *

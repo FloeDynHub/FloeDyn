@@ -58,8 +58,6 @@ public:
     typedef TFrame      frame_type;
     typedef TDensity    density_type;
 
-    using Uptr_geometry_type = std::unique_ptr<geometry_type>;
-
     //! Default constructor.
     StaticFloe() : m_frame{0,0,0}, m_geometry{nullptr}, m_mesh{nullptr}, m_density{917}, m_mu_static{0.7}, m_area{-1}, m_moment_cst{-1} {}
 
@@ -69,6 +67,8 @@ public:
     //! Deleted copy operator.
     StaticFloe& operator= (StaticFloe const) = delete;
 
+    //! Destructor
+    ~StaticFloe() { delete m_geometry; delete m_mesh; }
 
     //! Frame accessors
     inline  frame_type const&       get_frame()                             const   { return m_frame; }
@@ -77,7 +77,7 @@ public:
     inline  frame_type &            frame()                                         { return m_frame; }
 
     //! Geometry accessors
-    inline  void                    attach_geometry_ptr( Uptr_geometry_type geometry )  { m_geometry = std::move(geometry); }
+    inline  void                    attach_geometry_ptr( geometry_type* geometry )         { delete m_geometry; m_geometry = geometry; }
     inline  geometry_type const&    geometry()                              const   { return *m_geometry; }
     inline  geometry_type &         geometry()                                      { return *m_geometry; }
     inline  bool                    has_geometry()                          const   { return m_geometry != nullptr; }
@@ -89,15 +89,15 @@ public:
     }
 
     //! Mesh accessors
-    inline  void                    attach_mesh_ptr( mesh_type* mesh)          { m_mesh = mesh; }
+    inline  void                    attach_mesh_ptr( mesh_type* mesh)          { delete m_mesh; m_mesh = mesh; }
     inline  mesh_type const&        mesh()                      const   { return *m_mesh; }
     inline  mesh_type &             mesh()                              { return *m_mesh; }
     inline  bool                    has_mesh()                  const   { return m_mesh != nullptr; }
     inline  mesh_type const&        get_mesh()                  const   { return *m_mesh; }
-    inline  void                    set_mesh( mesh_type& mesh ) 
+    inline  void                    set_mesh( mesh_type const& mesh ) 
     { 
-        // if (! has_mesh() ) m_mesh = new mesh_type();
-        m_mesh = &mesh;
+        if (! has_mesh() ) m_mesh = new mesh_type();
+        *m_mesh = mesh;
     }
 
     //! Mu accessors
@@ -121,7 +121,7 @@ public:
 private:
 
     frame_type m_frame;         //!< Frame
-    Uptr_geometry_type m_geometry;  //!< Geometry (border)
+    geometry_type* m_geometry;  //!< Geometry (border)
     mesh_type* m_mesh;          //!< Mesh
     density_type m_density;     //!< Density
     value_type m_mu_static;     //!< Static friction coefficient

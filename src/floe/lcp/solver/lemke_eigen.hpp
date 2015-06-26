@@ -91,15 +91,19 @@ bool lemke<double>( floe::lcp::LCP<double>& lcp)
     using namespace Eigen;
 
     VectorXd z;
-    lcp_lemke(
+    int err = lcp_lemke(
         Map<Matrix<double,Dynamic,Dynamic,RowMajor> >(lcp.A.data().begin(), lcp.dim, lcp.dim),
         Map<Matrix<double,Dynamic,Dynamic,RowMajor> >(lcp.q.data().begin(), lcp.dim, 1),
         z
     );
     
-    Map<VectorXd>(lcp.z.data().begin(), lcp.dim, 1) = z;
-
-    return true;
+    if (err == 0){
+      Map<VectorXd>(lcp.z.data().begin(), lcp.dim, 1) = z;
+      return true;
+    } else {
+      return false;
+    }
+    
 }
 
 
@@ -152,16 +156,21 @@ int lcp_lemke(const Eigen::MatrixXd& _M, const Eigen::VectorXd& _q,
   //x = -B.partialPivLu().solve(_q);
   //x = -B.fullPivLu().solve(_q);
   {
-  std::cout << "Creating solver ..." << std::endl;
+  // std::cout << "Creating solver ..." << std::endl;
   Eigen::SparseLU<decltype(B), Eigen::COLAMDOrdering<int> > solver;
-  std::cout << "Analyzing pattern ..." << std::endl;
+  // std::cout << "Analyzing pattern ..." << std::endl;
   solver.analyzePattern(B);
-  std::cout << "Factorizing ..." << std::endl;
+  // std::cout << "Factorizing ..." << std::endl;
   solver.factorize(B);
   //solver.compute(B);
-  std::cout << "Solving ..." << std::endl;
-  x = - solver.solve(_q);
-  std::cout << "Done." << std::endl;
+  // std::cout << "Solving ..." << std::endl;
+  if (solver.info() == 0){
+    x = - solver.solve(_q);
+  } else {
+    return 5;
+  }
+  // x = - solver.solve(_q);
+  // std::cout << "Done." << std::endl;
   }
 
 
@@ -199,17 +208,23 @@ int lcp_lemke(const Eigen::MatrixXd& _M, const Eigen::VectorXd& _q,
     //Eigen::VectorXd d = B.fullPivLu().solve(Be);
     Eigen::VectorXd d;
     {
-      std::cout << "Creating solver ..." << std::endl;
+      // std::cout << "Creating solver ..." << std::endl;
       Eigen::SparseLU<decltype(B), Eigen::COLAMDOrdering<int> > solver;
-      std::cout << "Analyzing pattern ..." << std::endl;
+      // std::cout << "Analyzing pattern ..." << std::endl;
       solver.analyzePattern(B);
-      std::cout << "Factorizing ..." << std::endl;
+      // std::cout << "Factorizing ..." << std::endl;
       solver.factorize(B);
       //solver.compute(B);
-      std::cout << solver.info() << std::endl;
-      std::cout << "Solving ..." << std::endl;
-      d = solver.solve(Be);
-      std::cout << "Done." << std::endl;
+      // std::cout << solver.info();
+      // d = solver.solve(Be);
+      if (solver.info() == 0){
+        // std::cout << "Solving ..." << std::endl;
+        d = solver.solve(Be);
+      } else {
+        return 5;
+      }
+      
+      // std::cout << "Done." << std::endl;
       
     }
 
@@ -311,12 +326,12 @@ int lcp_lemke(const Eigen::MatrixXd& _M, const Eigen::VectorXd& _q,
     Eigen::VectorXd realZ = _z.segment(0, n);
     _z = realZ;
 
-    /*
-    if (!validate(_M, _z, _q)) {
+    // uncommented by quentin
+    // if (!validate(_M, _z, _q)) {
       // _z = VectorXd::Zero(n);
-      err = 3;
-    }
-    */
+      // err = 3;
+    // }
+    // uncommented by quentin
   } else {
     _z = Eigen::VectorXd::Zero(n);  // solve failed, return a 0 vector
   }

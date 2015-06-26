@@ -9,6 +9,7 @@
 
 #include <cstddef>
 #include <limits>
+#include <iostream> // DEBUG
 
 // Geometry
 #include "floe/geometry/geometry.hpp"
@@ -146,7 +147,6 @@ void
 OptimizedFloe<TFloe>::init()
 {
     if (! m_floe.has_geometry() ) { throw floe::floes::FloeException("Collision optimization needs a floe with a geometry."); }
-
     using namespace floe::geometry;
 
     // Collision distance

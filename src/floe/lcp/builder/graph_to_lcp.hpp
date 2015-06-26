@@ -20,6 +20,7 @@
 
 #include <boost/graph/graph_utility.hpp>
 
+#include "floe/geometry/geometry.hpp" // TODO lighter include
 #include "floe/geometry/core/access.hpp"
 #include "floe/geometry/arithmetic/arithmetic.hpp"
 #include "floe/geometry/arithmetic/determinant.hpp"
@@ -70,6 +71,7 @@ public:
     ublas::compressed_matrix<T, ublas::column_major> D;      //!< Tangantial matrix.
     ublas::compressed_matrix<T, ublas::column_major> E;      //!< Friction coupling matrix.
     ublas::diagonal_matrix<T>   mu;     //<! Static friction coefficients.
+    mutable ublas::vector<T> W; //<! Floes' speed vector.
 
 private:
     TGraph const& m_graph; //<! The contact graph.
@@ -239,7 +241,8 @@ getLCP() const
 
 
     // And now, the q vector !!
-    vector<T> W(3*n);
+    // vector<T> W(3*n); // changed to access W from outside
+    W.resize(3*n, false);
 
     // The speed vector is not prepared before to be sync with the actual floes states
     namespace fg = floe::geometry;
