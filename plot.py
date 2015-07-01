@@ -19,6 +19,7 @@ def init(data, ax):
         ax.add_patch(polygon)
     return ax
 
+
 def update(num, data, ax):
     datasets = data[num].values()
     for i in range(len(datasets)):
@@ -27,10 +28,11 @@ def update(num, data, ax):
     ax.set_title("t = %s" % data[num].name[1:])
     return ax,
 
+
 def plot_floes(filename):
     if not filename:
-        filename = "test"
-    hdf5_file_name = "/Users/Serge/Desktop/Visu/%s.h5" % filename
+        filename = "out"
+    hdf5_file_name = "out/%s.h5" % filename
     file    = h5py.File(hdf5_file_name, 'r')
     fig, ax = plt.subplots()
     groups = file.values()

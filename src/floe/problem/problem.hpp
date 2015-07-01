@@ -94,14 +94,14 @@ private:
 
     int m_step_nb;
 
-    inline void create_optim_vars() {
+    void create_optim_vars() {
         // mixes smooth and discrete levels because of detector structure
         // TODO improve this
         for (auto& floe_ptr : m_floe_group.get_floes())
             m_proximity_detector.m_detector_h.push_back(&floe_ptr);
     }
 
-    inline void create_h(){
+    void create_h(){
         m_problem_h.set_floe_group_h(m_floe_group.get_floe_group_h());
         m_problem_h.set_detector_h(m_proximity_detector.m_detector_h);
         m_problem_h.set_collision_manager_h(m_collision_manager.get_manager_h());
@@ -110,7 +110,7 @@ private:
     }
 
     // move one time step forward
-    inline void step_solve(double out_step = 0){
+    void step_solve(double out_step = 0){
         m_problem_h.solve();
         m_dynamics_manager.move_floes(m_floe_group, m_domain.time_step());
 

@@ -15,7 +15,7 @@ namespace floe { namespace domain
 
 /*! Domain
  *
- * Time scale management
+ * Time management
  *
  */
 
@@ -25,10 +25,10 @@ class Domain
 
 public:
 
-    using real = double;
+    using real = value_type;
 
     // Default constructor
-    Domain() : m_t{0}, m_delta_t{1}, m_delta_t_default{1}, m_last_out{-1} {}
+    Domain() : m_t{0}, m_delta_t{1}, m_delta_t_default{DT_DEFAULT}, m_last_out{-1} {}
 
     inline const real& time() const { return m_t; }
     inline const real& time_step() const {return m_delta_t; }

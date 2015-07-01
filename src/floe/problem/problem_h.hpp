@@ -97,32 +97,32 @@ private:
     }
 
     //! move one time step forward
-    // void step_solve(){
-    //     do_detection();
-    //     manage_collisions();
-    //     m_domain_h->set_time_step(m_time_scale_manager.delta_t_secu(
-    //         m_domain_h, m_detector));
-    // }
-
-    // chrono version (dev)
     void step_solve(){
-        using namespace std;
-        auto t_start = chrono::high_resolution_clock::now();
         do_detection();
-        auto t_end = chrono::high_resolution_clock::now();
-        cout << "detection : " << chrono::duration<double, std::milli>(t_end-t_start).count() << " ms" << endl;
-
-        t_start = chrono::high_resolution_clock::now();
         manage_collisions();
-        t_end = chrono::high_resolution_clock::now();
-        cout << "collisions : " << chrono::duration<double, std::milli>(t_end-t_start).count() << " ms" << endl;
-
-        t_start = chrono::high_resolution_clock::now();
         m_domain_h->set_time_step(m_time_scale_manager.delta_t_secu(
             m_domain_h, m_detector));
-        t_end = chrono::high_resolution_clock::now();
-        cout << "delta_t_secu : " << chrono::duration<double, std::milli>(t_end-t_start).count() << " ms" << endl;
     }
+
+    // chrono version (dev)
+    // void step_solve(){
+    //     using namespace std;
+    //     auto t_start = chrono::high_resolution_clock::now();
+    //     do_detection();
+    //     auto t_end = chrono::high_resolution_clock::now();
+    //     cout << "detection : " << chrono::duration<double, std::milli>(t_end-t_start).count() << " ms" << endl;
+
+    //     t_start = chrono::high_resolution_clock::now();
+    //     manage_collisions();
+    //     t_end = chrono::high_resolution_clock::now();
+    //     cout << "collisions : " << chrono::duration<double, std::milli>(t_end-t_start).count() << " ms" << endl;
+
+    //     t_start = chrono::high_resolution_clock::now();
+    //     m_domain_h->set_time_step(m_time_scale_manager.delta_t_secu(
+    //         m_domain_h, m_detector));
+    //     t_end = chrono::high_resolution_clock::now();
+    //     cout << "delta_t_secu : " << chrono::duration<double, std::milli>(t_end-t_start).count() << " ms" << endl;
+    // }
 
 
 };

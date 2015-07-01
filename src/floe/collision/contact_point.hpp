@@ -36,6 +36,7 @@ struct ContactPoint
     typedef TPoint      point_type;
     typedef TFrame      frame_type;
     typedef TFloe       floe_type;
+    using value_type = typename floe_type::value_type;
 
     //! Default constructor
     ContactPoint() : floe1{nullptr}, floe2{nullptr} {}
@@ -45,9 +46,10 @@ struct ContactPoint
      * \param floe1    pointer to the first floe.
      * \param floe2    pointer to the second floe.
      * \param frame contact frame.
+     * \param dist   optional distance between floes at this point
      */
-    ContactPoint( TFloe const* floe1, TFloe const* floe2, frame_type const& frame ) 
-        : floe1{floe1}, floe2{floe2}, frame{frame}
+    ContactPoint( TFloe const* floe1, TFloe const* floe2, frame_type const& frame, value_type dist = 0 ) 
+        : floe1{floe1}, floe2{floe2}, frame{frame}, dist{0}
     {}
 
     /*! Constructor given the two contact points.
@@ -66,6 +68,7 @@ struct ContactPoint
         typename coordinate_type<point_type>::type const norm_u = std::sqrt( std::pow(get<0>(u), 2) + std::pow(get<1>(u), 2) );
 
         frame = frame_type{ pt1, { get<0>(u)/norm_u, get<1>(u)/norm_u } };
+        dist = norm_u;
     }
 
     //! Conversion to frame_type returning the frame
@@ -106,6 +109,7 @@ struct ContactPoint
     TFloe const* floe1; //!< First floe in contact
     TFloe const* floe2; //!< Second floe in contact
     TFrame      frame;  //!< Frame of contact
+    value_type dist; //!< Distance between floes at this point
 };
 
 //! Exterior function to test if a contact is active (should be the only place ...)

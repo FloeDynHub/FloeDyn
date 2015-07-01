@@ -420,7 +420,7 @@ detect_step4(
                                 dangling_point = false;
                             }
                         }
-                        if (pos > 0 && pos < 1) // Middle position => point-segment contact
+                        else if (pos > 0 && pos < 1) // Middle position => point-segment contact
                         {
                             // Contact point-segment
                             const point_type point2 = point_from_pos(segment, pos);
@@ -443,7 +443,11 @@ detect_step4(
                     } // Loop over points of this disk
                 } 
                 else
-                {
+                {   
+                    // TODO : synchro matlab
+                    const value_type dist = distance_point_circle(point1, opt2.local_disks()[id2]) + opt2.local_disks()[id2].radius;
+                    min_dist = std::min(min_dist, dist);
+                    // TODO : synchro matlab
                     dangling_point = false; // Discontinuity in the disk list
                 }
             } // Loop over disks of obj2
@@ -499,6 +503,10 @@ detect_step4(
     if (contact_list.size() != 0)
         add_edge(vertex(n1, m_contacts), vertex(n2, m_contacts), contact_list, m_contacts);
 
+    //DEBUG
+    // if (global_min_dist > 1e3) std::cout << "BUG " << global_min_dist << std::endl;
+    // if (global_min_dist < 1e-12) std::cout << "BUG " << global_min_dist << std::endl;
+    //DEBUG
     // Return minimal distance between the 2 floes
     return global_min_dist;
 }

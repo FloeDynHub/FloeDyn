@@ -57,7 +57,8 @@ private:
     vector<value_type>
     calcSol(TGraphLCP& graph_lcp, LCPSolver::lcp_type& lcp);
 
-    const bool VRelNtest(const vector<value_type>& V);
+    template<typename TContactGraph>
+    const bool VRelNtest(const vector<value_type>& V, const TContactGraph& graph);
 
 };
 
@@ -157,8 +158,8 @@ LCPSolver::solve( TContactGraph& graph, bool& success ) {
         auto ECc = calcEc(Solc, graph_lcp.M, graph_lcp.W); // TODO be sure this is the correct 3rd arg
         Err = LCP_error(lcp_orig);
         // vitrelnormtest = VRelNtest(trans(graph_lcp.J) * Solc, dist, Mc); // TODO matlab version
-        auto vitrelnormtest = VRelNtest(prod(trans(graph_lcp.J), Solc));
-        solved = LCPtest(MatLCP[comptchgt][2],ECc,1,Err,vitrelnormtest);
+        auto vitrelnormtest = VRelNtest(prod(trans(graph_lcp.J), Solc), graph);
+        solved = LCPtest(MatLCP[comptchgt][1],ECc,1,Err,vitrelnormtest);
     }
     success = 1;
     return Solc;
@@ -189,7 +190,7 @@ const bool LCPSolver::LCPtest(int compt, value_type EC, value_type born_EC, valu
 template<typename Tmat, typename Tvect>
 typename LCPSolver::value_type 
 LCPSolver::calcEc(const Tvect& S, const Tmat& M, const Tvect& w){
-    return inner_prod(prod(S, M), S) / inner_prod(prod(w, M), w); // TODO (0)? (0,0)?
+    return inner_prod(prod(S, M), S) / inner_prod(prod(w, M), w);
 }
 
 
@@ -216,17 +217,25 @@ LCPSolver::random_perturbation(lcp_type& lcp, value_type max){
     return lcp; 
 }
 
-
-const bool LCPSolver::VRelNtest(const vector<value_type>& V){
-    // TODO matlab version (more flexible)
-    for (auto& v: V)
+template<typename TContactGraph>
+const bool LCPSolver::VRelNtest(const vector<value_type>& V, const TContactGraph& graph){
+    size_t contact_id = 0;
+    for ( auto const& edge : make_iterator_range( boost::edges( graph ) ) )
     {
-        if (v < 0)
-            return 0;
+        // Foreach contact between this 2 floes ...
+        for ( auto const& contact : graph[edge] )
+        {
+            if (V[contact_id] < 0)
+            {
+                value_type delta = V[contact_id] * DT_DEFAULT; // get dt_defaut otherwise ?
+                if (delta > contact.dist / 50)
+                    return 0;
+            }
+            ++contact_id;
+        }
     }
     return 1;
 }
-
 
 // TODO put elsewhere ?
 typename LCPSolver::value_type 

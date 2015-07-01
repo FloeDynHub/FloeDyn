@@ -10,6 +10,7 @@
 #include "floe/geometry/geometry.hpp"
 #include "floe/geometry/geometries/multi_point.hpp"
 #include "floe/geometry/frame/frame_transformers.hpp"
+
 #include <math.h>
 
 #include <iostream> // DEBUG
@@ -86,7 +87,7 @@ TimeScaleManager<TDomain, TDetector>::delta_t_secu(TDomain* domain, TDetector* m
     auto& optims = m_detector->get_optims();
 
     value_type global_min_dt = m_domain->default_time_step();
-    int nb{0}, nb_f{0};
+    // int nb{0}, nb_f{0};
 
     for (std::size_t i = 1; i!= dist_secu.size1(); ++i)
     {
@@ -106,12 +107,12 @@ TimeScaleManager<TDomain, TDetector>::delta_t_secu(TDomain* domain, TDetector* m
                     global_min_dt,
                     delta_t_secu(indics(i,j), dist_secu(i,j), dist_opt(i,j),
                          *floes[i], *floes[j], *optims[i], *optims[j])
-                ); nb++;
+                ); //nb++;
             }
         }
     }
 
-    std::cout << "nb call dt_secu: " << nb << std::endl; // DEBUG
+    // std::cout << "nb call dt_secu: " << nb << std::endl; // DEBUG
 
     // return std::max(global_min_dt, 1e-3);
     return global_min_dt;
@@ -235,7 +236,7 @@ TimeScaleManager<TDomain, TDetector>::delta_t_secu(
     // assert( std::min(dt12, dt21) > 0 );
     if (std::min(dt12, dt21) < 0)
     {
-        std::cout << d << " " << dist1 << " " << dist2;
+        std::cout << d << " " << dist1 << " "  << " BUG DELTA T " << dist2;
         return 1e-4;
     }
 
@@ -278,6 +279,16 @@ TimeScaleManager<TDomain, TDetector>::delta_t_secu_fast(
         // Collision impossible
         delta_t = std::numeric_limits<value_type>::max();
     }
+
+    if (delta_t < 1e-12 ) std::cout
+    << "BUG dtfast  " 
+    << delta_t << " " 
+    << dist_secu << " " 
+    << lambda << " " 
+    << VRel << " "
+    << Vg1 << " "
+    << Vg2
+    <<std::endl; //DEBUG
 
     return delta_t;
 

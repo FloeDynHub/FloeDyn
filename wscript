@@ -9,10 +9,10 @@ Documentation : https://waf.io/book/
 require extra waf tool boost.py (TODO : auto detect ?)
 
 USAGE
-Build and run unit tests : waf test
+Build and run unit tests : ./waf test
 (--name <str> : restrict to test filenames containing str)
 
-Build a single test ("^STEST_" files) : waf TEST --name <filename>
+Build a single test ("^STEST_" files) : ./waf TEST --name <filename>
 """
 
 import os
@@ -94,7 +94,7 @@ def find_STEST_cpp(pattern=""):
 
 def clean_tests(ctx):
     print('cleaning tests...')
-    ctx.exec_command('waf clean --target unittests')
+    ctx.exec_command('./waf clean --target unittests')
 
 
 @timeit
@@ -131,7 +131,7 @@ def get_option_dict(debug=True):
             "cxxflags": [
                 '-std=c++11',
                  '-O0',
-                 "-Wall", "-Wextra",
+                 "-Wall",# "-Wextra",
             ]
         })
     else:
@@ -143,7 +143,7 @@ def get_option_dict(debug=True):
                  "-O3",
                  # "-march=native", // g++ fails with this
                  "-mtune=native",
-                 "-Wall", "-Wextra",
+                 "-Wall",# "-Wextra",
              ]
         })
     return OPTION_DICT
@@ -174,12 +174,12 @@ def test(ctx):
     omp_opt = " --omp" if ctx.options.omp else ""
     name_opt = " --name %s" % ctx.options.name if ctx.options.name else ""
     debug_opt = " --optim" if not ctx.options.debug else ""
-    err = ctx.exec_command('waf build --target unittests%s%s%s' % (
+    err = ctx.exec_command('./waf build --target unittests%s%s%s' % (
         name_opt, omp_opt, debug_opt))
     if not err:
-        # ctx.exec_command('waf run_tests') # no real time cout !
+        # ctx.exec_command('./waf run_tests') # no real time cout !
         run_tests(ctx)
-        # ctx.exec_command('waf clean_tests')
+        # ctx.exec_command('./waf clean_tests')
 
 
 def TEST(ctx):
@@ -187,6 +187,6 @@ def TEST(ctx):
     omp_opt = " --omp" if ctx.options.omp else ""
     name_opt = " --name %s" % ctx.options.name if ctx.options.name else ""
     debug_opt = " --optim" if not ctx.options.debug else ""
-    ctx.exec_command('waf build --target TEST%s%s%s' % (
+    ctx.exec_command('./waf build --target TEST%s%s%s' % (
         name_opt, omp_opt, debug_opt))
     print("to run the test : ./build/%s <args>" % TEST_target)

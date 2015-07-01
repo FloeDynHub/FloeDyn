@@ -99,7 +99,7 @@ template <
 void FloeGroup<TFloe>::out_hdf5(value_type time) {
     try
     {   
-        const H5std_string  FILE_NAME( "/Users/Serge/Desktop/Visu/test.h5" );
+        const H5std_string  FILE_NAME( "out/out.h5" );
         const int   NY = 2;
         const int   RANK = 2;
         /*
