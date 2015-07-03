@@ -115,7 +115,9 @@ private:
         m_dynamics_manager.move_floes(m_floe_group, m_domain.time_step());
 
         m_domain.update_time();
-        std::cout << " Time : " << m_domain.time() << std::endl << "----" << std::endl;
+        std::cout << " Time : " << m_domain.time() << std::endl;
+        std::cout << " Kinetic energy : " << m_floe_group.kinetic_energy() << std::endl;
+        std::cout << "----" << std::endl;
 
         // if (out_step && m_step_nb % out_step == 0)
         //     m_floe_group.out_hdf5(m_domain.time());

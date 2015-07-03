@@ -15,6 +15,7 @@
 #include "floe/io/matlab/list_so.hpp"
 
 #include "H5Cpp.h"
+#include <algorithm>
 #ifndef H5_NO_NAMESPACE
 using namespace H5;
 #endif
@@ -63,6 +64,9 @@ public:
     inline floe_group_h_type const& get_floe_group_h() const { return m_floe_group_h; }
     inline floe_group_h_type& get_floe_group_h() { return m_floe_group_h; }
     inline std::vector<floe_type>& get_floes() { return m_list_floe; }
+
+    //! kinetic energy of the group
+    value_type kinetic_energy();
 
 private:
 
@@ -176,6 +180,17 @@ void FloeGroup<TFloe>::out_hdf5(value_type time) {
         // return -1;
     }
 };
+
+
+template<typename TFloe>
+typename FloeGroup<TFloe>::value_type
+FloeGroup<TFloe>::kinetic_energy()
+{
+    return std::accumulate(
+        m_list_floe.begin(), m_list_floe.end(), 0. , 
+        [](value_type partial_sum, floe_type& floe) {return partial_sum + floe.kinetic_energy(); }
+    );
+}
 
 
 }} // namespace floe::variable

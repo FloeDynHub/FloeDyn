@@ -48,8 +48,8 @@ struct ContactPoint
      * \param frame contact frame.
      * \param dist   optional distance between floes at this point
      */
-    ContactPoint( TFloe const* floe1, TFloe const* floe2, frame_type const& frame, value_type dist = 0 ) 
-        : floe1{floe1}, floe2{floe2}, frame{frame}, dist{0}
+    ContactPoint( TFloe const* floe1, TFloe const* floe2, frame_type const& frame, value_type distance = 0 ) 
+        : floe1{floe1}, floe2{floe2}, frame{frame}, dist{distance}
     {}
 
     /*! Constructor given the two contact points.
@@ -103,7 +103,7 @@ struct ContactPoint
     //! Return true if the contact is active (relative speed of the two contact points is negative)
     inline bool is_active() const
     {
-        return relative_speed() < 0;
+        return relative_speed() < - dist / 50;
     }
 
     TFloe const* floe1; //!< First floe in contact

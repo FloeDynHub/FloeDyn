@@ -17,6 +17,7 @@
 #include <boost/numeric/ublas/matrix_sparse.hpp>
 #include <boost/numeric/ublas/operation_blocked.hpp>
 #include <boost/numeric/ublas/vector.hpp>
+// #include <boost/numeric/ublas/vector_proxy.hpp>
 
 #include <boost/graph/graph_utility.hpp>
 
@@ -64,6 +65,8 @@ public:
     //! Return the main matrix of the LCP
     //! \todo parameter for decompression
     lcp::LCP<T> getLCP() const;
+    lcp::LCP<T> getLCP_d(lcp::LCP<T> const& lcp_c, ublas::vector<T> const& Solc, T epsilon = 0) const;
+    T born_sup_d(lcp::LCP<T> const& lcp_c, T epsilon = 0) const;
 
     ublas::diagonal_matrix<T>   M;   //!< Mass and momentum matrix.
     ublas::diagonal_matrix<T>   invM;  //!< Inverse of the mass/momentum matrix.
@@ -263,6 +266,49 @@ getLCP() const
     // Job done !
     return lcp;
 }
+
+
+template <typename T, typename TGraph>
+floe::lcp::LCP<T>
+GraphLCP<T, TGraph>::
+getLCP_d(lcp::LCP<T> const& lcp_c, ublas::vector<T> const& Solc, T epsilon) const
+{
+    using namespace boost::numeric::ublas;
+    const std::size_t m = J.size2();
+
+    auto lcp_d = lcp_c;
+    ublas::vector<T> ezc = epsilon * subrange(lcp_c.z, 0, m);
+
+    // Filling q_d
+    auto& q = lcp_d.q;
+    
+    ublas::vector<T> temp2 = prod( invM, ublas::vector<T>(prod(J, ezc)) );
+    project(q, range(0, m)) = prod( trans(J), temp2 ) + prod( trans(J), Solc );
+    project(q, range(m, 3*m)) = prod( trans(D), temp2 ) + prod( trans(D), Solc);
+    project(q, range(3*m, 4*m)) = zero_vector<T>(m);
+
+    return lcp_d;
+}
+
+template <typename T, typename TGraph>
+T
+GraphLCP<T, TGraph>::
+born_sup_d(lcp::LCP<T> const& lcp_c, T epsilon) const
+{
+    using namespace boost::numeric::ublas;
+    const std::size_t m = J.size2();
+
+    ublas::vector<T> ezc = epsilon * subrange(lcp_c.z, 0, m);
+    return inner_prod(
+            ezc,
+            prod(
+                trans(J),
+                ublas::vector<T>(prod(invM,
+                    ublas::vector<T>(prod(J, ezc))
+                ))
+            ) / inner_prod( prod(trans(W), M), W) );
+}
+
 
 }}} // namespace floe::lcp::builder
 

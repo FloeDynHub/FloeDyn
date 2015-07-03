@@ -15,6 +15,7 @@
 #include "floe/geometry/frame/frame_transformers.hpp"
 
 #include "floe/variable/floe_h.hpp"
+#include "floe/geometry/arithmetic/dot_product.hpp"
 
 namespace floe { namespace floes
 {
@@ -125,6 +126,9 @@ public:
 
     //! Floe_h accessor
     inline floe_h_type& get_floe_h() { return m_floe_h; }
+
+    //! kinetic energy
+    value_type kinetic_energy();
 private:
 
     Uptr_geometry_type m_geometry;  //!< Geometry (border)
@@ -170,6 +174,14 @@ KinematicFloe<TStaticFloe,TState>::update()
         geometry::transform( m_floe->get_mesh(), mesh(), trans );
     }
 }
+
+template < typename TStaticFloe, typename TState >
+typename KinematicFloe<TStaticFloe,TState>::value_type
+KinematicFloe<TStaticFloe,TState>::kinetic_energy()
+{
+    return 0.5 * ( mass() * geometry::dot_product( m_state.speed, m_state.speed ) + moment_cst() * m_state.rot * m_state.rot );
+}
+
 
 }} // namespace floe::floes
 #endif // FLOE_FLOES_KINEMATIC_FLOE_HPP

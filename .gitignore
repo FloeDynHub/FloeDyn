@@ -8,3 +8,4 @@ build/
 FloeCpp.xcodeproj/
 .lock-waf_darwin_build
 .waf*
+out/*

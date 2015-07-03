@@ -25,7 +25,7 @@ class Domain
 
 public:
 
-    using real = value_type;
+    using real = VALUE_TYPE;
 
     // Default constructor
     Domain() : m_t{0}, m_delta_t{1}, m_delta_t_default{DT_DEFAULT}, m_last_out{-1} {}

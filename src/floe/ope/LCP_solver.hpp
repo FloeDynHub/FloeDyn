@@ -34,14 +34,17 @@ class LCPSolver
 
 public:
     using lcp_type = floe::lcp::LCP<double>;
+    using value_type = VALUE_TYPE; // TODO get from trait
 
-    using value_type = double; // TODO get from trait
+    LCPSolver() : epsilon{0.7} {} // should epsilon be runtime parameter ?
 
     const bool solve( lcp_type& lcp );
     template<typename TContactGraph>
     vector<value_type> solve( TContactGraph& graph, bool& success  );
 
 private:
+
+    value_type epsilon; // energy restitution coeff
 
     lcp_type random_perturbation(lcp_type& lcp, value_type max);
 
@@ -55,7 +58,11 @@ private:
 
     template<typename TGraphLCP>
     vector<value_type>
-    calcSol(TGraphLCP& graph_lcp, LCPSolver::lcp_type& lcp);
+    calcSolc(TGraphLCP& graph_lcp, lcp_type& lcp);
+
+    template<typename TGraphLCP>
+    vector<value_type>
+    calcSold(TGraphLCP& graph_lcp, lcp_type& lcp_c, lcp_type& lcp_d, vector<value_type> Solc);
 
     template<typename TContactGraph>
     const bool VRelNtest(const vector<value_type>& V, const TContactGraph& graph);
@@ -92,6 +99,11 @@ LCPSolver::solve( TContactGraph& graph, bool& success ) {
         {0,2},{1,2},{2,2},{3,2},
         {0,3},{1,3},{2,3},{3,3},
     };
+
+    // %%%%%%%%%%%%%%%%%%%%%%%%
+    // % phase de compression %
+    // %%%%%%%%%%%%%%%%%%%%%%%%
+
     int comptchgt{0};
     bool solved{0};
     vector<value_type> Solc(graph_lcp.J.size1());
@@ -101,7 +113,6 @@ LCPSolver::solve( TContactGraph& graph, bool& success ) {
 
     while (!solved)
     {
-//        comptchgt++;
         if (comptchgt >= MatLCP.size()) // passer le contact
         {
             success = 0;
@@ -149,7 +160,7 @@ LCPSolver::solve( TContactGraph& graph, bool& success ) {
         Err = best_Err;
         
          // Solution correspondante
-        Solc = calcSol(graph_lcp, lcp_orig);
+        Solc = calcSolc(graph_lcp, lcp_orig);
 
         if (std::any_of(Solc.begin(), Solc.end(), is_nan<double>))
             continue; // std::cout << "******NAN******";
@@ -157,12 +168,90 @@ LCPSolver::solve( TContactGraph& graph, bool& success ) {
          // Energie cinetique, Erreur LCP & Vit rel Normale :
         auto ECc = calcEc(Solc, graph_lcp.M, graph_lcp.W); // TODO be sure this is the correct 3rd arg
         Err = LCP_error(lcp_orig);
-        // vitrelnormtest = VRelNtest(trans(graph_lcp.J) * Solc, dist, Mc); // TODO matlab version
         auto vitrelnormtest = VRelNtest(prod(trans(graph_lcp.J), Solc), graph);
         solved = LCPtest(MatLCP[comptchgt][1],ECc,1,Err,vitrelnormtest);
     }
+
+    // %%%%%%%%%%%%%%%%%%%%%%%%%%
+    // % phase de decompression %
+    // %%%%%%%%%%%%%%%%%%%%%%%%%%
+    vector<value_type> Sold(graph_lcp.J.size1());
+    if ( epsilon != 0 )
+    {
+        // lambdac = lambdac + sum( subrange(lcp_orig.z, 0, m) ); //TODO : what is this used for ?
+        lcp_type lcp_d_orig = lcp = graph_lcp.getLCP_d(lcp_orig, Solc, epsilon);
+        value_type born_sup = graph_lcp.born_sup_d(lcp_orig, epsilon);
+
+        comptchgt = 0;
+        solved = 0;
+        best_Err = std::numeric_limits<value_type>::max();
+
+        while (!solved)
+        {
+            if (comptchgt >= MatLCP.size()) // passer le contact
+            {
+                success = 0;
+                return (1 + epsilon) * Solc - epsilon * (graph_lcp.W);
+            }
+
+            bool success{0};
+            switch (MatLCP[comptchgt][0])
+            {
+                case 0:
+                    lcp = random_perturbation(lcp, 1e-10); //TODO compare matlab "divmat"
+                    break;
+                    // [A,Qc] = divmat(A,Qc,Iheart);
+                case 1:
+                    success = lemke(lcp);
+                    break;
+                case 2:
+                    success = lexicolemke(lcp);
+                    break;
+                case 3:
+                    // success = lexicolemke(lcp); // don't have Iterlemke yet...
+                    break;
+                    // zc = IterLemke(Aorigin, Qcorigin, 1e-11, best.zc);
+            }
+            comptchgt++;
+
+            if (!success)
+                continue;
+
+            if (std::any_of(lcp.z.begin(), lcp.z.end(), is_nan<double>))
+                continue;
+
+            lcp_d_orig.z = lcp.z;
+
+             // As-t-on une meilleure solution ?
+            auto Err = LCP_error(lcp_d_orig);
+            if (Err < best_Err || best_Err == std::numeric_limits<value_type>::max())
+            {
+                best_z = lcp.z;
+                best_Err = Err;
+            }
+
+             // On teste toujours la meilleure solution trouvÃ©e
+            lcp_d_orig.z = best_z;
+            Err = best_Err;
+            
+             // Solution correspondante
+            Sold = calcSold(graph_lcp, lcp_orig, lcp_d_orig, Solc);
+
+            if (std::any_of(Sold.begin(), Sold.end(), is_nan<double>))
+                continue; // std::cout << "******NAN******";
+
+             // Energie cinetique, Erreur LCP & Vit rel Normale :
+            auto ECc = calcEc(Sold, graph_lcp.M, graph_lcp.W); // TODO be sure this is the correct 3rd arg
+            Err = LCP_error(lcp_d_orig);
+            auto vitrelnormtest = VRelNtest(prod(trans(graph_lcp.J), Sold), graph);
+            solved = LCPtest(MatLCP[comptchgt][1], ECc, 1 + born_sup, Err, vitrelnormtest);
+        }
+    } else {
+        return Solc;
+    }
+
     success = 1;
-    return Solc;
+    return Sold;
 
 }
 
@@ -187,6 +276,7 @@ const bool LCPSolver::LCPtest(int compt, value_type EC, value_type born_EC, valu
         return resp;
 }
 
+
 template<typename Tmat, typename Tvect>
 typename LCPSolver::value_type 
 LCPSolver::calcEc(const Tvect& S, const Tmat& M, const Tvect& w){
@@ -196,12 +286,24 @@ LCPSolver::calcEc(const Tvect& S, const Tmat& M, const Tvect& w){
 
 template<typename TGraphLCP>
 vector<LCPSolver::value_type>
-LCPSolver::calcSol(TGraphLCP& graph_lcp, LCPSolver::lcp_type& lcp)
+LCPSolver::calcSolc(TGraphLCP& graph_lcp, LCPSolver::lcp_type& lcp)
 {   
-    std::size_t m = graph_lcp.J.size2();
+    const std::size_t m = graph_lcp.J.size2();
     return graph_lcp.W + prod(
         graph_lcp.invM,
         prod(graph_lcp.J, subrange(lcp.z, 0, m)) + prod(graph_lcp.D, subrange(lcp.z, m, 3*m))
+    );
+}
+
+template<typename TGraphLCP>
+vector<LCPSolver::value_type>
+LCPSolver::calcSold(TGraphLCP& graph_lcp, lcp_type& lcp_c, lcp_type& lcp_d, vector<value_type> Solc )
+{   
+    const std::size_t m = graph_lcp.J.size2();
+    vector<value_type> ezc = epsilon * subrange(lcp_c.z, 0, m);
+    return Solc + prod(
+        graph_lcp.invM,
+        prod(graph_lcp.J, subrange(lcp_d.z, 0, m)) + prod(graph_lcp.D, subrange(lcp_d.z, m, 3*m)) + prod(graph_lcp.J, ezc)
     );
 }
 

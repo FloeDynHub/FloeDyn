@@ -1,5 +1,5 @@
-using value_type = double;
-value_type DT_DEFAULT;
+using VALUE_TYPE = double;
+VALUE_TYPE DT_DEFAULT;
 
 #include "floe/floes/static_floe.hpp"
 #include "floe/floes/kinematic_floe.hpp"
@@ -19,7 +19,7 @@ namespace ff = floe::floes;
 
 using namespace floe::problem;
 
-using real = value_type;
+using real = VALUE_TYPE;
 using floe_type = ff::KinematicFloe<ff::StaticFloe<real>>;
 using floe_group_type = floe::variable::FloeGroup<floe_type>;
 
