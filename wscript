@@ -112,6 +112,10 @@ def plot(ctx):
     plot_floes(ctx.options.name)
 
 
+def mkvid(ctx):
+    plot_floes(ctx.options.name, True)
+
+
 def get_option_dict(debug=True):
     OPTION_DICT = {
         "includes": ['./src',

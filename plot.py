@@ -7,39 +7,44 @@ import matplotlib.animation as animation
 from math import *
 import h5py
 
-# def mkfloe(nb=15, d=1, t=(0,0)):
-#     return [(d*cos(2*i*pi/nb) + t[0], d*sin(2*i*pi/nb) + t[1]) for i in range(nb+1)]
 
+Writer = animation.writers['ffmpeg']
+writer = Writer(fps=30, metadata=dict(artist='Me'), bitrate=3600)
 
 
 def init(data, ax):
-    datasets = data[0].values()
-    for i in range(len(datasets)):
-        polygon = Polygon(datasets[i], True, color="white")
+    for s in data.get("states").values():
+        polygon = Polygon(s[0], True, color="white")
         ax.add_patch(polygon)
     return ax
 
 
 def update(num, data, ax):
-    datasets = data[num].values()
-    for i in range(len(datasets)):
-        polygon = Polygon(datasets[i], True, color="white")
+    i=0
+    for s in data.get("states").values():
+        polygon = Polygon(s[num], True, color="white")
         ax.patches[i].set_xy(polygon.get_xy())
-    ax.set_title("t = %s" % data[num].name[1:])
+        i+=1
+    ax.set_title("t = %s" % data.get("time")[num])
     return ax,
 
 
-def plot_floes(filename):
+def plot_floes(filename, make_video=False):
     if not filename:
         filename = "out"
     hdf5_file_name = "out/%s.h5" % filename
     file    = h5py.File(hdf5_file_name, 'r')
     fig, ax = plt.subplots()
     groups = file.values()
-    ax = init(groups, ax)
+    ax = init(file, ax)
     ax.axis('equal')
     ax.set_axis_bgcolor('#1B8EEF')
-    anim = animation.FuncAnimation(fig, update, len(groups), fargs=(groups, ax),
+    anim = animation.FuncAnimation(fig, update, file.get("time").size, fargs=(file, ax),
         interval=50, blit=False)
-    plt.show()
+
+    if make_video:
+        anim.save('floes.mp4', writer=writer)
+    else:
+        plt.show()
+
 
