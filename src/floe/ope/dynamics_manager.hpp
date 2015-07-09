@@ -15,6 +15,8 @@
 #include <omp.h>
 #endif
 
+ #include <iostream> // DEBUG
+
 
 namespace floe { namespace ope
 {
@@ -80,7 +82,7 @@ void
 DynamicsManager<TFloeGroup>::translate_floe(floe_type& floe, value_type delta_t)
 {
     auto drag_force = floe::integration::integrate(
-        m_external_forces.total_drag2(floe),
+        m_external_forces.total_drag(floe),
         floe.mesh(),
         integration_strategy()
     );

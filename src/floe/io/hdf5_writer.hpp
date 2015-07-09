@@ -49,8 +49,10 @@ public:
     //! Destructor
     ~HDF5Writer()
     {
-        write_chunk();
-        delete m_out_file;
+        if (m_chunk_step_count != 0)
+            write_chunk();
+        if (m_out_file != nullptr)
+            delete m_out_file;
     }
 
     void save_step(value_type time, const floe_group_type& floe_group);

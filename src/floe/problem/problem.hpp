@@ -71,6 +71,7 @@ public:
         create_optim_vars();
         while (m_domain.time() < end_time)
             step_solve(out_step);
+        std::cout << " NB STEPS : " << m_step_nb << std::endl;
     }
 
     void test(); // implemented in test file

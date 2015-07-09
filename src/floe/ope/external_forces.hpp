@@ -38,7 +38,6 @@ public:
     using value_type = typename floe_type::value_type;
 
     std::function<point_type (value_type, value_type)> total_drag(floe_type& floe);
-    std::function<point_type (value_type, value_type)> total_drag2(floe_type& floe);
     std::function<value_type (value_type, value_type)> total_rot_drag(floe_type& floe);
     point_type coriolis_effect(floe_type& floe);
 
@@ -46,8 +45,8 @@ private:
 
 
     // PROVISOIRE
-    inline point_type water_speed(point_type){ return point_type{0,1}; }
-    inline point_type air_speed(point_type){ return point_type{-0,0}; }
+    inline point_type water_speed(point_type){ return point_type{0,0}; }
+    inline point_type air_speed(point_type){ return point_type{0,0}; }
     // PROVISOIRE
 
     const value_type rho_w = 1024.071; // Water density
@@ -64,9 +63,7 @@ private:
 
     void move_floe(floe_type& floe, value_type delta_t);
     std::function<point_type (point_type&)> ocean_drag(floe_type& floe);
-    point_type ocean_drag2(floe_type& floe, point_type& p);
     std::function<point_type (point_type&)> air_drag(floe_type& floe);
-    point_type air_drag2(floe_type& floe, point_type& p);
 
 };
 
@@ -92,16 +89,6 @@ ExternalForces<TFloeGroup>::ocean_drag(floe_type& floe)
 
 
 template <typename TFloeGroup>
-typename TFloeGroup::floe_type::point_type
-ExternalForces<TFloeGroup>::ocean_drag2(floe_type& floe, point_type& p)
-{
-    auto& state = floe.state();
-    auto V = water_speed(p) - state.speed - state.rot * fg::direct_orthogonal(p - state.pos);
-    return rho_w * C_w * norm2(V) * V;
-}
-
-
-template <typename TFloeGroup>
 std::function<typename TFloeGroup::floe_type::point_type (
     typename TFloeGroup::floe_type::point_type&)>
 ExternalForces<TFloeGroup>::air_drag(floe_type& floe)
@@ -111,15 +98,6 @@ ExternalForces<TFloeGroup>::air_drag(floe_type& floe)
         auto f = air_speed(p);
         return rho_a * C_a * norm2(f) * f;
     };
-}
-
-
-template <typename TFloeGroup>
-typename TFloeGroup::floe_type::point_type
-ExternalForces<TFloeGroup>::air_drag2(floe_type& floe, point_type& p)
-{
-    auto f = air_speed(p);
-    return rho_a * C_a * norm2(f) * f;
 }
 
 
@@ -148,18 +126,8 @@ ExternalForces<TFloeGroup>::total_drag(floe_type& floe)
     {
         point_type p{x,y};
         return ocean_drag(floe)(p) + air_drag(floe)(p);
-    };
-}
-
-template <typename TFloeGroup>
-std::function<typename TFloeGroup::floe_type::point_type (
-    value<TFloeGroup>, value<TFloeGroup>)>
-ExternalForces<TFloeGroup>::total_drag2(floe_type& floe)
-{
-    return [&](value_type x, value_type y)
-    {
-        point_type p{x,y};
-        return ocean_drag2(floe, p) + air_drag2(floe, p);
+        // return air_drag(floe)(p); //debug
+        // return point_type{10, 0}; // debug
     };
 }
 
@@ -172,7 +140,7 @@ ExternalForces<TFloeGroup>::total_rot_drag(floe_type& floe)
     return [&](value_type x, value_type y)
     {
         point_type p{x,y};
-        return fg::cross_product_value(p - floe.state().pos, total_drag2(floe)(x, y));
+        return fg::cross_product_value(p - floe.state().pos, total_drag(floe)(x, y));
     };
 }
 

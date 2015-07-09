@@ -24,7 +24,7 @@ template <
 >
 struct Point
 {
-    Point() {};
+    Point() : x{0}, y{0} {};
     
     Point( TCoordinate x, TCoordinate y ) : x{x}, y{y} {}   
    
