@@ -38,6 +38,8 @@ public:
     using optim_type = typename TDetector::optim_type;
     using frame_type = typename floe_type::frame_type;
     using multi_point_type = floe::geometry::MultiPoint<point_type>;
+    using floe_interface_type = typename TDetector::floe_interface_type;
+    using optim_interface_type = typename TDetector::optim_interface_type;
 
     // Default constructor
     TimeScaleManager() : m_domain{nullptr} {} //, m_detector{nullptr} {}
@@ -57,9 +59,9 @@ private:
         value_type dist_secu,
         value_type dist_opt,
         const floe_type& floe1,
-        const floe_type& floe2,
+        const floe_interface_type& floe2,
         const optim_type& optim1,
-        const optim_type& optim2
+        const optim_interface_type& optim2
         // + ghost floe cell translation
     );
 
@@ -67,9 +69,9 @@ private:
     value_type delta_t_secu_fast(
         value_type dist_secu,
         const floe_type& floe1,
-        const floe_type& floe2,
+        const floe_interface_type& floe2,
         const optim_type& optim1,
-        const optim_type& optim2
+        const optim_interface_type& optim2
         // + ghost floe cell translation
     );
 
@@ -89,16 +91,16 @@ TimeScaleManager<TDomain, TDetector>::delta_t_secu(TDomain* domain, TDetector* m
     value_type global_min_dt = m_domain->default_time_step();
     // int nb{0}, nb_f{0};
 
-    for (std::size_t i = 1; i!= dist_secu.size1(); ++i)
+    for (std::size_t i = 0; i!= dist_secu.size1(); ++i)
     {
-        for ( std::size_t j = 0; j != i; ++j )
+        for ( std::size_t j = i+ 1; j != dist_secu.size2(); ++j )
         {
             if (indics(i,j) == 0)
             {
                 global_min_dt = std::min(
                     global_min_dt,
                     delta_t_secu_fast(dist_secu(i,j),
-                         *floes[i], *floes[j], *optims[i], *optims[j])
+                         *floes[i], m_detector->get_floe(j), *optims[i], m_detector->get_optim(j))
                 ); //nb_f++;
             }
             else
@@ -106,7 +108,7 @@ TimeScaleManager<TDomain, TDetector>::delta_t_secu(TDomain* domain, TDetector* m
                 global_min_dt = std::min(
                     global_min_dt,
                     delta_t_secu(indics(i,j), dist_secu(i,j), dist_opt(i,j),
-                         *floes[i], *floes[j], *optims[i], *optims[j])
+                         *floes[i], m_detector->get_floe(j), *optims[i], m_detector->get_optim(j))
                 ); //nb++;
             }
         }
@@ -126,9 +128,9 @@ TimeScaleManager<TDomain, TDetector>::delta_t_secu(
     value_type dist_secu,
     value_type dist_opt,
     const floe_type& floe1,
-    const floe_type& floe2,
+    const floe_interface_type& floe2,
     const optim_type& optim1,
-    const optim_type& optim2
+    const optim_interface_type& optim2
 ){
     const value_type& dt_defaut = m_domain->default_time_step();
     const point_type& Vg1 = floe1.state().speed, Vg2 = floe2.state().speed;
@@ -136,8 +138,8 @@ TimeScaleManager<TDomain, TDetector>::delta_t_secu(
     const point_type& C1 = optim1.global_disk().center, C2 = optim2.global_disk().center;
     const value_type& R1 = optim1.global_disk().radius, R2 = optim2.global_disk().radius;
     const point_type& G1 = floe1.state().pos, G2 = floe2.state().pos;
-    const value_type& tau1 = optim1.tau, tau2 = optim2.tau;
-    const value_type& dc1 = optim1.cdist, dc2 = optim2.cdist;
+    const value_type& tau1 = optim1.tau(), tau2 = optim2.tau();
+    const value_type& dc1 = optim1.cdist(), dc2 = optim2.cdist();
     value_type lambda = std::min(dc1, dc2) / 20;
 
     value_type d;
@@ -248,14 +250,14 @@ typename TimeScaleManager<TDomain, TDetector>::value_type
 TimeScaleManager<TDomain, TDetector>::delta_t_secu_fast(
         value_type dist_secu,
         const floe_type& floe1,
-        const floe_type& floe2,
+        const floe_interface_type& floe2,
         const optim_type& optim1,
-        const optim_type& optim2
+        const optim_interface_type& optim2
 ){
 
     point_type Vg1 = floe1.state().speed, Vg2 = floe2.state().speed;
     point_type C1 = optim1.global_disk().center, C2 = optim2.global_disk().center;
-    value_type dc1 = optim1.cdist, dc2 = optim2.cdist;
+    value_type dc1 = optim1.cdist(), dc2 = optim2.cdist();
 
     // Calcul de la marge lambda
     value_type lambda = std::min(dc1, dc2) / 20;

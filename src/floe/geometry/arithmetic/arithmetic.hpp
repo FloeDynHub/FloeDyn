@@ -32,6 +32,11 @@ auto cross_product_value(TPoint const& point1, TPoint const& point2)
     return point1.x * point2.y -point1.y * point2.x;
 }
 
+template<typename TPoint>
+bool equal_points(TPoint const& pt1, TPoint const& pt2)
+{
+    return (norm2(pt1 - pt2) == 0);
+}
 
 
 }} // namespace floe::geometry

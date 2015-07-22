@@ -17,6 +17,8 @@
 #include "floe/variable/floe_h.hpp"
 #include "floe/geometry/arithmetic/dot_product.hpp"
 
+#include "floe/floes/floe_interface.hpp"
+
 namespace floe { namespace floes
 {
 
@@ -36,7 +38,14 @@ template <
     typename TStaticFloe,
     typename TState = state::SpaceTimeState< typename TStaticFloe::point_type, typename TStaticFloe::value_type > 
 >
-class KinematicFloe
+class KinematicFloe : public FloeInterface<
+    TStaticFloe,
+    // typename TStaticFloe::value_type,
+    // typename TStaticFloe::point_type,
+    // typename TStaticFloe::geometry_type,
+    // typename TStaticFloe::frame_type,
+    TState
+>
 {
 
 public:
@@ -52,6 +61,7 @@ public:
 
     using floe_h_type = floe::variable::Floe_h<mesh_type>;
     using Uptr_geometry_type = std::unique_ptr<geometry_type>;
+    using floe_interface_type = FloeInterface<TStaticFloe, TState>;
 
     //! Default constructor
     KinematicFloe() : m_geometry{nullptr}, m_floe{nullptr}, m_state{ {0,0}, 0, {0,0}, 0 }, m_obstacle{false} {}
@@ -129,6 +139,9 @@ public:
 
     //! kinetic energy
     value_type kinetic_energy();
+
+    //! trivial method (to respect floe interface...)
+    // const KinematicFloe<TStaticFloe, TState>& original() const { return *this; }
 private:
 
     Uptr_geometry_type m_geometry;  //!< Geometry (border)

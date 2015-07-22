@@ -5,6 +5,7 @@
 #include "floe/geometry/geometries/point.hpp"
 #include "floe/geometry/arithmetic/point_operators.hpp"
 
+
 TEST_CASE( "Test point", "[geometry]" ) {
     using namespace std;
     using real = double;
@@ -27,5 +28,7 @@ TEST_CASE( "Test point", "[geometry]" ) {
     cout << boost::geometry::distance(pt, pt2) << endl;
 
     cout << norm2(pt2 - pt) << endl;
+
+    // cout << norm2(pt2 == pt) << endl; // no == operator !
 
 }

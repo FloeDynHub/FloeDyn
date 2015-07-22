@@ -50,6 +50,9 @@ public:
     ThetaFrame(coordinate_type const& x, coordinate_type const& y, theta_type const& theta)
         : m_center{x, y}, m_theta{theta} {}
 
+    ThetaFrame(ThetaFrame<TPoint, T> const&) = default;
+    ThetaFrame& operator= (const ThetaFrame&) = default;
+
     //! Manipulate center
     inline TPoint& center() { return m_center; }
     inline TPoint const& center() const { return m_center; }

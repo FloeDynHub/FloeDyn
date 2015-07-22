@@ -78,7 +78,7 @@ public:
     inline proximity_detector_type const& get_proximity_detector() const { return m_proximity_detector; }
 
 
-private:
+protected:
 
     problem_h_type m_problem_h;
 

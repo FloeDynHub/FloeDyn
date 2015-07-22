@@ -2,7 +2,7 @@
  * \file floe/collision/matlab/detector.hpp
  * \brief Collision detector (matlab version) and associated functions.
  * \see MatlabDetector for more explanations.
- * \author Roland Denis
+ * \author Roland Denis, Quentin Jouet
  */
 
 #ifndef FLOE_COLLISION_MATLAB_DETECTOR_HPP
@@ -48,26 +48,30 @@ namespace ublas = boost::numeric::ublas;
  * \tparam TFloe Type of a floe (it must be a kinematic object).
  */
 template <
-    typename TFloe
+    typename TFloe,
+    typename TContact = ContactPoint<TFloe> 
 >
 class MatlabDetector
 {
 
 public:
     // Type traits
-    typedef TFloe                               floe_type;
-    typedef OptimizedFloe<TFloe>                optim_type;
-    typedef typename floe_type::point_type      point_type;
-    typedef typename floe_type::value_type      value_type;
-    typedef typename optim_type::circle_type    circle_type;
-    typedef typename optim_type::multi_circle_type  multi_circle_type;
-    typedef ContactPoint<floe_type>             contact_type;
-    typedef ContactGraph<contact_type>          contact_graph_type;
-    typedef typename contact_graph_type::edge_property_type    contact_list_type;
+    using floe_type = TFloe;
+    using optim_type = OptimizedFloe<TFloe>;
+    using point_type = typename floe_type::point_type;
+    using value_type = typename floe_type::value_type;
+    using floe_interface_type = typename floe_type::floe_interface_type;
+    using optim_interface_type = typename optim_type::optim_interface_type;
+    using circle_type = typename optim_type::circle_type;
+    using multi_circle_type = typename optim_type::multi_circle_type;
+    using contact_type = TContact;
+    using contact_graph_type = ContactGraph<contact_type>;
+    using contact_list_type = typename contact_graph_type::edge_property_type;
 
-    typedef ublas::symmetric_matrix<value_type, ublas::lower> dist_matrix_type; //!< Type of distance matrix
-    typedef ublas::symmetric_matrix<std::size_t, ublas::lower> indic_matrix_type; //!< Type of indicator matrix
-
+    // typedef ublas::symmetric_matrix<value_type, ublas::lower> dist_matrix_type; // Type of distance matrix
+    // typedef ublas::symmetric_matrix<std::size_t, ublas::lower> indic_matrix_type; // Type of indicator matrix
+    using dist_matrix_type = ublas::matrix<value_type>; //!< Type of distance matrix
+    using indic_matrix_type = ublas::matrix<std::size_t>; //!< Type of indicator matrix
 
     //! Default constructor
     MatlabDetector()
@@ -76,10 +80,10 @@ public:
     {}
 
     //! Deleted copy constructor
-    MatlabDetector( MatlabDetector<TFloe> const& ) = delete;
+    MatlabDetector( MatlabDetector<TFloe, TContact> const& ) = delete;
 
     //! Deleted copy operator
-    MatlabDetector<TFloe>& operator= (MatlabDetector const&) = delete;
+    MatlabDetector<TFloe, TContact>& operator= (MatlabDetector const&) = delete;
 
     //! Destructor
     ~MatlabDetector() { for ( auto& optim_ptr : m_optims ) delete optim_ptr; }
@@ -88,7 +92,7 @@ public:
      * It automatically creates the optimization datas associated to the new floe.
      * \param floe_ptr Pointer to the floe to add.
      */
-    void push_back( floe_type const* floe_ptr )
+    virtual void push_back( floe_type const* floe_ptr )
     {
         m_floes.push_back(floe_ptr);
         m_optims.push_back( new optim_type{*floe_ptr} );
@@ -113,9 +117,13 @@ public:
     inline indic_matrix_type const& get_indic() const { return m_indic; }
     inline std::vector<floe_type const*> const& get_floes() const { return m_floes; }
     inline std::vector<optim_type*> const& get_optims() const { return m_optims; }
-    // Accessors for time_scale_manager
+    // End Accessors for time_scale_manager
 
-private:
+    //! Container accessors
+    inline virtual floe_interface_type const& get_floe(std::size_t n, bool original = false) const { return *(m_floes[n]); }
+    inline virtual optim_interface_type const& get_optim(std::size_t n, bool original = false) const { return *(m_optims[n]); }
+
+protected:
     std::vector<floe_type const*>     m_floes; //!< Floes list.
     std::vector<optim_type*>    m_optims; //!< Optimization datas list.
 
@@ -134,6 +142,8 @@ private:
     point_type point_from_id( std::size_t n, std::size_t id ) const;
     inline point_type point_from_pos( segment_type const& segment, value_type pos ) const;
 
+    void prepare_detection(); // preparation
+    virtual void detect(); // initialization + detection
     //! Detects collisions in 4 main steps
     void detect_step1();
     void detect_step2( std::size_t n1, std::size_t n2 );
@@ -142,6 +152,12 @@ private:
     template <typename TAdjacency>
     value_type detect_step4( std::size_t n1, std::size_t n2, std::vector<std::size_t> const& ldisks1, std::vector<std::size_t> const& ldisks2, TAdjacency const& adjacency);
 
+    inline virtual void set_dist_secu(std::size_t n1, std::size_t n2, value_type val) { m_dist_secu(n1, n2) = m_dist_secu(n2, n1) = val; }
+    inline virtual void set_indic(std::size_t n1, std::size_t n2, std::size_t val) { m_indic(n1, n2) = m_indic(n2, n1) = val; }
+    inline virtual void set_dist_opt(std::size_t n1, std::size_t n2, value_type val) { m_dist_opt(n1, n2) = m_dist_opt(n2, n1) = val; }
+    inline virtual contact_type create_contact(std::size_t n1, std::size_t n2, point_type point1, point_type point2) const {
+        return { m_floes[n1], m_floes[n2], point1, point2 }; }
+    inline virtual std::size_t real_floe_id(std::size_t n) const { return n; }
 };
 
 //! Some utilities (workaround for distance to circle)
@@ -165,40 +181,49 @@ distance_point_circle( TPoint const& point, TCircle const& circle )
 
 
 //! Update detector
-template<typename TFloe>
+template <
+    typename TFloe,
+    typename TContact
+>
 void
-MatlabDetector<TFloe>::update()
+MatlabDetector<TFloe, TContact>::update()
+{   
+    // update data and clear contacts
+    prepare_detection();
+    // Launch collisions detection
+    detect();
+}
+
+
+//! Update detector
+template <
+    typename TFloe,
+    typename TContact
+>
+void
+MatlabDetector<TFloe, TContact>::prepare_detection()
 {
     // Update floe optimizers
-    // std::cout << "\tUpdating optimizers ..." << std::flush;
-    // boost::timer::cpu_timer timer;
     for ( auto optim_ptr : m_optims )
         optim_ptr->update();
-    // timer.stop();
-    // std::cout << timer.format();
-
-    // Launch collisions detection
-    // std::cout << "\tContacts detection ..." << std::flush;
-    // timer.start();
 
     // Initializing graph
     m_contacts.clear();
     for ( auto floe_ptr : m_floes )
         add_vertex(floe_ptr, m_contacts);
 
-    // Detection
-    detect_step1();
-
-    // timer.stop();
-    // std::cout << timer.format();
 }
 
 
-//! Tests global disk intersection
-template <typename TFloe>
+//! Update detector
+template <
+    typename TFloe,
+    typename TContact
+>
 void
-MatlabDetector<TFloe>::detect_step1()
+MatlabDetector<TFloe, TContact>::detect()
 {
+
     // Number of floes
     const std::size_t N = m_floes.size();
 
@@ -209,26 +234,53 @@ MatlabDetector<TFloe>::detect_step1()
     m_dist_opt = ublas::scalar_matrix<value_type>(N, N, 0);
     m_dist_secu = ublas::scalar_matrix<value_type>(N, N, 0);
 
+    std::cout << N << " " << std::endl;
+
+    // Detection
+    detect_step1();
+}
+
+
+//! Tests global disk intersection
+template <
+    typename TFloe,
+    typename TContact
+>
+void
+MatlabDetector<TFloe, TContact>::detect_step1()
+{
+
+    // Number of floes
+    const std::size_t N = m_floes.size();
 
     // Level 1 loop
     // TODO: intersects -like for multi_circle !!
-    for (std::size_t n1 = 1; n1 < N; ++n1)
+
+    for (std::size_t n1 = 0; n1 < N; ++n1)
     {
-        optim_type const& opt1 = *(m_optims[n1]);
-        for (std::size_t n2 = 0; n2 < n1; ++n2)
+        auto const& opt1 = get_optim(n1);
+        for (std::size_t n2 = n1 + 1; n2 < m_dist_secu.size2(); ++n2)
         {
-            optim_type const& opt2 = *(m_optims[n2]);
+            auto const& opt2 = get_optim(n2);
+     
+    /* old version for comparaison (dev) */
+    // for (std::size_t n1 = 1; n1 < N; ++n1)
+    // {
+    //     auto const& opt1 = get_optim(n1);
+    //     for (std::size_t n2 = 0; n2 < n1; ++n2)
+    //     {
+    //         auto const& opt2 = get_optim(n2);
 
             const auto dist = distance_circle_circle( 
                 opt1.global_disk(),
                 opt2.global_disk()
-            ) + opt1.tau + opt2.tau;
+            ) + opt1.tau() + opt2.tau();
 
-            m_dist_secu(n1, n2) = dist;
+            set_dist_secu(n1, n2, dist);
 
-            if ( dist > std::max( opt1.cdist, opt2.cdist ) )
+            if ( dist > std::max( opt1.cdist(), opt2.cdist() ) )
             {
-                m_indic(n1, n2) = 0;
+                set_indic(n1, n2, 0);
             } 
             else 
             {
@@ -239,19 +291,22 @@ MatlabDetector<TFloe>::detect_step1()
 }
 
 //! Finds local disks that are in the other floe global disk
-template <typename TFloe>
+template <
+    typename TFloe,
+    typename TContact
+>
 void
-MatlabDetector<TFloe>::detect_step2( std::size_t n1, std::size_t n2 )
+MatlabDetector<TFloe, TContact>::detect_step2( std::size_t n1, std::size_t n2 )
 {
-    optim_type const& opt1 = *(m_optims[n1]);
-    optim_type const& opt2 = *(m_optims[n2]);
+    auto const& opt1 = get_optim(n1);
+    auto const& opt2 = get_optim(n2);
 
-    m_indic(n1, n2) = 1;
-    const value_type dzone = -( m_dist_secu(n1, n2) - opt1.tau - opt2.tau );
+    set_indic(n1, n2, 1);
+    const value_type dzone = -( m_dist_secu(n1, n2) - opt1.tau() - opt2.tau() );
 
     // Local disks of obj1 that intersects global disk of obj2
     std::vector<std::size_t> ldisks1;
-    if ( dzone > opt1.tau )
+    if ( dzone > opt1.tau() )
     {
         for ( std::size_t i = 0; i < opt1.local_disks().size(); ++i )
         {
@@ -262,7 +317,7 @@ MatlabDetector<TFloe>::detect_step2( std::size_t n1, std::size_t n2 )
 
     // Local disks of obj2 that intersects global disk of obj1
     std::vector<std::size_t> ldisks2;
-    if ( dzone > opt2.tau )
+    if ( dzone > opt2.tau() )
     {
         for ( std::size_t i = 0; i < opt2.local_disks().size(); ++i )
         {
@@ -273,25 +328,28 @@ MatlabDetector<TFloe>::detect_step2( std::size_t n1, std::size_t n2 )
 
     // What's up doctor ?
     if ( ldisks1.size() == 0 && ldisks2.size() == 0 )
-        m_dist_secu(n1, n2) = dzone;
+        set_dist_secu(n1, n2, dzone);
     else if ( ldisks1.size() != 0 && ldisks2.size() == 0 )
-        m_dist_secu(n1, n2) = opt1.tau;
+        set_dist_secu(n1, n2, opt1.tau());
     else if ( ldisks1.size() == 0 && ldisks2.size() != 0 )
-        m_dist_secu(n1, n2) = opt2.tau;
+        set_dist_secu(n1, n2, opt2.tau());
     else
         detect_step3(n1, n2, ldisks1, ldisks2);
 }
 
 //! Adjacency matrix of local disks
-template <typename TFloe>
+template <
+    typename TFloe,
+    typename TContact
+>
 void
-MatlabDetector<TFloe>::detect_step3( 
+MatlabDetector<TFloe, TContact>::detect_step3( 
     std::size_t n1, std::size_t n2, 
     std::vector<std::size_t> const& ldisks1, std::vector<std::size_t> const& ldisks2 
 )
 {
-    optim_type const& opt1 = *(m_optims[n1]);
-    optim_type const& opt2 = *(m_optims[n2]);
+    auto const& opt1 = get_optim(n1);
+    auto const& opt2 = get_optim(n2);
     
     // Adjacency matrix
     boost::numeric::ublas::compressed_matrix<bool> adjacency(ldisks1.size(), ldisks2.size());
@@ -317,7 +375,7 @@ MatlabDetector<TFloe>::detect_step3(
             if ( dist < 0 )
             {
                 adjacency(i,j) = 1;
-                dist_s = std::min( dist_s, dist + opt1.tau + opt2.tau );
+                dist_s = std::min( dist_s, dist + opt1.tau() + opt2.tau() );
                 ++cnt;
             }
         }
@@ -326,21 +384,26 @@ MatlabDetector<TFloe>::detect_step3(
     // What's up doctor ?
     if (cnt == 0)
     {
-        m_dist_secu(n1, n2) = dist_s;
-        m_dist_opt(n1, n2) = dist_o;
+        set_dist_secu(n1, n2, dist_s);
+        set_dist_opt(n1, n2, dist_o);
     } 
     else 
     {
-        m_dist_secu(n1, n2) = detect_step4( n1, n2, ldisks1, ldisks2, adjacency ); // Detects contacts obj1 -> obj2
-        m_dist_secu(n2, n1) = detect_step4( n2, n1, ldisks2, ldisks1, ublas::trans(adjacency) ); // Detects contacts obj2 -> obj1
+        set_dist_secu(n1, n2,  std::min(
+            (n2 > m_floes.size()) ? std::numeric_limits<value_type>::max() : detect_step4( n2, n1, ldisks2, ldisks1, ublas::trans(adjacency) ), // Detects contacts obj2 -> obj1
+            detect_step4( n1, n2, ldisks1, ldisks2, adjacency ) // Detects contacts obj1 -> obj2
+        ));
     }
 }
 
 //! Searching contacts
-template <typename TFloe>
+template <
+    typename TFloe,
+    typename TContact
+>
 template <typename TAdjacency>
-typename MatlabDetector<TFloe>::value_type
-MatlabDetector<TFloe>::
+typename MatlabDetector<TFloe, TContact>::value_type
+MatlabDetector<TFloe, TContact>::
 detect_step4( 
     std::size_t n1, std::size_t n2, 
     std::vector<std::size_t> const& ldisks1, std::vector<std::size_t> const& ldisks2,
@@ -349,8 +412,8 @@ detect_step4(
 {
     using namespace floe::geometry;
 
-    optim_type const& opt1 = *(m_optims[n1]);
-    optim_type const& opt2 = *(m_optims[n2]);
+    auto const& opt1 = get_optim(n1);
+    auto const& opt2 = get_optim(n2);
 
     // Contact list
     contact_list_type contact_list;
@@ -412,7 +475,7 @@ detect_step4(
                                     &&  segment_pos( segment_from_id1(n1, ipt1), point2 ) <= 0
                                 )
                                 {
-                                    min_contact = { m_floes[n1], m_floes[n2], point1, point2 };
+                                    min_contact = create_contact(n1, n2, point1, point2);
                                     min_dist = dist;
                                     // seg_id = -1; // TEST
                                 }
@@ -427,7 +490,7 @@ detect_step4(
                             const value_type dist = distance(point1, point2);
                             if ( dist < min_dist )
                             {
-                                min_contact = { m_floes[n1], m_floes[n2], point1, point2 };
+                                min_contact = create_contact(n1, n2, point1, point2);
                                 // min_contact = { m_floes[n2], m_floes[n1], point2, point1 }; // TEST
                                 min_dist = dist;
                                 // seg_id = ipt2; // TEST
@@ -453,7 +516,7 @@ detect_step4(
             } // Loop over disks of obj2
 
             // If there is a valid dangling point, it must be on the closing point of the other floe boundary
-            if (dangling_point && dangling_id == m_floes[n2]->geometry().outer().size())
+            if (dangling_point && dangling_id == get_floe(n2).geometry().outer().size())
             {
                 const segment_type segment = segment_from_id1( n2, dangling_id );
                 if (segment_pos(segment, point1) <= 0)
@@ -467,7 +530,7 @@ detect_step4(
                             &&  segment_pos( segment_from_id1(n1, ipt1), point2 ) <= 0
                        )
                     {
-                        min_contact = { m_floes[n1], m_floes[n2], point1, point2 };
+                        min_contact = create_contact(n1, n2, point1, point2);
                         min_dist = dist;
                         // seg_id = -1; // TEST
                     }
@@ -475,8 +538,8 @@ detect_step4(
             }
 
             // Add contact if any
-            //if (min_dist <= opt2.cdist)
-            if (min_dist <= std::min( opt1.cdist, opt2.cdist ) )
+            //if (min_dist <= opt2.cdist())
+            if (min_dist <= std::min( opt1.cdist(), opt2.cdist() ) )
             {
                 /*
                 // TEST
@@ -501,12 +564,8 @@ detect_step4(
 
     // Add edge in graph if there is any contact
     if (contact_list.size() != 0)
-        add_edge(vertex(n1, m_contacts), vertex(n2, m_contacts), contact_list, m_contacts);
+        add_edge(vertex(real_floe_id(n1), m_contacts), vertex(real_floe_id(n2), m_contacts), contact_list, m_contacts);
 
-    //DEBUG
-    // if (global_min_dist > 1e3) std::cout << "BUG " << global_min_dist << std::endl;
-    // if (global_min_dist < 1e-12) std::cout << "BUG " << global_min_dist << std::endl;
-    //DEBUG
     // Return minimal distance between the 2 floes
     return global_min_dist;
 }
@@ -517,9 +576,12 @@ detect_step4(
  * \param segment the segment
  * \param point point to project on the segment
  */
-template< typename TFloe >
-typename MatlabDetector<TFloe>::value_type
-MatlabDetector<TFloe>::segment_pos( segment_type const& segment, point_type const& point ) const
+template <
+    typename TFloe,
+    typename TContact
+>
+typename MatlabDetector<TFloe, TContact>::value_type
+MatlabDetector<TFloe, TContact>::segment_pos( segment_type const& segment, point_type const& point ) const
 {
     const point_type u = segment.second - segment.first;
 
@@ -531,9 +593,12 @@ MatlabDetector<TFloe>::segment_pos( segment_type const& segment, point_type cons
  * \param segment the segment
  * \param point   point to project on the segment
  */
-template< typename TFloe >
-typename MatlabDetector<TFloe>::value_type
-MatlabDetector<TFloe>::segment_dist( segment_type const& segment, point_type const& point ) const
+template <
+    typename TFloe,
+    typename TContact
+>
+typename MatlabDetector<TFloe, TContact>::value_type
+MatlabDetector<TFloe, TContact>::segment_dist( segment_type const& segment, point_type const& point ) const
 {
     const point_type u = segment.second - segment.first;
     u = { -u[1], u[0] };
@@ -546,11 +611,14 @@ MatlabDetector<TFloe>::segment_dist( segment_type const& segment, point_type con
  * \param n     floe id
  * \param id1   point id
  */
-template< typename TFloe >
-typename MatlabDetector<TFloe>::segment_type
-MatlabDetector<TFloe>::segment_from_id1( std::size_t n, std::size_t id1 ) const
+template <
+    typename TFloe,
+    typename TContact
+>
+typename MatlabDetector<TFloe, TContact>::segment_type
+MatlabDetector<TFloe, TContact>::segment_from_id1( std::size_t n, std::size_t id1 ) const
 {
-    auto const& boundary = m_floes[n]->geometry().outer();
+    auto const& boundary = get_floe(n).geometry().outer();
     
     std::size_t id2 = id1 + 1;
     
@@ -565,11 +633,14 @@ MatlabDetector<TFloe>::segment_from_id1( std::size_t n, std::size_t id1 ) const
  * \param n     floe id
  * \param id2   point id
  */
-template< typename TFloe >
-typename MatlabDetector<TFloe>::segment_type
-MatlabDetector<TFloe>::segment_from_id2( std::size_t n, std::size_t id2 ) const
+template <
+    typename TFloe,
+    typename TContact
+>
+typename MatlabDetector<TFloe, TContact>::segment_type
+MatlabDetector<TFloe, TContact>::segment_from_id2( std::size_t n, std::size_t id2 ) const
 {
-    auto const& boundary = m_floes[n]->geometry().outer();
+    auto const& boundary = get_floe(n).geometry().outer();
     
     if (id2 >= boundary.size())    id2 -= boundary.size();
     std::size_t id1 = id2 + boundary.size() - 1;
@@ -583,11 +654,14 @@ MatlabDetector<TFloe>::segment_from_id2( std::size_t n, std::size_t id2 ) const
  * \param n     floe id
  * \param id    point id
  */
-template <typename TFloe>
-typename MatlabDetector<TFloe>::point_type
-MatlabDetector<TFloe>::point_from_id( std::size_t n, std::size_t id ) const
+template <
+    typename TFloe,
+    typename TContact
+>
+typename MatlabDetector<TFloe, TContact>::point_type
+MatlabDetector<TFloe, TContact>::point_from_id( std::size_t n, std::size_t id ) const
 {
-    auto const& boundary = m_floes[n]->geometry().outer();
+    auto const& boundary = get_floe(n).geometry().outer();
     
     if (id >= boundary.size())    id -= boundary.size();
 
@@ -599,10 +673,13 @@ MatlabDetector<TFloe>::point_from_id( std::size_t n, std::size_t id ) const
  * \param segment   The segment.
  * \param pos       The relative position of the point
  */
-template <typename TFloe>
+template <
+    typename TFloe,
+    typename TContact
+>
 inline
-typename MatlabDetector<TFloe>::point_type
-MatlabDetector<TFloe>::point_from_pos( segment_type const& segment, value_type pos ) const
+typename MatlabDetector<TFloe, TContact>::point_type
+MatlabDetector<TFloe, TContact>::point_from_pos( segment_type const& segment, value_type pos ) const
 {
     return (1.-pos) * segment.first + pos * segment.second;
 }

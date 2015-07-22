@@ -128,12 +128,12 @@ init()
 
         const pair<size_t, size_t> id = minmax( source(edge, m_graph), target(edge, m_graph) );
         auto const* floe1 = m_graph[id.first];
-        auto const* floe2 = m_graph[id.second];
+        // auto const* floe2 = m_graph[id.second];
 
         const size_t i1 = 3*id.first;
         const size_t i2 = 3*id.second;
 
-        // Foreach contact between this 2 floes ...
+        // Foreach contact between these 2 floes ...
         for ( auto const& contact : m_graph[edge] )
         {
             const T c = ( floe1 == contact.floe1 ) ? -1 : 1;
@@ -145,8 +145,10 @@ init()
             const point_type tangent = contact.frame.u();
 
             // Vector from the mass center to the contact point
-            point_type r1 = contact.frame.center(); fg::subtract_point( r1, floe1->frame().center() );
-            point_type r2 = contact.frame.center(); fg::subtract_point( r2, floe2->frame().center() );
+            // point_type r1 = contact.frame.center(); fg::subtract_point( r1, floe1->frame().center() );
+            // point_type r2 = contact.frame.center(); fg::subtract_point( r2, floe2->frame().center() );
+            point_type r1 = (c == 1) ? contact.r2() : contact.r1();
+            point_type r2 = (c == 1) ? contact.r1() : contact.r2();
 
             // Filling normal matrix
             J(i1, j)   = c * fg::get<0>(normal);

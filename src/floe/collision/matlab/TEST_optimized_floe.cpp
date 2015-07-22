@@ -39,8 +39,8 @@ int main()
     using OptimFloe = floe::collision::matlab::OptimizedFloe<Floe>;
     OptimFloe optim_floe(floe);
 
-    cout << "cdist = " << optim_floe.cdist << endl;
-    cout << "tau = " << optim_floe.tau << endl;
+    cout << "cdist = " << optim_floe.cdist() << endl;
+    cout << "tau = " << optim_floe.tau() << endl;
     cout << "global disk = " << floe::geometry::dsv( optim_floe.global_disk() ) << endl;
     //cout << "local disks = " << floe::geometry::dsv( optim_floe.local_disks() ) << endl;
     cout << "local disks count = " << optim_floe.local_disks().size() << endl;

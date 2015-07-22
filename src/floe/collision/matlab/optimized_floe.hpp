@@ -16,7 +16,6 @@
 #include "floe/geometry/iterators/closing_iterator.hpp"
 #include "floe/geometry/arithmetic/point_operators.hpp"
 #include "floe/geometry/geometries/multi_point.hpp"
-#include "floe/geometry/arithmetic/point_operators.hpp"
 
 // Floe
 #include "floe/floes/floe_exception.hpp"
@@ -28,6 +27,8 @@
 // Circles
 #include "floe/geometry/geometries/circle.hpp"
 #include "floe/geometry/geometries/multi_circle.hpp"
+
+#include "floe/collision/matlab/optim_interface.hpp"
 
 namespace floe { namespace collision { namespace matlab
 {
@@ -42,18 +43,19 @@ namespace floe { namespace collision { namespace matlab
 template <
     typename TFloe
 >
-class OptimizedFloe
+class OptimizedFloe : public OptimInterface<TFloe>
 {
 
 public:
     // Type traits
-    typedef TFloe                               floe_type;
-    typedef typename floe_type::frame_type      frame_type;
-    typedef typename floe_type::point_type      point_type;
-    typedef floe::geometry::Circle<point_type>  circle_type;
-    typedef floe::geometry::MultiCircle<circle_type> multi_circle_type;
-    typedef std::vector<std::size_t>            local_points_type;
-    typedef typename floe_type::value_type      value_type;
+    using floe_type = TFloe;
+    using optim_interface_type = OptimInterface<TFloe>;
+    using frame_type = typename floe_type::frame_type;
+    using point_type = typename optim_interface_type::point_type;
+    using circle_type = typename optim_interface_type::circle_type;
+    using multi_circle_type = typename optim_interface_type::multi_circle_type;
+    using local_points_type = typename optim_interface_type::local_points_type;
+    using value_type = typename optim_interface_type::value_type;
 
     /*! Constructor
      *
@@ -88,8 +90,10 @@ public:
     inline local_points_type const& local_points()  const   { return m_local_points; }
     inline local_points_type &      local_points()          { return m_local_points; }
 
-    value_type          cdist;        //!< Collision distance
-    value_type          tau;          //!< Distance between surrounding disk and the floe border.
+    value_type const&         cdist() const { return m_cdist; }
+    value_type const&         tau() const { return m_tau; }
+    value_type          m_cdist;        //!< Collision distance
+    value_type          m_tau;          //!< Distance between surrounding disk and the floe border.
 
 private:
     floe_type const&    m_floe; //!< Floe
@@ -150,7 +154,7 @@ OptimizedFloe<TFloe>::init()
     using namespace floe::geometry;
 
     // Collision distance
-    cdist = std::sqrt(m_floe.area()) / 100;
+    m_cdist = std::sqrt(m_floe.area()) / 100;
 
     // Get boundary
     const auto boundary = exterior_ring(m_floe.geometry());
@@ -175,7 +179,7 @@ OptimizedFloe<TFloe>::init()
 
         if ( points.size() >= n_pts_disk )
         {
-            m_local_disks.push_back( return_buffer<circle_type>(circle_envelope<circle_type>(points), cdist) );
+            m_local_disks.push_back( return_buffer<circle_type>(circle_envelope<circle_type>(points), m_cdist) );
             m_local_points.push_back( cnt );
             points.resize(0);
             points.push_back(*it);
@@ -185,7 +189,7 @@ OptimizedFloe<TFloe>::init()
     // Last local disk
     if ( points.size() > 1 )
     {
-        m_local_disks.push_back( return_buffer<circle_type>(circle_envelope<circle_type>(points), cdist) );
+        m_local_disks.push_back( return_buffer<circle_type>(circle_envelope<circle_type>(points), m_cdist) );
         m_local_points.push_back( cnt );
     }
 
@@ -197,9 +201,9 @@ OptimizedFloe<TFloe>::init()
         //points.push_back( disk.center );
         max_radius = std::max( max_radius, disk.radius );
     }
-    tau = max_radius + max_radius/5; // ??? (see create_disk.m, l.16)
-    //m_global_disk = return_buffer<circle_type>( circle_envelope<circle_type>(points), tau );
-    m_global_disk = return_buffer<circle_type>( circle_envelope<circle_type>(boundary), tau );
+    m_tau = max_radius + max_radius/5; // ??? (see create_disk.m, l.16)
+    //m_global_disk = return_buffer<circle_type>( circle_envelope<circle_type>(points), m_tau );
+    m_global_disk = return_buffer<circle_type>( circle_envelope<circle_type>(boundary), m_tau );
 }
 
 //! Update optimization datas.

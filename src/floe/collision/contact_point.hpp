@@ -76,7 +76,7 @@ struct ContactPoint
     operator frame_type() const { return frame; }
 
     //! Calculate the relative speed of the two floes relatively to the contact frame
-    typename floe::geometry::coordinate_type<point_type>::type
+    /*typename floe::geometry::coordinate_type<point_type>::type
     relative_speed() const
     {
         using namespace floe::geometry;
@@ -97,7 +97,37 @@ struct ContactPoint
         return 
               ( get<0>(speed2) - get<0>(speed1) ) * get<0>(frame.v())
             + ( get<1>(speed2) - get<1>(speed1) ) * get<1>(frame.v());
+    }*/
+
+    typename floe::geometry::coordinate_type<point_type>::type
+    relative_speed() const
+    {
+        using namespace floe::geometry;
+
+        const auto state1 = floe1->state();
+        const auto state2 = floe2->state();
+
+        const point_type speed1 = state1.speed - r1() * state1.rot;
+        const point_type speed2 = state2.speed - r2() * state2.rot;
+
+        return dot_product(speed2 - speed1, frame.v());
     }
+
+    virtual point_type r1() const { 
+        return frame.center() - floe1->state().pos;
+    }
+
+    virtual point_type r2() const { 
+        return frame.center() - floe2->state().pos;
+    }
+
+    // point_type R1() const { 
+    //     return frame.center() - floe1->frame().center();
+    // }
+
+    // point_type R2() const { 
+    //     return frame.center() - floe2->frame().center();
+    // }
 
 
     //! Return true if the contact is active (relative speed of the two contact points is negative)

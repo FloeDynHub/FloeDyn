@@ -1,5 +1,5 @@
 #include <iostream>
-#include "../tests/floe/config.hpp"
+#include "../tests/floe/config_periodic.hpp"
 
 
 int main( int argc, char* argv[] )
@@ -18,6 +18,7 @@ int main( int argc, char* argv[] )
 
     problem_type P;
     P.load_matlab_config(mat_file_name);
+    P.auto_topology();
 
     P.solve(atoi(argv[2]), atof(argv[4]));
 

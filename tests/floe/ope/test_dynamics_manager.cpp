@@ -30,7 +30,7 @@ TEST_CASE( "Test Dynamics Manager", "[ope]" ) {
 
     auto t_start = chrono::high_resolution_clock::now();
     std::clock_t start = std::clock();
-    for (int i = 0; i < 10; i++){
+    for (int i = 0; i < 1000; i++){
         M.move_floes(F, 0.5);
     }
     // double duration = ( std::clock() - start ) / (double) CLOCKS_PER_SEC;

@@ -41,13 +41,15 @@ public:
     using integration_strategy = floe::integration::RefGaussLegendre<value_type,2,2>;
     using external_forces_type = ExternalForces<TFloeGroup>;
 
+    DynamicsManager() = default;
+
     void move_floes(floe_group_type& floe_group, value_type delta_t);
 
-private:
+protected:
 
     external_forces_type m_external_forces;
 
-    void move_floe(floe_type& floe, value_type delta_t);
+    virtual void move_floe(floe_type& floe, value_type delta_t);
     void translate_floe(floe_type& floe, value_type delta_t);
     void rotate_floe(floe_type& floe, value_type delta_t);
 };
