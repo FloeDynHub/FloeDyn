@@ -13,7 +13,7 @@
 #include "floe/io/matlab/list_so_to_floes.hpp"
 #include "floe/io/matlab/list_so_import.hpp"
 #include "floe/io/matlab/list_so.hpp"
-#include "floe/io/hdf5_writer.hpp"
+#include "floe/io/hdf5_manager.hpp"
 
 #include "H5Cpp.h"
 #include <algorithm>
@@ -45,13 +45,15 @@ public:
         typename floe_type::floe_h_type
     >;
     using value_type = typename TFloe::value_type;
-    using out_manager_type = io::HDF5Writer<FloeGroup<TFloe>>;
+    using out_manager_type = io::HDF5Manager<FloeGroup<TFloe>>;
 
     //! Default constructor.
     // FloeGroup() : {}
 
 
     void load_matlab_config(std::string filename);
+
+    void recover_states_from_file(std::string filename, double t);
 
     void out_hdf5(value_type time);
 
@@ -105,6 +107,13 @@ template <
 >
 void FloeGroup<TFloe>::out_hdf5(value_type time) {
     m_out_manager.save_step(time, *this);
+};
+
+template <
+    typename TFloe
+>
+void FloeGroup<TFloe>::recover_states_from_file(std::string filename, double t) {
+    m_out_manager.recover_states(filename, t, *this);
 };
 
 

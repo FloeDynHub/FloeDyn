@@ -66,11 +66,18 @@ public:
         m_floe_group.load_matlab_config(filename);
     }
 
+    void recover_states_from_file(std::string filename, double t){
+        m_floe_group.recover_states_from_file(filename, t);
+    }
+
     //! Solver
-    inline void solve(double end_time, double out_step = 0){ // TODO change double
+    void solve(double end_time, double out_step = 0){ // TODO change double
         create_optim_vars();
         while (m_domain.time() < end_time)
+        {
             step_solve(out_step);
+            if (QUIT) break; // exit normally after SIGINT
+        }
         std::cout << " NB STEPS : " << m_step_nb << std::endl;
     }
 
@@ -119,9 +126,6 @@ protected:
         std::cout << " Time : " << m_domain.time() << std::endl;
         std::cout << " Kinetic energy : " << m_floe_group.kinetic_energy() << std::endl;
         std::cout << "----" << std::endl;
-
-        // if (out_step && m_step_nb % out_step == 0)
-        //     m_floe_group.out_hdf5(m_domain.time());
 
         if (out_step && m_domain.time() - m_domain.last_out() >= out_step)
         {

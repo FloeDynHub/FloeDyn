@@ -1,11 +1,11 @@
 /*!
- * \file variable/hdf5_writer.hpp
- * \brief HDF5 writer for output
+ * \file variable/hdf5_manager.hpp
+ * \brief HDF5 manager for io
  * \author Quentin Jouet
  */
 
-#ifndef FLOE_IO_HDF5_WRITER_HPP
-#define FLOE_IO_HDF5_WRITER_HPP
+#ifndef FLOE_IO_HDF5_MANAGER_HPP
+#define FLOE_IO_HDF5_MANAGER_HPP
 
 #include <iostream>
 #include <vector>
@@ -21,9 +21,9 @@ using namespace H5;
 namespace floe { namespace io
 {
 
-/*! HDF5Writer
+/*! HDF5Manager
  *
- * Handles floe states, shapes and time output
+ * Handles floe outlines, floe states and time output
  *
  */
 
@@ -31,7 +31,7 @@ namespace floe { namespace io
 template <
     typename TFloeGroup
 >
-class HDF5Writer
+class HDF5Manager
 {
 
 public:
@@ -41,13 +41,13 @@ public:
     using value_type = typename TFloeGroup::value_type;
 
     //! Default constructor.
-    HDF5Writer() : m_out_file{nullptr}, m_step_count{0}, m_chunk_step_count{0}, m_flush_max_step{100}
+    HDF5Manager() : m_out_file{nullptr}, m_step_count{0}, m_chunk_step_count{0}, m_flush_max_step{100}
     {
         m_data_chunk_time.reserve(m_flush_max_step);
     }
 
     //! Destructor
-    ~HDF5Writer()
+    ~HDF5Manager()
     {
         if (m_chunk_step_count != 0)
             write_chunk();
@@ -59,6 +59,8 @@ public:
 
     void write_chunk();
 
+    void recover_states(H5std_string filename, value_type time, floe_group_type& floe_group);
+
 private:
 
     H5File* m_out_file;
@@ -66,9 +68,11 @@ private:
     hsize_t m_chunk_step_count;
     const hsize_t m_flush_max_step;
     vector<vector<vector<vector<value_type>>>> m_data_chunk_boundaries;
+    vector<vector<vector<value_type>>> m_data_chunk_frames;
     vector<value_type> m_data_chunk_time;
 
     void write_boundaries();
+    void write_frames();
     void write_time();
 
 };
@@ -77,27 +81,53 @@ private:
 template <
     typename TFloe
 >
-void HDF5Writer<TFloe>::save_step(value_type time, const floe_group_type& floe_group)
+void HDF5Manager<TFloe>::save_step(value_type time, const floe_group_type& floe_group)
 {
+    auto const& floe_list = floe_group.get_floes();
+
     if (m_data_chunk_boundaries.size() == 0)
     {   
-        m_data_chunk_boundaries.resize(floe_group.get_floes().size());
+        m_data_chunk_boundaries.resize(floe_list.size());
         for (std::size_t i = 0; i != m_data_chunk_boundaries.size(); ++i)
         {
             m_data_chunk_boundaries[i].reserve(m_flush_max_step);
         }
     }
 
+    if (m_data_chunk_frames.size() == 0)
+    {   
+        m_data_chunk_frames.reserve(m_flush_max_step);
+        for (std::size_t i = 0; i != m_data_chunk_frames.size(); ++i)
+        {
+            m_data_chunk_frames[i].reserve(floe_list.size());
+        }
+    }
+
+    // save boundaries
     std::size_t floe_id = 0;
-    for (auto const& floe : floe_group.get_floes())
+    for (auto const& floe : floe_list)
     {
         vector<vector<value_type>> floe_step_data;
         for (auto const& pt : floe.geometry().outer())
             floe_step_data.push_back({pt.x, pt.y});
         m_data_chunk_boundaries[floe_id].push_back(floe_step_data);
         floe_id++;
-    }  
-    
+    }
+
+    // save frames
+    vector<vector<value_type>> frames_step_data(floe_list.size());
+    floe_id = 0;
+    for(auto const& floe : floe_list)
+    {
+        frames_step_data[floe_id] = {
+            floe.state().pos.x, floe.state().pos.y, floe.state().theta,
+            floe.state().speed.x, floe.state().speed.y, floe.state().rot
+        };
+        floe_id++;
+    }
+    m_data_chunk_frames.push_back(frames_step_data);
+
+    // save time
     m_data_chunk_time[m_chunk_step_count] = time;
 
     m_step_count++;
@@ -112,7 +142,7 @@ void HDF5Writer<TFloe>::save_step(value_type time, const floe_group_type& floe_g
 
 
 template <typename TFloe>
-void HDF5Writer<TFloe>::write_chunk() {
+void HDF5Manager<TFloe>::write_chunk() {
     try
     {   
         /*
@@ -132,6 +162,7 @@ void HDF5Writer<TFloe>::write_chunk() {
         }
 
         write_boundaries();
+        write_frames();
         write_time();
 
     }  // end of try block
@@ -161,16 +192,16 @@ void HDF5Writer<TFloe>::write_chunk() {
 template <
     typename TFloe
 >
-void HDF5Writer<TFloe>::write_boundaries() {
+void HDF5Manager<TFloe>::write_boundaries() {
     
     H5File& file( *m_out_file );
     const int   SPACE_DIM = 2;
 
     Group floe_state_group;
     try {
-        floe_state_group = file.openGroup("states");
+        floe_state_group = file.openGroup("floe_outlines");
     } catch (H5::Exception& e) {
-        floe_state_group = file.createGroup(H5std_string{"states"});
+        floe_state_group = file.createGroup(H5std_string{"floe_outlines"});
     }
     
     for (int i = 0; i!= m_data_chunk_boundaries.size(); ++i)
@@ -225,11 +256,63 @@ void HDF5Writer<TFloe>::write_boundaries() {
 
 };
 
+template <
+    typename TFloe
+>
+void HDF5Manager<TFloe>::write_frames() {
+    
+    H5File& file( *m_out_file );
+    const int   RANK = 3;
+
+    /* saving time */
+    DataSet frames_dataset;
+    hsize_t nb_floes = m_data_chunk_frames[0].size();
+    hsize_t     dims[RANK] = {m_step_count - m_chunk_step_count, nb_floes, 6};
+    hsize_t     chunk_dims[RANK] = {m_chunk_step_count, dims[1], dims[2]};
+    try {
+        frames_dataset = file.openDataSet("floe_states");
+    } catch (H5::Exception& e) {
+        FloatType datatype( PredType::NATIVE_DOUBLE );
+        datatype.setOrder( H5T_ORDER_LE );
+        hsize_t maxdims[RANK] = {H5S_UNLIMITED, dims[1], dims[2]}; 
+        DataSpace dataspace( RANK, dims, maxdims );
+        // Modify dataset creation property to enable chunking
+        DSetCreatPropList prop;
+        prop.setChunk(RANK, chunk_dims);
+
+        frames_dataset = file.createDataSet(H5std_string{"floe_states"}, datatype, dataspace, prop);
+    }
+    // Extend the dataset.
+    dims[0] += chunk_dims[0];
+    frames_dataset.extend(dims); 
+
+    DataSpace filespace = frames_dataset.getSpace();
+    hsize_t offset[RANK] = {m_step_count - m_chunk_step_count, 0, 0};
+    filespace.selectHyperslab(H5S_SELECT_SET, chunk_dims, offset);
+    // Define memory space.
+    DataSpace memspace{RANK, chunk_dims, NULL};
+    value_type data[chunk_dims[0]][chunk_dims[1]][chunk_dims[2]];
+    for (std::size_t j = 0; j != chunk_dims[0]; ++j)
+    {
+        for (std::size_t k = 0; k != chunk_dims[1]; ++k)
+        {
+            for (std::size_t l = 0; l!=6; ++l)
+                data[j][k][l] = m_data_chunk_frames[j][k][l];
+        }
+    }
+    // Write data to the extended portion of the dataset.
+    frames_dataset.write(data, PredType::NATIVE_DOUBLE, memspace, filespace);
+
+    // clearing buffer
+    m_data_chunk_frames.clear();
+
+};
+
 
 template <
     typename TFloe
 >
-void HDF5Writer<TFloe>::write_time() {
+void HDF5Manager<TFloe>::write_time() {
     
     H5File& file( *m_out_file );
 
@@ -271,10 +354,99 @@ void HDF5Writer<TFloe>::write_time() {
 };
 
 
+template <
+    typename TFloe
+>
+void HDF5Manager<TFloe>::recover_states(H5std_string filename, value_type time, floe_group_type& floe_group) {
+    
+    /*
+     * Open the specified file and the specified dataset in the file.
+     */
+    H5File file( filename, H5F_ACC_RDONLY );
+
+    DataSet time_dataset = file.openDataSet( "time" );
+    /*
+    * Get dataspace of the dataset.
+    */
+    DataSpace time_dataspace = time_dataset.getSpace();
+    /*
+    * Get the dimension size of each dimension in the dataspace and
+    * display them.
+    */
+    hsize_t dims_out[1];
+    time_dataspace.getSimpleExtentDims( dims_out, NULL);
+    value_type data_time[dims_out[0]];
+    for (int j = 0; j!= dims_out[0]; ++j)
+        data_time[j] = 0;
+     /*
+    * Define the memory dataspace.
+    */
+    DataSpace time_memspace( 1, dims_out );
+    /*
+    * Read data from the file
+    */
+    time_dataset.read( data_time, PredType::NATIVE_DOUBLE, time_memspace, time_dataspace );
+
+    hsize_t i = 0;
+    while (data_time[i] < time && i < dims_out[0])
+        ++i;
+    --i;
+
+
+    {
+    DataSet dataset = file.openDataSet( "floe_states" );
+    /*
+    * Get dataspace of the dataset.
+    */
+    DataSpace dataspace = dataset.getSpace();
+    /*
+    * Get the number of dimensions in the dataspace.
+    */
+    int rank = dataspace.getSimpleExtentNdims();
+    /*
+    * Get the dimension size of each dimension in the dataspace and
+    * display them.
+    */
+    hsize_t dims_out[3];
+    dataspace.getSimpleExtentDims( dims_out, NULL);
+    /*
+    * Define hyperslab in the dataset; implicitly giving strike and
+    * block NULL.
+    */
+    hsize_t      offset[3] = {i, 0, 0};  // hyperslab offset in the file
+    hsize_t      count[3] = {1, dims_out[1], dims_out[2]};    // size of the hyperslab in the file
+    dataspace.selectHyperslab( H5S_SELECT_SET, count, offset );
+    /*
+    * Define the memory dataspace.
+    */
+    hsize_t     dimsm[2] {dims_out[1], dims_out[2]};              /* memory space dimensions */
+    DataSpace memspace( 2, dimsm );
+    /*
+    * Read data from hyperslab in the file into the hyperslab in
+    * memory and display the data.
+    */
+    value_type data_out[dims_out[1]][dims_out[2]];
+    dataset.read( data_out, PredType::NATIVE_DOUBLE, memspace, dataspace );
+
+    std::size_t floe_id = 0;
+    for (auto& floe : floe_group.get_floes())
+    {
+        floe.set_state({
+            {data_out[floe_id][0], data_out[floe_id][1]}, data_out[floe_id][2],
+            {data_out[floe_id][3], data_out[floe_id][4]}, data_out[floe_id][5]
+        });
+        floe_id++;
+    }
+
+    }
+
+};
+
+
 // template <
 //     typename TFloe
 // >
-// void HDF5Writer<TFloe>::write_shapes() {
+// void HDF5Manager<TFloe>::write_shapes() {
     
 //     H5File& file( *m_out_file );
 
@@ -321,4 +493,4 @@ void HDF5Writer<TFloe>::write_time() {
 }} // namespace floe::io
 
 
-#endif // FLOE_IO_HDF5_WRITER_HPP
+#endif // FLOE_IO_HDF5_MANAGER_HPP

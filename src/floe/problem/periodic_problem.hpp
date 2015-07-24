@@ -73,7 +73,7 @@ auto_topology()
 {
     value_type min_x, min_y, max_x, max_y;
     min_x = min_y = std::numeric_limits<value_type>::max();
-    max_x = max_y = std::numeric_limits<value_type>::min();
+    max_x = max_y = - std::numeric_limits<value_type>::max();
 
     for (auto const& floe : base_class::m_floe_group.get_floes())  
         for (auto const& pt : floe.geometry().outer())

@@ -13,7 +13,7 @@ writer = Writer(fps=30, metadata=dict(artist='Me'), bitrate=3600)
 
 
 def init(data, ax):
-    for s in data.get("states").values():
+    for s in data.get("floe_outlines").values():
         polygon = Polygon(s[0], True, color="white")
         ax.add_patch(polygon)
     return ax
@@ -21,7 +21,7 @@ def init(data, ax):
 
 def update(num, data, ax):
     i=0
-    for s in data.get("states").values():
+    for s in data.get("floe_outlines").values():
         polygon = Polygon(s[num], True, color="white")
         ax.patches[i].set_xy(polygon.get_xy())
         i+=1

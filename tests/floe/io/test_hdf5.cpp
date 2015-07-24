@@ -24,8 +24,10 @@ TEST_CASE( "Test hdf5 output", "[io]" )
     // std::string mat_file_name = "tests/floe/io/matlab/config_q2_str.mat";
     F.load_matlab_config(mat_file_name);
 
-    for (int i=0; i < 100; ++i)
-        F.out_hdf5(i);
+    F.recover_states_from_file("out/out.h5", 5.23);
+
+    // for (int i=0; i < 100; ++i)
+    //     F.out_hdf5(i);
 }
 
 

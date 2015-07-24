@@ -1,4 +1,5 @@
 #include <iostream>
+#include "../tests/floe/interrupt.hpp"
 #include "../tests/floe/config_periodic.hpp"
 
 
@@ -12,13 +13,25 @@ int main( int argc, char* argv[] )
         return 1;
     }
 
+    // Handling interruption signal
+    struct sigaction sa;
+    memset( &sa, 0, sizeof(sa) );
+    sa.sa_handler = interruption::got_signal;
+    sigfillset(&sa.sa_mask);
+    sigaction(SIGINT,&sa,NULL);
+
+
     DT_DEFAULT = atof(argv[3]);
 
     std::string mat_file_name = argv[1];
 
     problem_type P;
     P.load_matlab_config(mat_file_name);
-    P.auto_topology();
+    P.auto_topology(); 
+
+    if (argc == 6)
+        P.recover_states_from_file("out/out.h5", atof(argv[5]));
+    
 
     P.solve(atoi(argv[2]), atof(argv[4]));
 
