@@ -142,8 +142,7 @@ TimeScaleManager<TDomain, TDetector>::delta_t_secu(
     const value_type& dc1 = optim1.cdist(), dc2 = optim2.cdist();
     value_type lambda = std::min(dc1, dc2) / 20;
 
-    value_type d;
-    if (dist_opt != 0) { d = dist_opt; } else { d = dist_secu; }
+    value_type d = std::max(dist_opt, dist_secu);
     lambda = std::min(lambda, d / 20); // TODO éclaircir avec Mathias (lambda > d dans certains cas)
 
     // if I == 0  le pas de temps est calcule dans gestion_temps_fast.m

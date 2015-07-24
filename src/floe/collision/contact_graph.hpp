@@ -21,6 +21,7 @@
 #include <boost/graph/copy.hpp>
 
 #include "floe/collision/contact_point.hpp"
+#include "floe/collision/floe_contact.hpp"
 
 #include <iostream> // DEBUG
 
@@ -45,7 +46,7 @@ using ContactGraph = adjacency_list<
     vecS, // Vertex List
     undirectedS, // (un)Directed
     typename TContactPoint::floe_type const*, // Vertex Property
-    std::vector<TContactPoint> // Edge Property
+    FloeContact<TContactPoint> // Edge Property
 >;
 
 /*! Return a filtered graph without obstacles

@@ -57,11 +57,10 @@ public:
             m_ghost_floes.push_back(ghost_floe_type{ *floe_ptr, translation, floe_id});
             m_ghost_optims.push_back(ghost_optim_type{ *optim_ptr, translation });
         }
-
     }
 
-    virtual floe_interface_type const& get_floe(std::size_t n, bool original = false) const;
-    virtual optim_interface_type const& get_optim(std::size_t n, bool original = false) const;
+    virtual floe_interface_type const& get_floe(std::size_t n) const;
+    virtual optim_interface_type const& get_optim(std::size_t n) const;
 
     inline void set_topology(topology_type const& t) { m_topology = &t; }
 
@@ -78,9 +77,7 @@ private:
     inline virtual void set_indic(std::size_t n1, std::size_t n2, std::size_t val) {
         (n2 >= base_class::m_floes.size()) ? base_class::m_indic(n1, n2) = val : base_class::m_indic(n1, n2) = base_class::m_indic(n2, n1) = val;
     }
-    inline virtual void set_dist_opt(std::size_t n1, std::size_t n2, value_type val) {
-        (n2 >= base_class::m_floes.size()) ?  base_class::m_dist_opt(n1, n2) = val : base_class::m_dist_opt(n1, n2) = base_class::m_dist_opt(n2, n1) = val;
-    }
+    inline virtual void set_dist_opt(std::size_t n1, std::size_t n2, value_type val);
     virtual contact_type create_contact(std::size_t n1, std::size_t n2, point_type point1, point_type point2) const;
     virtual std::size_t real_floe_id(std::size_t n) const {
         std::size_t N { base_class::m_floes.size() };
@@ -123,18 +120,13 @@ template <
     typename TContact
 >
 typename PeriodicMatlabDetector<TFloe, TSpaceTopology, TGhostFloe, TContact>::floe_interface_type const&
-PeriodicMatlabDetector<TFloe, TSpaceTopology, TGhostFloe, TContact>::get_floe(std::size_t n, bool original) const
+PeriodicMatlabDetector<TFloe, TSpaceTopology, TGhostFloe, TContact>::get_floe(std::size_t n) const
 {
-    if (n < base_class::m_floes.size())
+    const std::size_t N { base_class::m_floes.size() };
+    if (n < N)
         return *(base_class::m_floes[n]);
     else
-    {
-        std::size_t N { base_class::m_floes.size() };
-        if (!original)
-            return m_ghost_floes[n - N];
-        else
-            return *(base_class::m_floes[m_ghost_floes[n - N].m_original_id]);
-    }
+        return m_ghost_floes[n - N];
 }
 
 
@@ -145,17 +137,33 @@ template <
     typename TContact
 >
 typename PeriodicMatlabDetector<TFloe, TSpaceTopology, TGhostFloe, TContact>::optim_interface_type const&
-PeriodicMatlabDetector<TFloe, TSpaceTopology, TGhostFloe, TContact>::get_optim(std::size_t n, bool original) const
+PeriodicMatlabDetector<TFloe, TSpaceTopology, TGhostFloe, TContact>::get_optim(std::size_t n) const
 {
-    if (n < base_class::m_optims.size())
+    const std::size_t N { base_class::m_floes.size() };
+    if (n < N)
         return *(base_class::m_optims[n]);
     else
-    {
-        std::size_t N { base_class::m_floes.size() };
-        if (!original)
-            return m_ghost_optims[n - N];
-        else
-            return *(base_class::m_optims[m_ghost_optims[n - N].m_original_id]);
+        return m_ghost_optims[n - N];
+}
+
+
+template <
+    typename TFloe,
+    typename TSpaceTopology,
+    typename TGhostFloe,
+    typename TContact
+>
+void
+PeriodicMatlabDetector<TFloe, TSpaceTopology, TGhostFloe, TContact>::set_dist_opt(
+    std::size_t n1, std::size_t n2, value_type val)
+{
+    const std::size_t N { base_class::m_floes.size() };
+    if (n2 >= N){
+        base_class::m_dist_opt(n1, n2) = val;
+    } else if (n1 >= N) {
+        base_class::m_dist_opt(n2, n1) = val;
+    } else {
+        base_class::m_dist_opt(n1, n2) = base_class::m_dist_opt(n2, n1) = val;
     }
 }
 
@@ -170,7 +178,7 @@ typename PeriodicMatlabDetector<TFloe, TSpaceTopology, TGhostFloe, TContact>::co
 PeriodicMatlabDetector<TFloe, TSpaceTopology, TGhostFloe, TContact>::create_contact(
     std::size_t n1, std::size_t n2, point_type point1, point_type point2) const
 {
-    std::size_t N { base_class::m_floes.size() };
+    const std::size_t N { base_class::m_floes.size() };
     if (n2 >= N){
         return {base_class::m_floes[n1], &m_ghost_floes[n2 - N], point1, point2 };
     } else if (n1 >= N) {

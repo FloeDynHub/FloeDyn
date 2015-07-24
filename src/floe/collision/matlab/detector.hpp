@@ -66,7 +66,7 @@ public:
     using multi_circle_type = typename optim_type::multi_circle_type;
     using contact_type = TContact;
     using contact_graph_type = ContactGraph<contact_type>;
-    using contact_list_type = typename contact_graph_type::edge_property_type;
+    using contact_list_type = typename contact_graph_type::edge_property_type::base_class;
 
     // typedef ublas::symmetric_matrix<value_type, ublas::lower> dist_matrix_type; // Type of distance matrix
     // typedef ublas::symmetric_matrix<std::size_t, ublas::lower> indic_matrix_type; // Type of indicator matrix
@@ -120,8 +120,11 @@ public:
     // End Accessors for time_scale_manager
 
     //! Container accessors
-    inline virtual floe_interface_type const& get_floe(std::size_t n, bool original = false) const { return *(m_floes[n]); }
-    inline virtual optim_interface_type const& get_optim(std::size_t n, bool original = false) const { return *(m_optims[n]); }
+    inline virtual floe_interface_type const& get_floe(std::size_t n) const { return *(m_floes[n]); }
+    inline virtual optim_interface_type const& get_optim(std::size_t n) const { return *(m_optims[n]); }
+
+    //! if contact has not been solved, annul dist_opt
+    void clean_dist_opt();
 
 protected:
     std::vector<floe_type const*>     m_floes; //!< Floes list.
@@ -158,6 +161,7 @@ protected:
     inline virtual contact_type create_contact(std::size_t n1, std::size_t n2, point_type point1, point_type point2) const {
         return { m_floes[n1], m_floes[n2], point1, point2 }; }
     inline virtual std::size_t real_floe_id(std::size_t n) const { return n; }
+
 };
 
 //! Some utilities (workaround for distance to circle)
@@ -195,7 +199,7 @@ MatlabDetector<TFloe, TContact>::update()
 }
 
 
-//! Update detector
+//! preparing members for new detection
 template <
     typename TFloe,
     typename TContact
@@ -215,7 +219,7 @@ MatlabDetector<TFloe, TContact>::prepare_detection()
 }
 
 
-//! Update detector
+//! Starting detection
 template <
     typename TFloe,
     typename TContact
@@ -390,7 +394,7 @@ MatlabDetector<TFloe, TContact>::detect_step3(
     else 
     {
         set_dist_secu(n1, n2,  std::min(
-            (n2 > m_floes.size()) ? std::numeric_limits<value_type>::max() : detect_step4( n2, n1, ldisks2, ldisks1, ublas::trans(adjacency) ), // Detects contacts obj2 -> obj1
+            detect_step4( n2, n1, ldisks2, ldisks1, ublas::trans(adjacency) ), // Detects contacts obj2 -> obj1
             detect_step4( n1, n2, ldisks1, ldisks2, adjacency ) // Detects contacts obj1 -> obj2
         ));
     }
@@ -564,10 +568,29 @@ detect_step4(
 
     // Add edge in graph if there is any contact
     if (contact_list.size() != 0)
-        add_edge(vertex(real_floe_id(n1), m_contacts), vertex(real_floe_id(n2), m_contacts), contact_list, m_contacts);
+    {
+        add_edge(vertex(real_floe_id(n1), m_contacts), vertex(real_floe_id(n2), m_contacts), {contact_list, n1, n2}, m_contacts);
+        set_dist_opt(n1, n2, std::min(opt1.cdist(), opt2.cdist()));
+    }
 
     // Return minimal distance between the 2 floes
     return global_min_dist;
+}
+
+
+template <
+    typename TFloe,
+    typename TContact
+>
+void
+MatlabDetector<TFloe, TContact>::clean_dist_opt()
+{
+    for ( auto const& edge : make_iterator_range( edges( m_contacts ) ) )
+    {
+        auto const& contact = m_contacts[edge];
+        if (!contact.is_solved())
+            set_dist_opt(contact.n1(), contact.n2(), 0);
+    }
 }
 
 

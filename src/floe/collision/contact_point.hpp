@@ -107,8 +107,8 @@ struct ContactPoint
         const auto state1 = floe1->state();
         const auto state2 = floe2->state();
 
-        const point_type speed1 = state1.speed - r1() * state1.rot;
-        const point_type speed2 = state2.speed - r2() * state2.rot;
+        const point_type speed1 = state1.speed + direct_orthogonal( r1() ) * state1.rot;
+        const point_type speed2 = state2.speed + direct_orthogonal( r2() ) * state2.rot;
 
         return dot_product(speed2 - speed1, frame.v());
     }
@@ -120,14 +120,6 @@ struct ContactPoint
     virtual point_type r2() const { 
         return frame.center() - floe2->state().pos;
     }
-
-    // point_type R1() const { 
-    //     return frame.center() - floe1->frame().center();
-    // }
-
-    // point_type R2() const { 
-    //     return frame.center() - floe2->frame().center();
-    // }
 
 
     //! Return true if the contact is active (relative speed of the two contact points is negative)
