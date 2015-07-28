@@ -11,7 +11,7 @@
 #include "floe/geometry/geometries/multi_point.hpp"
 #include "floe/geometry/frame/frame_transformers.hpp"
 
-#include <math.h>
+#include <cmath>
 
 #include <iostream> // DEBUG
 
@@ -55,7 +55,6 @@ private:
 
     //! Corresponds to gestion_temps() in Matlab code
     value_type delta_t_secu(
-        std::size_t I,
         value_type dist_secu,
         value_type dist_opt,
         const floe_type& floe1,
@@ -107,7 +106,7 @@ TimeScaleManager<TDomain, TDetector>::delta_t_secu(TDomain* domain, TDetector* m
             {
                 global_min_dt = std::min(
                     global_min_dt,
-                    delta_t_secu(indics(i,j), dist_secu(i,j), dist_opt(i,j),
+                    delta_t_secu(dist_secu(i,j), dist_opt(i,j),
                          *floes[i], m_detector->get_floe(j), *optims[i], m_detector->get_optim(j))
                 ); //nb++;
             }
@@ -124,7 +123,6 @@ TimeScaleManager<TDomain, TDetector>::delta_t_secu(TDomain* domain, TDetector* m
 template <typename TDomain, typename TDetector>
 typename TimeScaleManager<TDomain, TDetector>::value_type
 TimeScaleManager<TDomain, TDetector>::delta_t_secu(
-    std::size_t I,
     value_type dist_secu,
     value_type dist_opt,
     const floe_type& floe1,
@@ -273,8 +271,8 @@ TimeScaleManager<TDomain, TDetector>::delta_t_secu_fast(
     if (VRel < 0)
     {
         // Collision possible
-        delta_t = - (( dist_secu - lambda ) / 2) / VRel;
-        // delta_t = - ( dist_secu - lambda ) / VRel; // too much ?
+        // delta_t = - (( dist_secu - lambda ) / 2) / VRel;
+        delta_t = - ( dist_secu - lambda ) / VRel; // too much ?
     } else
     {
         // Collision impossible

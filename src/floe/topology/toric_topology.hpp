@@ -21,7 +21,6 @@ namespace floe { namespace topology
 
 
 template<
-    typename T,
     typename TPoint
 >
 class ToricTopology
@@ -29,6 +28,7 @@ class ToricTopology
 public:
 
     using point_list = std::vector<TPoint>;
+    using T = decltype(TPoint::x);
 
     ToricTopology() : ToricTopology(-2, 4, -2, 4) {}
     ToricTopology(T min_x, T max_x, T min_y, T max_y) :

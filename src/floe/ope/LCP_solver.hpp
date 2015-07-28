@@ -38,7 +38,7 @@ public:
 
     LCPSolver() : epsilon{0.7} {} // should epsilon be runtime parameter ?
 
-    const bool solve( lcp_type& lcp );
+    bool solve( lcp_type& lcp );
     template<typename TContactGraph>
     vector<value_type> solve( TContactGraph& graph, bool& success  );
 
@@ -51,7 +51,7 @@ private:
     // TODO put elsewhere
     value_type random_real(value_type max);
 
-    const bool LCPtest(int compt, value_type EC, value_type born_EC, value_type Err, bool VRelNtest );
+    bool LCPtest(int compt, value_type EC, value_type born_EC, value_type Err, bool VRelNtest );
 
     template<typename Tmat, typename Tvect>
     value_type calcEc(const Tvect& S, const Tmat& M, const Tvect& w);
@@ -65,18 +65,18 @@ private:
     calcSold(TGraphLCP& graph_lcp, lcp_type& lcp_c, lcp_type& lcp_d, vector<value_type> Solc);
 
     template<typename TContactGraph>
-    const bool VRelNtest(const vector<value_type>& V, const TContactGraph& graph);
+    bool VRelNtest(const vector<value_type>& V, const TContactGraph& graph);
 
 };
 
 
 template<typename T>
-inline const bool is_nan(const T t){
+inline bool is_nan(const T t){
     return (t != t);
 }
 
 
-const bool LCPSolver::solve( lcp_type& lcp ) {
+bool LCPSolver::solve( lcp_type& lcp ) {
         using namespace floe::lcp::solver;
         return (lemke(lcp) || lexicolemke(lcp));
     }
@@ -104,7 +104,7 @@ LCPSolver::solve( TContactGraph& graph, bool& success ) {
     // % phase de compression %
     // %%%%%%%%%%%%%%%%%%%%%%%%
 
-    int comptchgt{0};
+    uint comptchgt{0};
     bool solved{0};
     vector<value_type> Solc(graph_lcp.J.size1());
 
@@ -116,7 +116,7 @@ LCPSolver::solve( TContactGraph& graph, bool& success ) {
         if (comptchgt >= MatLCP.size()) // passer le contact
         {
             success = 0;
-            return graph_lcp.W; // TODO be sure this is the correct return
+            return graph_lcp.W;
         }
 
         bool success{0};
@@ -166,7 +166,7 @@ LCPSolver::solve( TContactGraph& graph, bool& success ) {
             continue; // std::cout << "******NAN******";
 
          // Energie cinetique, Erreur LCP & Vit rel Normale :
-        auto ECc = calcEc(Solc, graph_lcp.M, graph_lcp.W); // TODO be sure this is the correct 3rd arg
+        auto ECc = calcEc(Solc, graph_lcp.M, graph_lcp.W);
         Err = LCP_error(lcp_orig);
         auto vitrelnormtest = VRelNtest(prod(trans(graph_lcp.J), Solc), graph);
         solved = LCPtest(MatLCP[comptchgt][1],ECc,1,Err,vitrelnormtest);
@@ -241,7 +241,7 @@ LCPSolver::solve( TContactGraph& graph, bool& success ) {
                 continue; // std::cout << "******NAN******";
 
              // Energie cinetique, Erreur LCP & Vit rel Normale :
-            auto ECc = calcEc(Sold, graph_lcp.M, graph_lcp.W); // TODO be sure this is the correct 3rd arg
+            auto ECc = calcEc(Sold, graph_lcp.M, graph_lcp.W);
             Err = LCP_error(lcp_d_orig);
             auto vitrelnormtest = VRelNtest(prod(trans(graph_lcp.J), Sold), graph);
             solved = LCPtest(MatLCP[comptchgt][1], ECc, 1 + born_sup, Err, vitrelnormtest);
@@ -256,16 +256,16 @@ LCPSolver::solve( TContactGraph& graph, bool& success ) {
 }
 
 
-const bool LCPSolver::LCPtest(int compt, value_type EC, value_type born_EC, value_type Err, bool VRelNtest ){
+bool LCPSolver::LCPtest(int compt, value_type EC, value_type born_EC, value_type Err, bool VRelNtest ){
     bool resp = 1;
         if (compt == 1)
         {
-            if (EC > born_EC*(1+1e-4) || abs(Err) > 1e-11 || VRelNtest == 0)
+            if (EC > born_EC*(1+1e-4) || std::abs(Err) > 1e-11 || VRelNtest == 0)
                 resp = 0;
         }
         else if (compt == 2)
         {
-            if (EC > born_EC * (1+1e-4) || abs(Err) > 1e-8 || VRelNtest == 0)
+            if (EC > born_EC * (1+1e-4) || std::abs(Err) > 1e-8 || VRelNtest == 0)
                 resp = 0;
         }
         else if (compt == 3)
@@ -320,7 +320,7 @@ LCPSolver::random_perturbation(lcp_type& lcp, value_type max){
 }
 
 template<typename TContactGraph>
-const bool LCPSolver::VRelNtest(const vector<value_type>& V, const TContactGraph& graph){
+bool LCPSolver::VRelNtest(const vector<value_type>& V, const TContactGraph& graph){
     size_t contact_id = 0;
     for ( auto const& edge : make_iterator_range( boost::edges( graph ) ) )
     {

@@ -32,7 +32,7 @@ def update(num, data, ax):
 def plot_floes(filename, make_video=False):
     if not filename:
         filename = "out"
-    hdf5_file_name = "out/%s.h5" % filename
+    hdf5_file_name = "io/%s.h5" % filename
     file    = h5py.File(hdf5_file_name, 'r')
     fig, ax = plt.subplots()
     groups = file.values()

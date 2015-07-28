@@ -2,7 +2,7 @@
 #define FLOE_GEOMETRY_ARITHMETIC_ARITHMETIC_HPP
 
 #include <boost/geometry/arithmetic/arithmetic.hpp>
-#include <math.h>  
+#include <cmath>  
 
 namespace floe { namespace geometry
 {

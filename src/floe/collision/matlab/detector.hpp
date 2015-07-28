@@ -26,6 +26,8 @@
 
 #include "floe/geometry/geometry.hpp"
 #include "floe/geometry/arithmetic/point_operators.hpp"
+#include <boost/geometry/algorithms/intersects.hpp>
+#include <algorithm>
 
 namespace floe { namespace collision { namespace matlab
 {
@@ -125,6 +127,9 @@ public:
 
     //! if contact has not been solved, annul dist_opt
     void clean_dist_opt();
+
+    //! is there any floe interpenetration ? returns true if not.
+    bool check_interpenetration();
 
 protected:
     std::vector<floe_type const*>     m_floes; //!< Floes list.
@@ -591,6 +596,22 @@ MatlabDetector<TFloe, TContact>::clean_dist_opt()
         if (!contact.is_solved())
             set_dist_opt(contact.n1(), contact.n2(), 0);
     }
+}
+
+
+template <
+    typename TFloe,
+    typename TContact
+>
+bool
+MatlabDetector<TFloe, TContact>::check_interpenetration()
+{
+    std::vector<bool> v;
+    for (std::size_t n1 = 0; n1 < m_indic.size1(); ++n1)
+        for (std::size_t n2 = n1 + 1; n2 < m_indic.size2(); ++n2)
+            if (m_indic(n1, n2) == 1)
+                v.push_back(boost::geometry::intersects(get_floe(n1).geometry(), get_floe(n2).geometry()));
+    return std::all_of(v.begin(), v.end(), [](bool const& B){ return !B; });
 }
 
 

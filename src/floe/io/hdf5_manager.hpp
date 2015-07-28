@@ -59,7 +59,7 @@ public:
 
     void write_chunk();
 
-    void recover_states(H5std_string filename, value_type time, floe_group_type& floe_group);
+    double recover_states(H5std_string filename, value_type time, floe_group_type& floe_group);
 
 private:
 
@@ -157,7 +157,7 @@ void HDF5Manager<TFloe>::write_chunk() {
          */
         if (m_out_file == nullptr)
         {
-            const H5std_string  FILE_NAME( "out/out.h5" );
+            const H5std_string  FILE_NAME( "io/out.h5" );
             m_out_file = new H5File( FILE_NAME, H5F_ACC_TRUNC );
         }
 
@@ -204,7 +204,7 @@ void HDF5Manager<TFloe>::write_boundaries() {
         floe_state_group = file.createGroup(H5std_string{"floe_outlines"});
     }
     
-    for (int i = 0; i!= m_data_chunk_boundaries.size(); ++i)
+    for (std::size_t i = 0; i!= m_data_chunk_boundaries.size(); ++i)
     {
         const int   RANK = 3;
         auto& floe_chunk = m_data_chunk_boundaries[i];
@@ -357,7 +357,7 @@ void HDF5Manager<TFloe>::write_time() {
 template <
     typename TFloe
 >
-void HDF5Manager<TFloe>::recover_states(H5std_string filename, value_type time, floe_group_type& floe_group) {
+double HDF5Manager<TFloe>::recover_states(H5std_string filename, value_type time, floe_group_type& floe_group) {
     
     /*
      * Open the specified file and the specified dataset in the file.
@@ -376,7 +376,7 @@ void HDF5Manager<TFloe>::recover_states(H5std_string filename, value_type time, 
     hsize_t dims_out[1];
     time_dataspace.getSimpleExtentDims( dims_out, NULL);
     value_type data_time[dims_out[0]];
-    for (int j = 0; j!= dims_out[0]; ++j)
+    for (std::size_t j = 0; j!= dims_out[0]; ++j)
         data_time[j] = 0;
      /*
     * Define the memory dataspace.
@@ -402,19 +402,19 @@ void HDF5Manager<TFloe>::recover_states(H5std_string filename, value_type time, 
     /*
     * Get the number of dimensions in the dataspace.
     */
-    int rank = dataspace.getSimpleExtentNdims();
+    const int rank = 3;
     /*
     * Get the dimension size of each dimension in the dataspace and
     * display them.
     */
-    hsize_t dims_out[3];
+    hsize_t dims_out[rank];
     dataspace.getSimpleExtentDims( dims_out, NULL);
     /*
     * Define hyperslab in the dataset; implicitly giving strike and
     * block NULL.
     */
-    hsize_t      offset[3] = {i, 0, 0};  // hyperslab offset in the file
-    hsize_t      count[3] = {1, dims_out[1], dims_out[2]};    // size of the hyperslab in the file
+    hsize_t      offset[rank] = {i, 0, 0};  // hyperslab offset in the file
+    hsize_t      count[rank] = {1, dims_out[1], dims_out[2]};    // size of the hyperslab in the file
     dataspace.selectHyperslab( H5S_SELECT_SET, count, offset );
     /*
     * Define the memory dataspace.
@@ -437,6 +437,8 @@ void HDF5Manager<TFloe>::recover_states(H5std_string filename, value_type time, 
         });
         floe_id++;
     }
+
+    return data_time[i];
 
     }
 

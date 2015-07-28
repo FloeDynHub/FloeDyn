@@ -30,7 +30,8 @@ public:
     using value_type = typename floe_type::value_type;
     using topology_type = TSpaceTopology;
 
-    PeriodicDynamicsManager() : base_class(), m_topology{nullptr} {}
+    PeriodicDynamicsManager(value_type const& time_ref) :
+        base_class(time_ref), m_topology{nullptr} {}
 
     inline void set_topology(topology_type const& t) { m_topology = &t; }
 

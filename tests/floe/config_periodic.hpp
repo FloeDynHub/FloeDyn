@@ -26,7 +26,7 @@ using namespace floe::problem;
 using real = VALUE_TYPE;
 using floe_type = ff::KinematicFloe<ff::StaticFloe<real>>;
 using floe_group_type = floe::variable::FloeGroup<floe_type>;
-using topology_type = floe::topology::ToricTopology<real, typename floe_type::point_type>;
+using topology_type = floe::topology::ToricTopology<typename floe_type::point_type>;
 
 using proximity_detector_type = floe::ope::ProximityDetector<
     floe::collision::matlab::PeriodicMatlabDetector<floe_type, topology_type>

@@ -71,6 +71,9 @@ public:
 
     //! Deleted default constructor
     OptimizedFloe() = delete;
+
+    //! Default destructor
+    virtual ~OptimizedFloe() = default;
     
     /*! Update optimizer
      *

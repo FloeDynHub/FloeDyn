@@ -41,9 +41,13 @@ public:
     using integration_strategy = floe::integration::RefGaussLegendre<value_type,2,2>;
     using external_forces_type = ExternalForces<TFloeGroup>;
 
-    DynamicsManager() = default;
+    DynamicsManager(value_type const& time_ref) : m_external_forces{time_ref} {}
 
     void move_floes(floe_group_type& floe_group, value_type delta_t);
+
+    inline void load_matlab_topaz_data(std::string const& filename) {
+        m_external_forces.load_matlab_topaz_data(filename);
+    }
 
 protected:
 

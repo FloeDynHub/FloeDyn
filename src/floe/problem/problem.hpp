@@ -57,17 +57,29 @@ public:
     >;
 
     //! Default constructor.
-    Problem() : m_step_nb{0}
+    Problem() :
+        m_problem_h{},
+        m_domain{},
+        m_proximity_detector{},
+        m_collision_manager{},
+        m_dynamics_manager{m_domain.time()},
+        m_floe_group{},
+        m_step_nb{0}
     {
         create_h();
     }
 
-    inline void load_matlab_config(std::string filename) {
+    inline void load_matlab_config(std::string const& filename) {
         m_floe_group.load_matlab_config(filename);
     }
 
-    void recover_states_from_file(std::string filename, double t){
-        m_floe_group.recover_states_from_file(filename, t);
+    inline void load_matlab_topaz_data(std::string const& filename) {
+        m_dynamics_manager.load_matlab_topaz_data(filename);
+    }
+
+    void recover_states_from_file(std::string const& filename, double t){
+        double saved_time = m_floe_group.recover_states_from_file(filename, t);
+        m_domain.set_time(saved_time);
     }
 
     //! Solver

@@ -53,7 +53,7 @@ public:
 
     void load_matlab_config(std::string filename);
 
-    void recover_states_from_file(std::string filename, double t);
+    double recover_states_from_file(std::string filename, double t);
 
     void out_hdf5(value_type time);
 
@@ -112,8 +112,8 @@ void FloeGroup<TFloe>::out_hdf5(value_type time) {
 template <
     typename TFloe
 >
-void FloeGroup<TFloe>::recover_states_from_file(std::string filename, double t) {
-    m_out_manager.recover_states(filename, t, *this);
+double FloeGroup<TFloe>::recover_states_from_file(std::string filename, double t) {
+    return m_out_manager.recover_states(filename, t, *this);
 };
 
 

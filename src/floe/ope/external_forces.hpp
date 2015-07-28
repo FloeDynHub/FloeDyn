@@ -4,15 +4,14 @@
  * \author Quentin Jouet
  */
 
- //TODO : better calcul repartition
- //       create class for physical datas (air and wind)
 
 #ifndef OPE_EXTERNAL_FORCES_HPP
 #define OPE_EXTERNAL_FORCES_HPP
 
 #include "floe/geometry/arithmetic/arithmetic.hpp"
 #include "floe/geometry/arithmetic/point_operators.hpp"
-#include <math.h>
+#include "floe/ope/physical_data.hpp"
+#include <cmath>
 
 
 namespace floe { namespace ope
@@ -31,23 +30,25 @@ class ExternalForces
 {
 
 public:
-
     using floe_group_type = TFloeGroup;
     using floe_type = typename floe_group_type::floe_type;
     using point_type = typename floe_type::point_type;
     using value_type = typename floe_type::value_type;
+    using physical_data_type = PhysicalData<point_type>;
+
+    ExternalForces(value_type const& time_ref) : m_physical_data{time_ref} {}
 
     std::function<point_type (value_type, value_type)> total_drag(floe_type& floe);
     std::function<value_type (value_type, value_type)> total_rot_drag(floe_type& floe);
     point_type coriolis_effect(floe_type& floe);
 
+    inline void load_matlab_topaz_data(std::string const& filename) {
+        m_physical_data.load_matlab_topaz_data(filename);
+    }
+
 private:
 
-
-    // PROVISOIRE
-    inline point_type water_speed(point_type){ return point_type{0,0}; }
-    inline point_type air_speed(point_type){ return point_type{0,0}; }
-    // PROVISOIRE
+    physical_data_type m_physical_data;
 
     const value_type rho_w = 1024.071; // Water density
     const value_type C_w = 5 * 1e-3; // Oceanic skin drag coeff
@@ -61,9 +62,12 @@ private:
 
     value_type coriolis_coeff(floe_type& floe);
 
+    inline point_type water_speed(point_type p){ return m_physical_data.water_speed(p); }
+    inline point_type air_speed(point_type p){ return m_physical_data.air_speed(p); }
+
     void move_floe(floe_type& floe, value_type delta_t);
     std::function<point_type (point_type&)> ocean_drag(floe_type& floe);
-    std::function<point_type (point_type&)> air_drag(floe_type& floe);
+    std::function<point_type (point_type&)> air_drag();
 
 };
 
@@ -91,7 +95,7 @@ ExternalForces<TFloeGroup>::ocean_drag(floe_type& floe)
 template <typename TFloeGroup>
 std::function<typename TFloeGroup::floe_type::point_type (
     typename TFloeGroup::floe_type::point_type&)>
-ExternalForces<TFloeGroup>::air_drag(floe_type& floe)
+ExternalForces<TFloeGroup>::air_drag()
 {
     return [&](point_type& p)
     {
@@ -125,9 +129,7 @@ ExternalForces<TFloeGroup>::total_drag(floe_type& floe)
     return [&](value_type x, value_type y)
     {
         point_type p{x,y};
-        return ocean_drag(floe)(p) + air_drag(floe)(p);
-        // return air_drag(floe)(p); //debug
-        // return point_type{10, 0}; // debug
+        return ocean_drag(floe)(p) + air_drag()(p);
     };
 }
 
