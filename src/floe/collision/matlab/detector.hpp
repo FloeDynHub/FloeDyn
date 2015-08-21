@@ -336,12 +336,23 @@ MatlabDetector<TFloe, TContact>::detect_step2( std::size_t n1, std::size_t n2 )
     }
 
     // What's up doctor ?
+    /* matlab version
     if ( ldisks1.size() == 0 && ldisks2.size() == 0 )
         set_dist_secu(n1, n2, dzone);
     else if ( ldisks1.size() != 0 && ldisks2.size() == 0 )
         set_dist_secu(n1, n2, opt1.tau());
     else if ( ldisks1.size() == 0 && ldisks2.size() != 0 )
         set_dist_secu(n1, n2, opt2.tau());
+    else
+        detect_step3(n1, n2, ldisks1, ldisks2);
+    */
+    // improved version
+    if ( ldisks1.size() == 0 && ldisks2.size() == 0 )
+        set_dist_secu(n1, n2, dzone + opt1.cdist() + opt2.cdist());
+    else if ( ldisks1.size() != 0 && ldisks2.size() == 0 )
+        set_dist_secu(n1, n2, std::max(opt1.tau() + opt2.cdist(), opt2.tau() - dzone + opt1.tau()));
+    else if ( ldisks1.size() == 0 && ldisks2.size() != 0 )
+        set_dist_secu(n1, n2, std::max(opt2.tau() + opt1.cdist(), opt1.tau() - dzone + opt2.tau()));
     else
         detect_step3(n1, n2, ldisks1, ldisks2);
 }
@@ -379,13 +390,14 @@ MatlabDetector<TFloe, TContact>::detect_step3(
         {
             const circle_type d2 = opt2.local_disks()[ldisks2[j]];
             const value_type dist = distance_circle_circle( d1, d2 );
-            dist_o = std::min( dist_o, dist + std::min(d1.radius, d2.radius) ); // Not exactly like in the matlab code // quentin : can be optimized
+            dist_o = std::min( dist_o, dist + d1.radius + d2.radius ); // unused
 
             if ( dist < 0 )
             {
                 adjacency(i,j) = 1;
-                dist_s = std::min( dist_s, dist + opt1.tau() + opt2.tau() );
                 ++cnt;
+            } else {
+                dist_s = std::min( dist_s, dist + opt1.cdist() + opt2.cdist() );
             }
         }
     }
@@ -394,7 +406,7 @@ MatlabDetector<TFloe, TContact>::detect_step3(
     if (cnt == 0)
     {
         set_dist_secu(n1, n2, dist_s);
-        set_dist_opt(n1, n2, dist_o);
+        // set_dist_opt(n1, n2, dist_o);
     } 
     else 
     {
@@ -460,7 +472,8 @@ detect_step4(
                 last_id2 = id2;
                 
                 // If the point is in this disk, there may be a contact
-                if ( distance_point_circle(point1, opt2.local_disks()[id2]) <= 0 )
+                if ( distance_point_circle(point1, opt2.local_disks()[id2]) <= 0 ||
+                    distance(point1, opt2.local_disks()[id2].center) < std::max( opt1.cdist(), opt2.cdist() )) // test q
                 {
                     // Loop over points of this disk
                     for ( std::size_t ipt2 = opt2.local_points()[id2]; ipt2 < opt2.local_points()[id2+1]; ++ipt2 )
@@ -548,20 +561,8 @@ detect_step4(
 
             // Add contact if any
             //if (min_dist <= opt2.cdist())
-            if (min_dist <= std::min( opt1.cdist(), opt2.cdist() ) )
+            if (min_dist <= std::max( opt1.cdist(), opt2.cdist() ) )
             {
-                /*
-                // TEST
-                if (seg_id >= 0)
-                {
-                    if (segment_cnt[seg_id] < 2)
-                    {
-                        contact_list.push_back(min_contact);
-                        ++segment_cnt[seg_id];
-                    }
-                } else
-                    contact_list.push_back(min_contact);
-                */
                 contact_list.push_back(min_contact);
             }
 
@@ -575,10 +576,12 @@ detect_step4(
     if (contact_list.size() != 0)
     {
         add_edge(vertex(real_floe_id(n1), m_contacts), vertex(real_floe_id(n2), m_contacts), {contact_list, n1, n2}, m_contacts);
-        set_dist_opt(n1, n2, std::min(opt1.cdist(), opt2.cdist()));
+        set_dist_opt(n1, n2, std::max(opt1.cdist(), opt2.cdist()));
     }
 
     // Return minimal distance between the 2 floes
+    // if (global_min_dist < 1e-3)
+    //     std::cout << " !Dsecu! " << global_min_dist;
     return global_min_dist;
 }
 

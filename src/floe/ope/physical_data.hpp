@@ -82,14 +82,19 @@ PhysicalData<TPoint>::interpolate_hour_to_minute(point_vector const& data_hours,
     if (!data_hours.size())
         return;
     point_type p0, p1, P0, P1, pm, Pm;
-    p0 = data_hours[0];
+    // p0 = data_hours[0];
+    p0 = {0,0}; // init phase
     // we store polar coordinates in cartesian point, to get simple interpolation on norm and angle.
     P0 = {norm2(p0), atan2(p0.y, p0.x)}; // polar coordinates of P0.
     for (std::size_t i = 1; i != data_hours.size(); ++i)
     {
         p1 = data_hours[i];
-        P1 = {norm2(p1), atan2(p1.y, p1.x)};
 
+        // init phase
+        if (i<12)
+            p1 *= (double)i/12;
+
+        P1 = {norm2(p1), atan2(p1.y, p1.x)};
         for (std::size_t j = 0; j!=60; ++j)
         {
             value_type h_frac = (value_type)j/60;

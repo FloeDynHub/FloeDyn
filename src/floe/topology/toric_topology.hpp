@@ -39,32 +39,28 @@ public:
     point_list ghosts(const TPoint& pt) const
     {
         return {
+            pt + TPoint{delta_x, -delta_y},
             pt + TPoint{delta_x, 0},
             pt + TPoint{delta_x, delta_y},
             pt + TPoint{0, delta_y},
-            pt + TPoint{-delta_x, delta_y},
         };
     }
 
-    void replace(TPoint& pt) const
+    void replace(TPoint& pt, TPoint& trans) const
     {
-        while (pt.x <= m_min_x)
-            pt.x += delta_x;
-        while (pt.x >= m_max_x)
-            pt.x -= delta_x;
-        while (pt.y <= m_min_y)
-            pt.y += delta_y;
-        while (pt.y >= m_max_y)
-            pt.y -= delta_y;
+        while (pt.x <= m_min_x) { pt.x += delta_x; trans.x -= delta_x; }
+        while (pt.x >= m_max_x) { pt.x -= delta_x; trans.x += delta_x; }
+        while (pt.y <= m_min_y) { pt.y += delta_y; trans.y -= delta_y; }
+        while (pt.y >= m_max_y) { pt.y -= delta_y; trans.y += delta_y; }
     }
 
     point_list ghosts_0() const
     {
         return {
+            TPoint{delta_x, -delta_y},
             TPoint{delta_x, 0},
             TPoint{delta_x, delta_y},
             TPoint{0, delta_y},
-            TPoint{-delta_x, delta_y},
         };
     }
 

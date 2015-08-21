@@ -109,7 +109,7 @@ void HDF5Manager<TFloe>::save_step(value_type time, const floe_group_type& floe_
     {
         vector<vector<value_type>> floe_step_data;
         for (auto const& pt : floe.geometry().outer())
-            floe_step_data.push_back({pt.x, pt.y});
+            floe_step_data.push_back({pt.x + floe.state().trans.x, pt.y + floe.state().pos.y});
         m_data_chunk_boundaries[floe_id].push_back(floe_step_data);
         floe_id++;
     }
@@ -120,7 +120,7 @@ void HDF5Manager<TFloe>::save_step(value_type time, const floe_group_type& floe_
     for(auto const& floe : floe_list)
     {
         frames_step_data[floe_id] = {
-            floe.state().pos.x, floe.state().pos.y, floe.state().theta,
+            floe.state().pos.x + floe.state().trans.x, floe.state().pos.y + floe.state().trans.y, floe.state().theta,
             floe.state().speed.x, floe.state().speed.y, floe.state().rot
         };
         floe_id++;

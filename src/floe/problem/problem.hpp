@@ -137,6 +137,7 @@ protected:
         m_domain.update_time();
         std::cout << " Time : " << m_domain.time() << std::endl;
         std::cout << " Kinetic energy : " << m_floe_group.kinetic_energy() << std::endl;
+        // std::cout << " V62 : " << m_floe_group.get_floes()[62].state() << std::endl;
         std::cout << "----" << std::endl;
 
         if (out_step && m_domain.time() - m_domain.last_out() >= out_step)

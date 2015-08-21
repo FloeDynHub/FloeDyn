@@ -57,7 +57,7 @@ template <typename TFloeGroup, typename TSpaceTopology>
 void
 PeriodicDynamicsManager<TFloeGroup, TSpaceTopology>::replace_floe(floe_type& floe)
 {
-    m_topology->replace(floe.state().pos);
+    m_topology->replace(floe.state().pos, floe.state().trans);
 }
 
 

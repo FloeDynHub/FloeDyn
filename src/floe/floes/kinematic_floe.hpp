@@ -64,7 +64,7 @@ public:
     using floe_interface_type = FloeInterface<TStaticFloe, TState>;
 
     //! Default constructor
-    KinematicFloe() : m_geometry{nullptr}, m_floe{nullptr}, m_state{ {0,0}, 0, {0,0}, 0 }, m_obstacle{false} {}
+    KinematicFloe() : m_geometry{nullptr}, m_floe{nullptr}, m_state{ {0,0}, 0, {0,0}, 0, {0,0} }, m_obstacle{false} {}
 
     //! Deleted copy constructor
     KinematicFloe( KinematicFloe<TStaticFloe,TState> const& ) = delete;

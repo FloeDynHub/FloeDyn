@@ -48,6 +48,8 @@ struct SpaceTimeState
     TSpeed  speed;
     TRot    rot;
 
+    TPos    trans; // total translation (periodic boundaries gap sum)
+
     //! Compound addition with other state
     template < typename TOtherPos, typename TOtherTheta, typename TOtherSpeed, typename TOtherRot >
     inline

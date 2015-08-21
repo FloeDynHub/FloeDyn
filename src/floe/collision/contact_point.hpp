@@ -40,6 +40,7 @@ struct ContactPoint
 
     //! Default constructor
     ContactPoint() : floe1{nullptr}, floe2{nullptr} {}
+    // ContactPoint() = delete; // TODO
 
     /*! Constructor given the contact frame
      * 

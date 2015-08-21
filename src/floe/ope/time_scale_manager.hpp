@@ -95,20 +95,26 @@ TimeScaleManager<TDomain, TDetector>::delta_t_secu(TDomain* domain, TDetector* m
         for ( std::size_t j = i+ 1; j != dist_secu.size2(); ++j )
         {
             if (indics(i,j) == 0)
-            {
+            {   
+                value_type delta_t = delta_t_secu_fast(dist_secu(i,j),
+                    *floes[i], m_detector->get_floe(j), *optims[i], m_detector->get_optim(j));
                 global_min_dt = std::min(
                     global_min_dt,
-                    delta_t_secu_fast(dist_secu(i,j),
-                         *floes[i], m_detector->get_floe(j), *optims[i], m_detector->get_optim(j))
+                    delta_t
                 ); //nb_f++;
+                // if (delta_t < 5)
+                //     std::cout << "fast " << i << " " << j << std::endl;
             }
             else
             {
+                value_type delta_t = delta_t_secu(dist_secu(i,j), dist_opt(i,j),
+                         *floes[i], m_detector->get_floe(j), *optims[i], m_detector->get_optim(j));
                 global_min_dt = std::min(
                     global_min_dt,
-                    delta_t_secu(dist_secu(i,j), dist_opt(i,j),
-                         *floes[i], m_detector->get_floe(j), *optims[i], m_detector->get_optim(j))
+                    delta_t
                 ); //nb++;
+                // if (delta_t < 5)
+                //     std::cout << "slow " << i << " " << j << std::endl;
             }
         }
     }
@@ -143,10 +149,7 @@ TimeScaleManager<TDomain, TDetector>::delta_t_secu(
     value_type d = std::max(dist_opt, dist_secu);
     lambda = std::min(lambda, d / 20); // TODO éclaircir avec Mathias (lambda > d dans certains cas)
 
-    // if I == 0  le pas de temps est calcule dans gestion_temps_fast.m
-    // On est dans le cas I=1 :
     // Calcul du deplacement d un point par rapport aux reperes en t+dt.
-
     // repere a l'instant t+dt_defaut :
     frame_type mark1{G1 + dt_defaut * Vg1, dt_defaut * Vt1};
     frame_type mark2{G2 + dt_defaut * Vg2, dt_defaut * Vt2};
@@ -166,7 +169,7 @@ TimeScaleManager<TDomain, TDetector>::delta_t_secu(
     multi_point_type Belt_P1_be, Belt_P2_be, Belt_P1_af, Belt_P2_af;
 
     using namespace geometry::frame; // import transformer, itransformer
-    /* Equivalent Matlab (trop lent)
+     // Equivalent Matlab (lent)
     //passage dans repabs(t), puis rep1(t) et enfin repabs(t+dt):
     geometry::transform( Belt_P1, Belt_P1_be, transformer( frame_type{C1, 0} ));
     geometry::transform( Belt_P1_be, Belt_P1, itransformer( frame_type{G1, 0} ));
@@ -184,7 +187,7 @@ TimeScaleManager<TDomain, TDetector>::delta_t_secu(
         dist1 = std::max(dist1, distance(Belt_P1_be[i], Belt_P1_af[i]));
     for (std::size_t i = 0; i != Belt_P2.size(); ++i)
         dist2 = std::max(dist2, distance(Belt_P2_be[i], Belt_P2_af[i]));
-    */
+    
     /*
     // version raccourcie
     geometry::transform( Belt_P1, Belt_P1_af, transformer( frame_type{C1 - G1, 0} ));
@@ -200,7 +203,7 @@ TimeScaleManager<TDomain, TDetector>::delta_t_secu(
     // version raccourcie
     */
     
-    // version raccourcie + modifiée car transform(A, B, strategy) anormalement lent
+    /* // version raccourcie + modifiée car transform(A, B, strategy) anormalement lent
     multi_point_type Belt_P1_copy{Belt_P1}, Belt_P2_copy{Belt_P2}; // waiting for transform optimization !
     geometry::transform( Belt_P1, Belt_P1, transformer( frame_type{C1 - G1, 0} ));
     geometry::transform( Belt_P2, Belt_P2, transformer( frame_type{C2 - G2, 0} ));
@@ -213,6 +216,7 @@ TimeScaleManager<TDomain, TDetector>::delta_t_secu(
     for (std::size_t i = 0; i != Belt_P2.size(); ++i)
         dist2 = std::max(dist2, distance(Belt_P2_copy[i] + C2, Belt_P2[i] + G1));
     // version raccourcie + modifiée
+    */
     
 
     // %%%%%%%%%% Cas obj1 %%%%%%%%%%
@@ -232,7 +236,7 @@ TimeScaleManager<TDomain, TDetector>::delta_t_secu(
     value_type dt21 = std::min(dt_defaut, calc);
     // %%%%%%%%%% Fin %%%%%%%%%%
 
-    // assert( std::min(dt12, dt21) > 0 );
+    // assert( std::min(dt12, dt21) > 0 ); // TODO : Exception
     if (std::min(dt12, dt21) < 0)
     {
         std::cout << d << " " << dist1 << " "  << " BUG DELTA T " << dist2;
@@ -271,15 +275,14 @@ TimeScaleManager<TDomain, TDetector>::delta_t_secu_fast(
     if (VRel < 0)
     {
         // Collision possible
-        // delta_t = - (( dist_secu - lambda ) / 2) / VRel;
-        delta_t = - ( dist_secu - lambda ) / VRel; // too much ?
+        delta_t = - ( dist_secu - lambda ) / VRel;
     } else
     {
         // Collision impossible
         delta_t = std::numeric_limits<value_type>::max();
     }
 
-    if (delta_t < 1e-12 ) std::cout
+    if (delta_t < 1e-12 ) std::cout // TODO : Exception
     << "BUG dtfast  " 
     << delta_t << " " 
     << dist_secu << " " 

@@ -36,7 +36,7 @@ public:
     using lcp_type = floe::lcp::LCP<double>;
     using value_type = VALUE_TYPE; // TODO get from trait
 
-    LCPSolver() : epsilon{0.7} {} // should epsilon be runtime parameter ?
+    LCPSolver() : epsilon{0.4} {} // should epsilon be runtime parameter ?
 
     bool solve( lcp_type& lcp );
     template<typename TContactGraph>
