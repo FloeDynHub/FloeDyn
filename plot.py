@@ -26,6 +26,9 @@ def update(num, data, ax):
         ax.patches[i].set_xy(polygon.get_xy())
         i+=1
     ax.set_title("t = %s" % data.get("time")[num])
+    ax.axis('equal')
+    ax.relim()
+    ax.autoscale_view(True,True,True)
     return ax,
 
 

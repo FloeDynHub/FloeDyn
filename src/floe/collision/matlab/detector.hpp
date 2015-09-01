@@ -29,6 +29,10 @@
 #include <boost/geometry/algorithms/intersects.hpp>
 #include <algorithm>
 
+#ifdef _OPENMP
+#include <omp.h>
+#endif
+
 namespace floe { namespace collision { namespace matlab
 {
 
@@ -78,7 +82,7 @@ public:
     //! Default constructor
     MatlabDetector()
         : m_floes{}, m_optims{}, 
-          m_indic{0,0}, m_dist_secu{0,0}, m_dist_opt{0,0}
+          m_indic{0,0}, m_dist_secu{0,0}, m_dist_opt{0,0}, m_detection_mode{0}
     {}
 
     //! Deleted copy constructor
@@ -139,6 +143,8 @@ protected:
     dist_matrix_type m_dist_secu; //!< Security distance
     dist_matrix_type m_dist_opt; //!< Optimial distance
     contact_graph_type m_contacts; //!< Contact graph
+    bool m_detection_mode; //! Detection mode ('eta_min' in matlab)
+    bool m_detection_chgt; //! Detection mode ('eta_min' in matlab)
 
     //! Talking about segments
     //! \todo put that somewhere else !
@@ -150,6 +156,7 @@ protected:
     point_type point_from_id( std::size_t n, std::size_t id ) const;
     inline point_type point_from_pos( segment_type const& segment, value_type pos ) const;
 
+    void detection_mode(); // detection mode (min or max collision distance)
     void prepare_detection(); // preparation
     virtual void detect(); // initialization + detection
     //! Detects collisions in 4 main steps
@@ -201,6 +208,38 @@ MatlabDetector<TFloe, TContact>::update()
     prepare_detection();
     // Launch collisions detection
     detect();
+    // manage collision mode
+    detection_mode();
+}
+
+//! Update detector
+template <
+    typename TFloe,
+    typename TContact
+>
+void
+MatlabDetector<TFloe, TContact>::detection_mode()
+{   
+    value_type min_dsecu { std::numeric_limits<value_type>::max() };
+    for (std::size_t i = 0; i!= m_dist_secu.size1(); ++i)
+    {
+        for ( std::size_t j = i+ 1; j != m_dist_secu.size2(); ++j )
+        {
+            if (m_indic(i,j) == 1)
+                min_dsecu = std::min(min_dsecu, m_dist_secu(i,j));
+        }
+    }
+
+    if (min_dsecu < 1e-3)
+    {
+        if (!m_detection_chgt)
+        {
+            m_detection_mode = !m_detection_mode;
+            m_detection_chgt = true;
+            std::cout << "CHANGE DETECTION MODE" << std::endl;
+        }
+    } else
+        m_detection_chgt = false;
 }
 
 
@@ -265,20 +304,13 @@ MatlabDetector<TFloe, TContact>::detect_step1()
     // Level 1 loop
     // TODO: intersects -like for multi_circle !!
 
+    #pragma omp parallel for
     for (std::size_t n1 = 0; n1 < N; ++n1)
     {
         auto const& opt1 = get_optim(n1);
         for (std::size_t n2 = n1 + 1; n2 < m_dist_secu.size2(); ++n2)
         {
             auto const& opt2 = get_optim(n2);
-     
-    /* old version for comparaison (dev) */
-    // for (std::size_t n1 = 1; n1 < N; ++n1)
-    // {
-    //     auto const& opt1 = get_optim(n1);
-    //     for (std::size_t n2 = 0; n2 < n1; ++n2)
-    //     {
-    //         auto const& opt2 = get_optim(n2);
 
             const auto dist = distance_circle_circle( 
                 opt1.global_disk(),
@@ -406,7 +438,7 @@ MatlabDetector<TFloe, TContact>::detect_step3(
     if (cnt == 0)
     {
         set_dist_secu(n1, n2, dist_s);
-        // set_dist_opt(n1, n2, dist_o);
+        set_dist_opt(n1, n2, dist_o);
     } 
     else 
     {
@@ -472,8 +504,8 @@ detect_step4(
                 last_id2 = id2;
                 
                 // If the point is in this disk, there may be a contact
-                if ( distance_point_circle(point1, opt2.local_disks()[id2]) <= 0 ||
-                    distance(point1, opt2.local_disks()[id2].center) < std::max( opt1.cdist(), opt2.cdist() )) // test q
+                if ( distance_point_circle(point1, opt2.local_disks()[id2]) <= 0 )
+                    // || distance(point1, opt2.local_disks()[id2].center) < std::max( opt1.cdist(), opt2.cdist() )) // test q, not ok
                 {
                     // Loop over points of this disk
                     for ( std::size_t ipt2 = opt2.local_points()[id2]; ipt2 < opt2.local_points()[id2+1]; ++ipt2 )
@@ -530,6 +562,11 @@ detect_step4(
                 else
                 {   
                     // TODO : synchro matlab
+                    // value_type dist;
+                    // if (m_detection_mode == 1)
+                    //     dist = std::max( opt1.cdist(), opt2.cdist() );
+                    // else
+                    //     dist = std::min( opt1.cdist(), opt2.cdist() );
                     const value_type dist = distance_point_circle(point1, opt2.local_disks()[id2]) + opt2.local_disks()[id2].radius;
                     min_dist = std::min(min_dist, dist);
                     // TODO : synchro matlab
@@ -561,7 +598,9 @@ detect_step4(
 
             // Add contact if any
             //if (min_dist <= opt2.cdist())
-            if (min_dist <= std::max( opt1.cdist(), opt2.cdist() ) )
+            if ((m_detection_mode == 1 && min_contact.dist <= std::max( opt1.cdist(), opt2.cdist() )) ||
+               (m_detection_mode == 0 && min_contact.dist <= std::min( opt1.cdist(), opt2.cdist() )))
+            // if (min_dist <= std::max( opt1.cdist(), opt2.cdist() ) )
             {
                 contact_list.push_back(min_contact);
             }

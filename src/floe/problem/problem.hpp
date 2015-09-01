@@ -135,8 +135,10 @@ protected:
         m_dynamics_manager.move_floes(m_floe_group, m_domain.time_step());
 
         m_domain.update_time();
-        std::cout << " Time : " << m_domain.time() << std::endl;
-        std::cout << " Kinetic energy : " << m_floe_group.kinetic_energy() << std::endl;
+        std::cout << " Time : " << m_domain.time(); // << std::endl;
+        std::cout << " | delta_t : " << m_domain.time_step();
+        std::cout << " | Kinetic energy : " << m_floe_group.kinetic_energy() << std::endl;
+        
         // std::cout << " V62 : " << m_floe_group.get_floes()[62].state() << std::endl;
         std::cout << "----" << std::endl;
 

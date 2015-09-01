@@ -15,6 +15,10 @@
 
 #include <iostream> // debug
 
+#ifdef _OPENMP
+#include <omp.h>
+#endif
+
 namespace floe { namespace ope
 {
 
@@ -54,6 +58,7 @@ void LCPManager::solve_contacts(TContactGraph& contact_graph)
     auto const subgraphs = collision_subgraphs( contact_graph );
     int LCP_count = 0, nb_success = 0;
     bool r = 1;
+    // #pragma omp parallel for
     for ( auto& subgraph : subgraphs )
     {
         auto asubgraphs = active_subgraphs( subgraph );
@@ -63,9 +68,6 @@ void LCPManager::solve_contacts(TContactGraph& contact_graph)
             LCP_count += asubgraphs.size();
             for ( auto const& graph : asubgraphs )
             {
-            //     floe::lcp::builder::GraphLCP<real, decltype(graph)> graph_lcp( graph );
-            //     auto lcp = graph_lcp.getLCP();
-            //     r = m_solver.solve( lcp );
                 bool success;
                 auto Sol = m_solver.solve( graph, success );
                 if (success) nb_success++;

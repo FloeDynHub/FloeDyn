@@ -9,10 +9,10 @@
 
 #include <iostream>
 #include <vector>
+#include <algorithm>
 #include "floe/variable/floe_group.hpp"
 
 #include "H5Cpp.h"
-#include <algorithm>
 #ifndef H5_NO_NAMESPACE
 using namespace H5;
 #endif
@@ -57,8 +57,6 @@ public:
 
     void save_step(value_type time, const floe_group_type& floe_group);
 
-    void write_chunk();
-
     double recover_states(H5std_string filename, value_type time, floe_group_type& floe_group);
 
 private:
@@ -71,6 +69,7 @@ private:
     vector<vector<vector<value_type>>> m_data_chunk_frames;
     vector<value_type> m_data_chunk_time;
 
+    void write_chunk();
     void write_boundaries();
     void write_frames();
     void write_time();
@@ -109,7 +108,7 @@ void HDF5Manager<TFloe>::save_step(value_type time, const floe_group_type& floe_
     {
         vector<vector<value_type>> floe_step_data;
         for (auto const& pt : floe.geometry().outer())
-            floe_step_data.push_back({pt.x + floe.state().trans.x, pt.y + floe.state().pos.y});
+            floe_step_data.push_back({pt.x + floe.state().trans.x, pt.y + floe.state().trans.y});
         m_data_chunk_boundaries[floe_id].push_back(floe_step_data);
         floe_id++;
     }

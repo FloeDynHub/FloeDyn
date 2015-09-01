@@ -39,7 +39,7 @@ struct ContactPoint
     using value_type = typename floe_type::value_type;
 
     //! Default constructor
-    ContactPoint() : floe1{nullptr}, floe2{nullptr} {}
+    ContactPoint() : floe1{nullptr}, floe2{nullptr}, frame{}, dist{std::numeric_limits<value_type>::max()} {}
     // ContactPoint() = delete; // TODO
 
     /*! Constructor given the contact frame

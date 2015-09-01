@@ -15,6 +15,10 @@
 
 #include <iostream> // DEBUG
 
+#ifdef _OPENMP
+#include <omp.h>
+#endif
+
 namespace floe { namespace ope
 {
 
@@ -89,8 +93,8 @@ TimeScaleManager<TDomain, TDetector>::delta_t_secu(TDomain* domain, TDetector* m
 
     value_type global_min_dt = m_domain->default_time_step();
     // int nb{0}, nb_f{0};
-
-    for (std::size_t i = 0; i!= dist_secu.size1(); ++i)
+    #pragma omp parallel for
+    for (std::size_t i = 0; i < dist_secu.size1(); ++i)
     {
         for ( std::size_t j = i+ 1; j != dist_secu.size2(); ++j )
         {
@@ -147,7 +151,7 @@ TimeScaleManager<TDomain, TDetector>::delta_t_secu(
     value_type lambda = std::min(dc1, dc2) / 20;
 
     value_type d = std::max(dist_opt, dist_secu);
-    lambda = std::min(lambda, d / 20); // TODO éclaircir avec Mathias (lambda > d dans certains cas)
+    // lambda = std::min(lambda, d / 20); // TODO éclaircir avec Mathias (lambda > d dans certains cas)
 
     // Calcul du deplacement d un point par rapport aux reperes en t+dt.
     // repere a l'instant t+dt_defaut :

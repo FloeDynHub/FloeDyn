@@ -65,7 +65,7 @@ public:
     inline void set_topology(topology_type const& t) { m_topology = &t; }
 
 private:
-    std::vector<ghost_floe_type const>     m_ghost_floes; //!< Ghost floes list.
+    std::vector<ghost_floe_type>     m_ghost_floes; //!< Ghost floes list.
     std::vector<ghost_optim_type>    m_ghost_optims; //!< Ghost Optimized floes list.
     topology_type const* m_topology; //!< Space topology
 

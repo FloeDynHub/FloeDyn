@@ -104,7 +104,7 @@ LCPSolver::solve( TContactGraph& graph, bool& success ) {
     // % phase de compression %
     // %%%%%%%%%%%%%%%%%%%%%%%%
 
-    uint comptchgt{0};
+    unsigned int comptchgt{0};
     bool solved{0};
     vector<value_type> Solc(graph_lcp.J.size1());
 

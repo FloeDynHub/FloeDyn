@@ -1,4 +1,5 @@
 #include <iostream>
+#include "../tests/floe/interrupt.hpp"
 #include "../tests/floe/config.hpp"
 
 
