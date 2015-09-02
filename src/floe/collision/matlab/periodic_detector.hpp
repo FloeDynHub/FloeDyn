@@ -45,13 +45,11 @@ public:
 
     // PeriodicMatlabDetector(topology_type& topology) : base_class(), m_topology{topology} {}
 
-    virtual void push_back( floe_type const* floe_ptr )
+    virtual void push_back( floe_type * floe_ptr )
     {
-        PeriodicMatlabDetector::m_floes.push_back(floe_ptr);
-        optim_type* optim_ptr = new optim_type{*floe_ptr};
-        base_class::m_optims.push_back( optim_ptr );
-        
+        base_class::push_back(floe_ptr);
         std::size_t floe_id = base_class::m_floes.size() - 1;
+        optim_type* optim_ptr = base_class::m_optims[floe_id];
         for (auto& translation : m_topology->ghosts_0())
         {
             m_ghost_floes.push_back(ghost_floe_type{ *floe_ptr, translation, floe_id});

@@ -64,8 +64,8 @@ private:
         const floe_type& floe1,
         const floe_interface_type& floe2,
         const optim_type& optim1,
-        const optim_interface_type& optim2
-        // + ghost floe cell translation
+        const optim_interface_type& optim2,
+        std::size_t I
     );
 
     //! Corresponds to gestion_temps_fast() in Matlab code
@@ -75,7 +75,6 @@ private:
         const floe_interface_type& floe2,
         const optim_type& optim1,
         const optim_interface_type& optim2
-        // + ghost floe cell translation
     );
 
 };
@@ -85,11 +84,15 @@ typename TimeScaleManager<TDomain, TDetector>::value_type
 TimeScaleManager<TDomain, TDetector>::delta_t_secu(TDomain* domain, TDetector* m_detector)
 {
     m_domain = domain;
+    m_detector->clean_dist_opt();
     auto& dist_secu = m_detector->get_dist_secu();
     auto& dist_opt = m_detector->get_dist_opt();
     auto& indics = m_detector->get_indic();
     auto& floes = m_detector->get_floes();
     auto& optims = m_detector->get_optims();
+
+    // auto mr = m_detector->min_row;// DEBUG dt
+    // auto mc = m_detector->min_col;// DEBUG dt
 
     value_type global_min_dt = m_domain->default_time_step();
     // int nb{0}, nb_f{0};
@@ -98,28 +101,29 @@ TimeScaleManager<TDomain, TDetector>::delta_t_secu(TDomain* domain, TDetector* m
     {
         for ( std::size_t j = i+ 1; j != dist_secu.size2(); ++j )
         {
+            value_type delta_t;
             if (indics(i,j) == 0)
             {   
-                value_type delta_t = delta_t_secu_fast(dist_secu(i,j),
+                delta_t = delta_t_secu_fast(dist_secu(i,j),
                     *floes[i], m_detector->get_floe(j), *optims[i], m_detector->get_optim(j));
-                global_min_dt = std::min(
-                    global_min_dt,
-                    delta_t
-                ); //nb_f++;
-                // if (delta_t < 5)
-                //     std::cout << "fast " << i << " " << j << std::endl;
+                //nb_f++;
             }
             else
             {
-                value_type delta_t = delta_t_secu(dist_secu(i,j), dist_opt(i,j),
-                         *floes[i], m_detector->get_floe(j), *optims[i], m_detector->get_optim(j));
-                global_min_dt = std::min(
-                    global_min_dt,
-                    delta_t
-                ); //nb++;
-                // if (delta_t < 5)
-                //     std::cout << "slow " << i << " " << j << std::endl;
+                delta_t = delta_t_secu(dist_secu(i,j), dist_opt(i,j),
+                         *floes[i], m_detector->get_floe(j), *optims[i], m_detector->get_optim(j), indics(i,j));
+                //nb++;    
             }
+            if (delta_t < global_min_dt)
+            {
+                m_detector->min_row = i;
+                m_detector->min_col = j;
+                global_min_dt = delta_t;
+            }
+            // global_min_dt = std::min(
+            //     global_min_dt,
+            //     delta_t
+            // );
         }
     }
 
@@ -138,7 +142,8 @@ TimeScaleManager<TDomain, TDetector>::delta_t_secu(
     const floe_type& floe1,
     const floe_interface_type& floe2,
     const optim_type& optim1,
-    const optim_interface_type& optim2
+    const optim_interface_type& optim2,
+    std::size_t I
 ){
     const value_type& dt_defaut = m_domain->default_time_step();
     const point_type& Vg1 = floe1.state().speed, Vg2 = floe2.state().speed;
@@ -151,12 +156,14 @@ TimeScaleManager<TDomain, TDetector>::delta_t_secu(
     value_type lambda = std::min(dc1, dc2) / 20;
 
     value_type d = std::max(dist_opt, dist_secu);
-    // lambda = std::min(lambda, d / 20); // TODO éclaircir avec Mathias (lambda > d dans certains cas)
+    if (I==-1) // interpenetration
+        d = dist_secu;
+    lambda = std::min(lambda, d / 20); // TODO éclaircir avec Mathias (lambda > d dans certains cas)
 
     // Calcul du deplacement d un point par rapport aux reperes en t+dt.
     // repere a l'instant t+dt_defaut :
-    frame_type mark1{G1 + dt_defaut * Vg1, dt_defaut * Vt1};
-    frame_type mark2{G2 + dt_defaut * Vg2, dt_defaut * Vt2};
+    frame_type mark1{G1 + dt_defaut * (Vg1 - Vg2), dt_defaut * Vt1};
+    frame_type mark2{G2 + dt_defaut * (Vg2 - Vg1), dt_defaut * Vt2};
     // fin calcul repere
 
     // calcul ceinture de points: (pour la rotation)
@@ -173,6 +180,7 @@ TimeScaleManager<TDomain, TDetector>::delta_t_secu(
     multi_point_type Belt_P1_be, Belt_P2_be, Belt_P1_af, Belt_P2_af;
 
     using namespace geometry::frame; // import transformer, itransformer
+    /*
      // Equivalent Matlab (lent)
     //passage dans repabs(t), puis rep1(t) et enfin repabs(t+dt):
     geometry::transform( Belt_P1, Belt_P1_be, transformer( frame_type{C1, 0} ));
@@ -192,6 +200,11 @@ TimeScaleManager<TDomain, TDetector>::delta_t_secu(
     for (std::size_t i = 0; i != Belt_P2.size(); ++i)
         dist2 = std::max(dist2, distance(Belt_P2_be[i], Belt_P2_af[i]));
     
+    if (min_id)
+        std::cout << std::endl
+        << " GT " << dist1 << " " << dist2 << " STATE1 " << floe1.state() << " STATE2 " << floe2.state()
+        << " D=" << std::max(D1, D2);
+    */
     /*
     // version raccourcie
     geometry::transform( Belt_P1, Belt_P1_af, transformer( frame_type{C1 - G1, 0} ));
@@ -221,6 +234,25 @@ TimeScaleManager<TDomain, TDetector>::delta_t_secu(
         dist2 = std::max(dist2, distance(Belt_P2_copy[i] + C2, Belt_P2[i] + G1));
     // version raccourcie + modifiée
     */
+
+    // Version 2
+    geometry::transform( Belt_P1, Belt_P1_be, transformer( frame_type{G1, 0} ));
+    geometry::transform( Belt_P2, Belt_P2_be, transformer( frame_type{G2, 0} ));
+    geometry::transform( Belt_P1, Belt_P1_af, transformer( mark1 ));
+    geometry::transform( Belt_P2, Belt_P2_af, transformer( mark2 ));
+    
+
+    value_type dist1 = 0, dist2 = 0;
+    for (std::size_t i = 0; i != Belt_P1.size(); ++i)
+        dist1 = std::max(dist1, distance(Belt_P1_be[i], Belt_P1_af[i]));
+    for (std::size_t i = 0; i != Belt_P2.size(); ++i)
+        dist2 = std::max(dist2, distance(Belt_P2_be[i], Belt_P2_af[i]));
+    // END Version 2
+    
+    // if (min_id)
+    //     std::cout << std::endl
+    //     << " GT " << dist1 << " " << dist2 << " STATE1 " << floe1.state() << " STATE2 " << floe2.state()
+    //     << " D=" << std::max(D1, D2) << std::endl;
     
 
     // %%%%%%%%%% Cas obj1 %%%%%%%%%%
@@ -243,8 +275,8 @@ TimeScaleManager<TDomain, TDetector>::delta_t_secu(
     // assert( std::min(dt12, dt21) > 0 ); // TODO : Exception
     if (std::min(dt12, dt21) < 0)
     {
-        std::cout << d << " " << dist1 << " "  << " BUG DELTA T " << dist2;
-        return 1e-4;
+        std::cout << d << " " << dist1 << " BUG DELTA T " << dist2;
+        return 1e-2;
     }
 
     return std::min(dt12, dt21);

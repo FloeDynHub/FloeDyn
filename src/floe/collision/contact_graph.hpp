@@ -281,6 +281,24 @@ num_contacts( TGraph const& graph )
     return cnt;
 }
 
+
+/*! Return the number of contact in a graph
+ *
+ * \warning         The complexity is linear in the number of edges.
+ * \tparam TGraph   Type of the graph (auto-deduced).
+ * \param  graph    The graph.
+ * \param  solved   Has the contact graph been solved ?
+ * \return          The number of contacts.
+ */
+template < typename TGraph >
+void
+mark_solved( TGraph& graph, bool solved )
+{
+    for ( auto const& e : make_iterator_range( edges(graph) ) )
+        graph[e].mark_solved(solved);
+        
+}
+
 }} // namespace floe::collision
 
 #endif // FLOE_COLLISION_CONTACT_GRAPH_HPP

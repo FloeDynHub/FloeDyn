@@ -57,21 +57,21 @@ void LCPManager::solve_contacts(TContactGraph& contact_graph)
 {
     auto const subgraphs = collision_subgraphs( contact_graph );
     int LCP_count = 0, nb_success = 0;
-    bool r = 1;
     // #pragma omp parallel for
     for ( auto& subgraph : subgraphs )
     {
         auto asubgraphs = active_subgraphs( subgraph );
         int loop_cnt = 0;
-        while (asubgraphs.size() != 0 && r && loop_cnt < 100)
+        while (asubgraphs.size() != 0 && loop_cnt < 60 * num_contacts(subgraph) )
         {
             LCP_count += asubgraphs.size();
             for ( auto const& graph : asubgraphs )
             {
                 bool success;
                 auto Sol = m_solver.solve( graph, success );
+                mark_solved(graph, success);
                 if (success) nb_success++;
-                update_floes_state(graph, Sol);
+                    update_floes_state(graph, Sol);
             }
             asubgraphs = active_subgraphs( subgraph );
             loop_cnt++;

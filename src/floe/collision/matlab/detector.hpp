@@ -82,7 +82,7 @@ public:
     //! Default constructor
     MatlabDetector()
         : m_floes{}, m_optims{}, 
-          m_indic{0,0}, m_dist_secu{0,0}, m_dist_opt{0,0}, m_detection_mode{0}
+          m_indic{0,0}, m_dist_secu{0,0}, m_dist_opt{0,0}, m_detection_mode{0}, m_detection_chgt{1}
     {}
 
     //! Deleted copy constructor
@@ -98,10 +98,11 @@ public:
      * It automatically creates the optimization datas associated to the new floe.
      * \param floe_ptr Pointer to the floe to add.
      */
-    virtual void push_back( floe_type const* floe_ptr )
+    virtual void push_back( floe_type * floe_ptr )
     {
         m_floes.push_back(floe_ptr);
         m_optims.push_back( new optim_type{*floe_ptr} );
+        m_previous_step_states.resize(m_floes.size());
     }
 
     /*! Update collision informations
@@ -121,7 +122,7 @@ public:
     inline dist_matrix_type const& get_dist_secu() const { return m_dist_secu; }
     inline dist_matrix_type const& get_dist_opt() const { return m_dist_opt; }
     inline indic_matrix_type const& get_indic() const { return m_indic; }
-    inline std::vector<floe_type const*> const& get_floes() const { return m_floes; }
+    inline std::vector<floe_type *> const& get_floes() const { return m_floes; }
     inline std::vector<optim_type*> const& get_optims() const { return m_optims; }
     // End Accessors for time_scale_manager
 
@@ -134,9 +135,15 @@ public:
 
     //! is there any floe interpenetration ? returns true if not.
     bool check_interpenetration();
+    void backup_step_states();
+    void recover_previous_step_states();
+
+    std::size_t min_row; //DEBUG dt
+    std::size_t min_col; //DEBUG dt
+    inline bool is_min_id(std::size_t n1, std::size_t n2){ return (n1 == min_row && n2 == min_col); } //DEBUG dt
 
 protected:
-    std::vector<floe_type const*>     m_floes; //!< Floes list.
+    std::vector<floe_type *>     m_floes; //!< Floes list.
     std::vector<optim_type*>    m_optims; //!< Optimization datas list.
 
     indic_matrix_type m_indic; //!< Indicator of collision (0=far away, 1=close, 2=contact)
@@ -144,7 +151,9 @@ protected:
     dist_matrix_type m_dist_opt; //!< Optimial distance
     contact_graph_type m_contacts; //!< Contact graph
     bool m_detection_mode; //! Detection mode ('eta_min' in matlab)
-    bool m_detection_chgt; //! Detection mode ('eta_min' in matlab)
+    bool m_detection_chgt; //! Detection status ('eta_chgt' in matlab)
+
+    std::vector<typename floe_type::state_type> m_previous_step_states;
 
     //! Talking about segments
     //! \todo put that somewhere else !
@@ -204,12 +213,19 @@ template <
 void
 MatlabDetector<TFloe, TContact>::update()
 {   
-    // update data and clear contacts
-    prepare_detection();
-    // Launch collisions detection
-    detect();
-    // manage collision mode
-    detection_mode();
+    if (check_interpenetration())
+    {
+        backup_step_states();
+        // update data and clear contacts
+        prepare_detection();
+        // Launch collisions detection
+        detect();
+        // manage collision mode
+        detection_mode();
+    } else {
+        std::cout << " INTERPENETRATION ";
+        recover_previous_step_states();
+    }
 }
 
 //! Update detector
@@ -304,12 +320,15 @@ MatlabDetector<TFloe, TContact>::detect_step1()
     // Level 1 loop
     // TODO: intersects -like for multi_circle !!
 
+    // std::cout << " min (" << min_row << ", " << min_col << ") ";// DEBUG dt
+
     #pragma omp parallel for
     for (std::size_t n1 = 0; n1 < N; ++n1)
     {
         auto const& opt1 = get_optim(n1);
         for (std::size_t n2 = n1 + 1; n2 < m_dist_secu.size2(); ++n2)
         {
+            // if (is_min_id(n1,n2))std::cout << 1;// DEBUG dt
             auto const& opt2 = get_optim(n2);
 
             const auto dist = distance_circle_circle( 
@@ -329,6 +348,12 @@ MatlabDetector<TFloe, TContact>::detect_step1()
             }
         }
     }
+
+    // std::cout
+    // << " dsecu=" << m_dist_secu(min_row, min_col)
+    // << " dopt=" << m_dist_opt(min_row, min_col) 
+    // << " dc1=" << get_optim(min_row).cdist() 
+    // << " dc2=" << get_optim(min_col).cdist();// DEBUG dt
 }
 
 //! Finds local disks that are in the other floe global disk
@@ -341,6 +366,9 @@ MatlabDetector<TFloe, TContact>::detect_step2( std::size_t n1, std::size_t n2 )
 {
     auto const& opt1 = get_optim(n1);
     auto const& opt2 = get_optim(n2);
+
+    
+    // if (is_min_id(n1,n2)) std::cout << 2; // DEBUG dt
 
     set_indic(n1, n2, 1);
     const value_type dzone = -( m_dist_secu(n1, n2) - opt1.tau() - opt2.tau() );
@@ -380,11 +408,14 @@ MatlabDetector<TFloe, TContact>::detect_step2( std::size_t n1, std::size_t n2 )
     */
     // improved version
     if ( ldisks1.size() == 0 && ldisks2.size() == 0 )
-        set_dist_secu(n1, n2, dzone + opt1.cdist() + opt2.cdist());
+        {set_dist_secu(n1, n2, dzone + opt1.cdist() + opt2.cdist());}
+        // if (is_min_id(n1,n2)) std::cout << "'";} // DEBUG dt}
     else if ( ldisks1.size() != 0 && ldisks2.size() == 0 )
-        set_dist_secu(n1, n2, std::max(opt1.tau() + opt2.cdist(), opt2.tau() - dzone + opt1.tau()));
+        {set_dist_secu(n1, n2, std::max(opt1.tau() + opt2.cdist(), opt2.tau() - dzone + opt1.tau()));}
+        // if (is_min_id(n1,n2)) std::cout << "''";} // DEBUG dt}
     else if ( ldisks1.size() == 0 && ldisks2.size() != 0 )
-        set_dist_secu(n1, n2, std::max(opt2.tau() + opt1.cdist(), opt1.tau() - dzone + opt2.tau()));
+        {set_dist_secu(n1, n2, std::max(opt2.tau() + opt1.cdist(), opt1.tau() - dzone + opt2.tau()));}
+        // if (is_min_id(n1,n2)) std::cout << "''";} // DEBUG dt}
     else
         detect_step3(n1, n2, ldisks1, ldisks2);
 }
@@ -400,6 +431,8 @@ MatlabDetector<TFloe, TContact>::detect_step3(
     std::vector<std::size_t> const& ldisks1, std::vector<std::size_t> const& ldisks2 
 )
 {
+    // if (is_min_id(n1,n2)) std::cout << 3; // DEBUG dt
+
     auto const& opt1 = get_optim(n1);
     auto const& opt2 = get_optim(n2);
     
@@ -437,6 +470,7 @@ MatlabDetector<TFloe, TContact>::detect_step3(
     // What's up doctor ?
     if (cnt == 0)
     {
+        // if (is_min_id(n1,n2)) std::cout << "'"; // DEBUG dt
         set_dist_secu(n1, n2, dist_s);
         set_dist_opt(n1, n2, dist_o);
     } 
@@ -463,6 +497,7 @@ detect_step4(
     TAdjacency const& adjacency
 )
 {
+    // if (is_min_id(n1,n2)) std::cout << 4; // DEBUG dt
     using namespace floe::geometry;
 
     auto const& opt1 = get_optim(n1);
@@ -472,10 +507,9 @@ detect_step4(
     contact_list_type contact_list;
 
     value_type global_min_dist = std::numeric_limits<value_type>::max(); // Minimum distance from any points of obj1 to obj2
-
-    // !!! TEST !!!
-    // std::vector<unsigned char> segment_cnt(m_floes[n2]->static_floe().geometry().outer().size(), 0);
     
+    // int cnt_pt_in_disk{0}; // DEBUG dt
+
     // Loop over disks of obj1
     for ( auto it1 = adjacency.begin1(); it1 != adjacency.end1(); ++it1 )
     {
@@ -503,10 +537,12 @@ detect_step4(
                 if (id2 != last_id2+1) dangling_point = false; // Discontinuity in the disk list
                 last_id2 = id2;
                 
+
                 // If the point is in this disk, there may be a contact
                 if ( distance_point_circle(point1, opt2.local_disks()[id2]) <= 0 )
                     // || distance(point1, opt2.local_disks()[id2].center) < std::max( opt1.cdist(), opt2.cdist() )) // test q, not ok
                 {
+                    // cnt_pt_in_disk++; // DEBUG dt
                     // Loop over points of this disk
                     for ( std::size_t ipt2 = opt2.local_points()[id2]; ipt2 < opt2.local_points()[id2+1]; ++ipt2 )
                     {
@@ -561,15 +597,14 @@ detect_step4(
                 } 
                 else
                 {   
-                    // TODO : synchro matlab
                     // value_type dist;
+                    // Matlab version
                     // if (m_detection_mode == 1)
                     //     dist = std::max( opt1.cdist(), opt2.cdist() );
                     // else
                     //     dist = std::min( opt1.cdist(), opt2.cdist() );
-                    const value_type dist = distance_point_circle(point1, opt2.local_disks()[id2]) + opt2.local_disks()[id2].radius;
+                    const value_type dist = distance_point_circle(point1, opt2.local_disks()[id2]) + opt2.cdist(); // TEST
                     min_dist = std::min(min_dist, dist);
-                    // TODO : synchro matlab
                     dangling_point = false; // Discontinuity in the disk list
                 }
             } // Loop over disks of obj2
@@ -611,9 +646,12 @@ detect_step4(
 
     } // Loop over disks of obj1
 
+    // if (is_min_id(n1,n2)) std::cout << "(" << cnt_pt_in_disk << ")"; // DEBUG dt
+
     // Add edge in graph if there is any contact
     if (contact_list.size() != 0)
     {
+        // if (is_min_id(n1,n2)) std::cout << "C"; // DEBUG dt
         add_edge(vertex(real_floe_id(n1), m_contacts), vertex(real_floe_id(n2), m_contacts), {contact_list, n1, n2}, m_contacts);
         set_dist_opt(n1, n2, std::max(opt1.cdist(), opt2.cdist()));
     }
@@ -636,7 +674,7 @@ MatlabDetector<TFloe, TContact>::clean_dist_opt()
     {
         auto const& contact = m_contacts[edge];
         if (!contact.is_solved())
-            set_dist_opt(contact.n1(), contact.n2(), 0);
+            { set_dist_opt(contact.n1(), contact.n2(), 0); }
     }
 }
 
@@ -652,8 +690,40 @@ MatlabDetector<TFloe, TContact>::check_interpenetration()
     for (std::size_t n1 = 0; n1 < m_indic.size1(); ++n1)
         for (std::size_t n2 = n1 + 1; n2 < m_indic.size2(); ++n2)
             if (m_indic(n1, n2) == 1)
-                v.push_back(boost::geometry::intersects(get_floe(n1).geometry(), get_floe(n2).geometry()));
+            {
+                auto I = boost::geometry::intersects(get_floe(n1).geometry(), get_floe(n2).geometry());
+                v.push_back(I);
+                if (I) set_indic(n1, n2, -1);
+            }
     return std::all_of(v.begin(), v.end(), [](bool const& B){ return !B; });
+}
+
+
+template <
+    typename TFloe,
+    typename TContact
+>
+void
+MatlabDetector<TFloe, TContact>::backup_step_states()
+{
+    for (std::size_t i = 0; i < m_floes.size(); ++i)
+    {
+        m_previous_step_states[i] = m_floes[i]->state();
+    }
+}
+
+
+template <
+    typename TFloe,
+    typename TContact
+>
+void
+MatlabDetector<TFloe, TContact>::recover_previous_step_states()
+{
+    for (std::size_t i = 0; i < m_floes.size(); ++i)
+    {
+        m_floes[i]->set_state(m_previous_step_states[i]);
+    }
 }
 
 

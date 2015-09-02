@@ -133,7 +133,7 @@ LCPSolver::solve( TContactGraph& graph, bool& success ) {
                 success = lexicolemke(lcp);
                 break;
             case 3:
-                // success = lexicolemke(lcp); // don't have Iterlemke...
+                // success = iterlemke(lcp); // don't have Iterlemke...
                 break;
                 // zc = IterLemke(Aorigin, Qcorigin, 1e-11, best.zc);
         }
@@ -241,10 +241,10 @@ LCPSolver::solve( TContactGraph& graph, bool& success ) {
                 continue; // std::cout << "******NAN******";
 
              // Energie cinetique, Erreur LCP & Vit rel Normale :
-            auto ECc = calcEc(Sold, graph_lcp.M, graph_lcp.W);
+            auto ECd = calcEc(Sold, graph_lcp.M, graph_lcp.W);
             Err = LCP_error(lcp_d_orig);
             auto vitrelnormtest = VRelNtest(prod(trans(graph_lcp.J), Sold), graph);
-            solved = LCPtest(MatLCP[comptchgt][1], ECc, 1 + born_sup, Err, vitrelnormtest);
+            solved = LCPtest(MatLCP[comptchgt][1], ECd, 1 + born_sup, Err, vitrelnormtest);
         }
     } else {
         return Solc;

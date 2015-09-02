@@ -135,12 +135,12 @@ def get_option_dict(debug=True):
             "cxxflags": [
                 '-std=c++11',
                  '-O0',
-                 "-Wall",# "-Wextra",
+                 "-Wall", #"-Wextra",
             ]
         })
     else:
         OPTION_DICT.update({
-            # "linkflags": ["-DNDEBUG"],
+            "linkflags": [],
             "cxxflags": [
                 '-std=c++11',
                 "-DNDEBUG",
