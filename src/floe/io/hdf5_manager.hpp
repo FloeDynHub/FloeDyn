@@ -39,11 +39,14 @@ public:
     using vector = std::vector<T>;
     using floe_group_type = TFloeGroup;
     using value_type = typename TFloeGroup::value_type;
+    using saved_state_type = std::array<value_type, 6>;
 
     //! Default constructor.
-    HDF5Manager() : m_out_file{nullptr}, m_step_count{0}, m_chunk_step_count{0}, m_flush_max_step{100}
+    HDF5Manager() : 
+        m_out_file{nullptr}, m_step_count{0}, m_chunk_step_count{0}, m_flush_max_step{100},
+        m_data_chunk_time{new value_type[m_flush_max_step]}
     {
-        m_data_chunk_time.reserve(m_flush_max_step);
+        // m_data_chunk_time.reserve(m_flush_max_step);
     }
 
     //! Destructor
@@ -51,8 +54,6 @@ public:
     {
         if (m_chunk_step_count != 0)
             write_chunk();
-        if (m_out_file != nullptr)
-            delete m_out_file;
     }
 
     void save_step(value_type time, const floe_group_type& floe_group);
@@ -66,12 +67,13 @@ private:
     hsize_t m_chunk_step_count;
     const hsize_t m_flush_max_step;
     vector<vector<vector<vector<value_type>>>> m_data_chunk_boundaries;
-    vector<vector<vector<value_type>>> m_data_chunk_frames;
-    vector<value_type> m_data_chunk_time;
+    vector<vector<saved_state_type>> m_data_chunk_states;
+    // vector<value_type> m_data_chunk_time;
+    value_type* m_data_chunk_time;
 
     void write_chunk();
     void write_boundaries();
-    void write_frames();
+    void write_states();
     void write_time();
 
 };
@@ -87,19 +89,10 @@ void HDF5Manager<TFloe>::save_step(value_type time, const floe_group_type& floe_
     if (m_data_chunk_boundaries.size() == 0)
     {   
         m_data_chunk_boundaries.resize(floe_list.size());
-        for (std::size_t i = 0; i != m_data_chunk_boundaries.size(); ++i)
-        {
-            m_data_chunk_boundaries[i].reserve(m_flush_max_step);
-        }
-    }
-
-    if (m_data_chunk_frames.size() == 0)
-    {   
-        m_data_chunk_frames.reserve(m_flush_max_step);
-        for (std::size_t i = 0; i != m_data_chunk_frames.size(); ++i)
-        {
-            m_data_chunk_frames[i].reserve(floe_list.size());
-        }
+        // for (std::size_t i = 0; i != m_data_chunk_boundaries.size(); ++i)
+        // {
+        //     m_data_chunk_boundaries[i].reserve(m_flush_max_step);
+        // }
     }
 
     // save boundaries
@@ -113,18 +106,22 @@ void HDF5Manager<TFloe>::save_step(value_type time, const floe_group_type& floe_
         floe_id++;
     }
 
-    // save frames
-    vector<vector<value_type>> frames_step_data(floe_list.size());
+    // save states
+    vector<saved_state_type> states_step_data(floe_list.size());
     floe_id = 0;
     for(auto const& floe : floe_list)
     {
-        frames_step_data[floe_id] = {
-            floe.state().pos.x + floe.state().trans.x, floe.state().pos.y + floe.state().trans.y, floe.state().theta,
-            floe.state().speed.x, floe.state().speed.y, floe.state().rot
-        };
+        states_step_data[floe_id] = {{
+            floe.state().pos.x + floe.state().trans.x,
+            floe.state().pos.y + floe.state().trans.y,
+            floe.state().theta,
+            floe.state().speed.x,
+            floe.state().speed.y,
+            floe.state().rot
+        }};
         floe_id++;
     }
-    m_data_chunk_frames.push_back(frames_step_data);
+    m_data_chunk_states.push_back(states_step_data);
 
     // save time
     m_data_chunk_time[m_chunk_step_count] = time;
@@ -149,20 +146,31 @@ void HDF5Manager<TFloe>::write_chunk() {
          * handle the errors appropriately
          */
         Exception::dontPrint();
-        /*
-         * Create a new file using H5F_ACC_TRUNC access,
-         * default file creation properties, and default file
-         * access properties.
-         */
-        if (m_out_file == nullptr)
+
+        // if (m_out_file == nullptr){}
+        const H5std_string  FILE_NAME( "io/out.h5" );
+
+        if (m_step_count <= m_flush_max_step)
         {
-            const H5std_string  FILE_NAME( "io/out.h5" );
+            /*
+             * Create a new file using H5F_ACC_TRUNC access,
+             * default file creation properties, and default file
+             * access properties.
+             */
             m_out_file = new H5File( FILE_NAME, H5F_ACC_TRUNC );
+            // m_out_file = H5Fcreate( FILE_NAME, H5F_ACC_TRUNC);
+        } else {
+            /*
+             * Open the file with read/write access.
+             */
+            m_out_file = new H5File( FILE_NAME, H5F_ACC_RDWR );
         }
 
         write_boundaries();
-        write_frames();
+        write_states();
         write_time();
+
+        delete m_out_file;
 
     }  // end of try block
     // catch failure caused by the H5File operations
@@ -258,18 +266,18 @@ void HDF5Manager<TFloe>::write_boundaries() {
 template <
     typename TFloe
 >
-void HDF5Manager<TFloe>::write_frames() {
+void HDF5Manager<TFloe>::write_states() {
     
     H5File& file( *m_out_file );
     const int   RANK = 3;
 
     /* saving time */
-    DataSet frames_dataset;
-    hsize_t nb_floes = m_data_chunk_frames[0].size();
+    DataSet states_dataset;
+    const hsize_t nb_floes = m_data_chunk_states[0].size();
     hsize_t     dims[RANK] = {m_step_count - m_chunk_step_count, nb_floes, 6};
-    hsize_t     chunk_dims[RANK] = {m_chunk_step_count, dims[1], dims[2]};
+    const hsize_t     chunk_dims[RANK] = {m_chunk_step_count, dims[1], dims[2]};
     try {
-        frames_dataset = file.openDataSet("floe_states");
+        states_dataset = file.openDataSet("floe_states");
     } catch (H5::Exception& e) {
         FloatType datatype( PredType::NATIVE_DOUBLE );
         datatype.setOrder( H5T_ORDER_LE );
@@ -279,13 +287,13 @@ void HDF5Manager<TFloe>::write_frames() {
         DSetCreatPropList prop;
         prop.setChunk(RANK, chunk_dims);
 
-        frames_dataset = file.createDataSet(H5std_string{"floe_states"}, datatype, dataspace, prop);
+        states_dataset = file.createDataSet(H5std_string{"floe_states"}, datatype, dataspace, prop);
     }
     // Extend the dataset.
     dims[0] += chunk_dims[0];
-    frames_dataset.extend(dims); 
+    states_dataset.extend(dims); 
 
-    DataSpace filespace = frames_dataset.getSpace();
+    DataSpace filespace = states_dataset.getSpace();
     hsize_t offset[RANK] = {m_step_count - m_chunk_step_count, 0, 0};
     filespace.selectHyperslab(H5S_SELECT_SET, chunk_dims, offset);
     // Define memory space.
@@ -296,14 +304,14 @@ void HDF5Manager<TFloe>::write_frames() {
         for (std::size_t k = 0; k != chunk_dims[1]; ++k)
         {
             for (std::size_t l = 0; l!=6; ++l)
-                data[j][k][l] = m_data_chunk_frames[j][k][l];
+                data[j][k][l] = m_data_chunk_states[j][k][l];
         }
     }
     // Write data to the extended portion of the dataset.
-    frames_dataset.write(data, PredType::NATIVE_DOUBLE, memspace, filespace);
+    states_dataset.write(data, PredType::NATIVE_DOUBLE, memspace, filespace);
 
     // clearing buffer
-    m_data_chunk_frames.clear();
+    m_data_chunk_states.clear();
 
 };
 
@@ -341,14 +349,7 @@ void HDF5Manager<TFloe>::write_time() {
     filespace.selectHyperslab(H5S_SELECT_SET, chunk_dimst, offset);
     // Define memory space.
     DataSpace memspace{1, chunk_dimst, NULL};
-    value_type data_time[m_chunk_step_count];
-    for (std::size_t i = 0; i != m_chunk_step_count; ++i)
-        data_time[i] = m_data_chunk_time[i];
-    // Write data to the extended portion of the dataset.
-    time_dataset.write(data_time, PredType::NATIVE_DOUBLE, memspace, filespace);
-
-    // clearing buffer
-    m_data_chunk_time.clear();
+    time_dataset.write(m_data_chunk_time, PredType::NATIVE_DOUBLE, memspace, filespace);
 
 };
 

@@ -65,7 +65,7 @@ private:
         const floe_interface_type& floe2,
         const optim_type& optim1,
         const optim_interface_type& optim2,
-        std::size_t I
+        short I
     );
 
     //! Corresponds to gestion_temps_fast() in Matlab code
@@ -143,7 +143,7 @@ TimeScaleManager<TDomain, TDetector>::delta_t_secu(
     const floe_interface_type& floe2,
     const optim_type& optim1,
     const optim_interface_type& optim2,
-    std::size_t I
+    short I
 ){
     const value_type& dt_defaut = m_domain->default_time_step();
     const point_type& Vg1 = floe1.state().speed, Vg2 = floe2.state().speed;
@@ -156,8 +156,8 @@ TimeScaleManager<TDomain, TDetector>::delta_t_secu(
     value_type lambda = std::min(dc1, dc2) / 20;
 
     value_type d = std::max(dist_opt, dist_secu);
-    if (I==-1) // interpenetration
-        d = dist_secu;
+    if (I < 0) // interpenetration
+        d /= std::pow(2, -(I+1));
     lambda = std::min(lambda, d / 20); // TODO éclaircir avec Mathias (lambda > d dans certains cas)
 
     // Calcul du deplacement d un point par rapport aux reperes en t+dt.
@@ -241,7 +241,6 @@ TimeScaleManager<TDomain, TDetector>::delta_t_secu(
     geometry::transform( Belt_P1, Belt_P1_af, transformer( mark1 ));
     geometry::transform( Belt_P2, Belt_P2_af, transformer( mark2 ));
     
-
     value_type dist1 = 0, dist2 = 0;
     for (std::size_t i = 0; i != Belt_P1.size(); ++i)
         dist1 = std::max(dist1, distance(Belt_P1_be[i], Belt_P1_af[i]));

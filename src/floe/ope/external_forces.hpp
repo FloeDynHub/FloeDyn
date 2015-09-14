@@ -46,6 +46,17 @@ public:
         m_physical_data.load_matlab_topaz_data(filename);
     }
 
+    inline value_type OBL_surface_mass() const { return h_w * rho_w; }
+    inline void update_water_speed( point_type diff_speed ) { m_physical_data.update_water_speed( diff_speed ); }
+
+    // forces applied on floes
+    std::function<point_type (value_type, value_type)> ocean_drag_2(floe_type& floe);
+
+    // forces applied on ocean
+    point_type air_drag_ocean();
+    point_type ocean_coriolis(point_type p);
+    point_type deep_ocean_friction();
+
 private:
 
     physical_data_type m_physical_data;
@@ -60,12 +71,15 @@ private:
 
     const value_type O_latitude = 80.207; // Origin latitude
 
-    value_type coriolis_coeff(floe_type& floe);
+    const value_type gamma = 1e-5; // m/s friction velocity within the OBL
+    const value_type h_w = 15; // OBL height
+
+    value_type coriolis_coeff(point_type p);
 
     inline point_type water_speed(point_type p){ return m_physical_data.water_speed(p); }
     inline point_type air_speed(point_type p){ return m_physical_data.air_speed(p); }
 
-    void move_floe(floe_type& floe, value_type delta_t);
+    // forces applied on floes
     std::function<point_type (point_type&)> ocean_drag(floe_type& floe);
     std::function<point_type (point_type&)> air_drag();
 
@@ -91,6 +105,18 @@ ExternalForces<TFloeGroup>::ocean_drag(floe_type& floe)
     };
 }
 
+template <typename TFloeGroup>
+std::function<typename TFloeGroup::floe_type::point_type (
+    value<TFloeGroup>, value<TFloeGroup>)>
+ExternalForces<TFloeGroup>::ocean_drag_2(floe_type& floe)
+{   
+    return [&](value_type x, value_type y)
+    {
+        point_type p{x,y};
+        return ocean_drag(floe)(p);
+    };
+}
+
 
 template <typename TFloeGroup>
 std::function<typename TFloeGroup::floe_type::point_type (
@@ -109,14 +135,14 @@ template <typename TFloeGroup>
 typename TFloeGroup::floe_type::point_type
 ExternalForces<TFloeGroup>::coriolis_effect(floe_type& floe)
 {
-    return - coriolis_coeff(floe) * fg::direct_orthogonal(floe.state().speed);
+    return - coriolis_coeff(floe.state().pos) * fg::direct_orthogonal(floe.state().speed);
 }
 
 template <typename TFloeGroup>
 value<TFloeGroup>
-ExternalForces<TFloeGroup>::coriolis_coeff(floe_type& floe)
+ExternalForces<TFloeGroup>::coriolis_coeff(point_type p)
 {
-    auto phi = (O_latitude * M_PI / 180 + floe.state().pos.y / R_earth); // in radian
+    auto phi = (O_latitude * M_PI / 180 + p.y / R_earth); // in radian
     return 2 * V_earth * sin(phi);
 }
 
@@ -144,6 +170,29 @@ ExternalForces<TFloeGroup>::total_rot_drag(floe_type& floe)
         point_type p{x,y};
         return fg::cross_product_value(p - floe.state().pos, total_drag(floe)(x, y));
     };
+}
+
+
+template <typename TFloeGroup>
+typename ExternalForces<TFloeGroup>::point_type
+ExternalForces<TFloeGroup>::air_drag_ocean()
+{   
+    auto f = air_speed({0,0}); // Wind is uniform in space for now
+    return rho_a * C_a * norm2(f) * f;
+}
+
+template <typename TFloeGroup>
+typename ExternalForces<TFloeGroup>::point_type
+ExternalForces<TFloeGroup>::ocean_coriolis(point_type p)
+{   
+    return - coriolis_coeff(p) * fg::direct_orthogonal(m_physical_data.water_speed());
+}
+
+template <typename TFloeGroup>
+typename ExternalForces<TFloeGroup>::point_type
+ExternalForces<TFloeGroup>::deep_ocean_friction()
+{   
+    return - ( gamma / h_w ) * m_physical_data.water_speed();
 }
 
 

@@ -77,7 +77,7 @@ public:
     // typedef ublas::symmetric_matrix<value_type, ublas::lower> dist_matrix_type; // Type of distance matrix
     // typedef ublas::symmetric_matrix<std::size_t, ublas::lower> indic_matrix_type; // Type of indicator matrix
     using dist_matrix_type = ublas::matrix<value_type>; //!< Type of distance matrix
-    using indic_matrix_type = ublas::matrix<std::size_t>; //!< Type of indicator matrix
+    using indic_matrix_type = ublas::matrix<short>; //!< Type of indicator matrix
 
     //! Default constructor
     MatlabDetector()
@@ -109,7 +109,7 @@ public:
      *
      * It updates optimization datas of all associated floes and launch contact detection.
      */
-    void update();
+    bool update();
 
     //! Access contacts graph
     contact_graph_type const& contact_graph() const { return m_contacts; }
@@ -177,7 +177,7 @@ protected:
     value_type detect_step4( std::size_t n1, std::size_t n2, std::vector<std::size_t> const& ldisks1, std::vector<std::size_t> const& ldisks2, TAdjacency const& adjacency);
 
     inline virtual void set_dist_secu(std::size_t n1, std::size_t n2, value_type val) { m_dist_secu(n1, n2) = m_dist_secu(n2, n1) = val; }
-    inline virtual void set_indic(std::size_t n1, std::size_t n2, std::size_t val) { m_indic(n1, n2) = m_indic(n2, n1) = val; }
+    inline virtual void set_indic(std::size_t n1, std::size_t n2, short val) { m_indic(n1, n2) = m_indic(n2, n1) = val; }
     inline virtual void set_dist_opt(std::size_t n1, std::size_t n2, value_type val) { m_dist_opt(n1, n2) = m_dist_opt(n2, n1) = val; }
     inline virtual contact_type create_contact(std::size_t n1, std::size_t n2, point_type point1, point_type point2) const {
         return { m_floes[n1], m_floes[n2], point1, point2 }; }
@@ -210,7 +210,7 @@ template <
     typename TFloe,
     typename TContact
 >
-void
+bool
 MatlabDetector<TFloe, TContact>::update()
 {   
     if (check_interpenetration())
@@ -222,9 +222,11 @@ MatlabDetector<TFloe, TContact>::update()
         detect();
         // manage collision mode
         detection_mode();
+        return true;
     } else {
         std::cout << " INTERPENETRATION ";
         recover_previous_step_states();
+        return false;
     }
 }
 
@@ -689,12 +691,21 @@ MatlabDetector<TFloe, TContact>::check_interpenetration()
     std::vector<bool> v;
     for (std::size_t n1 = 0; n1 < m_indic.size1(); ++n1)
         for (std::size_t n2 = n1 + 1; n2 < m_indic.size2(); ++n2)
-            if (m_indic(n1, n2) == 1)
+        {
+            if (m_indic(n1, n2) != 0)
             {
                 auto I = boost::geometry::intersects(get_floe(n1).geometry(), get_floe(n2).geometry());
                 v.push_back(I);
-                if (I) set_indic(n1, n2, -1);
+                if (I)
+                {
+                    if (m_indic(n1, n2) == 1)
+                        set_indic(n1, n2, -1);
+                    else if (m_indic(n1, n2) < 0)
+                        set_indic(n1, n2, m_indic(n1, n2) - 1);
+                }
+                
             }
+        }
     return std::all_of(v.begin(), v.end(), [](bool const& B){ return !B; });
 }
 

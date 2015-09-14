@@ -198,8 +198,17 @@ TEST_CASE( "Test distance between floes", "[collision]" ) {
     Mat_Close(matfp);
     cout << "EXIT_SUCCESS" << endl;
 
-    // cout optim's cdist
+    // cout floes' infos
     for (size_t n = 0; n!= 10; ++n)
         cout << "mass : " << F.get_floes()[n].mass() << " area : " << F.get_floes()[n].area() << endl;
+
+    // cout optims's local disks radius
+    for (size_t n = 0; n!= 10; ++n)
+    {   
+        cout << "FLOE " << n << endl;
+        for (auto const& d : detector.get_optim(n).local_disks())
+            cout  << d.radius << " ";
+        cout << endl;
+    }
 
 }

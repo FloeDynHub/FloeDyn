@@ -89,7 +89,8 @@ private:
     time_scale_manager_type m_time_scale_manager;
 
     void do_detection(){
-        m_detector->update();
+        if (!m_detector->update()) // we have a floe interpenetration
+            m_domain_h->rewind_time();
     }
 
     void manage_collisions(){
@@ -100,8 +101,9 @@ private:
     void step_solve(){
         do_detection();
         manage_collisions();
-        m_domain_h->set_time_step(m_time_scale_manager.delta_t_secu(
-            m_domain_h, m_detector));
+        m_domain_h->set_time_step(
+            m_time_scale_manager.delta_t_secu(m_domain_h, m_detector)
+        );
     }
 
     // chrono version (dev)

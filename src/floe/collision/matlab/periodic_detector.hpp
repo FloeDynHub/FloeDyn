@@ -69,10 +69,10 @@ private:
 
     void detect(); // initialization
 
-    inline virtual void set_dist_secu(std::size_t n1, std::size_t n2, value_type val) {
+    inline virtual void set_dist_secu(std::size_t n1, std::size_t n2, value_type val) override {
         (n2 >= base_class::m_floes.size()) ? base_class::m_dist_secu(n1, n2) = val : base_class::m_dist_secu(n1, n2) = base_class::m_dist_secu(n2, n1) = val;
     }
-    inline virtual void set_indic(std::size_t n1, std::size_t n2, std::size_t val) {
+    inline virtual void set_indic(std::size_t n1, std::size_t n2, short val) override {
         (n2 >= base_class::m_floes.size()) ? base_class::m_indic(n1, n2) = val : base_class::m_indic(n1, n2) = base_class::m_indic(n2, n1) = val;
     }
     inline virtual void set_dist_opt(std::size_t n1, std::size_t n2, value_type val);

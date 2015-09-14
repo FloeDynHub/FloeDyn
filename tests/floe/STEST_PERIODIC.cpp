@@ -34,7 +34,7 @@ int main( int argc, char* argv[] )
     problem_type P;
     P.load_matlab_config(matlab_list_floe_filename);
     P.load_matlab_topaz_data(matlab_topaz_filename);
-    P.auto_topology(); 
+    P.auto_topology();
 
     if (argc == 6)
         P.recover_states_from_file("/Users/jouetq/Projects/FloeCpp/io/in.h5", atof(argv[5]));

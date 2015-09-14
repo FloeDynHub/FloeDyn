@@ -36,6 +36,7 @@ public:
     inline real default_time_step() const { return m_delta_t_default; }
     inline void set_time_step(real delta_t ) { m_delta_t = delta_t; }
     inline void update_time() { m_t += m_delta_t; }
+    inline void rewind_time() { m_t -= m_delta_t; }
     inline const real& last_out() const { return m_last_out; }
     inline void update_last_out() { m_last_out = m_t; }
 

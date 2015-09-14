@@ -64,6 +64,9 @@ public:
         };
     }
 
+    inline T area() const { return delta_x * delta_y; }
+    inline TPoint center() const { return { (m_max_x - m_min_x) / 2, (m_max_y - m_min_y) / 2 }; }
+
 private:
     T m_min_x;
     T m_max_x;

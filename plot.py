@@ -6,6 +6,7 @@ from matplotlib.collections import PatchCollection
 import matplotlib.animation as animation
 from math import *
 import h5py
+import datetime
 
 
 Writer = animation.writers['ffmpeg']
@@ -25,7 +26,7 @@ def update(num, data, ax):
         polygon = Polygon(s[num], True, color="white")
         ax.patches[i].set_xy(polygon.get_xy())
         i+=1
-    ax.set_title("t = %s" % data.get("time")[num])
+    ax.set_title("t = %s" % str(datetime.timedelta(seconds=int(data.get("time")[num]))))
     ax.axis('equal')
     ax.relim()
     ax.autoscale_view(True,True,True)
@@ -49,5 +50,4 @@ def plot_floes(filename, make_video=False):
         anim.save('floes.mp4', writer=writer)
     else:
         plt.show()
-
 

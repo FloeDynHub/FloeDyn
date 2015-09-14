@@ -13,14 +13,8 @@
 #include "floe/io/matlab/list_so_to_floes.hpp"
 #include "floe/io/matlab/list_so_import.hpp"
 #include "floe/io/matlab/list_so.hpp"
+// #include "floe/io/false_hdf5_manager.hpp" // for gcc/MacOS
 #include "floe/io/hdf5_manager.hpp"
-
-#include "H5Cpp.h"
-#include <algorithm>
-#ifndef H5_NO_NAMESPACE
-using namespace H5;
-#endif
-
 
 namespace floe { namespace variable
 {
@@ -72,6 +66,8 @@ public:
 
     //! kinetic energy of the group
     value_type kinetic_energy();
+    //! sum all floes areas
+    value_type total_area();
 
 private:
 
@@ -124,6 +120,16 @@ FloeGroup<TFloe>::kinetic_energy()
     return std::accumulate(
         m_list_floe.begin(), m_list_floe.end(), 0. , 
         [](value_type partial_sum, floe_type& floe) {return partial_sum + floe.kinetic_energy(); }
+    );
+}
+
+template<typename TFloe>
+typename FloeGroup<TFloe>::value_type
+FloeGroup<TFloe>::total_area()
+{
+    return std::accumulate(
+        m_list_floe.begin(), m_list_floe.end(), 0. , 
+        [](value_type partial_sum, floe_type& floe) {return partial_sum + floe.area(); }
     );
 }
 

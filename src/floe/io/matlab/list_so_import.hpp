@@ -48,6 +48,7 @@ template <typename T>
 void read_list_so_from_file( std::string const& file_name, MatlabListSolid<T>& list_so, std::string const& variable_name = "list_so_str" )
 {
     mat_t *matfp;
+    matvar_t *matvar;
 
     // Opening file
     matfp = Mat_Open( file_name.c_str(), MAT_ACC_RDONLY );
@@ -57,7 +58,9 @@ void read_list_so_from_file( std::string const& file_name, MatlabListSolid<T>& l
     }
 
     // Reading list_so variable 
-    read_list_so(  Mat_VarRead( matfp, variable_name.c_str() ), list_so );
+    matvar = Mat_VarRead( matfp, variable_name.c_str() );
+    read_list_so(  matvar, list_so );
+    Mat_VarFree(matvar);
 
     Mat_Close(matfp);
 }

@@ -44,6 +44,7 @@ public:
     DynamicsManager(value_type const& time_ref) : m_external_forces{time_ref} {}
 
     void move_floes(floe_group_type& floe_group, value_type delta_t);
+    virtual void update_ocean(floe_group_type& floe_group, value_type delta_t){}
 
     inline void load_matlab_topaz_data(std::string const& filename) {
         m_external_forces.load_matlab_topaz_data(filename);
@@ -70,6 +71,7 @@ DynamicsManager<TFloeGroup>::move_floes(floe_group_type& floe_group, value_type 
     #pragma omp parallel for
     for (std::size_t i=0; i < floe_group.get_floes().size(); ++i)
         move_floe(floe_group.get_floes()[i], delta_t);
+    update_ocean(floe_group, delta_t);
 }
 
 
