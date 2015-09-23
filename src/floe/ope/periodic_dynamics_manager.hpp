@@ -80,7 +80,7 @@ PeriodicDynamicsManager<TFloeGroup, TSpaceTopology>::update_ocean(TFloeGroup& fl
         floes_force += floe::integration::integrate(base_class::m_external_forces.ocean_drag_2(floe), floe.mesh(), strategy);
     // calculate water speed delta
     point_type diff_speed = delta_t * ( 
-        ( 1 / OBL_mass ) * ( floes_force + water_area * base_class::m_external_forces.air_drag_ocean() )
+        ( 1 / OBL_mass ) * ( - floes_force + water_area * base_class::m_external_forces.air_drag_ocean() )
         + base_class::m_external_forces.ocean_coriolis(window_center)
         + base_class::m_external_forces.deep_ocean_friction()
     );
