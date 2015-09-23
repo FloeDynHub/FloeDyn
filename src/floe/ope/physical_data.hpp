@@ -89,19 +89,30 @@ void
 PhysicalData<TPoint>::interpolate_hour_to_minute(point_vector const& data_hours, point_vector& data_minutes){
     if (!data_hours.size())
         return;
+
     point_type p0, p1, P0, P1, pm, Pm;
-    // p0 = data_hours[0];
-    p0 = {0,0}; // init phase
-    // we store polar coordinates in cartesian point, to get simple interpolation on norm and angle.
+
+    // init phase
+    const value_type init_hours = 12;
+    p0 = {0,0};
     P0 = {norm2(p0), atan2(p0.y, p0.x)}; // polar coordinates of P0.
+    p1 = data_hours[0];
+    P1 = {norm2(p1), atan2(p1.y, p1.x)};
+    for (std::size_t j = 0; j!= 60 * init_hours; ++j)
+    {
+        value_type h_frac = (value_type)j/ (60 * init_hours);
+        if (std::abs(P1[1] - P0[1]) > M_PI) // to avoid doing more than a U turn
+            P0[1] += copysign(2 * M_PI, P1[1] - P0[1]);
+        Pm = (1. - h_frac) * P0 + h_frac * P1;
+        pm = {Pm[0] * cos(Pm[1]), Pm[0] * sin(Pm[1])};
+        data_minutes.push_back(pm);
+    }
+
+    // we store polar coordinates in cartesian point, to get simple interpolation on norm and angle.
+    P0 = P1; // polar coordinates of P0.
     for (std::size_t i = 1; i != data_hours.size(); ++i)
     {
         p1 = data_hours[i];
-
-        // init phase
-        if (i<12)
-            p1 *= (double)i/12;
-
         P1 = {norm2(p1), atan2(p1.y, p1.x)};
         for (std::size_t j = 0; j!=60; ++j)
         {

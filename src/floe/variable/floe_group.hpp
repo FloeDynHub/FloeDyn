@@ -39,6 +39,7 @@ public:
         typename floe_type::floe_h_type
     >;
     using value_type = typename TFloe::value_type;
+    using point_type = typename TFloe::point_type;
     using out_manager_type = io::HDF5Manager<FloeGroup<TFloe>>;
 
     //! Default constructor.
@@ -65,9 +66,13 @@ public:
     inline std::vector<floe_type>& get_floes() { return m_list_floe; }
 
     //! kinetic energy of the group
-    value_type kinetic_energy();
+    value_type kinetic_energy() const;
     //! sum all floes areas
-    value_type total_area();
+    value_type total_area() const;
+    //! sum all floes masses
+    value_type total_mass() const;
+    //! mass center of the group
+    point_type mass_center() const;
 
 private:
 
@@ -115,22 +120,42 @@ double FloeGroup<TFloe>::recover_states_from_file(std::string filename, double t
 
 template<typename TFloe>
 typename FloeGroup<TFloe>::value_type
-FloeGroup<TFloe>::kinetic_energy()
+FloeGroup<TFloe>::kinetic_energy() const
 {
     return std::accumulate(
         m_list_floe.begin(), m_list_floe.end(), 0. , 
-        [](value_type partial_sum, floe_type& floe) {return partial_sum + floe.kinetic_energy(); }
+        [](value_type partial_sum, floe_type const& floe) { return partial_sum + floe.kinetic_energy(); }
     );
 }
 
 template<typename TFloe>
 typename FloeGroup<TFloe>::value_type
-FloeGroup<TFloe>::total_area()
+FloeGroup<TFloe>::total_area() const
 {
     return std::accumulate(
         m_list_floe.begin(), m_list_floe.end(), 0. , 
-        [](value_type partial_sum, floe_type& floe) {return partial_sum + floe.area(); }
+        [](value_type partial_sum, floe_type const& floe) { return partial_sum + floe.area(); }
     );
+}
+
+template<typename TFloe>
+typename FloeGroup<TFloe>::value_type
+FloeGroup<TFloe>::total_mass() const
+{
+    return std::accumulate(
+        m_list_floe.begin(), m_list_floe.end(), 0. , 
+        [](value_type partial_sum, floe_type const& floe) { return partial_sum + floe.mass(); }
+    );
+}
+
+template<typename TFloe>
+typename FloeGroup<TFloe>::point_type
+FloeGroup<TFloe>::mass_center() const
+{
+    return std::accumulate(
+        m_list_floe.begin(), m_list_floe.end(), point_type{0,0} , 
+        [](point_type partial_sum, floe_type const& floe) { return partial_sum + floe.mass() * floe.state().real_position(); }
+    ) / total_mass();
 }
 
 

@@ -1,7 +1,7 @@
 /*!
  * \file floe/state/space_time_state.hpp
  * \brief Space-time state for a floe.
- * \author Roland Denis
+ * \author Roland Denis, Quentin Jouet
  *
  * \todo time state ...
  */
@@ -48,7 +48,10 @@ struct SpaceTimeState
     TSpeed  speed;
     TRot    rot;
 
-    TPos    trans; // total translation (periodic boundaries gap sum)
+    TPos    trans; // total translation (periodic boundaries gaps sum)
+
+    //! real position ( ignoring periodic boundaries gaps )
+    inline TPos real_position() const { return pos + trans; }
 
     //! Compound addition with other state
     template < typename TOtherPos, typename TOtherTheta, typename TOtherSpeed, typename TOtherRot >

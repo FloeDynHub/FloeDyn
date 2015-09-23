@@ -101,9 +101,7 @@ private:
     void step_solve(){
         do_detection();
         manage_collisions();
-        m_domain_h->set_time_step(
-            m_time_scale_manager.delta_t_secu(m_domain_h, m_detector)
-        );
+        m_time_scale_manager.delta_t_secu(m_domain_h, m_detector);
     }
 
     // chrono version (dev)

@@ -138,7 +138,7 @@ TEST_CASE( "Test Integrate", "[integration]" ) {
 
     pt_result = integrate( [] (real /* x */, real y) { return Point{y, 2*y}; }, mesh2, strategy );
     cout << "\\int_M(45°) (y, 2y) dx dy = " << pt_result << " : " << ( ( success = norm2(pt_result - Point{0,0}) <= eps ) ? "OK" : "KO" ) << endl;
-    
+
 
     }
 }

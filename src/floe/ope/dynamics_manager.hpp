@@ -67,7 +67,6 @@ DynamicsManager<TFloeGroup>::move_floes(floe_group_type& floe_group, value_type 
     // OpenMP doesn't like this syntax
     // for (auto& floe : floe_group.get_floes())
     //     move_floe(floe, delta_t);
-    // omp_set_num_threads(2);
     #pragma omp parallel for
     for (std::size_t i=0; i < floe_group.get_floes().size(); ++i)
         move_floe(floe_group.get_floes()[i], delta_t);

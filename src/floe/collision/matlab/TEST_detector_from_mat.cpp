@@ -63,7 +63,7 @@ int main( int argc, char* argv[] )
     timer.start();
     TDetector detector;
     for (auto& floe_ptr : floe_list)
-        detector.push_back(floe_ptr);
+        detector.push_back(&floe_ptr);
     timer.stop();
     cout << "\t" << timer.format() << endl;
 
@@ -128,10 +128,10 @@ int main( int argc, char* argv[] )
     }
 
     cout << "First floe informations:" << endl;
-    cout << "\tdensity = " << floe_list[0]->get_density() << endl;
-    cout << "\tmass = " << floe_list[0]->mass() << endl;
-    cout << "\tarea = " << floe_list[0]->area() << endl;
-    cout << "\tdenom = " << floe_list[0]->moment_cst() << endl;
+    cout << "\tdensity = " << floe_list[0].get_density() << endl;
+    cout << "\tmass = " << floe_list[0].mass() << endl;
+    cout << "\tarea = " << floe_list[0].area() << endl;
+    cout << "\tdenom = " << floe_list[0].moment_cst() << endl;
     cout << endl;
 
     cout << "Preparation of one small LCP ..." << endl;
@@ -238,9 +238,9 @@ int main( int argc, char* argv[] )
     }
 
 
-    // Freeing memory
-    for ( auto& floe_ptr : floe_list )
-        delete floe_ptr;
+    // // Freeing memory
+    // for ( auto& floe_ptr : floe_list )
+    //     delete floe_ptr;
     
 
     return 0;

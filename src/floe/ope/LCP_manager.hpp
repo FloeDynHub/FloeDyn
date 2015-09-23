@@ -57,21 +57,44 @@ void LCPManager::solve_contacts(TContactGraph& contact_graph)
 {
     auto const subgraphs = collision_subgraphs( contact_graph );
     int LCP_count = 0, nb_success = 0;
-    // #pragma omp parallel for
-    for ( auto& subgraph : subgraphs )
+    // for ( auto& subgraph : subgraphs )
+    // {
+    //     auto asubgraphs = active_subgraphs( subgraph );
+    //     int loop_cnt = 0;
+    //     while (asubgraphs.size() != 0 && loop_cnt < 60 * num_contacts(subgraph) )
+    //     {
+    //         LCP_count += asubgraphs.size();
+    //         for ( auto const& graph : asubgraphs )
+    //         {
+    //             bool success;
+    //             auto Sol = m_solver.solve( graph, success );
+    //             mark_solved(graph, success);
+    //             if (success) nb_success++;
+    //                 update_floes_state(graph, Sol);
+    //         }
+    //         asubgraphs = active_subgraphs( subgraph );
+    //         loop_cnt++;
+    //     }
+    // }
+    #pragma omp parallel for
+    for ( std::size_t i = 0; i < subgraphs.size(); ++i )
     {
+        auto& subgraph = subgraphs[i];
         auto asubgraphs = active_subgraphs( subgraph );
         int loop_cnt = 0;
         while (asubgraphs.size() != 0 && loop_cnt < 60 * num_contacts(subgraph) )
         {
             LCP_count += asubgraphs.size();
-            for ( auto const& graph : asubgraphs )
+            #pragma omp parallel for
+            for ( std::size_t j = 0; j < asubgraphs.size(); ++j )
             {
                 bool success;
+                auto& graph = asubgraphs[j];
                 auto Sol = m_solver.solve( graph, success );
                 mark_solved(graph, success);
+                #pragma omp critical
                 if (success) nb_success++;
-                    update_floes_state(graph, Sol);
+                    update_floes_state(graph, Sol); // TODO not in if ?
             }
             asubgraphs = active_subgraphs( subgraph );
             loop_cnt++;

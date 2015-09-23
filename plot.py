@@ -47,7 +47,7 @@ def plot_floes(filename, make_video=False):
         interval=50, blit=False)
 
     if make_video:
-        anim.save('floes.mp4', writer=writer)
+        anim.save('%s.mp4' % filename, writer=writer)
     else:
         plt.show()
 

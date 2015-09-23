@@ -10,6 +10,7 @@
 #include <iostream>
 #include <vector>
 #include <algorithm>
+#include <ctime>
 #include "floe/variable/floe_group.hpp"
 
 #include "H5Cpp.h"
@@ -27,6 +28,22 @@ namespace floe { namespace io
  *
  */
 
+std::string gen_random(const int len) {
+    static const char alphanum[] =
+        "0123456789"
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+        "abcdefghijklmnopqrstuvwxyz";
+        
+    std::string s;
+
+    std::srand(std::time(0));
+
+    for (int i = 0; i < len; ++i) {
+        s += alphanum[rand() % (sizeof(alphanum) - 1)];
+    }
+
+    return s;
+}
 
 template <
     typename TFloeGroup
@@ -42,11 +59,12 @@ public:
     using saved_state_type = std::array<value_type, 6>;
 
     //! Default constructor.
-    HDF5Manager() : 
+    HDF5Manager() :
+        m_out_file_name{"io/out" + gen_random(5) + ".h5"},
         m_out_file{nullptr}, m_step_count{0}, m_chunk_step_count{0}, m_flush_max_step{100},
         m_data_chunk_time{new value_type[m_flush_max_step]}
     {
-        // m_data_chunk_time.reserve(m_flush_max_step);
+        m_data_chunk_mass_center.reserve(m_flush_max_step);
     }
 
     //! Destructor
@@ -54,6 +72,7 @@ public:
     {
         if (m_chunk_step_count != 0)
             write_chunk();
+        std::cout << "OUT FILE : " << m_out_file_name << std::endl;
     }
 
     void save_step(value_type time, const floe_group_type& floe_group);
@@ -62,6 +81,7 @@ public:
 
 private:
 
+    const std::string m_out_file_name;
     H5File* m_out_file;
     hsize_t m_step_count;
     hsize_t m_chunk_step_count;
@@ -70,11 +90,13 @@ private:
     vector<vector<saved_state_type>> m_data_chunk_states;
     // vector<value_type> m_data_chunk_time;
     value_type* m_data_chunk_time;
+    vector<std::array<value_type, 2>> m_data_chunk_mass_center;
 
     void write_chunk();
     void write_boundaries();
     void write_states();
     void write_time();
+    void write_mass_center();
 
 };
 
@@ -112,8 +134,8 @@ void HDF5Manager<TFloe>::save_step(value_type time, const floe_group_type& floe_
     for(auto const& floe : floe_list)
     {
         states_step_data[floe_id] = {{
-            floe.state().pos.x + floe.state().trans.x,
-            floe.state().pos.y + floe.state().trans.y,
+            floe.state().real_position().x,
+            floe.state().real_position().y,
             floe.state().theta,
             floe.state().speed.x,
             floe.state().speed.y,
@@ -125,6 +147,11 @@ void HDF5Manager<TFloe>::save_step(value_type time, const floe_group_type& floe_
 
     // save time
     m_data_chunk_time[m_chunk_step_count] = time;
+
+    // save mass center
+    auto mass_center = floe_group.mass_center();
+    m_data_chunk_mass_center[m_chunk_step_count] = {{mass_center.x, mass_center.y}};
+
 
     m_step_count++;
     m_chunk_step_count++;
@@ -148,7 +175,7 @@ void HDF5Manager<TFloe>::write_chunk() {
         Exception::dontPrint();
 
         // if (m_out_file == nullptr){}
-        const H5std_string  FILE_NAME( "io/out.h5" );
+        const H5std_string  FILE_NAME( m_out_file_name );
 
         if (m_step_count <= m_flush_max_step)
         {
@@ -169,6 +196,7 @@ void HDF5Manager<TFloe>::write_chunk() {
         write_boundaries();
         write_states();
         write_time();
+        write_mass_center();
 
         delete m_out_file;
 
@@ -353,6 +381,53 @@ void HDF5Manager<TFloe>::write_time() {
 
 };
 
+template <
+    typename TFloe
+>
+void HDF5Manager<TFloe>::write_mass_center() {
+    
+    H5File& file( *m_out_file );
+    const int   RANK = 2;
+
+    /* saving mass center */
+    DataSet dataset;
+    hsize_t     dimst[RANK] = {m_step_count - m_chunk_step_count, 2};
+    hsize_t     chunk_dims[RANK] = {m_chunk_step_count, 2};
+    try {
+        dataset = file.openDataSet("mass_center");
+    } catch (H5::Exception& e) {
+        FloatType datatype( PredType::NATIVE_DOUBLE );
+        datatype.setOrder( H5T_ORDER_LE );
+        hsize_t maxdims[RANK] = {H5S_UNLIMITED, 2}; 
+        DataSpace dataspace( RANK, dimst, maxdims );
+        // Modify dataset creation property to enable chunking
+        DSetCreatPropList prop;
+        prop.setChunk(RANK, chunk_dims);
+
+        dataset = file.createDataSet(H5std_string{"mass_center"}, datatype, dataspace, prop);
+    }
+    // Extend the dataset.
+    dimst[0] += chunk_dims[0];
+    dataset.extend(dimst); 
+
+    DataSpace filespace = dataset.getSpace();
+    hsize_t offset[RANK] = {m_step_count - m_chunk_step_count, 0};
+    filespace.selectHyperslab(H5S_SELECT_SET, chunk_dims, offset);
+    // Define memory space.
+    DataSpace memspace{RANK, chunk_dims, NULL};
+
+    value_type data[chunk_dims[0]][chunk_dims[1]];
+    for (std::size_t j = 0; j != chunk_dims[0]; ++j)
+    {
+        for (std::size_t k = 0; k != chunk_dims[1]; ++k)
+        {
+            data[j][k] = m_data_chunk_mass_center[j][k];
+        }
+    }
+
+    dataset.write(data, PredType::NATIVE_DOUBLE, memspace, filespace);
+
+};
 
 template <
     typename TFloe
@@ -489,7 +564,6 @@ double HDF5Manager<TFloe>::recover_states(H5std_string filename, value_type time
 //     }
 
 // };
-
 
 
 }} // namespace floe::io

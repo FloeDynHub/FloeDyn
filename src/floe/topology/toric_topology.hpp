@@ -65,7 +65,8 @@ public:
     }
 
     inline T area() const { return delta_x * delta_y; }
-    inline TPoint center() const { return { (m_max_x - m_min_x) / 2, (m_max_y - m_min_y) / 2 }; }
+    inline TPoint center() const { return { (m_max_x + m_min_x) / 2, (m_max_y + m_min_y) / 2 }; }
+    // inline TPoint print() const { std::cout << m_min_x << " " << m_max_x << " " << m_min_y << " " << m_max_y << std::endl; }
 
 private:
     T m_min_x;

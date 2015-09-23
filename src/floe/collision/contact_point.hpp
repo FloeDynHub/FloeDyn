@@ -127,6 +127,7 @@ struct ContactPoint
     inline bool is_active() const
     {
         return relative_speed() < - dist / 50;
+        // return relative_speed() < 0;
     }
 
     TFloe const* floe1; //!< First floe in contact

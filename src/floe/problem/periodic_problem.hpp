@@ -46,6 +46,7 @@ public:
     PeriodicProblem(TSpaceTopology& topology) : base_class(), m_space_topology{topology} {}
 
     //! sets space borders adapted to floes limit positions
+    void set_topology(TSpaceTopology const& topology);
     void auto_topology();
 
 private:
@@ -57,6 +58,23 @@ private:
     }
 
 };
+
+
+template <
+    typename TFloeGroup,
+    typename TProxymityDetector,
+    typename TCollisionManager,
+    typename TDynamicsManager,
+    typename TDomain,
+    typename TSpaceTopology
+>
+void
+PeriodicProblem<TFloeGroup, TProxymityDetector, TCollisionManager, TDynamicsManager, TDomain, TSpaceTopology>::
+set_topology(TSpaceTopology const& topology)
+{
+    m_space_topology = topology;
+    set_topology_ptr();
+}
 
 
 template <
@@ -85,8 +103,7 @@ auto_topology()
         }
 
     value_type margin = 1;
-    m_space_topology = TSpaceTopology{min_x - margin, max_x + margin, min_y - margin, max_y + margin};
-    set_topology_ptr();
+    set_topology( TSpaceTopology{min_x - margin, max_x + margin, min_y - margin, max_y + margin} );
 }
 
 

@@ -6,8 +6,6 @@
 """
 Documentation : https://waf.io/book/
 
-require extra waf tool boost.py (TODO : auto detect ?)
-
 USAGE
 Build and run unit tests : ./waf test
 (--name <str> : restrict to test filenames containing str)
@@ -25,7 +23,7 @@ top = "."
 out = "build"
 
 test_target = 'catchtest'
-TEST_target = "STEST"
+TEST_target = "STEST2"
 
 def timeit(func):
     """decorator to measure function execution time"""
@@ -57,7 +55,7 @@ def configure(conf):
     else:
         conf.load('compiler_cxx')
     conf.check_cfg(atleast_pkgconfig_version='0.0.0')
-    conf.check_boost(lib='system filesystem')
+    conf.check_boost(lib='system filesystem', mandatory=False)
     conf.check_cfg(
         package='matio', args=['matio >= 1.5.2', '--cflags', '--libs'],
         msg="Checking for 'matio 1.5.2'", mandatory=False)
@@ -118,16 +116,20 @@ def mkvid(ctx):
 
 def get_option_dict(debug=True):
     OPTION_DICT = {
-        "includes": ['./src',
-                     '/usr/local/include',
-                     '/usr/local/include/eigen3'],
-        "lib": ['boost_timer',
-                'boost_chrono', 
+        "includes": [ '../src',
+                      '/usr/local/include',
+                      '/usr/include',
+                      '/usr/local/include/eigen3',
+                      '/applis/site/stow/gcc_4.4.6/hdf5_1.8.14_openmpi/include' # FROGGY !! TODO avoid
+                    ] + [path for path in os.environ["PATH"].split(":") if not "bin" in path],
+        "lib": [#'boost_timer',
+                #'boost_chrono', 
                 'boost_system',
                 'matio',
                 "hdf5",
-                "hdf5_cpp"],
-        "libpath": ['/usr/local/lib', '/usr/lib'],
+                "hdf5_cpp"
+                ],
+        "libpath": ["/usr/local/lib", "/usr/lib"] + os.environ.get("LD_LIBRARY_PATH", "/").split(":"),
     }
     if debug:
         OPTION_DICT.update({
@@ -135,7 +137,7 @@ def get_option_dict(debug=True):
             "cxxflags": [
                 '-std=c++11',
                  '-O0',
-                 "-Wall", #"-Wextra",
+                 # "-Wall", #"-Wextra",
             ]
         })
     else:
@@ -167,6 +169,10 @@ def build(bld):
     elif bld.options.target == "TEST":
         opts["source"] = find_STEST_cpp(bld.options.name) or bld.fatal('STOP')
         opts["target"] = TEST_target
+        bld.program(**opts)
+    elif bld.options.target in ["FLOE", "FLOE_PBC"]:
+        opts["source"] = ["product/%s.cpp" % bld.options.target]
+        opts["target"] = bld.options.target
         bld.program(**opts)
     else:
         print("nothing to build yet")

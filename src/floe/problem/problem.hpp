@@ -138,14 +138,14 @@ protected:
         std::cout << " Time : " << m_domain.time(); // << std::endl;
         std::cout << " | delta_t : " << m_domain.time_step();
         std::cout << " | Kinetic energy : " << m_floe_group.kinetic_energy() << std::endl;
-        
-        // std::cout << " V62 : " << m_floe_group.get_floes()[62].state() << std::endl;
         std::cout << "----" << std::endl;
 
-        if (out_step && m_domain.time() - m_domain.last_out() >= out_step)
+        // ouput data
+        if (out_step && m_domain.time() >= m_domain.next_out_limit())
         {
             m_floe_group.out_hdf5(m_domain.time());
             m_domain.update_last_out();
+            m_domain.update_next_out_limit(out_step);
         }
 
         m_step_nb++;
