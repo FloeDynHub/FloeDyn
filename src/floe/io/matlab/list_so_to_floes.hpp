@@ -32,10 +32,10 @@ template <
     typename TKinematicFloe,
     typename TMatlabListSolid
 >
-std::vector<TKinematicFloe>
-list_so_to_floes( TMatlabListSolid const& list_so )
+void
+list_so_to_floes( TMatlabListSolid const& list_so, std::vector<TKinematicFloe>& list_floes )
 {
-    std::vector<TKinematicFloe> floes;
+    // std::vector<TKinematicFloe> floes;
 
     // Typedefs
     using TStaticFloe = typename TKinematicFloe::static_floe_type;
@@ -49,7 +49,7 @@ list_so_to_floes( TMatlabListSolid const& list_so )
         throw std::length_error("geo and mov list are of different sizes.");
 
     std::size_t n_floes = list_so.geo.size();
-    floes.reserve(n_floes);
+    list_floes.resize(n_floes);
 
     // Import each floe
     for ( std::size_t i = 0; i < n_floes; ++i )
@@ -58,7 +58,7 @@ list_so_to_floes( TMatlabListSolid const& list_so )
         auto const& movement = list_so.mov[i];
         
         // // Create Kinematic floe
-        TKinematicFloe floe;
+        auto& floe = list_floes[i];
         // link static floe
         floe.attach_static_floe_ptr(std::unique_ptr<TStaticFloe>(new TStaticFloe()));
         
@@ -102,11 +102,11 @@ list_so_to_floes( TMatlabListSolid const& list_so )
         
         floe.static_floe().attach_mesh_ptr(&mesh);
         // Done.
-        floes.push_back(std::move(floe));
+        // floes.push_back(std::move(floe));
         
     }
 
-    return floes;
+    // return floes;
 }
 
 }}} // namespace floe::io::matlab

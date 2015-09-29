@@ -51,3 +51,16 @@ def plot_floes(filename, make_video=False):
     else:
         plt.show()
 
+def plot_last_rec(filename):
+    if not filename:
+        filename = "out"
+    hdf5_file_name = "io/%s.h5" % filename
+    file    = h5py.File(hdf5_file_name, 'r')
+    fig, ax = plt.subplots()
+    groups = file.values()
+    ax = init(file, ax)
+    ax.axis('equal')
+    ax.set_axis_bgcolor('#1B8EEF')
+    ax, = update(file.get("time").size - 1, file, ax)
+    plt.show();
+

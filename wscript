@@ -17,7 +17,6 @@ import os
 import fnmatch
 from subprocess import call, Popen, PIPE, STDOUT
 import time
-from plot import plot_floes
 
 top = "."
 out = "build"
@@ -45,6 +44,7 @@ def options(opt):
     opt.add_option(
         '--optim', action='store_false', default=True, dest='debug')
     opt.add_option('--gcc', action='store_true', default=False, dest='gcc')
+    opt.add_option('--icc', action='store_true', default=False, dest='icc')
     opt.add_option('--omp', action='store_true', default=False, dest='omp')
 
 
@@ -52,6 +52,8 @@ def configure(conf):
     conf.check_waf_version(mini='1.8.8')
     if conf.options.gcc:
         conf.load('g++')
+    elif conf.options.icc:
+        conf.load('icpc')
     else:
         conf.load('compiler_cxx')
     conf.check_cfg(atleast_pkgconfig_version='0.0.0')
@@ -106,21 +108,15 @@ def run_tests(ctx):
     #     print(line)
 
 
-def plot(ctx):
-    plot_floes(ctx.options.name)
-
-
-def mkvid(ctx):
-    plot_floes(ctx.options.name, True)
 
 
 def get_option_dict(debug=True):
     OPTION_DICT = {
         "includes": [ '../src',
+                      '/usr/local/Cellar/boost/1.58.0/include'
                       '/usr/local/include',
                       '/usr/include',
                       '/usr/local/include/eigen3',
-                      '/applis/site/stow/gcc_4.4.6/hdf5_1.8.14_openmpi/include' # FROGGY !! TODO avoid
                     ] + [path for path in os.environ["PATH"].split(":") if not "bin" in path],
         "lib": [#'boost_timer',
                 #'boost_chrono', 
@@ -129,7 +125,7 @@ def get_option_dict(debug=True):
                 "hdf5",
                 "hdf5_cpp"
                 ],
-        "libpath": ["/usr/local/lib", "/usr/lib"] + os.environ.get("LD_LIBRARY_PATH", "/").split(":"),
+        "libpath": ["/usr/local/lib", "/usr/lib", '/usr/local/Cellar/boost/1.58.0/lib'] + os.environ.get("LD_LIBRARY_PATH", "/").split(":"),
     }
     if debug:
         OPTION_DICT.update({
@@ -200,3 +196,17 @@ def TEST(ctx):
     ctx.exec_command('./waf build --target TEST%s%s%s' % (
         name_opt, omp_opt, debug_opt))
     print("to run the test : ./build/%s <args>" % TEST_target)
+
+
+
+from plot import plot_floes, plot_last_rec
+
+def plot(ctx):
+    plot_floes(ctx.options.name)
+
+
+def mkvid(ctx):
+    plot_floes(ctx.options.name, True)
+
+def plot_lr(ctx):
+    plot_last_rec(ctx.options.name)

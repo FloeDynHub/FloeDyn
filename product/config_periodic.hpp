@@ -1,6 +1,6 @@
 using VALUE_TYPE = double;
 VALUE_TYPE DT_DEFAULT;
-// VALUE_TYPE BS = 0; // DEBUG
+int OBL_STATUS;
 
 #include "floe/floes/static_floe.hpp"
 #include "floe/floes/kinematic_floe.hpp"
@@ -18,8 +18,6 @@ VALUE_TYPE DT_DEFAULT;
 
 #include "floe/integration/integrate.hpp"
 #include "floe/integration/gauss_legendre.hpp"
-
-#include "floe/io/matlab/pze_import.hpp"
 
 
 namespace ff = floe::floes;

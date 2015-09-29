@@ -182,9 +182,9 @@ int lcp_lemke(const Eigen::MatrixXd& _M, const Eigen::VectorXd& _q,
           Eigen::VectorXd* _z) {
   int n = _q.size();
 
-  const double zer_tol = 1e-5;
-  const double piv_tol = 1e-8;
-  int maxiter = 1000;
+  const double zer_tol = 1e-10; //1e-5;
+  const double piv_tol = 1e-10; //1e-8;
+  int maxiter = 1000; //std::min(250, 10 * n);
   int err = 0;
 
   if (_q.minCoeff() > 0) {

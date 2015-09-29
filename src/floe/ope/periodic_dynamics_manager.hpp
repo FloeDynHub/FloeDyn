@@ -37,12 +37,13 @@ public:
 
     inline void set_topology(topology_type const& t) { m_topology = &t; }
 
-    virtual void update_ocean(TFloeGroup& floe_group, value_type delta_t);
+    // virtual void update_ocean(TFloeGroup& floe_group, value_type delta_t) override;
 
 private:
     topology_type const* m_topology; //!< Space topology
-    virtual void move_floe(floe_type& floe, value_type delta_t);
+    virtual void move_floe(floe_type& floe, value_type delta_t) override;
     void replace_floe(floe_type& floe);
+    virtual value_type ocean_window_area() override { return m_topology->area(); }
 };
 
 
@@ -62,30 +63,6 @@ void
 PeriodicDynamicsManager<TFloeGroup, TSpaceTopology>::replace_floe(floe_type& floe)
 {
     m_topology->replace(floe.state().pos, floe.state().trans);
-}
-
-template <typename TFloeGroup, typename TSpaceTopology>
-void
-PeriodicDynamicsManager<TFloeGroup, TSpaceTopology>::update_ocean(TFloeGroup& floe_group, value_type delta_t)
-{   
-    value_type floes_area = floe_group.total_area();
-    value_type window_area = m_topology->area();
-    value_type water_area = window_area - floes_area;
-    point_type window_center = m_topology->center();
-    value_type OBL_mass = window_area * base_class::m_external_forces.OBL_surface_mass();
-    auto strategy = integration_strategy();
-    // calculate floes action on ocean
-    point_type floes_force = {0, 0};
-    for (auto& floe : floe_group.get_floes())
-        floes_force += floe::integration::integrate(base_class::m_external_forces.ocean_drag_2(floe), floe.mesh(), strategy);
-    // calculate water speed delta
-    point_type diff_speed = delta_t * ( 
-        ( 1 / OBL_mass ) * ( - floes_force + water_area * base_class::m_external_forces.air_drag_ocean() )
-        + base_class::m_external_forces.ocean_coriolis(window_center)
-        + base_class::m_external_forces.deep_ocean_friction()
-    );
-    // update water speed
-    base_class::m_external_forces.update_water_speed( diff_speed );
 }
 
 

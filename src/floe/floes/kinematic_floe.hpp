@@ -67,13 +67,14 @@ public:
     KinematicFloe() : m_geometry{nullptr}, m_floe{nullptr}, m_state{ {0,0}, 0, {0,0}, 0, {0,0} }, m_obstacle{false} {}
 
     //! Deleted copy constructor
-    KinematicFloe( KinematicFloe<TStaticFloe,TState> const& ) = delete;
+    // KinematicFloe( KinematicFloe<TStaticFloe,TState> const& ) = delete;
 
     //! move constructor
-    KinematicFloe( KinematicFloe<TStaticFloe, TState>&& ) = default;
+    // KinematicFloe( KinematicFloe<TStaticFloe, TState>&& ) = default;
+    // KinematicFloe( KinematicFloe<TStaticFloe, TState>&& floe ) : m_geometry{std::move(floe.m_geometry)}, m_floe{std::move(floe.m_floe)}, m_state{std::move(floe.m_state)}, m_obstacle{std::move(floe.m_obstacle)}, m_floe_h{std::move(floe.m_floe_h)} {};
 
     //! Deleted copy operator
-    KinematicFloe& operator= (KinematicFloe<TStaticFloe,TState> const& ) = delete;
+    // KinematicFloe& operator= (KinematicFloe<TStaticFloe,TState> const& ) = delete;
 
     //! Update geometry and mesh in respect with his current state
     void update();

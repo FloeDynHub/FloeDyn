@@ -9,6 +9,8 @@
 
 #include "floe/problem/problem_h.hpp"
 #include "floe/problem/problem_alg.hpp"
+// #include "floe/io/false_hdf5_manager.hpp" // for gcc/MacOS
+#include "floe/io/hdf5_manager.hpp"
 
 #include <iostream> // debug
 
@@ -55,6 +57,7 @@ public:
         typename proximity_detector_type::detector_h_type,
         typename collision_manager_type::manager_h_type
     >;
+    using out_manager_type = io::HDF5Manager<floe_group_type, dynamics_manager_type>;
 
     //! Default constructor.
     Problem() :
@@ -69,8 +72,9 @@ public:
         create_h();
     }
 
-    inline void load_matlab_config(std::string const& filename) {
+    virtual inline void load_matlab_config(std::string const& filename) {
         m_floe_group.load_matlab_config(filename);
+        m_dynamics_manager.load_matlab_ocean_window_data(filename);
     }
 
     inline void load_matlab_topaz_data(std::string const& filename) {
@@ -78,16 +82,17 @@ public:
     }
 
     void recover_states_from_file(std::string const& filename, double t){
-        double saved_time = m_floe_group.recover_states_from_file(filename, t);
+        double saved_time = m_out_manager.recover_states(filename, t, m_floe_group, m_dynamics_manager);
         m_domain.set_time(saved_time);
     }
 
     //! Solver
     void solve(double end_time, double out_step = 0){ // TODO change double
         create_optim_vars();
+        m_domain.set_out_step(out_step);
         while (m_domain.time() < end_time)
         {
-            step_solve(out_step);
+            step_solve();
             if (QUIT) break; // exit normally after SIGINT
         }
         std::cout << " NB STEPS : " << m_step_nb << std::endl;
@@ -113,6 +118,7 @@ protected:
     floe_group_type m_floe_group;
 
     int m_step_nb;
+    out_manager_type m_out_manager;
 
     void create_optim_vars() {
         // mixes smooth and discrete levels because of detector structure
@@ -130,7 +136,7 @@ protected:
     }
 
     // move one time step forward
-    void step_solve(double out_step = 0){
+    void step_solve(){
         m_problem_h.solve();
         m_dynamics_manager.move_floes(m_floe_group, m_domain.time_step());
 
@@ -141,11 +147,11 @@ protected:
         std::cout << "----" << std::endl;
 
         // ouput data
-        if (out_step && m_domain.time() >= m_domain.next_out_limit())
+        if (m_domain.need_step_output())
         {
-            m_floe_group.out_hdf5(m_domain.time());
+            m_out_manager.save_step(m_domain.time(), m_floe_group, m_dynamics_manager);
             m_domain.update_last_out();
-            m_domain.update_next_out_limit(out_step);
+            m_domain.update_next_out_limit();
         }
 
         m_step_nb++;

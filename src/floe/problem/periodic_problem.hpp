@@ -8,6 +8,7 @@
 #define PROBLEM_PERIODIC_PROBLEM_HPP
 
 #include "floe/problem/problem.hpp"
+#include "floe/io/matlab/pze_import.hpp"
 
 #include <iostream> // debug
 
@@ -44,6 +45,15 @@ public:
 
     PeriodicProblem() : base_class() {}
     PeriodicProblem(TSpaceTopology& topology) : base_class(), m_space_topology{topology} {}
+
+    virtual inline void load_matlab_config(std::string const& filename) override {
+        base_class::load_matlab_config(filename);
+        auto imported_topo = floe::io::matlab::topology_from_file<TSpaceTopology>(filename);
+        if (imported_topo.area() != 0)
+            set_topology(imported_topo);
+        else
+            auto_topology();
+    }
 
     //! sets space borders adapted to floes limit positions
     void set_topology(TSpaceTopology const& topology);

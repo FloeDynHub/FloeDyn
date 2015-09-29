@@ -27,10 +27,9 @@ using namespace std;
  * \tparam T Value type used by matlab.
  * \param file_name File name.
  */
-template <typename TTopology>
-TTopology read_pze_from_file( std::string const& file_name )
+std::array<double, 4> read_pze_from_file( std::string const& file_name )
 {
-    using T = typename TTopology::T; // Coordinate type
+    using T = double; // Coordinate type
 
     mat_t *matfp;
 
@@ -49,6 +48,7 @@ TTopology read_pze_from_file( std::string const& file_name )
     // checking dimensions
     if ( NULL == pze ) {
         fprintf(stderr,"Variable not found, or error reading MAT file\n");
+        return {{0,0,0,0}};
     }
 
     T min_x, min_y, max_x, max_y;
@@ -66,15 +66,28 @@ TTopology read_pze_from_file( std::string const& file_name )
         max_y = std::max(max_y, static_cast<T*>(pze->data)[i]);
     }
 
-    std::cout << "***PZE***";
+    // std::cout << "***PZE***";
 
     // freeing memory
     Mat_VarFree(pze);
 
     Mat_Close(matfp);
 
-    // return {min_x, max_x, min_y, max_y};
-    return TTopology{min_x, max_x, min_y, max_y};
+    return {{min_x, max_x, min_y, max_y}};
+    // return TTopology{min_x, max_x, min_y, max_y};
+}
+
+template <typename TTopology>
+TTopology topology_from_file( std::string const& file_name )
+{   
+    auto A = read_pze_from_file(file_name);
+    return TTopology{A[0], A[1], A[2], A[3]};
+}
+
+double ocean_window_area_from_file( std::string const& file_name )
+{   
+    auto A = read_pze_from_file(file_name);
+    return (A[1] - A[0]) * (A[3] - A[2]);
 }
 
 

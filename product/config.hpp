@@ -1,5 +1,6 @@
 using VALUE_TYPE = double;
 VALUE_TYPE DT_DEFAULT;
+int OBL_STATUS;
 
 #include "floe/floes/static_floe.hpp"
 #include "floe/floes/kinematic_floe.hpp"

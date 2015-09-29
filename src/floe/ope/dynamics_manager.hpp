@@ -10,6 +10,7 @@
 #include "floe/integration/gauss_legendre.hpp"
 #include "floe/integration/integrate.hpp"
 #include "floe/ope/external_forces.hpp"
+#include "floe/io/matlab/pze_import.hpp"
 
 #ifdef _OPENMP
 #include <omp.h>
@@ -41,22 +42,33 @@ public:
     using integration_strategy = floe::integration::RefGaussLegendre<value_type,2,2>;
     using external_forces_type = ExternalForces<TFloeGroup>;
 
-    DynamicsManager(value_type const& time_ref) : m_external_forces{time_ref} {}
+    DynamicsManager(value_type const& time_ref) : m_external_forces{time_ref}, m_ocean_window_area{0} {}
 
     void move_floes(floe_group_type& floe_group, value_type delta_t);
-    virtual void update_ocean(floe_group_type& floe_group, value_type delta_t){}
+    void update_ocean(floe_group_type& floe_group, value_type delta_t);
 
     inline void load_matlab_topaz_data(std::string const& filename) {
         m_external_forces.load_matlab_topaz_data(filename);
     }
 
+    inline void load_matlab_ocean_window_data(std::string const& filename) {
+        m_ocean_window_area = floe::io::matlab::ocean_window_area_from_file(filename);
+        // if (m_ocean_window_area == 0) TODO : no Pze in file, set auto window
+    }
+
+    //! for output
+    inline point_type OBL_speed() const { return m_external_forces.OBL_speed(); }
+    inline void set_OBL_speed(point_type OBL_speed) { return m_external_forces.update_water_speed(OBL_speed); }
+
 protected:
 
     external_forces_type m_external_forces;
+    value_type m_ocean_window_area;
 
     virtual void move_floe(floe_type& floe, value_type delta_t);
     void translate_floe(floe_type& floe, value_type delta_t);
     void rotate_floe(floe_type& floe, value_type delta_t);
+    virtual value_type ocean_window_area() { return m_ocean_window_area; }
 };
 
 
@@ -110,6 +122,35 @@ DynamicsManager<TFloeGroup>::rotate_floe(floe_type& floe, value_type delta_t)
     );
     floe.state().theta += delta_t * floe.state().rot;
     floe.state().rot += ( delta_t / floe.moment_cst() ) * rot_drag_force;
+}
+
+template <typename TFloeGroup>
+void
+DynamicsManager<TFloeGroup>::update_ocean(TFloeGroup& floe_group, value_type delta_t)
+{   
+    point_type diff_speed{0,0};
+    if (OBL_STATUS)
+    {
+        value_type floes_area = floe_group.total_area();
+        value_type win_area = ocean_window_area();
+        value_type water_area = win_area - floes_area;
+        // point_type window_center = m_topology->center();
+        point_type floe_group_mass_center = floe_group.mass_center();
+        value_type OBL_mass = win_area * m_external_forces.OBL_surface_mass();
+        auto strategy = integration_strategy();
+        // calculate floes action on ocean
+        point_type floes_force = {0, 0};
+        for (auto& floe : floe_group.get_floes())
+            floes_force += floe::integration::integrate(m_external_forces.ocean_drag_2(floe), floe.mesh(), strategy);
+        // calculate water speed delta
+        diff_speed = delta_t * ( 
+            ( 1 / OBL_mass ) * ( - floes_force + water_area * m_external_forces.air_drag_ocean() )
+            + m_external_forces.ocean_coriolis(floe_group_mass_center)
+            + m_external_forces.deep_ocean_friction()
+        );
+    }
+    // update water speed
+    m_external_forces.update_water_speed( diff_speed );
 }
 
 

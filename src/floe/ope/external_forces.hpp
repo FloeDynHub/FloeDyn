@@ -48,6 +48,8 @@ public:
 
     inline value_type OBL_surface_mass() const { return h_w * rho_w; }
     inline void update_water_speed( point_type diff_speed ) { m_physical_data.update_water_speed( diff_speed ); }
+    //! for output
+    inline point_type OBL_speed() const { return m_physical_data.OBL_speed(); }
 
     // forces applied on floes
     std::function<point_type (value_type, value_type)> ocean_drag_2(floe_type& floe);

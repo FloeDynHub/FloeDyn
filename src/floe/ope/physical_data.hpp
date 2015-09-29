@@ -37,11 +37,14 @@ public:
     PhysicalData(value_type const& time_ref) :
         m_ocean_data_hours{}, m_air_data_hours{},
         m_ocean_data_minutes{}, m_air_data_minutes{},
-        m_time_ref{time_ref}, m_water_speed{0,0} {}
+        m_time_ref{time_ref}, m_water_speed{0,0},
+        m_geo_relative_water_speed{0, 0} {}
 
     point_type water_speed(point_type = {0,0}); // time, space
     point_type air_speed(point_type = {0,0});
-    void update_water_speed(point_type diff_speed); 
+    void update_water_speed(point_type diff_speed);
+    //! for output
+    inline point_type OBL_speed() const { return m_geo_relative_water_speed; }
 
     // point_type geostrophic_acceleration();
 
