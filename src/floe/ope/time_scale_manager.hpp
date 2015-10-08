@@ -13,8 +13,6 @@
 
 #include <cmath>
 
-#include <iostream> // DEBUG
-
 #ifdef _OPENMP
 #include <omp.h>
 #endif
@@ -34,8 +32,6 @@ class TimeScaleManager
 {
 
 public:
-
-    // using floe_group_type = TFloeGroup;
     using value_type = typename TDetector::value_type;
     using point_type = typename TDetector::point_type;
     using floe_type = typename TDetector::floe_type;
@@ -151,9 +147,7 @@ TimeScaleManager<TDomain, TDetector>::delta_t_secu(
     value_type lambda = std::min(dc1, dc2) / 20;
 
     value_type d = std::max(dist_opt, dist_secu);
-    if (I < 0) // interpenetration // should not happen as dt is not calculated again
-        d /= std::pow(2, -(I+1));
-    lambda = std::min(lambda, d / 20); // TODO éclaircir avec Mathias (lambda > d dans certains cas)
+    lambda = std::min(lambda, d / 20);
 
     // Calcul du deplacement d un point par rapport aux reperes en t+dt.
     // repere a l'instant t+dt_defaut :
@@ -176,32 +170,7 @@ TimeScaleManager<TDomain, TDetector>::delta_t_secu(
 
     using namespace geometry::frame; // import transformer, itransformer
     /*
-     // Equivalent Matlab (lent)
-    //passage dans repabs(t), puis rep1(t) et enfin repabs(t+dt):
-    geometry::transform( Belt_P1, Belt_P1_be, transformer( frame_type{C1, 0} ));
-    geometry::transform( Belt_P1_be, Belt_P1, itransformer( frame_type{G1, 0} ));
-    geometry::transform( Belt_P2, Belt_P2_be, transformer( frame_type{C2, 0} ));
-    geometry::transform( Belt_P2_be, Belt_P2, itransformer( frame_type{G2, 0} ));
-    // passage dans rep2(t+dt) puis repabs(t):
-    geometry::transform( Belt_P1, Belt_P1, transformer( mark1, mark2 ));
-    geometry::transform( Belt_P2, Belt_P2, transformer( mark2, mark1 ));
-    geometry::transform( Belt_P1, Belt_P1_af, transformer( frame_type{G2, 0} ));
-    geometry::transform( Belt_P2, Belt_P2_af, transformer( frame_type{G1, 0} ));
-
-    // calcul distance parcourue:
-    value_type dist1 = 0, dist2 = 0;
-    for (std::size_t i = 0; i != Belt_P1.size(); ++i)
-        dist1 = std::max(dist1, distance(Belt_P1_be[i], Belt_P1_af[i]));
-    for (std::size_t i = 0; i != Belt_P2.size(); ++i)
-        dist2 = std::max(dist2, distance(Belt_P2_be[i], Belt_P2_af[i]));
-    
-    if (min_id)
-        std::cout << std::endl
-        << " GT " << dist1 << " " << dist2 << " STATE1 " << floe1.state() << " STATE2 " << floe2.state()
-        << " D=" << std::max(D1, D2);
-    */
-    /*
-    // version raccourcie
+    // version matlab raccourcie
     geometry::transform( Belt_P1, Belt_P1_af, transformer( frame_type{C1 - G1, 0} ));
     geometry::transform( Belt_P2, Belt_P2_af, transformer( frame_type{C2 - G2, 0} ));
     geometry::transform( Belt_P1_af, Belt_P1_af, transformer( mark1, mark2 ));
@@ -246,12 +215,7 @@ TimeScaleManager<TDomain, TDetector>::delta_t_secu(
     value_type dt21 = std::min(dt_defaut, calc);
     // %%%%%%%%%% Fin %%%%%%%%%%
 
-    // assert( std::min(dt12, dt21) > 0 ); // TODO : Exception
-    if (std::min(dt12, dt21) < 0)
-    {
-        std::cout << d << " " << dist1 << " BUG DELTA T " << dist2;
-        return 1e-2;
-    }
+    assert( std::min(dt12, dt21) > 0 );
 
     return std::min(dt12, dt21);
 }

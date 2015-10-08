@@ -299,8 +299,6 @@ MatlabDetector<TFloe, TContact>::detect()
     m_dist_opt = ublas::scalar_matrix<value_type>(N, N, 0);
     m_dist_secu = ublas::scalar_matrix<value_type>(N, N, 0);
 
-    std::cout << N << " " << std::endl;
-
     // Detection
     detect_step1();
 }
@@ -321,7 +319,7 @@ MatlabDetector<TFloe, TContact>::detect_step1()
     // Level 1 loop
     // TODO: intersects -like for multi_circle !!
 
-    // pragma omp parallel for
+    #pragma omp parallel for
     for (std::size_t n1 = 0; n1 < N; ++n1)
     {
         auto const& opt1 = get_optim(n1);
@@ -461,6 +459,7 @@ MatlabDetector<TFloe, TContact>::detect_step3(
     } 
     else 
     {
+        #pragma omp critical
         set_dist_secu(n1, n2,  std::min(
             detect_step4( n2, n1, ldisks2, ldisks1, ublas::trans(adjacency) ), // Detects contacts obj2 -> obj1
             detect_step4( n1, n2, ldisks1, ldisks2, adjacency ) // Detects contacts obj1 -> obj2
@@ -505,7 +504,6 @@ detect_step4(
             // Best contact
             value_type min_dist = std::numeric_limits<value_type>::max(); // Minimum distance from this point to the other floe 
             contact_type min_contact;
-            // int seg_id = -1; // !!!! TEST !!!!
 
             bool dangling_point = false;    // Indicate a point that is mayby in the sub-derivative of the other floe
             std::size_t dangling_id = 0;    // Id of the point around which there is a dangling point
@@ -548,7 +546,6 @@ detect_step4(
                                 {
                                     min_contact = create_contact(n1, n2, point1, point2);
                                     min_dist = dist;
-                                    // seg_id = -1; // TEST
                                 }
 
                                 dangling_point = false;
@@ -607,7 +604,6 @@ detect_step4(
                     {
                         min_contact = create_contact(n1, n2, point1, point2);
                         min_dist = dist;
-                        // seg_id = -1; // TEST
                     }
                 }
             }
@@ -631,14 +627,12 @@ detect_step4(
     // Add edge in graph if there is any contact
     if (contact_list.size() != 0)
     {
-        #pragma omp critical
+        // pragma omp critical
         {add_edge(vertex(real_floe_id(n1), m_contacts), vertex(real_floe_id(n2), m_contacts), {contact_list, n1, n2}, m_contacts);}
         set_dist_opt(n1, n2, std::max(opt1.cdist(), opt2.cdist()));
     }
 
     // Return minimal distance between the 2 floes
-    // if (global_min_dist < 1e-3)
-    //     std::cout << " !Dsecu! " << global_min_dist;
     return global_min_dist;
 }
 

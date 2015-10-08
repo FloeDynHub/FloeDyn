@@ -40,7 +40,6 @@ struct ContactPoint
 
     //! Default constructor
     ContactPoint() : floe1{nullptr}, floe2{nullptr}, frame{}, dist{std::numeric_limits<value_type>::max()} {}
-    // ContactPoint() = delete; // TODO
 
     /*! Constructor given the contact frame
      * 

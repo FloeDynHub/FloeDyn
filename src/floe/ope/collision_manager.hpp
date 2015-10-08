@@ -18,12 +18,12 @@ namespace floe { namespace ope
  *
  */
 
-
+template<typename TFloe>
 class CollisionManager
 {
 
 public:
-    using manager_h_type = floe::ope::LCPManager;
+    using manager_h_type = floe::ope::LCPManager<typename TFloe::value_type>;
 
     inline manager_h_type& get_manager_h(){ return m_manager_h; }
 

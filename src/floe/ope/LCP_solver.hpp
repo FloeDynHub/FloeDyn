@@ -29,12 +29,13 @@ namespace floe { namespace ope
 
 using namespace boost::numeric::ublas;
 
+template<typename T>
 class LCPSolver
 {
 
 public:
-    using lcp_type = floe::lcp::LCP<double>;
-    using value_type = VALUE_TYPE; // TODO get from trait
+    using lcp_type = floe::lcp::LCP<T>;
+    using value_type = T;
 
     LCPSolver() : epsilon{0.4} {} // should epsilon be runtime parameter ?
 
@@ -76,15 +77,17 @@ inline bool is_nan(const T t){
 }
 
 
-bool LCPSolver::solve( lcp_type& lcp ) {
+template<typename T>
+bool LCPSolver<T>::solve( lcp_type& lcp ) {
         using namespace floe::lcp::solver;
         return (lemke(lcp) || lexicolemke(lcp));
     }
 
 
+template<typename T>
 template<typename TContactGraph>
-vector<typename LCPSolver::value_type>
-LCPSolver::solve( TContactGraph& graph, bool& success ) {
+vector<typename LCPSolver<T>::value_type>
+LCPSolver<T>::solve( TContactGraph& graph, bool& success ) {
     using namespace floe::lcp::solver;
 
     floe::lcp::builder::GraphLCP<value_type, decltype(graph)> graph_lcp( graph );
@@ -123,7 +126,7 @@ LCPSolver::solve( TContactGraph& graph, bool& success ) {
         switch (MatLCP[comptchgt][0])
         {
             case 0:
-                lcp = random_perturbation(lcp, 1e-10); //TODO compare matlab "divmat"
+                lcp = random_perturbation(lcp, 1e-10);
                 break;
                 // [A,Qc] = divmat(A,Qc,Iheart);
             case 1:
@@ -163,7 +166,7 @@ LCPSolver::solve( TContactGraph& graph, bool& success ) {
         Solc = calcSolc(graph_lcp, lcp_orig);
 
         if (std::any_of(Solc.begin(), Solc.end(), is_nan<double>))
-            continue; // std::cout << "******NAN******";
+            continue;
 
          // Energie cinetique, Erreur LCP & Vit rel Normale :
         auto ECc = calcEc(Solc, graph_lcp.M, graph_lcp.W);
@@ -178,7 +181,6 @@ LCPSolver::solve( TContactGraph& graph, bool& success ) {
     vector<value_type> Sold(graph_lcp.J.size1());
     if ( epsilon != 0 )
     {
-        // lambdac = lambdac + sum( subrange(lcp_orig.z, 0, m) ); //TODO : what is this used for ?
         lcp_type lcp_d_orig = lcp = graph_lcp.getLCP_d(lcp_orig, Solc, epsilon);
         value_type born_sup = graph_lcp.born_sup_d(lcp_orig, epsilon);
 
@@ -198,7 +200,7 @@ LCPSolver::solve( TContactGraph& graph, bool& success ) {
             switch (MatLCP[comptchgt][0])
             {
                 case 0:
-                    lcp = random_perturbation(lcp, 1e-10); //TODO compare matlab "divmat"
+                    lcp = random_perturbation(lcp, 1e-10);
                     break;
                     // [A,Qc] = divmat(A,Qc,Iheart);
                 case 1:
@@ -256,7 +258,8 @@ LCPSolver::solve( TContactGraph& graph, bool& success ) {
 }
 
 
-bool LCPSolver::LCPtest(int compt, value_type EC, value_type born_EC, value_type Err, bool VRelNtest ){
+template<typename T>
+bool LCPSolver<T>::LCPtest(int compt, value_type EC, value_type born_EC, value_type Err, bool VRelNtest ){
     bool resp = 1;
         if (compt == 1)
         {
@@ -277,16 +280,18 @@ bool LCPSolver::LCPtest(int compt, value_type EC, value_type born_EC, value_type
 }
 
 
+template<typename T>
 template<typename Tmat, typename Tvect>
-typename LCPSolver::value_type 
-LCPSolver::calcEc(const Tvect& S, const Tmat& M, const Tvect& w){
+typename LCPSolver<T>::value_type 
+LCPSolver<T>::calcEc(const Tvect& S, const Tmat& M, const Tvect& w){
     return inner_prod(prod(S, M), S) / inner_prod(prod(w, M), w);
 }
 
 
+template<typename T>
 template<typename TGraphLCP>
-vector<LCPSolver::value_type>
-LCPSolver::calcSolc(TGraphLCP& graph_lcp, LCPSolver::lcp_type& lcp)
+vector<typename LCPSolver<T>::value_type>
+LCPSolver<T>::calcSolc(TGraphLCP& graph_lcp, LCPSolver<T>::lcp_type& lcp)
 {   
     const std::size_t m = graph_lcp.J.size2();
     return graph_lcp.W + prod(
@@ -295,9 +300,10 @@ LCPSolver::calcSolc(TGraphLCP& graph_lcp, LCPSolver::lcp_type& lcp)
     );
 }
 
+template<typename T>
 template<typename TGraphLCP>
-vector<LCPSolver::value_type>
-LCPSolver::calcSold(TGraphLCP& graph_lcp, lcp_type& lcp_c, lcp_type& lcp_d, vector<value_type> Solc )
+vector<typename LCPSolver<T>::value_type>
+LCPSolver<T>::calcSold(TGraphLCP& graph_lcp, lcp_type& lcp_c, lcp_type& lcp_d, vector<value_type> Solc )
 {   
     const std::size_t m = graph_lcp.J.size2();
     vector<value_type> ezc = epsilon * subrange(lcp_c.z, 0, m);
@@ -308,19 +314,29 @@ LCPSolver::calcSold(TGraphLCP& graph_lcp, lcp_type& lcp_c, lcp_type& lcp_d, vect
 }
 
 
-typename LCPSolver::lcp_type
-LCPSolver::random_perturbation(lcp_type& lcp, value_type max){
+template<typename T>
+typename LCPSolver<T>::lcp_type
+LCPSolver<T>::random_perturbation(lcp_type& lcp, value_type max){
+    // version randomly modifying all non-zeros values
     for (auto it1 = lcp.A.begin1(); it1 != lcp.A.end1(); ++it1) {
         for (auto it2 = it1.begin(); it2 != it1.end(); ++it2) {
             if (*it2 != 0)
                 *it2 += random_real(max);
         }
     }
+    /* // Matlab version (divmat), modifying only one value in lcp.A and one in lcp.q (bad results)
+    auto m = lcp.dim / 4;
+    std::size_t n1 = std::rand() % (3 * m), n2 = std::rand() % (3 * m); // Iheart variable (=3*m) in Matlab code
+    lcp.A(n1,n2) *= (1 + random_real(max));
+    lcp.q(n1) *= (1 + random_real(max));
+    */
     return lcp; 
 }
 
+
+template<typename T>
 template<typename TContactGraph>
-bool LCPSolver::VRelNtest(const vector<value_type>& V, const TContactGraph& graph){
+bool LCPSolver<T>::VRelNtest(const vector<value_type>& V, const TContactGraph& graph){
     size_t contact_id = 0;
     for ( auto const& edge : make_iterator_range( boost::edges( graph ) ) )
     {
@@ -339,9 +355,10 @@ bool LCPSolver::VRelNtest(const vector<value_type>& V, const TContactGraph& grap
     return 1;
 }
 
-// TODO put elsewhere ?
-typename LCPSolver::value_type 
-LCPSolver::random_real(value_type max)
+
+template<typename T>
+typename LCPSolver<T>::value_type 
+LCPSolver<T>::random_real(value_type max) // TODO put elsewhere
 {
     return (value_type)(std::rand() - RAND_MAX / 2) / RAND_MAX * max;
 }

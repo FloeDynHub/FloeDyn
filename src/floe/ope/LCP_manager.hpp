@@ -8,10 +8,7 @@
 #define OPE_LCP_MANAGER_HPP
 
 #include "floe/ope/LCP_solver.hpp"
-// #include <boost/numeric/ublas/vector_proxy.hpp> //remove?
-// #include "floe/lcp/builder/graph_to_lcp.hpp" //remove?
 #include "floe/ope/time_scale_manager.hpp"
-// #include <boost/graph/graph_utility.hpp> //remove?
 
 #include <iostream> // debug
 
@@ -29,53 +26,62 @@ namespace floe { namespace ope
  */
 
 
+template<typename T>
 class LCPManager
 {
 
 public:
-    using solver_type = LCPSolver;
-    using real = double; // TODO do better
+    using value_type = T;
+    using solver_type = LCPSolver<value_type>;
+
+    ~LCPManager(){ printf ("#TOTAL LCP solve : %d / %d (%f %%) \n", m_nb_lcp_success, m_nb_lcp, success_ratio() ); }
 
     inline solver_type& get_solver() { return m_solver; }
 
     template<typename TContactGraph>
     void solve_contacts(TContactGraph& contact_graph);
+    double success_ratio(){ return (m_nb_lcp == 0)? 100 : 100 * (double)m_nb_lcp_success/m_nb_lcp; }
 
 private:
 
     solver_type m_solver;
+    int m_nb_lcp;
+    int m_nb_lcp_success;
 
-    // template<typename TGraph, typename TGraphLCP, typename TLCP>
-    // void update_floes_state(TGraph& graph, const TGraphLCP& graph_lcp, TLCP& lcp);
-    template<typename TGraph>
-    void update_floes_state(TGraph& graph, const boost::numeric::ublas::vector<real> Sol);
+    template<typename TContactGraph>
+    void update_floes_state(TContactGraph& graph, const boost::numeric::ublas::vector<value_type> Sol);
 };
 
 
+template<typename T>
 template<typename TContactGraph>
-void LCPManager::solve_contacts(TContactGraph& contact_graph)
+void LCPManager<T>::solve_contacts(TContactGraph& contact_graph)
 {
     auto const subgraphs = collision_subgraphs( contact_graph );
     int LCP_count = 0, nb_success = 0;
-    // for ( auto& subgraph : subgraphs )
-    // {
-    //     auto asubgraphs = active_subgraphs( subgraph );
-    //     int loop_cnt = 0;
-    //     while (asubgraphs.size() != 0 && loop_cnt < 60 * num_contacts(subgraph) )
-    //     {
-    //         LCP_count += asubgraphs.size();
-    //         for ( auto const& graph : asubgraphs )
-    //         {
-    //             bool success;
-    //             auto Sol = m_solver.solve( graph, success );
-    //             mark_solved(graph, success);
-    //             if (success) nb_success++;
-    //                 update_floes_state(graph, Sol);
-    //         }
-    //         asubgraphs = active_subgraphs( subgraph );
-    //         loop_cnt++;
-    //     }
-    // }
+    for ( auto& subgraph : subgraphs )
+    {
+        auto asubgraphs = active_subgraphs( subgraph );
+        int loop_cnt = 0;
+        while (asubgraphs.size() != 0 && loop_cnt < 60 * num_contacts(subgraph) )
+        {
+            LCP_count += asubgraphs.size();
+            for ( auto const& graph : asubgraphs )
+            {
+                bool success;
+                auto Sol = m_solver.solve( graph, success );
+                mark_solved(graph, success);
+                if (success) 
+                {
+                    nb_success++;
+                    update_floes_state(graph, Sol);
+                }
+            }
+            asubgraphs = active_subgraphs( subgraph );
+            loop_cnt++;
+        }
+    }
+    /* version omp
     #pragma omp parallel for
     for ( std::size_t i = 0; i < subgraphs.size(); ++i )
     {
@@ -85,7 +91,7 @@ void LCPManager::solve_contacts(TContactGraph& contact_graph)
         while (asubgraphs.size() != 0 && loop_cnt < 60 * num_contacts(subgraph) )
         {
             LCP_count += asubgraphs.size();
-            #pragma omp parallel for
+            // pragma omp parallel for
             for ( std::size_t j = 0; j < asubgraphs.size(); ++j )
             {
                 bool success;
@@ -93,39 +99,26 @@ void LCPManager::solve_contacts(TContactGraph& contact_graph)
                 auto Sol = m_solver.solve( graph, success );
                 mark_solved(graph, success);
                 #pragma omp critical
-                if (success) nb_success++;
-                    update_floes_state(graph, Sol); // TODO not in if ?
+                if (success) 
+                {
+                    nb_success++;
+                    update_floes_state(graph, Sol);
+                }
             }
             asubgraphs = active_subgraphs( subgraph );
             loop_cnt++;
         }
-    }
+    }*/
+    m_nb_lcp += LCP_count;
+    m_nb_lcp_success += nb_success;
     if (LCP_count)
-        std::cout << " #LCP solve: "<< nb_success << " / " <<LCP_count <<std::endl;
+        std::cout << " #LCP solve: "<< nb_success << " / " << LCP_count << std::endl;
 }
 
 
-// template<typename TGraph, typename TGraphLCP, typename TLCP>
-// void LCPManager::update_floes_state(TGraph& graph, const TGraphLCP& graph_lcp, TLCP& lcp){
-
-//     using namespace boost::numeric::ublas;
-
-//     std::size_t m = graph_lcp.J.size2(); // num contacts (todo : cleaner way)
-//     auto Sol = prod(
-//         graph_lcp.invM,
-//         prod(graph_lcp.J, subrange(lcp.z, 0, m)) + prod(graph_lcp.D, subrange(lcp.z, m, 3*m))
-//     );
-
-//     // std::size_t n = graph_lcp.J.size1() / 3; // num floes (todo : cleaner way)
-//     for ( auto const v : boost::make_iterator_range( vertices(graph) ) )
-//     {
-//         graph[v]->state().speed += {Sol(3*v), Sol(3*v + 1)};
-//         graph[v]->state().rot += Sol(3*v + 2);
-//     }
-// }
-
-template<typename TGraph>
-void LCPManager::update_floes_state(TGraph& graph, const boost::numeric::ublas::vector<real> Sol){
+template<typename T>
+template<typename TContactGraph>
+void LCPManager<T>::update_floes_state(TContactGraph& graph, const boost::numeric::ublas::vector<value_type> Sol){
 
     for ( auto const v : boost::make_iterator_range( vertices(graph) ) )
     {

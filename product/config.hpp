@@ -1,7 +1,3 @@
-using VALUE_TYPE = double;
-VALUE_TYPE DT_DEFAULT;
-int OBL_STATUS;
-
 #include "floe/floes/static_floe.hpp"
 #include "floe/floes/kinematic_floe.hpp"
 #include "floe/variable/floe_group.hpp"
@@ -23,7 +19,7 @@ namespace ff = floe::floes;
 
 using namespace floe::problem;
 
-using real = VALUE_TYPE;
+using real = double;
 using floe_type = ff::KinematicFloe<ff::StaticFloe<real>>;
 using floe_group_type = floe::variable::FloeGroup<floe_type>;
 
@@ -31,9 +27,9 @@ using proximity_detector_type = floe::ope::ProximityDetector<
     floe::collision::matlab::MatlabDetector<floe_type>
 >;
 
-using collision_manager_type = floe::ope::CollisionManager;
+using collision_manager_type = floe::ope::CollisionManager<floe_type>;
 using dynamics_manager_type = floe::ope::DynamicsManager<floe_group_type>;
-using domain_type = floe::domain::Domain;
+using domain_type = floe::domain::Domain<real>;
 
 using problem_type = Problem<
     floe_group_type,

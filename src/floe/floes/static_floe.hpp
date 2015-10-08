@@ -35,7 +35,6 @@ namespace floe { namespace floes
  * \tparam TFrame       Frame type of the floe.
  * \tparam TDensity     Density type.
  *
- * \todo use smart pointer (shared)
  */
 template <
     typename T,

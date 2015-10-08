@@ -21,7 +21,7 @@
 
 #include <boost/graph/graph_utility.hpp>
 
-#include "floe/geometry/geometry.hpp" // TODO lighter include
+#include "floe/geometry/geometry.hpp"
 #include "floe/geometry/core/access.hpp"
 #include "floe/geometry/arithmetic/arithmetic.hpp"
 #include "floe/geometry/arithmetic/determinant.hpp"
@@ -63,7 +63,6 @@ public:
     void init();
 
     //! Return the main matrix of the LCP
-    //! \todo parameter for decompression
     lcp::LCP<T> getLCP() const;
     lcp::LCP<T> getLCP_d(lcp::LCP<T> const& lcp_c, ublas::vector<T> const& Solc, T epsilon = 0) const;
     T born_sup_d(lcp::LCP<T> const& lcp_c, T epsilon = 0) const;
@@ -212,38 +211,19 @@ getLCP() const
 
     // Filling by blocks
     //      1st row
-    
-    //axpy_prod( trans(J), iMJ, project( A, range(0, m), range(0, m) ),   true );
     project(A, range(0, m), range(0, m)) = prod(trans(J), iMJ);
-    //matrix<T> block11(m,m); axpy_prod( trans(J), iMJ, block11, true ); project(A, range(0,m), range(0, m)) = block11;
-    //matrix<T> block11 = block_prod<matrix<T>,16>( trans(J), iMJ); project(A, range(0,m), range(0, m)) = block11;
-    
-    //axpy_prod( trans(J), iMD, project( A, range(0, m), range(m, 3*m) ), true );
     project(A, range(0, m), range(m, 3*m)) = prod(trans(J), iMD);
-    //matrix<T> block12(m, 2*m); axpy_prod( trans(J), iMD, block12, true); project(A, range(0,m), range(m,3*m)) = block12;
-    //matrix<T> block12 = block_prod<matrix<T>,16>( trans(J), iMD); project(A, range(0,m), range(m,3*m)) = block12;
-
     project( A, range(0, m), range(3*m, 4*m) ) = zero_matrix<T>(m, m);
 
     //      2nd row
-    
-    //axpy_prod( trans(D), iMJ, project( A, range(m, 3*m), range(0, m) ),   true );
-    //project(A, range(m, 3*m), range(0, m)) = prod(trans(D), iMJ);
     project(A, range(m, 3*m), range(0, m)) = trans(project(A, range(0, m), range(m, 3*m))); // It is faster to transpose already calculated block
-    //project(A, range(m, 3*m), range(0, m)) = trans(block12);
-    
-    //axpy_prod( trand(D), iMD, project( A, range(m, 3*m), range(m, 3*m) ), true );
     project(A, range(m, 3*m), range(m, 3*m)) = prod(trans(D), iMD);
-    //matrix<T> block22(2*m, 2*m); axpy_prod( trans(D), iMD, block22, true); project(A, range(m, 3*m), range(m, 3*m)) = block22;
-    //matrix<T> block22 = block_prod<matrix<T>,16>( trans(D), iMD); project(A, range(m, 3*m), range(m, 3*m)) = block22;
-
     project( A, range(m, 3*m), range(3*m, 4*m) ) = E;
 
     //      3th row
     project( A, range(3*m, 4*m), range(0, m) ) = mu;
     project( A, range(3*m, 4*m), range(m, 3*m) ) = -trans(E);
     project( A, range(3*m, 4*m), range(3*m, 4*m) ) = zero_matrix<T>(m,m);
-
 
     // And now, the q vector !!
     // vector<T> W(3*n); // changed to access W from outside

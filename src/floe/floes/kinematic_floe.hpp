@@ -32,7 +32,6 @@ namespace floe { namespace floes
  * \tparam TStaticFloe  Type of the underlying static floe.
  * \tparam TState       Type of space-time state.
  *
- * \todo use smart pointer -> OK
  */
 template <
     typename TStaticFloe,
@@ -40,10 +39,6 @@ template <
 >
 class KinematicFloe : public FloeInterface<
     TStaticFloe,
-    // typename TStaticFloe::value_type,
-    // typename TStaticFloe::point_type,
-    // typename TStaticFloe::geometry_type,
-    // typename TStaticFloe::frame_type,
     TState
 >
 {
@@ -67,14 +62,13 @@ public:
     KinematicFloe() : m_geometry{nullptr}, m_floe{nullptr}, m_state{ {0,0}, 0, {0,0}, 0, {0,0} }, m_obstacle{false} {}
 
     //! Deleted copy constructor
-    // KinematicFloe( KinematicFloe<TStaticFloe,TState> const& ) = delete;
+    KinematicFloe( KinematicFloe<TStaticFloe,TState> const& ) = delete;
 
     //! move constructor
-    // KinematicFloe( KinematicFloe<TStaticFloe, TState>&& ) = default;
-    // KinematicFloe( KinematicFloe<TStaticFloe, TState>&& floe ) : m_geometry{std::move(floe.m_geometry)}, m_floe{std::move(floe.m_floe)}, m_state{std::move(floe.m_state)}, m_obstacle{std::move(floe.m_obstacle)}, m_floe_h{std::move(floe.m_floe_h)} {};
+    KinematicFloe( KinematicFloe<TStaticFloe, TState>&& ) = default;
 
     //! Deleted copy operator
-    // KinematicFloe& operator= (KinematicFloe<TStaticFloe,TState> const& ) = delete;
+    KinematicFloe& operator= (KinematicFloe<TStaticFloe,TState> const& ) = delete;
 
     //! Update geometry and mesh in respect with his current state
     void update();
@@ -141,8 +135,6 @@ public:
     //! kinetic energy
     value_type kinetic_energy() const;
 
-    //! trivial method (to respect floe interface...)
-    // const KinematicFloe<TStaticFloe, TState>& original() const { return *this; }
 private:
 
     Uptr_geometry_type m_geometry;  //!< Geometry (border)
@@ -176,15 +168,9 @@ KinematicFloe<TStaticFloe,TState>::update()
         geometry::transform( m_floe->get_geometry(), *m_geometry, trans );
     }
 
-    // set static floe mesh pointer
-    m_floe->set_mesh(m_floe_h.m_static_mesh);
-    // TODO avoid (no need to do that at each step ! only once)
-    // -> idea : write explicit move constructor and place this inside
-
     // Update Mesh (if any)
     if ( m_floe->has_mesh() )
     {
-        // if ( ! has_mesh() ) { m_mesh = &m_floe_h.m_kinematic_mesh; }
         geometry::transform( m_floe->get_mesh(), mesh(), trans );
     }
 }

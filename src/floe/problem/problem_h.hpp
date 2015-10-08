@@ -25,7 +25,6 @@ namespace floe { namespace problem
  *
  * It represents the discrete problem.
  *
- * \tparam TProblem_alg         Associated algebraic problem type
  * \tparam TDomain_h            Discrete domain type
  * \tparam TFloeGroup_h         Discrete floe group variable type
  * \tparam TDetector            Detector type for collisions
@@ -33,7 +32,6 @@ namespace floe { namespace problem
  *
  */
 template <
-    typename TProblem_alg,
     typename TDomain_h,
     typename TFloeGroup_h,
     typename TDetector,
@@ -47,16 +45,9 @@ public:
     Problem_h() : m_floe_group_h{nullptr}, m_detector{nullptr}, 
                   m_collision_manager_h{nullptr} {}
 
-    using real = double; // TODO do better
-    using floe_group_h_type = TFloeGroup_h;
     using detector_h_type = TDetector;
     using time_scale_manager_type = ope::TimeScaleManager<TDomain_h, detector_h_type>;
 
-
-    inline void create_alg(){
-        m_problem_alg.set_floe_group_alg(m_floe_group_h->get_floe_group_alg());
-        m_problem_alg.set_collision_solver(m_collision_manager_h->get_solver());
-    }
 
     //! Solver
     void solve() {
@@ -74,8 +65,6 @@ public:
     inline void set_domain_h(TDomain_h& domain){ m_domain_h = &domain; }
 
 private:
-
-    TProblem_alg m_problem_alg;
 
     // domain
     TDomain_h* m_domain_h;
@@ -104,25 +93,25 @@ private:
         m_time_scale_manager.delta_t_secu(m_domain_h, m_detector);
     }
 
-    // chrono version (dev)
-    // void step_solve(){
-    //     using namespace std;
-    //     auto t_start = chrono::high_resolution_clock::now();
-    //     do_detection();
-    //     auto t_end = chrono::high_resolution_clock::now();
-    //     cout << "detection : " << chrono::duration<double, std::milli>(t_end-t_start).count() << " ms" << endl;
+    /* // chrono version (dev)
+    void step_solve(){
+        using namespace std;
+        auto t_start = chrono::high_resolution_clock::now();
+        do_detection();
+        auto t_end = chrono::high_resolution_clock::now();
+        cout << "detection : " << chrono::duration<double, std::milli>(t_end-t_start).count() << " ms" << endl;
 
-    //     t_start = chrono::high_resolution_clock::now();
-    //     manage_collisions();
-    //     t_end = chrono::high_resolution_clock::now();
-    //     cout << "collisions : " << chrono::duration<double, std::milli>(t_end-t_start).count() << " ms" << endl;
+        t_start = chrono::high_resolution_clock::now();
+        manage_collisions();
+        t_end = chrono::high_resolution_clock::now();
+        cout << "collisions : " << chrono::duration<double, std::milli>(t_end-t_start).count() << " ms" << endl;
 
-    //     t_start = chrono::high_resolution_clock::now();
-    //     m_domain_h->set_time_step(m_time_scale_manager.delta_t_secu(
-    //         m_domain_h, m_detector));
-    //     t_end = chrono::high_resolution_clock::now();
-    //     cout << "delta_t_secu : " << chrono::duration<double, std::milli>(t_end-t_start).count() << " ms" << endl;
-    // }
+        t_start = chrono::high_resolution_clock::now();
+        m_domain_h->set_time_step(m_time_scale_manager.delta_t_secu(
+            m_domain_h, m_detector));
+        t_end = chrono::high_resolution_clock::now();
+        cout << "delta_t_secu : " << chrono::duration<double, std::milli>(t_end-t_start).count() << " ms" << endl;
+    }*/
 
 
 };

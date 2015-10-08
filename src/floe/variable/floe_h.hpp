@@ -10,7 +10,6 @@
 #include "floe/geometry/geometry.hpp"
 #include "floe/geometry/geometries/point.hpp"           // Default point type
 #include "floe/geometry/geometries/triangle_mesh.hpp"   // Default mesh type
-#include "floe/variable/floe_alg.hpp"
 
 
 namespace floe { namespace variable
@@ -22,26 +21,17 @@ namespace floe { namespace variable
  *
  */
 template <
-    typename TMesh     = geometry::TriangleMesh<geometry::Point<double>>,
-    typename TFloe_alg = floe::variable::Floe_alg
+    typename TMesh     = geometry::TriangleMesh<geometry::Point<double>>
 >
 class Floe_h
 {
 
 public:
 
-    using floe_alg_type = TFloe_alg;
-
     // inline TMesh& kinematic_mesh() const { return m_kinematic_mesh; }
     TMesh m_kinematic_mesh;
     TMesh m_static_mesh;
 
-    //! Floe_alg accessor
-    inline floe_alg_type& get_floe_alg() { return m_floe_alg; }
-
-private:
-
-    floe_alg_type m_floe_alg;
 
 };
 

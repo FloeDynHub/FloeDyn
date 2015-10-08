@@ -99,21 +99,8 @@ void
 PeriodicProblem<TFloeGroup, TProxymityDetector, TCollisionManager, TDynamicsManager, TDomain, TSpaceTopology>::
 auto_topology()
 {
-    value_type min_x, min_y, max_x, max_y;
-    min_x = min_y = std::numeric_limits<value_type>::max();
-    max_x = max_y = - std::numeric_limits<value_type>::max();
-
-    for (auto const& floe : base_class::m_floe_group.get_floes())  
-        for (auto const& pt : floe.geometry().outer())
-        {
-            min_x = std::min(min_x, pt.x);
-            min_y = std::min(min_y, pt.y);
-            max_x = std::max(max_x, pt.x);
-            max_y = std::max(max_y, pt.y);
-        }
-
-    value_type margin = 1;
-    set_topology( TSpaceTopology{min_x - margin, max_x + margin, min_y - margin, max_y + margin} );
+    auto a = base_class::m_floe_group.bounding_window();
+    set_topology( TSpaceTopology{ a[0], a[1], a[2], a[3]} );
 }
 
 

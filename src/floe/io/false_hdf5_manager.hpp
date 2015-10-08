@@ -24,7 +24,7 @@ namespace floe { namespace io
 
 
 template <
-    typename TFloeGroup
+    typename TFloeGroup, typename TDynamicsMgr
 >
 class HDF5Manager
 {
@@ -32,9 +32,11 @@ class HDF5Manager
 public:
     using floe_group_type = TFloeGroup;
     using value_type = typename TFloeGroup::value_type;
+    using dynamics_mgr_type = TDynamicsMgr;
 
-    void save_step(value_type time, const floe_group_type& floe_group){};
-    double recover_states(std::string filename, value_type time, floe_group_type& floe_group){ return 0; };
+    void save_step(value_type time, const floe_group_type&, const dynamics_mgr_type&){}
+
+    double recover_states(std::string filename, value_type time, floe_group_type&, dynamics_mgr_type&){ return 0; }
 
 };
 

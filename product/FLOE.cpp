@@ -1,11 +1,17 @@
+double DT_DEFAULT;
 #include <iostream>
+#include <cassert>
 #include "../product/interrupt.hpp"
+#ifdef PBC
+#include "../product/config_periodic.hpp"
+#else
 #include "../product/config.hpp"
+#endif
 
 
 int main( int argc, char* argv[] )
 {   
-    using namespace std;
+    using namespace std; 
 
     if ( argc < 6 )
     {
@@ -14,14 +20,14 @@ int main( int argc, char* argv[] )
     }
 
     // Handling interruption signal
-    struct sigaction sa;
+    struct sigaction sa; 
     memset( &sa, 0, sizeof(sa) );
     sa.sa_handler = interruption::got_signal;
     sigfillset(&sa.sa_mask);
     sigaction(SIGINT,&sa,NULL); 
 
     #ifdef _OPENMP
-    // omp_set_num_threads(0);
+    // omp_set_num_threads(1);
     Eigen::initParallel();
     #endif
 
@@ -35,7 +41,6 @@ int main( int argc, char* argv[] )
     std::cout << "read TOPAZ" << std::endl;
     P.load_matlab_topaz_data(matlab_topaz_filename);
 
-    OBL_STATUS = atoi(argv[5]);
 
     if (argc == 7)
     {
@@ -44,9 +49,10 @@ int main( int argc, char* argv[] )
         std::cin >> strFilename;
         P.recover_states_from_file("io/" + strFilename, atof(argv[6]));
     }
+
     
     std::cout << "SOLVE..." << std::endl;
-    P.solve(atoi(argv[2]), atof(argv[4]));
+    P.solve(atoi(argv[2]), DT_DEFAULT, atoi(argv[5]), atof(argv[4]));
 
     return 0;
 }

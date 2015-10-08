@@ -6,12 +6,7 @@
 
 #ifndef PROBLEM_PROXIMITY_DETECTOR_HPP
 #define PROBLEM_PROXIMITY_DETECTOR_HPP
-
-
-
-//TODO
-// #include "floe/ope/proxy-detector "
-//TODO
+ 
 
 namespace floe { namespace ope
 {

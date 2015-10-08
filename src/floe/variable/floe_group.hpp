@@ -42,16 +42,7 @@ public:
     //! Default constructor.
     // FloeGroup() : {}
 
-
     void load_matlab_config(std::string filename);
-
-    inline void add_floe( floe_type& floe )
-        {
-            m_list_floe.push_back(std::move(floe));
-            // auto& f = m_list_floe.back(); // TODO Why is this different from *1 ?
-            // f.update();
-            // m_floe_group_h.add_floe(f.get_floe_h());
-        }
 
     inline floe_group_h_type const& get_floe_group_h() const { return m_floe_group_h; }
     inline floe_group_h_type& get_floe_group_h() { return m_floe_group_h; }
@@ -66,6 +57,9 @@ public:
     value_type total_mass() const;
     //! mass center of the group
     point_type mass_center() const;
+    //! bounding window of floe group (return array of min_x, max_x, min_y, max_y)
+    std::array<value_type, 4> bounding_window(value_type margin = 1) const;
+    
 
 private:
 
@@ -85,7 +79,7 @@ void FloeGroup<TFloe>::load_matlab_config(std::string filename) {
     read_list_so_from_file( filename, list_so);
     cout << "Importing floes ... " << endl;
     list_so_to_floes( list_so, m_list_floe );
-    for ( auto& floe : m_list_floe ){ // *1 ; todo : avoid this step
+    for ( auto& floe : m_list_floe ){
         floe.update();
         m_floe_group_h.add_floe(floe.get_floe_h());
     }
@@ -130,6 +124,25 @@ FloeGroup<TFloe>::mass_center() const
         m_list_floe.begin(), m_list_floe.end(), point_type{0,0} , 
         [](point_type partial_sum, floe_type const& floe) { return partial_sum + floe.mass() * floe.state().real_position(); }
     ) / total_mass();
+}
+
+template<typename TFloe>
+std::array<typename FloeGroup<TFloe>::value_type, 4>
+FloeGroup<TFloe>::bounding_window(value_type margin) const
+{
+    value_type min_x, min_y, max_x, max_y;
+    min_x = min_y = std::numeric_limits<value_type>::max();
+    max_x = max_y = - std::numeric_limits<value_type>::max();
+
+    for (auto const& floe : m_list_floe)  
+        for (auto const& pt : floe.geometry().outer())
+        {
+            min_x = std::min(min_x, pt.x);
+            min_y = std::min(min_y, pt.y);
+            max_x = std::max(max_x, pt.x);
+            max_y = std::max(max_y, pt.y);
+        }
+    return {{min_x - margin, max_x + margin, min_y - margin, max_y + margin}};
 }
 
 

@@ -42,7 +42,7 @@ public:
     using integration_strategy = floe::integration::RefGaussLegendre<value_type,2,2>;
     using external_forces_type = ExternalForces<TFloeGroup>;
 
-    DynamicsManager(value_type const& time_ref) : m_external_forces{time_ref}, m_ocean_window_area{0} {}
+    DynamicsManager(value_type const& time_ref) : m_external_forces{time_ref}, m_ocean_window_area{0}, m_OBL_status{0} {}
 
     void move_floes(floe_group_type& floe_group, value_type delta_t);
     void update_ocean(floe_group_type& floe_group, value_type delta_t);
@@ -51,19 +51,18 @@ public:
         m_external_forces.load_matlab_topaz_data(filename);
     }
 
-    inline void load_matlab_ocean_window_data(std::string const& filename) {
-        m_ocean_window_area = floe::io::matlab::ocean_window_area_from_file(filename);
-        // if (m_ocean_window_area == 0) TODO : no Pze in file, set auto window
-    }
+    void load_matlab_ocean_window_data(std::string const& filename, floe_group_type const& floe_group);
 
     //! for output
     inline point_type OBL_speed() const { return m_external_forces.OBL_speed(); }
     inline void set_OBL_speed(point_type OBL_speed) { return m_external_forces.update_water_speed(OBL_speed); }
+    inline void set_OBL_status(int status) { m_OBL_status = status; }
 
 protected:
 
     external_forces_type m_external_forces;
     value_type m_ocean_window_area;
+    int m_OBL_status;
 
     virtual void move_floe(floe_type& floe, value_type delta_t);
     void translate_floe(floe_type& floe, value_type delta_t);
@@ -129,7 +128,7 @@ void
 DynamicsManager<TFloeGroup>::update_ocean(TFloeGroup& floe_group, value_type delta_t)
 {   
     point_type diff_speed{0,0};
-    if (OBL_STATUS)
+    if (m_OBL_status)
     {
         value_type floes_area = floe_group.total_area();
         value_type win_area = ocean_window_area();
@@ -151,6 +150,18 @@ DynamicsManager<TFloeGroup>::update_ocean(TFloeGroup& floe_group, value_type del
     }
     // update water speed
     m_external_forces.update_water_speed( diff_speed );
+}
+
+template <typename TFloeGroup>
+void
+DynamicsManager<TFloeGroup>::load_matlab_ocean_window_data(std::string const& filename, floe_group_type const& floe_group)
+{
+    m_ocean_window_area = floe::io::matlab::ocean_window_area_from_file(filename);
+    if (m_ocean_window_area == 0)
+    {
+        auto a = floe_group.bounding_window();
+        m_ocean_window_area = (a[1] - a[0]) * (a[3] - a[2]);
+    }
 }
 
 

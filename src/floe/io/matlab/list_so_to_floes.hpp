@@ -57,7 +57,7 @@ list_so_to_floes( TMatlabListSolid const& list_so, std::vector<TKinematicFloe>& 
         auto const& solid = list_so.geo[i];
         auto const& movement = list_so.mov[i];
         
-        // // Create Kinematic floe
+        // Create Kinematic floe
         auto& floe = list_floes[i];
         // link static floe
         floe.attach_static_floe_ptr(std::unique_ptr<TStaticFloe>(new TStaticFloe()));

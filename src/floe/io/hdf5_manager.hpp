@@ -189,13 +189,13 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::write_chunk() {
              * default file creation properties, and default file
              * access properties.
              */
-            m_out_file = new H5File( FILE_NAME, H5F_ACC_TRUNC );
+            m_out_file = new H5File( FILE_NAME.c_str(), H5F_ACC_TRUNC );
             // m_out_file = H5Fcreate( FILE_NAME, H5F_ACC_TRUNC);
         } else {
             /*
              * Open the file with read/write access.
              */
-            m_out_file = new H5File( FILE_NAME, H5F_ACC_RDWR );
+            m_out_file = new H5File( FILE_NAME.c_str(), H5F_ACC_RDWR );
         }
 
         write_boundaries();
@@ -239,8 +239,8 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::write_boundaries() {
     Group floe_state_group;
     try {
         floe_state_group = file.openGroup("floe_outlines");
-    } catch (H5::Exception& e) {
-        floe_state_group = file.createGroup(H5std_string{"floe_outlines"});
+    } catch (...) {
+        floe_state_group = file.createGroup("floe_outlines");
     }
     
     for (std::size_t i = 0; i!= m_data_chunk_boundaries.size(); ++i)
@@ -252,8 +252,8 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::write_boundaries() {
 
         DataSet dataset;
         try {
-            dataset = floe_state_group.openDataSet(H5std_string{std::to_string(i)});
-        } catch (H5::Exception& e) {
+            dataset = floe_state_group.openDataSet(std::to_string(i).c_str());
+        } catch (...) {
             FloatType datatype( PredType::NATIVE_DOUBLE );
             datatype.setOrder( H5T_ORDER_LE );
             hsize_t maxdims[RANK] = {H5S_UNLIMITED, dimsf[1], dimsf[2]};
@@ -262,7 +262,7 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::write_boundaries() {
             DSetCreatPropList prop;
             prop.setChunk(RANK, chunk_dims);
 
-            dataset = floe_state_group.createDataSet(H5std_string{std::to_string(i)},datatype, dataspace, prop);
+            dataset = floe_state_group.createDataSet(std::to_string(i).c_str(), datatype, dataspace, prop);
         }
 
         // Extend the dataset.
@@ -308,7 +308,7 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::write_states() {
     const hsize_t     chunk_dims[RANK] = {m_chunk_step_count, dims[1], dims[2]};
     try {
         states_dataset = file.openDataSet("floe_states");
-    } catch (H5::Exception& e) {
+    } catch (...) {
         FloatType datatype( PredType::NATIVE_DOUBLE );
         datatype.setOrder( H5T_ORDER_LE );
         hsize_t maxdims[RANK] = {H5S_UNLIMITED, dims[1], dims[2]}; 
@@ -317,7 +317,7 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::write_states() {
         DSetCreatPropList prop;
         prop.setChunk(RANK, chunk_dims);
 
-        states_dataset = file.createDataSet(H5std_string{"floe_states"}, datatype, dataspace, prop);
+        states_dataset = file.createDataSet("floe_states", datatype, dataspace, prop);
     }
     // Extend the dataset.
     dims[0] += chunk_dims[0];
@@ -357,7 +357,7 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::write_time() {
     hsize_t     chunk_dimst[1] = {m_chunk_step_count};
     try {
         time_dataset = file.openDataSet("time");
-    } catch (H5::Exception& e) {
+    } catch (...) {
         FloatType datatype( PredType::NATIVE_DOUBLE );
         datatype.setOrder( H5T_ORDER_LE );
         hsize_t maxdims[1] = {H5S_UNLIMITED}; 
@@ -366,7 +366,7 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::write_time() {
         DSetCreatPropList prop;
         prop.setChunk(1, chunk_dimst);
 
-        time_dataset = file.createDataSet(H5std_string{"time"}, datatype, dataspace, prop);
+        time_dataset = file.createDataSet("time", datatype, dataspace, prop);
     }
     // Extend the dataset.
     dimst[0] += chunk_dimst[0];
@@ -393,7 +393,7 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::write_mass_center() {
     hsize_t     chunk_dims[RANK] = {m_chunk_step_count, 2};
     try {
         dataset = file.openDataSet("mass_center");
-    } catch (H5::Exception& e) {
+    } catch (...) {
         FloatType datatype( PredType::NATIVE_DOUBLE );
         datatype.setOrder( H5T_ORDER_LE );
         hsize_t maxdims[RANK] = {H5S_UNLIMITED, 2}; 
@@ -402,7 +402,7 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::write_mass_center() {
         DSetCreatPropList prop;
         prop.setChunk(RANK, chunk_dims);
 
-        dataset = file.createDataSet(H5std_string{"mass_center"}, datatype, dataspace, prop);
+        dataset = file.createDataSet("mass_center", datatype, dataspace, prop);
     }
     // Extend the dataset.
     dimst[0] += chunk_dims[0];
@@ -439,7 +439,7 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::write_OBL_speed() {
     hsize_t     chunk_dims[RANK] = {m_chunk_step_count, 2};
     try {
         dataset = file.openDataSet("OBL_speed");
-    } catch (H5::Exception& e) {
+    } catch (...) {
         FloatType datatype( PredType::NATIVE_DOUBLE );
         datatype.setOrder( H5T_ORDER_LE );
         hsize_t maxdims[RANK] = {H5S_UNLIMITED, 2}; 
@@ -448,7 +448,7 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::write_OBL_speed() {
         DSetCreatPropList prop;
         prop.setChunk(RANK, chunk_dims);
 
-        dataset = file.createDataSet(H5std_string{"OBL_speed"}, datatype, dataspace, prop);
+        dataset = file.createDataSet("OBL_speed", datatype, dataspace, prop);
     }
     // Extend the dataset.
     dimst[0] += chunk_dims[0];
@@ -481,7 +481,7 @@ double HDF5Manager<TFloeGroup, TDynamicsMgr>::recover_states(
     /*
      * Open the specified file and the specified dataset in the file.
      */
-    H5File file( filename, H5F_ACC_RDONLY );
+    H5File file( "filename", H5F_ACC_RDONLY );
 
     DataSet time_dataset = file.openDataSet( "time" );
     /*
@@ -599,9 +599,9 @@ double HDF5Manager<TFloeGroup, TDynamicsMgr>::recover_states(
 //     /* write shapes */
 //     try {
 //         Group floe_shape_group = file.openGroup("shapes");
-//     } catch (H5::Exception& e) {
+//     } catch (...) {
 //         /* Create group for floe shapes */
-//         Group floe_shape_group(file.createGroup(H5std_string{"shapes"}));
+//         Group floe_shape_group(file.createGroup("shapes"));
 
 //         const int   RANK = 2;
 //         FloatType datatype( PredType::NATIVE_DOUBLE );
