@@ -46,7 +46,7 @@ public:
                   m_collision_manager_h{nullptr} {}
 
     using detector_h_type = TDetector;
-    using time_scale_manager_type = ope::TimeScaleManager<TDomain_h, detector_h_type>;
+    using time_scale_manager_type = ope::TimeScaleManager<detector_h_type>;
 
 
     //! Solver

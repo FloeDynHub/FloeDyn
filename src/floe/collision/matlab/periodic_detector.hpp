@@ -84,6 +84,8 @@ private:
         else
             return n;
     }
+
+    friend class ope::TimeScaleManager<PeriodicMatlabDetector<TFloe, TSpaceTopology, TGhostFloe, TContact>>;
 };
 
 

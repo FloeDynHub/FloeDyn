@@ -29,6 +29,8 @@
 #include <boost/geometry/algorithms/intersects.hpp>
 #include <algorithm>
 
+#include "floe/ope/time_scale_manager.hpp"
+
 #ifdef _OPENMP
 #include <omp.h>
 #endif
@@ -118,14 +120,7 @@ public:
     std::size_t num_local_disks() const { std::size_t cnt = 0; for (auto const& opt : m_optims) cnt += opt->local_disks().size(); return cnt; }
     std::size_t num_points() const { std::size_t cnt = 0; for (auto const& floe : m_floes) cnt += floe->geometry().outer().size(); return cnt; }
 
-    // Accessors for time_scale_manager
-    inline dist_matrix_type const& get_dist_secu() const { return m_dist_secu; }
-    inline dist_matrix_type const& get_dist_opt() const { return m_dist_opt; }
-    inline indic_matrix_type const& get_indic() const { return m_indic; }
-    inline std::vector<floe_type *> const& get_floes() const { return m_floes; }
-    inline std::vector<optim_type*> const& get_optims() const { return m_optims; }
     inline bool interpenetration() const { return m_interpenetration; }
-    // End Accessors for time_scale_manager
 
     //! Container accessors
     inline virtual floe_interface_type const& get_floe(std::size_t n) const { return *(m_floes[n]); }
@@ -181,6 +176,8 @@ protected:
     inline virtual contact_type create_contact(std::size_t n1, std::size_t n2, point_type point1, point_type point2) const {
         return { m_floes[n1], m_floes[n2], point1, point2 }; }
     inline virtual std::size_t real_floe_id(std::size_t n) const { return n; }
+
+    friend class ope::TimeScaleManager<MatlabDetector<TFloe, TContact>>;
 
 };
 

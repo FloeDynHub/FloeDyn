@@ -26,8 +26,7 @@ namespace floe { namespace ope
  *
  */
 
-
-template <typename TDomain, typename TDetector>
+template<typename TDetector>
 class TimeScaleManager
 {
 
@@ -41,17 +40,10 @@ public:
     using floe_interface_type = typename TDetector::floe_interface_type;
     using optim_interface_type = typename TDetector::optim_interface_type;
 
-    // Default constructor
-    TimeScaleManager() : m_domain{nullptr} {} //, m_detector{nullptr} {}
-
-    // TimeScaleManager(TDomain& domain, TDetector& detector) : m_domain{&domain}, m_detector{&detector} {}
-
+    template <typename TDomain>
     value_type delta_t_secu(TDomain* domain, TDetector* detector);
 
 private:
-
-    TDomain* m_domain;
-    // TDetector* m_detector;
 
     //! Corresponds to gestion_temps() in Matlab code
     value_type delta_t_secu(
@@ -61,7 +53,8 @@ private:
         const floe_interface_type& floe2,
         const optim_type& optim1,
         const optim_interface_type& optim2,
-        short I
+        short I,
+        value_type dt_default
     );
 
     //! Corresponds to gestion_temps_fast() in Matlab code
@@ -75,25 +68,26 @@ private:
 
 };
 
-template <typename TDomain, typename TDetector>
-typename TimeScaleManager<TDomain, TDetector>::value_type
-TimeScaleManager<TDomain, TDetector>::delta_t_secu(TDomain* domain, TDetector* detector)
+template <typename TDetector>
+template <typename TDomain>
+typename TimeScaleManager<TDetector>::value_type
+TimeScaleManager<TDetector>::delta_t_secu(TDomain* domain, TDetector* detector)
 {
-    m_domain = domain;
+    value_type dt_default = domain->default_time_step();
     
     if (detector->interpenetration())
     {
-        domain->set_time_step(m_domain->time_step() / 2);
-        return m_domain->time_step();
+        domain->set_time_step(domain->time_step() / 2);
+        return domain->time_step();
     }
 
     detector->clean_dist_opt();
-    auto& dist_secu = detector->get_dist_secu();
-    auto& dist_opt = detector->get_dist_opt();
-    auto& indics = detector->get_indic();
-    auto& floes = detector->get_floes();
-    auto& optims = detector->get_optims();
-    value_type global_min_dt = m_domain->default_time_step();
+    auto const& dist_secu = detector->m_dist_secu;
+    auto& dist_opt = detector->m_dist_opt;
+    auto& indics = detector->m_indic;
+    auto& floes = detector->m_floes;
+    auto& optims = detector->m_optims;
+    value_type global_min_dt = dt_default;
     
     #pragma omp parallel for
     for (std::size_t i = 0; i < dist_secu.size1(); ++i)
@@ -109,7 +103,7 @@ TimeScaleManager<TDomain, TDetector>::delta_t_secu(TDomain* domain, TDetector* d
             else
             {
                 delta_t = delta_t_secu(dist_secu(i,j), dist_opt(i,j),
-                         *floes[i], detector->get_floe(j), *optims[i], detector->get_optim(j), indics(i,j));  
+                         *floes[i], detector->get_floe(j), *optims[i], detector->get_optim(j), indics(i,j), dt_default);  
             }
 
             global_min_dt = std::min(
@@ -124,19 +118,18 @@ TimeScaleManager<TDomain, TDetector>::delta_t_secu(TDomain* domain, TDetector* d
     return global_min_dt;
 }
 
-
-template <typename TDomain, typename TDetector>
-typename TimeScaleManager<TDomain, TDetector>::value_type
-TimeScaleManager<TDomain, TDetector>::delta_t_secu(
+template <typename TDetector>
+typename TimeScaleManager<TDetector>::value_type
+TimeScaleManager<TDetector>::delta_t_secu(
     value_type dist_secu,
     value_type dist_opt,
     const floe_type& floe1,
     const floe_interface_type& floe2,
     const optim_type& optim1,
     const optim_interface_type& optim2,
-    short I
+    short I,
+    value_type dt_default
 ){
-    const value_type& dt_defaut = m_domain->default_time_step();
     const point_type& Vg1 = floe1.state().speed, Vg2 = floe2.state().speed;
     const value_type& Vt1 = floe1.state().rot, Vt2 = floe2.state().rot;
     const point_type& C1 = optim1.global_disk().center, C2 = optim2.global_disk().center;
@@ -150,9 +143,9 @@ TimeScaleManager<TDomain, TDetector>::delta_t_secu(
     lambda = std::min(lambda, d / 20);
 
     // Calcul du deplacement d un point par rapport aux reperes en t+dt.
-    // repere a l'instant t+dt_defaut :
-    frame_type mark1{G1 + dt_defaut * (Vg1 - Vg2), dt_defaut * Vt1};
-    frame_type mark2{G2 + dt_defaut * (Vg2 - Vg1), dt_defaut * Vt2};
+    // repere a l'instant t+dt_default :
+    frame_type mark1{G1 + dt_default * (Vg1 - Vg2), dt_default * Vt1};
+    frame_type mark2{G2 + dt_default * (Vg2 - Vg1), dt_default * Vt2};
     // fin calcul repere
 
     // calcul ceinture de points: (pour la rotation)
@@ -201,18 +194,18 @@ TimeScaleManager<TDomain, TDetector>::delta_t_secu(
     // %%%%%%%%%% Cas obj1 %%%%%%%%%%
     value_type calc;
     if (dist1 < 1e-12)
-        calc = dt_defaut;
+        calc = dt_default;
     else
-        calc = ((d - lambda) / 2) * (dt_defaut / dist1);
-    value_type dt12 = std::min(dt_defaut, calc);
+        calc = ((d - lambda) / 2) * (dt_default / dist1);
+    value_type dt12 = std::min(dt_default, calc);
     // %%%%%%%%%% Fin %%%%%%%%%%
     
     // %%%%%%%%%% Cas obj2 %%%%%%%%%%
     if (dist2 < 1e-12)
-        calc = dt_defaut;
+        calc = dt_default;
     else
-        calc = ((d - lambda) / 2) * (dt_defaut / dist2);
-    value_type dt21 = std::min(dt_defaut, calc);
+        calc = ((d - lambda) / 2) * (dt_default / dist2);
+    value_type dt21 = std::min(dt_default, calc);
     // %%%%%%%%%% Fin %%%%%%%%%%
 
     assert( std::min(dt12, dt21) > 0 );
@@ -220,9 +213,9 @@ TimeScaleManager<TDomain, TDetector>::delta_t_secu(
     return std::min(dt12, dt21);
 }
 
-template <typename TDomain, typename TDetector>
-typename TimeScaleManager<TDomain, TDetector>::value_type
-TimeScaleManager<TDomain, TDetector>::delta_t_secu_fast(
+template <typename TDetector>
+typename TimeScaleManager<TDetector>::value_type
+TimeScaleManager<TDetector>::delta_t_secu_fast(
         value_type dist_secu,
         const floe_type& floe1,
         const floe_interface_type& floe2,

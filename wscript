@@ -7,10 +7,25 @@
 Documentation : https://waf.io/book/
 
 USAGE
+Build main product : ./waf --target <targ>
+    whith <targ> = FLOE or FLOE_PBC (PBC for Periodic Boundary Conditions)
+
 Build and run unit tests : ./waf test
-(--name <str> : restrict to test filenames containing str)
+    options:
+        --name <str> : restrict to test filenames containing str)
 
 Build a single test ("^STEST_" files) : ./waf TEST --name <filename>
+
+Compilation options (available for tests too) :
+    --optim to get release product
+    --omp to get omp parallelisation (when compiler allows it)
+
+Display floes from output file :
+    ./waf plot_floes (or plot_floes_fast for multiprocessed faster version)
+    options :
+        --name <out_filename> : output_filename to consider
+        --vid : make video (automatic with plot_floes_fast)
+        --step <step> : do not read every recorded time, only one in <step>, to get a faster animation
 """
 
 import os
@@ -22,7 +37,7 @@ top = "."
 out = "build"
 
 test_target = 'catchtest'
-TEST_target = "STEST2"
+TEST_target = "STEST"
 
 def timeit(func):
     """decorator to measure function execution time"""
@@ -46,6 +61,8 @@ def options(opt):
     opt.add_option('--gcc', action='store_true', default=False, dest='gcc')
     opt.add_option('--icc', action='store_true', default=False, dest='icc')
     opt.add_option('--omp', action='store_true', default=False, dest='omp')
+    opt.add_option('--step', action='store', default="", dest='step_plot')
+    opt.add_option('--vid', action='store_true', default=False, dest='vid')
 
 
 def configure(conf):
@@ -65,6 +82,7 @@ def configure(conf):
 
 def list_test_cpp(pattern=""):
     """return all .cpp filename in tests/ with name begining by 'test'"""
+    # use glob instead ?
     cpp_list = ["tests/main.cpp"]
     for root, dirnames, filenames in os.walk('tests'):
         for filename in fnmatch.filter(filenames, 'test*.cpp'):
@@ -100,14 +118,7 @@ def clean_tests(ctx):
 @timeit
 def run_tests(ctx):
     print('running tests...')
-    # ctx.exec_command("%s/%s" % (out, test_target))
-    call("%s/%s" % (out, test_target))  # for terminal coloration !
-    # p = Popen("%s/%s" % (out, test_target), stdout=PIPE,
-    #           stderr=STDOUT, shell=True)
-    # for line in iter(p.stdout.readline, ""):
-    #     print(line)
-
-
+    call("%s/%s" % (out, test_target))
 
 
 def get_option_dict(debug=True):
@@ -118,14 +129,11 @@ def get_option_dict(debug=True):
                       '/usr/include',
                       '/usr/local/include/eigen3',
                     ] + [path for path in os.environ["PATH"].split(":") if not "bin" in path],
-        "lib": [#'boost_timer',
-                #'boost_chrono', 
-                'boost_system',
+        "lib": ['boost_system',
                 'matio',
                 "hdf5",
-                "hdf5_cpp"
-                ],
-        "libpath": ["/usr/local/lib", "/usr/lib", '/usr/local/Cellar/boost/1.58.0/lib'] + os.environ.get("LD_LIBRARY_PATH", "/").split(":"),
+                "hdf5_cpp"],
+        "libpath": ["/usr/local/lib", "/usr/lib"] + os.environ.get("LD_LIBRARY_PATH", "/").split(":")
     }
     if debug:
         OPTION_DICT.update({
@@ -133,20 +141,21 @@ def get_option_dict(debug=True):
             "cxxflags": [
                 '-std=c++11',
                  '-O0',
-                 # "-Wall", #"-Wextra",
-            ]
+                 "-Wall", #"-Wextra",
+            ],
+            "defines": []
         })
     else:
         OPTION_DICT.update({
             "linkflags": [],
             "cxxflags": [
                 '-std=c++11',
-                "-DNDEBUG",
                  "-O3",
                  # "-march=native", // g++ fails with this
                  "-mtune=native",
                  "-Wall",# "-Wextra",
-             ]
+             ],
+            "defines": ["NDEBUG"]
         })
     return OPTION_DICT
 
@@ -160,15 +169,15 @@ def build(bld):
         opts["source"] = list_test_cpp(bld.options.name)
         opts["target"] = test_target
         bld.program(**opts)
-        # running tests
-        # bld.add_post_fun(run_tests)
     elif bld.options.target == "TEST":
         opts["source"] = find_STEST_cpp(bld.options.name) or bld.fatal('STOP')
         opts["target"] = TEST_target
         bld.program(**opts)
     elif bld.options.target in ["FLOE", "FLOE_PBC"]:
-        opts["source"] = ["product/%s.cpp" % bld.options.target]
+        opts["source"] = ["product/FLOE.cpp"]
         opts["target"] = bld.options.target
+        if bld.options.target == "FLOE_PBC":
+            opts["defines"].append('PBC')
         bld.program(**opts)
     else:
         print("nothing to build yet")
@@ -183,9 +192,8 @@ def test(ctx):
     err = ctx.exec_command('./waf build --target unittests%s%s%s' % (
         name_opt, omp_opt, debug_opt))
     if not err:
-        # ctx.exec_command('./waf run_tests') # no real time cout !
         run_tests(ctx)
-        # ctx.exec_command('./waf clean_tests')
+        # clean_tests(ctx)
 
 
 def TEST(ctx):
@@ -199,14 +207,13 @@ def TEST(ctx):
 
 
 
-from plot import plot_floes, plot_last_rec
+from plot import plot_floes, plot_last_rec, plot_floes_fast
 
 def plot(ctx):
-    plot_floes(ctx.options.name)
+    plot_floes(ctx.options.name, int(ctx.options.step_plot), ctx.options.vid )
 
-
-def mkvid(ctx):
-    plot_floes(ctx.options.name, True)
+def plot_fast(ctx):
+    plot_floes_fast(ctx.options.name, int(ctx.options.step_plot))
 
 def plot_lr(ctx):
     plot_last_rec(ctx.options.name)
