@@ -1,6 +1,6 @@
 /*!
  * \file domain/domain.hpp
- * \brief domain
+ * \brief Domain management
  * \author Quentin Jouet
  */
 
@@ -28,7 +28,7 @@ public:
 
     using real = T;
 
-    // Default constructor
+    //! Default constructor
     Domain() : m_t{0}, m_delta_t{1}, m_delta_t_default{10}, m_out_step{0}, m_next_out_limit{0} {}
 
     inline const real& time() const { return m_t; }
@@ -46,13 +46,14 @@ public:
 
 private:
     // time
-    real m_t;
-    real m_delta_t;
-    real m_delta_t_default;
+    real m_t; //!< Simulation time
+    real m_delta_t; //!< Time step
+    real m_delta_t_default; //!< Default time step
+
     // output
-    real m_out_step;
+    real m_out_step; //!< Time step between simulation state outputs
     // real m_last_out;
-    real m_next_out_limit;
+    real m_next_out_limit; //!< Next time limit for state ouput
 
 };
 

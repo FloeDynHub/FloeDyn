@@ -1,6 +1,6 @@
 /*!
  * \file ope/periodic_dynamics_manager.hpp
- * \brief dynamics manager managing translations for periodic space
+ * \brief Extended dynamics manager handling translations for periodic space
  * \author Quentin Jouet
  */
 
@@ -35,6 +35,7 @@ public:
     PeriodicDynamicsManager(value_type const& time_ref) :
         base_class(time_ref), m_topology{nullptr} {}
 
+    //! Set topology
     inline void set_topology(topology_type const& t) { m_topology = &t; }
 
     // virtual void update_ocean(TFloeGroup& floe_group, value_type delta_t) override;
@@ -42,6 +43,7 @@ public:
 private:
     topology_type const* m_topology; //!< Space topology
     virtual void move_floe(floe_type& floe, value_type delta_t) override;
+    //! Translate floe if needed according to periodic boundary conditions (topology)
     void replace_floe(floe_type& floe);
     virtual value_type ocean_window_area() override { return m_topology->area(); }
 };

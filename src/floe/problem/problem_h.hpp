@@ -54,6 +54,7 @@ public:
          step_solve();
     };
 
+    //! Discrete floes group accessor
     inline TFloeGroup_h& get_floe_group_h() { return *m_floe_group_h; }
     inline void set_floe_group_h( TFloeGroup_h& floe_group_h){ m_floe_group_h = &floe_group_h; }
 
@@ -67,21 +68,23 @@ public:
 private:
 
     // domain
-    TDomain_h* m_domain_h;
+    TDomain_h* m_domain_h; //!< Discrete domain (same as smooth domain at the moment)
 
     // variable
-    TFloeGroup_h* m_floe_group_h;
+    TFloeGroup_h* m_floe_group_h; //!< Discrete floes group (group of discrete floes)
 
     // operators
-    detector_h_type* m_detector;
-    TCollisionManager_h* m_collision_manager_h;
-    time_scale_manager_type m_time_scale_manager;
+    detector_h_type* m_detector; //!< Proximity Detector at discrete level
+    TCollisionManager_h* m_collision_manager_h; //!< Collision manager at discrete level
+    time_scale_manager_type m_time_scale_manager; //!< Time scale manager at discrete level
 
+    //! Proximity detection (inter-floe distance and eventual collisions)
     void do_detection(){
         if (!m_detector->update()) // we have a floe interpenetration
             m_domain_h->rewind_time();
     }
 
+    //! Collision solving
     void manage_collisions(){
         m_collision_manager_h->solve_contacts(m_detector->contact_graph());
     }

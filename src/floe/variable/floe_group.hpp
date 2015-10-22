@@ -42,8 +42,10 @@ public:
     //! Default constructor.
     // FloeGroup() : {}
 
+    //! Load floes set and initial states from matlab file
     void load_matlab_config(std::string filename);
 
+    // Accessors
     inline floe_group_h_type const& get_floe_group_h() const { return m_floe_group_h; }
     inline floe_group_h_type& get_floe_group_h() { return m_floe_group_h; }
     inline std::vector<floe_type> const& get_floes() const { return m_list_floe; }
@@ -63,8 +65,8 @@ public:
 
 private:
 
-    std::vector<floe_type> m_list_floe;
-    floe_group_h_type m_floe_group_h;
+    std::vector<floe_type> m_list_floe; //!< List of floes
+    floe_group_h_type m_floe_group_h; //!< Discrete floe group (access to floes discretisation)
 
 };
 

@@ -21,7 +21,7 @@ namespace floe { namespace ope
 
 /*! LCPManager
  *
- * Operator for LCP processing
+ * Operator for Collision processing
  *
  */
 
@@ -34,20 +34,25 @@ public:
     using value_type = T;
     using solver_type = LCPSolver<value_type>;
 
+    //! Destructor
     ~LCPManager(){ printf ("#TOTAL LCP solve : %d / %d (%f %%) \n", m_nb_lcp_success, m_nb_lcp, success_ratio() ); }
 
+    //! LCP solver accessor
     inline solver_type& get_solver() { return m_solver; }
 
+    //! Solve collision represented by a contact graph
     template<typename TContactGraph>
     void solve_contacts(TContactGraph& contact_graph);
+    //! Get solving success ratio in percent
     double success_ratio(){ return (m_nb_lcp == 0)? 100 : 100 * (double)m_nb_lcp_success/m_nb_lcp; }
 
 private:
 
-    solver_type m_solver;
-    int m_nb_lcp;
-    int m_nb_lcp_success;
+    solver_type m_solver; //!< LCP Solver
+    int m_nb_lcp; //!< Total number of LCP managed
+    int m_nb_lcp_success; //!< Total number of LCP solving success
 
+    //! Update floes state with LCP solution
     template<typename TContactGraph>
     void update_floes_state(TContactGraph& graph, const boost::numeric::ublas::vector<value_type> Sol);
 };

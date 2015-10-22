@@ -77,6 +77,7 @@ private:
     }
     inline virtual void set_dist_opt(std::size_t n1, std::size_t n2, value_type val);
     virtual contact_type create_contact(std::size_t n1, std::size_t n2, point_type point1, point_type point2) const;
+    //! returns real floe id if param id refers to a ghost
     virtual std::size_t real_floe_id(std::size_t n) const {
         std::size_t N { base_class::m_floes.size() };
         if (n >= N)

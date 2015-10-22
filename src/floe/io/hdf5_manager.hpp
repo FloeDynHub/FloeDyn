@@ -24,7 +24,11 @@ namespace floe { namespace io
 
 /*! HDF5Manager
  *
- * Handles floe outlines, floe states and time output
+ * Handles :
+ *   Floe outlines, floe states, ocean state, and time output
+ *   Floe states input
+ *
+ * Internally saves a fixed number of states before writing it to the file.
  *
  */
 
@@ -76,25 +80,29 @@ public:
         std::cout << "OUT FILE : " << m_out_file_name << std::endl;
     }
 
+    //! Save the current simulation state for output
     void save_step(value_type time, const floe_group_type&, const dynamics_mgr_type&);
-
+    //! Recover simulation state from file
     double recover_states(H5std_string filename, value_type time, floe_group_type&, dynamics_mgr_type&);
 
 private:
 
-    std::string m_out_file_name;
-    H5File* m_out_file;
-    hsize_t m_step_count;
-    hsize_t m_chunk_step_count;
-    const hsize_t m_flush_max_step;
-    vector<vector<vector<vector<value_type>>>> m_data_chunk_boundaries;
-    vector<vector<saved_state_type>> m_data_chunk_states;
-    // vector<value_type> m_data_chunk_time;
-    value_type* m_data_chunk_time;
-    vector<std::array<value_type, 2>> m_data_chunk_mass_center;
-    vector<std::array<value_type, 2>> m_data_chunk_OBL_speed;
+    std::string m_out_file_name; //!< output file name
+    H5File* m_out_file; //!< output file
+    hsize_t m_step_count; //!< Total nb of outputted simulation states
+    hsize_t m_chunk_step_count; //! Nb of temporarily saved steps (to flush in out file)
+    const hsize_t m_flush_max_step; //! Max nb of temporarily saved steps (chunk size)
 
+    vector<vector<vector<vector<value_type>>>> m_data_chunk_boundaries; //!< Temp saved floe boundaries
+    vector<vector<saved_state_type>> m_data_chunk_states; //!< Temp saved floe states
+    value_type* m_data_chunk_time; //!< Temp saved times
+    vector<std::array<value_type, 2>> m_data_chunk_mass_center; //!< Temp saved floe group mass centers
+    vector<std::array<value_type, 2>> m_data_chunk_OBL_speed; //!< Temp saved ocean datas
+
+    //! Flush temporarily saved data
     void write_chunk();
+
+    //! Partial writings :
     void write_boundaries();
     void write_states();
     void write_time();
@@ -112,10 +120,6 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::save_step(value_type time, const flo
     if (m_data_chunk_boundaries.size() == 0)
     {   
         m_data_chunk_boundaries.resize(floe_list.size());
-        // for (std::size_t i = 0; i != m_data_chunk_boundaries.size(); ++i)
-        // {
-        //     m_data_chunk_boundaries[i].reserve(m_flush_max_step);
-        // }
     }
 
     // save boundaries
@@ -179,7 +183,6 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::write_chunk() {
          */
         Exception::dontPrint();
 
-        // if (m_out_file == nullptr){}
         const H5std_string  FILE_NAME( m_out_file_name );
 
         if (m_step_count == m_chunk_step_count)
@@ -190,7 +193,6 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::write_chunk() {
              * access properties.
              */
             m_out_file = new H5File( FILE_NAME.c_str(), H5F_ACC_TRUNC );
-            // m_out_file = H5Fcreate( FILE_NAME, H5F_ACC_TRUNC);
         } else {
             /*
              * Open the file with read/write access.
@@ -204,6 +206,7 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::write_chunk() {
         write_mass_center();
         write_OBL_speed();
 
+        // Close the file after each flush to keep a valid ouput even if simulation crashes
         delete m_out_file;
 
     }  // end of try block

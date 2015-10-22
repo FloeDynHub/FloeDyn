@@ -29,7 +29,7 @@ public:
 
 private:
 
-    manager_h_type m_manager_h;
+    manager_h_type m_manager_h; //!< Discrete collision manager
 
 };
 

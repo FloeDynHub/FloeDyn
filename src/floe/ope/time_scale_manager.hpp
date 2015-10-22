@@ -1,6 +1,6 @@
 /*!
  * \file ope/time_scale_manager.hpp
- * \brief time_scale manager
+ * \brief Time Scale Manager
  * \author Quentin Jouet
  */
 
@@ -23,6 +23,7 @@ namespace floe { namespace ope
 /*! TimeScaleManager
  *
  * Operator for time step determination
+ * i.e. finding maximal time step that ensures no floes interpenetration
  *
  */
 
@@ -40,12 +41,18 @@ public:
     using floe_interface_type = typename TDetector::floe_interface_type;
     using optim_interface_type = typename TDetector::optim_interface_type;
 
+    /*!
+     * Returns time step taking all floes into account, base on detector informations
+     */
     template <typename TDomain>
     value_type delta_t_secu(TDomain* domain, TDetector* detector);
 
 private:
 
-    //! Corresponds to gestion_temps() in Matlab code
+    /*!
+     * Returns maximal delta_t for 2 floes beeing close
+     * Corresponds to gestion_temps() in Matlab code
+     */
     value_type delta_t_secu(
         value_type dist_secu,
         value_type dist_opt,
@@ -57,7 +64,10 @@ private:
         value_type dt_default
     );
 
-    //! Corresponds to gestion_temps_fast() in Matlab code
+    /*!
+     * Returns maximal delta_t for 2 floes not beeing close
+     * Corresponds to gestion_temps_fast() in Matlab code
+     */
     value_type delta_t_secu_fast(
         value_type dist_secu,
         const floe_type& floe1,

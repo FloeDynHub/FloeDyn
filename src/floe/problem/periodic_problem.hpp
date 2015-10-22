@@ -43,9 +43,12 @@ public:
     using value_type = typename TFloeGroup::floe_type::value_type;
     using point_type = typename TFloeGroup::floe_type::point_type;
 
+    //! Default constructor
     PeriodicProblem() : base_class() {}
+    //! Constructor from topology
     PeriodicProblem(TSpaceTopology& topology) : base_class(), m_space_topology{topology} {}
 
+    //! Load matlab initial state, and construct topology from box information
     virtual inline void load_matlab_config(std::string const& filename) override {
         base_class::load_matlab_config(filename);
         auto imported_topo = floe::io::matlab::topology_from_file<TSpaceTopology>(filename);
@@ -55,8 +58,9 @@ public:
             auto_topology();
     }
 
-    //! sets space borders adapted to floes limit positions
+    //! Set topology
     void set_topology(TSpaceTopology const& topology);
+    //! Sets topology calculating space borders adapted to floes limit positions
     void auto_topology();
 
 private:

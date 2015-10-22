@@ -1,6 +1,6 @@
 /*!
  * \file ghost_optimized_floe.hpp
- * \brief
+ * \brief translated reflection of an optimized floe
  * \author Quentin Jouet
  */
 
@@ -13,8 +13,7 @@
 #include "floe/geometry/arithmetic/point_operators.hpp"
 #include "floe/collision/matlab/optim_interface.hpp"
 
-
-  // Geometry
+// Geometry
 #include "floe/geometry/geometry.hpp"
 #include "floe/geometry/iterators/closing_iterator.hpp"
 #include "floe/geometry/geometries/multi_point.hpp"
@@ -34,7 +33,7 @@ namespace floe { namespace collision { namespace matlab
 {
 
 /*! Detector optimization for a ghost floe
- *
+ *  Refers to the real floe's optimization
  *
  * \tparam TOptim Type of Optimized floe.
  */
@@ -78,11 +77,11 @@ public:
     value_type const&         cdist() const { return m_optim->cdist(); }
     value_type const&         tau() const { return m_optim->tau(); }
 
-    const std::size_t m_original_id; //! Original floe id in group
+    const std::size_t m_original_id; //!< Original object id in group
 
 private:
-    const optim_type* m_optim;  //! Original object
-    point_type m_translation; //! Translation compared to original object
+    const optim_type* m_optim;  //!< Original object
+    point_type m_translation; //!< Translation compared to original object
     translate_strategy_type m_translator; //! Translation strategy for geometry transformation
 
     mutable circle_type         m_global_disk;  //!< The surrounding disk

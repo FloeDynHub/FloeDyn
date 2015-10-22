@@ -1,6 +1,6 @@
 /*!
  * \file optim_interface.hpp
- * \brief
+ * \brief Interface of an Optimized Floe
  * \author Quentin Jouet
  */
 
@@ -53,7 +53,9 @@ public:
     //! Local points accessor
     virtual local_points_type const& local_points() const = 0;
 
+    //! Contact distance accessor
     virtual value_type const&         cdist() const = 0;
+    //! Accessor for distance between surrounding disk and the floe border.
     virtual value_type const&         tau() const = 0;
 
 };

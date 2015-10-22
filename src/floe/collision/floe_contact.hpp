@@ -1,6 +1,6 @@
 /*!
  * \file floe/collision/floe_contact.hpp
- * \brief Contact between two floes.
+ * \brief Representation of a contact between two floes.
  * \author Quentin Jouet
  */
 
@@ -14,7 +14,7 @@
 namespace floe { namespace collision
 {
 
-/*! Contact point between two floes.
+/*! Contact between two floes.
  *
  * \tparam TContactPoint   contact point type.
  */
@@ -38,10 +38,9 @@ public:
     inline std::size_t n2() const { return m_id_ifloe2; }
 
 private:
-    // bool ptr (owned by other object)
-    // mutable bool m_solved;
-    mutable std::shared_ptr<bool> m_solved;
-    std::size_t m_id_ifloe1; // floe interface (real or ghost)
+
+    mutable std::shared_ptr<bool> m_solved; //!< is this contact solved ? (shared pointer to be shared with subgraphs)
+    std::size_t m_id_ifloe1; //<! id (in detector's sense) of floe interface (can be real or ghost)
     std::size_t m_id_ifloe2;
 
 };

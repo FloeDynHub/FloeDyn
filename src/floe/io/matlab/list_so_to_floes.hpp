@@ -35,7 +35,6 @@ template <
 void
 list_so_to_floes( TMatlabListSolid const& list_so, std::vector<TKinematicFloe>& list_floes )
 {
-    // std::vector<TKinematicFloe> floes;
 
     // Typedefs
     using TStaticFloe = typename TKinematicFloe::static_floe_type;
@@ -84,7 +83,7 @@ list_so_to_floes( TMatlabListSolid const& list_so, std::vector<TKinematicFloe>& 
         static_floe.set_density( movement.mass_tot / static_floe.area() );
         
         
-        // // Import mesh
+        // Import mesh
         TMesh& mesh = floe.get_floe_h().m_static_mesh;
         
         auto& points = mesh.points();
@@ -102,11 +101,9 @@ list_so_to_floes( TMatlabListSolid const& list_so, std::vector<TKinematicFloe>& 
         
         floe.static_floe().attach_mesh_ptr(&mesh);
         // Done.
-        // floes.push_back(std::move(floe));
         
     }
 
-    // return floes;
 }
 
 }}} // namespace floe::io::matlab

@@ -30,12 +30,15 @@ public:
     using point_list = std::vector<TPoint>;
     using T = decltype(TPoint::x);
 
+    //! Default constructor
     ToricTopology() : ToricTopology(-2, 4, -2, 4) {}
+    //! Constructor from space limits
     ToricTopology(T min_x, T max_x, T min_y, T max_y) :
         m_min_x{min_x}, m_max_x{max_x},
         m_min_y{min_y}, m_max_y{max_y},
         delta_x{max_x - min_x}, delta_y{max_y - min_y} {}
 
+    //! Returns the list of ghosts of a point
     point_list ghosts(const TPoint& pt) const
     {
         return {
@@ -46,6 +49,10 @@ public:
         };
     }
 
+    /*!
+     * Takes any space point in parameter by reference, replaces it by the corresponding point inside the borders
+     * the second parameter stores the translation made on the point.
+     */
     void replace(TPoint& pt, TPoint& trans) const
     {
         while (pt.x <= m_min_x) { pt.x += delta_x; trans.x -= delta_x; }
@@ -54,6 +61,7 @@ public:
         while (pt.y >= m_max_y) { pt.y -= delta_y; trans.y += delta_y; }
     }
 
+    //! Returns the list of ghosts of the origin point
     point_list ghosts_0() const
     {
         return {
@@ -64,18 +72,21 @@ public:
         };
     }
 
+    //! Area of the rectangle delimited by borders
     inline T area() const { return delta_x * delta_y; }
+    //! Center of the rectangle
     inline TPoint center() const { return { (m_max_x + m_min_x) / 2, (m_max_y + m_min_y) / 2 }; }
-    // inline TPoint print() const { std::cout << m_min_x << " " << m_max_x << " " << m_min_y << " " << m_max_y << std::endl; }
 
 private:
-    T m_min_x;
-    T m_max_x;
-    T m_min_y;
-    T m_max_y;
+    // Space limits
+    T m_min_x; //!< Min x (first space coordinate)
+    T m_max_x; //!< Max x
+    T m_min_y; //!< Min y (second space coordinate)
+    T m_max_y; //!< Max y
 
-    T delta_x;
-    T delta_y;
+    //Rectangle size
+    T delta_x; //!< x length
+    T delta_y; //!< y length
 };
 
 

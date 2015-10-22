@@ -1,6 +1,6 @@
 /*!
  * \file floe/floes/floe_interface.hpp
- * \brief 
+ * \brief Virtual interface of a floe.
  * \author Quentin Jouet
  */
 

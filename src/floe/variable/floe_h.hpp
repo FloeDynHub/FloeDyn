@@ -28,9 +28,8 @@ class Floe_h
 
 public:
 
-    // inline TMesh& kinematic_mesh() const { return m_kinematic_mesh; }
-    TMesh m_kinematic_mesh;
-    TMesh m_static_mesh;
+    TMesh m_kinematic_mesh; //!< Floe mesh in absolute frame
+    TMesh m_static_mesh; //!< Floe mesh in relative frame
 
 
 };

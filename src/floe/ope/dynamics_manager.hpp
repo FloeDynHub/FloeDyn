@@ -1,6 +1,6 @@
 /*!
  * \file ope/dynamics_manager.hpp
- * \brief dynamics manager
+ * \brief Dynamics manager
  * \author Quentin Jouet
  */
 
@@ -24,7 +24,7 @@ namespace floe { namespace ope
 
 /*! DynamicsManager
  *
- * Operator for dynamics processing
+ * Operator for dynamics processing (Floes and ocean kinematics)
  *
  */
 
@@ -42,15 +42,20 @@ public:
     using integration_strategy = floe::integration::RefGaussLegendre<value_type,2,2>;
     using external_forces_type = ExternalForces<TFloeGroup>;
 
+    //! Constructor
     DynamicsManager(value_type const& time_ref) : m_external_forces{time_ref}, m_ocean_window_area{0}, m_OBL_status{0} {}
 
+    //! Floes state update
     void move_floes(floe_group_type& floe_group, value_type delta_t);
+    //! Ocean state update
     void update_ocean(floe_group_type& floe_group, value_type delta_t);
 
+    //! Load ocean and wind data from a topaz file
     inline void load_matlab_topaz_data(std::string const& filename) {
         m_external_forces.load_matlab_topaz_data(filename);
     }
 
+    //! Load ocean window area (box surrounding floes)
     void load_matlab_ocean_window_data(std::string const& filename, floe_group_type const& floe_group);
 
     //! for output
@@ -60,13 +65,17 @@ public:
 
 protected:
 
-    external_forces_type m_external_forces;
-    value_type m_ocean_window_area;
-    int m_OBL_status;
+    external_forces_type m_external_forces; //! External forces manager
+    value_type m_ocean_window_area; //! Ocean window area (for OBL computing)
+    int m_OBL_status; //! OBL (Oceanic Boundary Layer) status : 0 = no coupling, 1 = coupling
 
+    //! Move one floe
     virtual void move_floe(floe_type& floe, value_type delta_t);
+    //! Translation part of one floe's movement
     void translate_floe(floe_type& floe, value_type delta_t);
+    //! Rotation part of one floe's movement
     void rotate_floe(floe_type& floe, value_type delta_t);
+    //! Ocean window area accessor
     virtual value_type ocean_window_area() { return m_ocean_window_area; }
 };
 
@@ -91,7 +100,7 @@ DynamicsManager<TFloeGroup>::move_floe(floe_type& floe, value_type delta_t)
 {
     translate_floe(floe, delta_t);
     rotate_floe(floe, delta_t);
-    floe.update(); // alternative : pour ne pas avoir à update() : utiliser set_state()
+    floe.update(); // alternative : pour ne pas avoir à update() : utiliser floe.set_state(new_state)
 }
 
 
@@ -133,7 +142,6 @@ DynamicsManager<TFloeGroup>::update_ocean(TFloeGroup& floe_group, value_type del
         value_type floes_area = floe_group.total_area();
         value_type win_area = ocean_window_area();
         value_type water_area = win_area - floes_area;
-        // point_type window_center = m_topology->center();
         point_type floe_group_mass_center = floe_group.mass_center();
         value_type OBL_mass = win_area * m_external_forces.OBL_surface_mass();
         auto strategy = integration_strategy();

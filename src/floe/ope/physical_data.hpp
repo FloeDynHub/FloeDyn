@@ -34,37 +34,42 @@ public:
     using value_type = decltype(TPoint::x);
     using point_vector = std::vector<point_type>;
 
+    //! Constructor
     PhysicalData(value_type const& time_ref) :
         m_ocean_data_hours{}, m_air_data_hours{},
         m_ocean_data_minutes{}, m_air_data_minutes{},
         m_time_ref{time_ref}, m_water_speed{0,0},
         m_geo_relative_water_speed{0, 0} {}
 
-    point_type water_speed(point_type = {0,0}); // time, space
+    //! water speed accessor
+    point_type water_speed(point_type = {0,0});
+    //! air speed accessor
     point_type air_speed(point_type = {0,0});
     void update_water_speed(point_type diff_speed);
-    //! for output
+    //! OBL speed accessor for output
     inline point_type OBL_speed() const { return m_geo_relative_water_speed; }
 
-    // point_type geostrophic_acceleration();
-
-
+    //! Load ocean and wind data from a topaz file
     void load_matlab_topaz_data(std::string const& filename);
 
 private:
 
-    point_vector m_ocean_data_hours; // Geostrophic datas
-    point_vector m_air_data_hours; // Geostrophic datas
-    point_vector m_ocean_data_minutes; // Geostrophic datas
-    point_vector m_air_data_minutes; // Geostrophic datas
-    value_type const& m_time_ref; // reference to time variable
+    point_vector m_ocean_data_hours; //!< Geostrophic datas
+    point_vector m_air_data_hours; //!< Geostrophic datas
+    point_vector m_ocean_data_minutes; //!< Geostrophic datas
+    point_vector m_air_data_minutes; //!< Geostrophic datas
+    value_type const& m_time_ref; //!< reference to time variable
 
-    point_type m_water_speed; // Corrected water speed
-    point_type m_geo_relative_water_speed; // Water speed correction compared to geostrophic data
+    point_type m_water_speed; //!< Corrected water speed
+    point_type m_geo_relative_water_speed; //!< Water speed correction compared to geostrophic data
 
+    //! Interpolate all hour datas to minute datas
     void interpolate_hour_to_minute();
+    //! Interpolate individual hour datas to minute datas
     void interpolate_hour_to_minute(point_vector const&, point_vector&);
+    //! Get value in minute datas from time
     point_type minute_value(value_type t, point_vector const&);
+    //! Get geostrophic water speed
     point_type geostrophic_water_speed(point_type = {0,0});
 
 };
@@ -137,11 +142,6 @@ PhysicalData<TPoint>::geostrophic_water_speed(point_type p){
     return minute_value(m_time_ref, m_ocean_data_minutes);
 }
 
-// template <typename TPoint>
-// TPoint
-// PhysicalData<TPoint>::geostrophic_acceleration(point_type p){
-//     return ( minute_value(m_time_ref + 60, m_ocean_data_minutes) - minute_value(m_time_ref, m_ocean_data_minutes) ) / 60;
-// }
 
 template <typename TPoint>
 TPoint
@@ -176,21 +176,6 @@ PhysicalData<TPoint>::update_water_speed(point_type diff_speed)
     m_water_speed = geostrophic_water_speed() + m_geo_relative_water_speed;
 }
 
-
-/* // Simple hour cartesian interpolation version
-template <typename TPoint>
-TPoint
-PhysicalData<TPoint>::water_speed(value_type t, point_type p){
-    value_type hours = t / 3600;
-    value_type fractpart, intpart;
-    fractpart = modf (hours , &intpart);
-    std::size_t ind_t = static_cast<std::size_t>(intpart);
-    if (ind_t < m_ocean_data_hours.size() - 1)
-        return (1 - fractpart) * m_ocean_data_hours[ind_t] + fractpart * m_ocean_data_hours[ind_t + 1];
-    else
-        return m_ocean_data_hours[ind_t];
-}
-*/
 
 
 }} // namespace floe::ope

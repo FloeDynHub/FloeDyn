@@ -1,6 +1,6 @@
 /*!
- * \file floe/floes/kinematic_floe.hpp
- * \brief 
+ * \file floe/floes/ghost_floe.hpp
+ * \brief Floe translated reflection (Periodic boundary conditions)
  * \author Quentin Jouet
  */
 
@@ -57,12 +57,12 @@ public:
     floe_type const& original() const { return *m_floe; }
     point_type translation() const { return m_translation; }
 
-    const std::size_t m_original_id; //! Original floe id in group
+    const std::size_t m_original_id; //!< Original floe id in group
 
 private:
-    const floe_type* m_floe;   //! Original floe
-    point_type m_translation; //! Translation compared to original floe
-    translate_strategy_type m_translator; //! Translation strategy for geometry transformation
+    const floe_type* m_floe;   //!< Original floe
+    point_type m_translation; //!< Translation compared to original floe
+    translate_strategy_type m_translator; //!< Translation strategy for geometry transformation
 
     mutable frame_type m_frame;
     mutable geometry_type m_geometry;

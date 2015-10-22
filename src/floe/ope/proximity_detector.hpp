@@ -13,11 +13,7 @@ namespace floe { namespace ope
 
 /*! ProximityDetector
  *
- * It represents the whole problem of moving N floes in interval time [0, T].
- *
- * \tparam TFloe  
- * \tparam TDetector 
- * \tparam TProxymityDetector   
+ * \tparam TDetector_h 	Discrete level detector type
  *
  */
 

@@ -151,7 +151,7 @@ def get_option_dict(debug=True):
             "cxxflags": [
                 '-std=c++11',
                  "-O3",
-                 # "-march=native", // g++ fails with this
+                 # "-march=native", # g++ fails with this
                  "-mtune=native",
                  "-Wall",# "-Wextra",
              ],

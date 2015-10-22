@@ -12,15 +12,15 @@
 namespace floe { namespace collision
 {
 
-/*! Contact point between two floes.
+/*! Contact point between two floes, 
+ * extended to the case of contact with ghost floes (periodic boundary conditions)
  *
- * The second vector v of the frame is normal to the contact, 
- * th first vector u is then tangential, so that (u,v) is orthonormal and direct oriented.
- *
- * \tparam TFloe    Floe type.
- * \tparam TPoint   Point type.
- * \tparam TFrame   Frame type.
+ * \tparam TFloe        Floe type.
+ * \tparam TGhostFloe   Ghost Floe type
+ * \tparam TPoint       Point type.
+ * \tparam TFrame       Frame type.
  */
+ 
 template <
     typename TFloe,
     typename TGhostFloe,
@@ -51,8 +51,8 @@ struct PeriodicContactPoint : public ContactPoint<TFloe>
         return base_class::frame.center() - base_class::floe2->state().pos - floe2_trans;
     }
 
-    TPoint floe1_trans;
-    TPoint floe2_trans;
+    TPoint floe1_trans; //!< floe1 translation (translation from original of the ghost causing this contact)
+    TPoint floe2_trans; //!< floe2 translation
 };
 
 

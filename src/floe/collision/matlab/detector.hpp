@@ -291,8 +291,6 @@ MatlabDetector<TFloe, TContact>::detect()
 
     // Resize matrix
     m_indic.resize(N, N);
-    // m_dist_secu.resize(N, N);
-    // m_dist_opt.resize(N, N);
     m_dist_opt = ublas::scalar_matrix<value_type>(N, N, 0);
     m_dist_secu = ublas::scalar_matrix<value_type>(N, N, 0);
 

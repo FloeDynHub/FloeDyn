@@ -1,6 +1,6 @@
 /*!
  * \file ope/external_forces.hpp
- * \brief external forces
+ * \brief External forces
  * \author Quentin Jouet
  */
 
@@ -38,51 +38,65 @@ public:
 
     ExternalForces(value_type const& time_ref) : m_physical_data{time_ref} {}
 
+    //! Sum of different drag effects on a floe
     std::function<point_type (value_type, value_type)> total_drag(floe_type& floe);
+    //! Sum of different rotational drag effects on a floe
     std::function<value_type (value_type, value_type)> total_rot_drag(floe_type& floe);
+    //! Coriolis effect on a floe
     point_type coriolis_effect(floe_type& floe);
 
+    //! Load ocean and wind data from a topaz file
     inline void load_matlab_topaz_data(std::string const& filename) {
         m_physical_data.load_matlab_topaz_data(filename);
     }
 
+    //! Surface mass of Oceaninc Boundary Layer
     inline value_type OBL_surface_mass() const { return h_w * rho_w; }
+    //! Update water speed
     inline void update_water_speed( point_type diff_speed ) { m_physical_data.update_water_speed( diff_speed ); }
-    //! for output
+    //! OBL speed accessor for output
     inline point_type OBL_speed() const { return m_physical_data.OBL_speed(); }
 
-    // forces applied on floes
+    // FLOES
+    //! Signature Variation of ocean_drag
     std::function<point_type (value_type, value_type)> ocean_drag_2(floe_type& floe);
 
-    // forces applied on ocean
+    // OCEAN
+    //! Air drag on ocean
     point_type air_drag_ocean();
+    //! Coriolis effect on ocean
     point_type ocean_coriolis(point_type p);
+    //! Deep ocean friction effect on ocean
     point_type deep_ocean_friction();
 
 private:
 
     physical_data_type m_physical_data;
 
-    const value_type rho_w = 1024.071; // Water density
-    const value_type C_w = 5 * 1e-3; // Oceanic skin drag coeff
-    const value_type rho_a = 1.341; // Air density
-    const value_type C_a = 1.7 * 1e-3; // Atmospheric skin drag coeff
+    const value_type rho_w = 1024.071; //!< Water density
+    const value_type C_w = 5 * 1e-3; //!< Oceanic skin drag coeff
+    const value_type rho_a = 1.341; //!< Air density
+    const value_type C_a = 1.7 * 1e-3; //!< Atmospheric skin drag coeff
 
-    const value_type R_earth = 6371 * 1e3; // earth radius
-    const value_type V_earth = 7.292 * 1e-5; // Earth angular velocity
+    const value_type R_earth = 6371 * 1e3; //!< earth radius
+    const value_type V_earth = 7.292 * 1e-5; //!< Earth angular velocity
 
-    const value_type O_latitude = 80.207; // Origin latitude
+    const value_type O_latitude = 80.207; //!< Origin latitude
 
-    const value_type gamma = 1e-5; // m/s friction velocity within the OBL
-    const value_type h_w = 15; // OBL height
+    const value_type gamma = 1e-5; //!< m/s friction velocity within the OBL
+    const value_type h_w = 15; //!< OBL height
 
+    //! Coriolis coefficient at a point
     value_type coriolis_coeff(point_type p);
 
+    //! Water speed accessor
     inline point_type water_speed(point_type p){ return m_physical_data.water_speed(p); }
+    //! Air speed accessor
     inline point_type air_speed(point_type p){ return m_physical_data.air_speed(p); }
 
-    // forces applied on floes
+    //! Ocean drag effect on a floe
     std::function<point_type (point_type&)> ocean_drag(floe_type& floe);
+    //! Air drag effect on a floe
     std::function<point_type (point_type&)> air_drag();
 
 };

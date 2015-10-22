@@ -62,21 +62,24 @@ public:
         create_h();
     }
 
+    //! Load floes set and initial states from matlab file
     virtual inline void load_matlab_config(std::string const& filename) {
         m_floe_group.load_matlab_config(filename);
         m_dynamics_manager.load_matlab_ocean_window_data(filename, m_floe_group);
     }
 
+    //! Load ocean and wind data from a topaz file
     inline void load_matlab_topaz_data(std::string const& filename) {
         m_dynamics_manager.load_matlab_topaz_data(filename);
     }
 
+    //! Recover simulation state from previous ouput file, at any recorded time t
     void recover_states_from_file(std::string const& filename, value_type t){
         value_type saved_time = m_out_manager.recover_states(filename, t, m_floe_group, m_dynamics_manager);
         m_domain.set_time(saved_time);
     }
 
-    //! Solver
+    //! Solver of the problem (main method)
     void solve(value_type end_time, value_type dt_default, value_type OBL_status, value_type out_step = 0){
         create_optim_vars();
         m_domain.set_out_step(out_step);
@@ -90,28 +93,26 @@ public:
         std::cout << " NB STEPS : " << m_step_nb << std::endl;
     }
 
-    void test(); // implemented in test file
-    inline TProxymityDetector const& get_proximity_detector() const { return m_proximity_detector; }
-
 
 protected:
 
-    problem_h_type m_problem_h;
+    problem_h_type m_problem_h; //!< Discrete problem
 
     // domain
-    TDomain m_domain;
+    TDomain m_domain; //!< Domain (time manager at the moment)
 
     // operators
-    TProxymityDetector m_proximity_detector;
-    TCollisionManager m_collision_manager;
-    TDynamicsManager m_dynamics_manager;
+    TProxymityDetector m_proximity_detector; //!< Object managing floes proximity (distance and collision detection)
+    TCollisionManager m_collision_manager; //!< Object managing collisions solving
+    TDynamicsManager m_dynamics_manager; //!< Object managing floes dynamics (moving according to physics)
 
     // variables
-    TFloeGroup m_floe_group;
+    TFloeGroup m_floe_group; //!< The set of floes
 
-    int m_step_nb;
-    out_manager_type m_out_manager;
+    int m_step_nb; //!< Total number of steps from beginning
+    out_manager_type m_out_manager; //!< Object managing simulation output
 
+    //! Initializing proximity detector with floe set
     void create_optim_vars() {
         // mixes smooth and discrete levels because of detector structure
         // TODO improve this
@@ -119,6 +120,7 @@ protected:
             m_proximity_detector.m_detector_h.push_back(&floe_ptr);
     }
 
+    //! Initializing discrete problem
     void create_h(){
         m_problem_h.set_floe_group_h(m_floe_group.get_floe_group_h());
         m_problem_h.set_detector_h(m_proximity_detector.m_detector_h);
@@ -126,13 +128,13 @@ protected:
         m_problem_h.set_domain_h(m_domain);
     }
 
-    // move one time step forward
+    //! Move one time step forward
     void step_solve(){
         m_problem_h.solve();
         m_dynamics_manager.move_floes(m_floe_group, m_domain.time_step());
 
         m_domain.update_time();
-        std::cout << " Time : " << m_domain.time(); // << std::endl;
+        std::cout << " Time : " << m_domain.time();
         std::cout << " | delta_t : " << m_domain.time_step();
         std::cout << " | Kinetic energy : " << m_floe_group.kinetic_energy() << std::endl;
         std::cout << "----" << std::endl;

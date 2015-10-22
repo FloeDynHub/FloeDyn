@@ -30,8 +30,9 @@ public:
     //! Default constructor.
     // FloeGroup_h()
 
-    std::vector<TFloe_h*> m_list_floe_h;
+    std::vector<TFloe_h*> m_list_floe_h; //!< Discrete floes list
 
+    //! Add a floe in the list
     inline void add_floe( TFloe_h& floe )
         {
             m_list_floe_h.push_back(&floe);

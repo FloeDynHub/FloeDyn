@@ -37,34 +37,40 @@ public:
     using lcp_type = floe::lcp::LCP<T>;
     using value_type = T;
 
-    LCPSolver() : epsilon{0.4} {} // should epsilon be runtime parameter ?
+    LCPSolver() : epsilon{0.4} {} // todo : should epsilon be runtime parameter ?
 
+    //! Solve LCP
     bool solve( lcp_type& lcp );
     template<typename TContactGraph>
     vector<value_type> solve( TContactGraph& graph, bool& success  );
 
 private:
 
-    value_type epsilon; // energy restitution coeff
+    value_type epsilon; //!< energy restitution coeff
 
+    //! Random small perturbation of LCP
     lcp_type random_perturbation(lcp_type& lcp, value_type max);
 
-    // TODO put elsewhere
-    value_type random_real(value_type max);
+    value_type random_real(value_type max); // TODO put elsewhere
 
+    //! Test LCP solution validity
     bool LCPtest(int compt, value_type EC, value_type born_EC, value_type Err, bool VRelNtest );
 
+    //! Compute normalized Kinetic Energy
     template<typename Tmat, typename Tvect>
     value_type calcEc(const Tvect& S, const Tmat& M, const Tvect& w);
 
+    //! Compute solution of compression phase
     template<typename TGraphLCP>
     vector<value_type>
     calcSolc(TGraphLCP& graph_lcp, lcp_type& lcp);
 
+    //! Compute solution of decompression phase
     template<typename TGraphLCP>
     vector<value_type>
     calcSold(TGraphLCP& graph_lcp, lcp_type& lcp_c, lcp_type& lcp_d, vector<value_type> Solc);
 
+    //! Normal relative speed test
     template<typename TContactGraph>
     bool VRelNtest(const vector<value_type>& V, const TContactGraph& graph);
 
@@ -324,7 +330,7 @@ LCPSolver<T>::random_perturbation(lcp_type& lcp, value_type max){
                 *it2 += random_real(max);
         }
     }
-    /* // Matlab version (divmat), modifying only one value in lcp.A and one in lcp.q (bad results)
+    /* // Matlab version (divmat), modifying only one value in lcp.A and one in lcp.q (worse results)
     auto m = lcp.dim / 4;
     std::size_t n1 = std::rand() % (3 * m), n2 = std::rand() % (3 * m); // Iheart variable (=3*m) in Matlab code
     lcp.A(n1,n2) *= (1 + random_real(max));
