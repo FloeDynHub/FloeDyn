@@ -10,7 +10,8 @@
 
 #include "floe/geometry/arithmetic/arithmetic.hpp"
 #include "floe/geometry/arithmetic/point_operators.hpp"
-#include "floe/ope/physical_data.hpp"
+// #include "floe/ope/physical_data.hpp"
+#include "floe/ope/explicit_physical_data.hpp"
 #include <cmath>
 
 

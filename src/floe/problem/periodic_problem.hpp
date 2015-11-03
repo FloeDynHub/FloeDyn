@@ -48,9 +48,14 @@ public:
     //! Constructor from topology
     PeriodicProblem(TSpaceTopology& topology) : base_class(), m_space_topology{topology} {}
 
-    //! Load matlab initial state, and construct topology from box information
+    //! Load initial state and construct topology from matlab file
     virtual inline void load_matlab_config(std::string const& filename) override {
         base_class::load_matlab_config(filename);
+        load_topology_from_matlab(filename);
+    }
+
+    //! construct topology from box information in Matlab file
+    void load_topology_from_matlab(std::string const& filename)  {
         auto imported_topo = floe::io::matlab::topology_from_file<TSpaceTopology>(filename);
         if (imported_topo.area() != 0)
             set_topology(imported_topo);
@@ -62,6 +67,8 @@ public:
     void set_topology(TSpaceTopology const& topology);
     //! Sets topology calculating space borders adapted to floes limit positions
     void auto_topology();
+    //! Floe Concentration override (takes topology window area as reference)
+    virtual value_type floe_concentration() override { return base_class::m_floe_group.total_area() / m_space_topology.area(); }
 
 private:
     TSpaceTopology m_space_topology;

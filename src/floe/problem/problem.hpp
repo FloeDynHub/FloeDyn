@@ -48,6 +48,7 @@ public:
     >;
     using out_manager_type = io::HDF5Manager<TFloeGroup, TDynamicsManager>;
     using value_type = typename TFloeGroup::value_type;
+    using floe_group_type = TFloeGroup; // generator accessor
 
     //! Default constructor.
     Problem() :
@@ -93,6 +94,12 @@ public:
         std::cout << " NB STEPS : " << m_step_nb << std::endl;
     }
 
+    //! Floe group accessor for config generator
+    inline TFloeGroup& get_floe_group(){ return m_floe_group; }
+
+    //! Floe Concentration
+    virtual value_type floe_concentration() { return m_floe_group.floe_concentration(); }
+
 
 protected:
 
@@ -116,6 +123,7 @@ protected:
     void create_optim_vars() {
         // mixes smooth and discrete levels because of detector structure
         // TODO improve this
+        m_proximity_detector.m_detector_h.reset();
         for (auto& floe_ptr : m_floe_group.get_floes())
             m_proximity_detector.m_detector_h.push_back(&floe_ptr);
     }

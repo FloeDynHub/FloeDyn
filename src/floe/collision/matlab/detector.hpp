@@ -107,6 +107,9 @@ public:
         m_previous_step_states.resize(m_floes.size());
     }
 
+    //!Empty floe and optim lists
+    virtual void reset() { m_floes.clear(); m_optims.clear(); }
+
     /*! Update collision informations
      *
      * It updates optimization datas of all associated floes and launch contact detection.

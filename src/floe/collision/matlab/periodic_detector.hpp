@@ -57,6 +57,12 @@ public:
         }
     }
 
+    //!Empty floe and optim lists
+    virtual void reset() override {
+        base_class::reset();
+        m_ghost_floes.clear(); m_ghost_optims.clear();
+    }
+
     virtual floe_interface_type const& get_floe(std::size_t n) const;
     virtual optim_interface_type const& get_optim(std::size_t n) const;
 

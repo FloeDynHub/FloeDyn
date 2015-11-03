@@ -14,6 +14,7 @@
 #include <boost/numeric/ublas/vector_proxy.hpp>
 #include <boost/numeric/ublas/blas.hpp>
 #include <algorithm>
+#include <random>
 
 
 #include <iostream> // debug
@@ -37,7 +38,7 @@ public:
     using lcp_type = floe::lcp::LCP<T>;
     using value_type = T;
 
-    LCPSolver() : epsilon{0.4} {} // todo : should epsilon be runtime parameter ?
+    LCPSolver() : epsilon{0.4}, m_random_generator{}, m_uniform_distribution{-1, 1} {} // todo : should epsilon be runtime parameter ?
 
     //! Solve LCP
     bool solve( lcp_type& lcp );
@@ -47,11 +48,12 @@ public:
 private:
 
     value_type epsilon; //!< energy restitution coeff
+    std::default_random_engine m_random_generator;
+    std::uniform_real_distribution<value_type> m_uniform_distribution;
 
     //! Random small perturbation of LCP
     lcp_type random_perturbation(lcp_type& lcp, value_type max);
-
-    value_type random_real(value_type max); // TODO put elsewhere
+    value_type random_real(value_type max);
 
     //! Test LCP solution validity
     bool LCPtest(int compt, value_type EC, value_type born_EC, value_type Err, bool VRelNtest );
@@ -189,6 +191,7 @@ LCPSolver<T>::solve( TContactGraph& graph, bool& success ) {
     {
         lcp_type lcp_d_orig = lcp = graph_lcp.getLCP_d(lcp_orig, Solc, epsilon);
         value_type born_sup = graph_lcp.born_sup_d(lcp_orig, epsilon);
+        if (born_sup > 1) std::cout << "*****BORN SUP***** " << born_sup << " ";
 
         comptchgt = 0;
         solved = 0;
@@ -253,8 +256,16 @@ LCPSolver<T>::solve( TContactGraph& graph, bool& success ) {
             Err = LCP_error(lcp_d_orig);
             auto vitrelnormtest = VRelNtest(prod(trans(graph_lcp.J), Sold), graph);
             solved = LCPtest(MatLCP[comptchgt][1], ECd, 1 + born_sup, Err, vitrelnormtest);
+
+            //solution alternative pour la conservation de l'EC
+            if (solved && ECd > 1)
+            {
+                std::cout << "ECD>1 => " << ECd << " ";
+                Sold = (1 + epsilon) * Solc - epsilon * (graph_lcp.W); // return this instead of Sold
+            }
         }
     } else {
+        success = 1;
         return Solc;
     }
 
@@ -363,10 +374,9 @@ bool LCPSolver<T>::VRelNtest(const vector<value_type>& V, const TContactGraph& g
 
 
 template<typename T>
-typename LCPSolver<T>::value_type 
-LCPSolver<T>::random_real(value_type max) // TODO put elsewhere
+T LCPSolver<T>::random_real(T max)
 {
-    return (value_type)(std::rand() - RAND_MAX / 2) / RAND_MAX * max;
+    return m_uniform_distribution(m_random_generator) * max;
 }
 
 

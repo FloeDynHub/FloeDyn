@@ -484,7 +484,7 @@ double HDF5Manager<TFloeGroup, TDynamicsMgr>::recover_states(
     /*
      * Open the specified file and the specified dataset in the file.
      */
-    H5File file( "filename", H5F_ACC_RDONLY );
+    H5File file( filename, H5F_ACC_RDONLY );
 
     DataSet time_dataset = file.openDataSet( "time" );
     /*
