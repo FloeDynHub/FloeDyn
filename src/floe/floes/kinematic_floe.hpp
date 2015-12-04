@@ -59,7 +59,8 @@ public:
     using floe_interface_type = FloeInterface<TStaticFloe, TState>;
 
     //! Default constructor
-    KinematicFloe() : m_geometry{nullptr}, m_floe{nullptr}, m_state{ {0,0}, 0, {0,0}, 0, {0,0} }, m_obstacle{false} {}
+    KinematicFloe() : m_geometry{nullptr}, m_floe{nullptr}, m_state{ {0,0}, 0, {0,0}, 0, {0,0} },
+                      m_obstacle{false}, m_floe_h{}, m_total_impulse_received{0} {}
 
     //! Deleted copy constructor
     KinematicFloe( KinematicFloe<TStaticFloe,TState> const& ) = delete;
@@ -132,8 +133,13 @@ public:
     //! Floe_h accessor
     inline floe_h_type& get_floe_h() { return m_floe_h; }
 
-    //! kinetic energy
+    //! Kinetic energy
     value_type kinetic_energy() const;
+
+    //! Get total received impulse
+    value_type total_received_impulse() const { return m_total_impulse_received; };
+    //! Add received impulse
+    void add_impulse(value_type impulse) const { m_total_impulse_received += impulse; };
 
 private:
 
@@ -143,7 +149,8 @@ private:
     mutable state_type  m_state;        //!< Time-Space state
     bool m_obstacle;            //!< true if this floe is an obstacle
 
-    floe_h_type m_floe_h; //! Discretisation of the Floe
+    floe_h_type m_floe_h; //!< Discretisation of the Floe
+    mutable value_type m_total_impulse_received; //!< Sum all collision impulses this floe received
 
 };
 

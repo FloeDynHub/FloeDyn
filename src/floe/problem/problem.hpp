@@ -58,15 +58,35 @@ public:
         m_collision_manager{},
         m_dynamics_manager{m_domain.time()},
         m_floe_group{},
-        m_step_nb{0}
+        m_step_nb{0},
+        m_out_manager{m_floe_group}
     {
         create_h();
     }
+
+    //! Constructor from existing floe_group
+    // Problem(floe_group_type& floe_group) :
+    //     m_problem_h{},
+    //     m_domain{},
+    //     m_proximity_detector{},
+    //     m_collision_manager{},
+    //     m_dynamics_manager{m_domain.time()},
+    //     m_floe_group{std::move(floe_group)},
+    //     m_step_nb{0},
+    //     m_out_manager{m_floe_group}
+    // {
+    //     create_h();
+    // }
 
     //! Load floes set and initial states from matlab file
     virtual inline void load_matlab_config(std::string const& filename) {
         m_floe_group.load_matlab_config(filename);
         m_dynamics_manager.load_matlab_ocean_window_data(filename, m_floe_group);
+    }
+
+    //! set existing floe_group (from generator for example)
+    virtual inline void set_floe_group(floe_group_type& floe_group) {
+        m_floe_group = std::move(floe_group);
     }
 
     //! Load ocean and wind data from a topaz file
@@ -81,8 +101,8 @@ public:
     }
 
     //! Solver of the problem (main method)
-    void solve(value_type end_time, value_type dt_default, value_type OBL_status, value_type out_step = 0){
-        create_optim_vars();
+    void solve(value_type end_time, value_type dt_default, value_type OBL_status, value_type out_step = 0, bool reset = true){
+        if (reset) create_optim_vars();
         m_domain.set_out_step(out_step);
         m_domain.set_default_time_step(dt_default);
         m_dynamics_manager.set_OBL_status(OBL_status);
@@ -96,6 +116,8 @@ public:
 
     //! Floe group accessor for config generator
     inline TFloeGroup& get_floe_group(){ return m_floe_group; }
+    //! Dynamics mgr accessor for config generator
+    inline TDynamicsManager& get_dynamics_manager(){ return m_dynamics_manager; }
 
     //! Floe Concentration
     virtual value_type floe_concentration() { return m_floe_group.floe_concentration(); }
@@ -150,7 +172,7 @@ protected:
         // ouput data
         if (m_domain.need_step_output())
         {
-            m_out_manager.save_step(m_domain.time(), m_floe_group, m_dynamics_manager);
+            m_out_manager.save_step(m_domain.time(), m_dynamics_manager);
             // m_domain.update_last_out();
             m_domain.update_next_out_limit();
         }

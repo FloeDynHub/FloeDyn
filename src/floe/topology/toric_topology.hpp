@@ -51,14 +51,16 @@ public:
 
     /*!
      * Takes any space point in parameter by reference, replaces it by the corresponding point inside the borders
-     * the second parameter stores the translation made on the point.
+     * Returns the translation made on the point
      */
-    void replace(TPoint& pt, TPoint& trans) const
+    TPoint replace(TPoint& pt) const
     {
+        TPoint trans{0,0};
         while (pt.x <= m_min_x) { pt.x += delta_x; trans.x -= delta_x; }
         while (pt.x >= m_max_x) { pt.x -= delta_x; trans.x += delta_x; }
         while (pt.y <= m_min_y) { pt.y += delta_y; trans.y -= delta_y; }
         while (pt.y >= m_max_y) { pt.y -= delta_y; trans.y += delta_y; }
+        return trans;
     }
 
     //! Returns the list of ghosts of the origin point

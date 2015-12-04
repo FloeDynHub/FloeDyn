@@ -8,7 +8,7 @@
 #define OPE_PERIODIC_DYNAMICS_MANAGER_HPP
 
 #include "floe/ope/dynamics_manager.hpp"
-// #include "floe/integration/integrate.hpp"
+
 
 namespace floe { namespace ope
 {
@@ -20,15 +20,15 @@ namespace floe { namespace ope
  */
 
 
-template <typename TFloeGroup, typename TSpaceTopology>
-class PeriodicDynamicsManager : public DynamicsManager<TFloeGroup>
+template <typename TExternalForces, typename TSpaceTopology>
+class PeriodicDynamicsManager : public DynamicsManager<TExternalForces>
 {
 
 public:
-    using base_class = DynamicsManager<TFloeGroup>;
-    using floe_type = typename TFloeGroup::floe_type;
-    using point_type = typename floe_type::point_type;
-    using value_type = typename floe_type::value_type;
+    using base_class = DynamicsManager<TExternalForces>;
+    using floe_type = typename base_class::floe_type;
+    using point_type = typename base_class::point_type;
+    using value_type = typename base_class::value_type;
     using topology_type = TSpaceTopology;
     using integration_strategy = typename base_class::integration_strategy;
 
@@ -38,33 +38,31 @@ public:
     //! Set topology
     inline void set_topology(topology_type const& t) { m_topology = &t; }
 
-    // virtual void update_ocean(TFloeGroup& floe_group, value_type delta_t) override;
-
 private:
     topology_type const* m_topology; //!< Space topology
     virtual void move_floe(floe_type& floe, value_type delta_t) override;
     //! Translate floe if needed according to periodic boundary conditions (topology)
-    void replace_floe(floe_type& floe);
+    bool replace_floe(floe_type& floe);
     virtual value_type ocean_window_area() override { return m_topology->area(); }
 };
 
 
-template <typename TFloeGroup, typename TSpaceTopology>
+template <typename TExternalForces, typename TSpaceTopology>
 void
-PeriodicDynamicsManager<TFloeGroup, TSpaceTopology>::move_floe(floe_type& floe, value_type delta_t)
+PeriodicDynamicsManager<TExternalForces, TSpaceTopology>::move_floe(floe_type& floe, value_type delta_t)
 {
-    // base_class::move_floe(floe, delta_t);
-    base_class::translate_floe(floe, delta_t);
-    base_class::rotate_floe(floe, delta_t);
-    replace_floe(floe);
-    floe.update(); // alternative : pour ne pas avoir à update() : utiliser set_state()
+    base_class::move_floe(floe, delta_t);
+    auto replaced = replace_floe(floe);
+    if (replaced) floe.update();
 }
 
-template <typename TFloeGroup, typename TSpaceTopology>
-void
-PeriodicDynamicsManager<TFloeGroup, TSpaceTopology>::replace_floe(floe_type& floe)
+template <typename TExternalForces, typename TSpaceTopology>
+bool
+PeriodicDynamicsManager<TExternalForces, TSpaceTopology>::replace_floe(floe_type& floe)
 {
-    m_topology->replace(floe.state().pos, floe.state().trans);
+    auto trans = m_topology->replace(floe.state().pos);
+    floe.state().trans += trans;
+    return (trans != point_type{0,0});
 }
 
 

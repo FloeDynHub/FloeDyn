@@ -2,11 +2,7 @@ double DT_DEFAULT;
 #include <iostream>
 #include <cassert>
 #include "../product/interrupt.hpp"
-#ifdef PBC
-#include "../product/config_periodic.hpp"
-#else
 #include "../product/config.hpp"
-#endif
 
 
 int main( int argc, char* argv[] )
@@ -34,10 +30,29 @@ int main( int argc, char* argv[] )
     DT_DEFAULT = atof(argv[3]);
 
     std::string matlab_list_floe_filename = argv[1];
-    std::string matlab_topaz_filename = "io/DataTopaz01.mat";
+    bool generate_floes = false;
+    if (matlab_list_floe_filename == "generator") generate_floes = true; 
+    std::string matlab_topaz_filename = "io/inputs/DataTopaz01.mat";
 
     problem_type P;
-    P.load_matlab_config(matlab_list_floe_filename);
+    if (!generate_floes)
+        P.load_matlab_config(matlab_list_floe_filename);
+    else {
+        generator_type G;
+        std::cout << "How many floes ? ";
+        int nb_floes;
+        std::cin >> nb_floes;
+        std::cout << "Which concentration (between 0 and 1) ? ";
+        double concentration;
+        std::cin >> concentration;
+        G.generate_floe_set(nb_floes, concentration);
+        P.set_floe_group(G.get_floe_group());
+        #ifdef PBC
+        auto win = G.get_window();
+        P.set_topology(topology_type(win[0], win[1], win[2], win[3]));
+        #endif
+    }
+
     std::cout << "read TOPAZ" << std::endl;
     P.load_matlab_topaz_data(matlab_topaz_filename);
 
@@ -47,7 +62,7 @@ int main( int argc, char* argv[] )
         std::cout << "Please enter an input filename : ";
         std::string strFilename;
         std::cin >> strFilename;
-        P.recover_states_from_file("io/" + strFilename, atof(argv[6]));
+        P.recover_states_from_file("io/outputs/" + strFilename, atof(argv[6]));
     }
 
     

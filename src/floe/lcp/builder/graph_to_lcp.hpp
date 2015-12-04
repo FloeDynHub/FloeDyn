@@ -49,6 +49,7 @@ class GraphLCP
 {
 
 public:
+    using lcp_type = lcp::LCP<T>;
 
     //! Delete default constructor
     GraphLCP() = delete;
@@ -62,10 +63,17 @@ public:
     //! Initialize internal matrices need to build a LCP.
     void init();
 
-    //! Return the main matrix of the LCP
-    lcp::LCP<T> getLCP() const;
-    lcp::LCP<T> getLCP_d(lcp::LCP<T> const& lcp_c, ublas::vector<T> const& Solc, T epsilon = 0) const;
-    T born_sup_d(lcp::LCP<T> const& lcp_c, T epsilon = 0) const;
+    //! Return the associated LCP (compression phase)
+    lcp_type getLCP() const;
+    //! Return the associated LCP (decompression phase), taking compression phase solution as parameter
+    lcp_type getLCP_d(lcp_type const& lcp_c, ublas::vector<T> const& Solc, T epsilon = 0) const;
+    //! Kinetic energy born sup for decompression phase
+    T born_sup_d(lcp_type const& lcp_c, T epsilon = 0) const;
+    //! Impulse vector in case of compression and decompression LCP solving success
+    ublas::vector<T> impulse_vector(lcp_type const& lcp_c, lcp_type const& lcp_d, T epsilon) const;
+    //! Impulse vector in case of decompression LCP solving fail
+    ublas::vector<T> impulse_vector(lcp_type const& lcp_c, T epsilon = 0) const;
+
 
     ublas::diagonal_matrix<T>   M;   //!< Mass and momentum matrix.
     ublas::diagonal_matrix<T>   invM;  //!< Inverse of the mass/momentum matrix.
@@ -74,9 +82,13 @@ public:
     ublas::compressed_matrix<T, ublas::column_major> E;      //!< Friction coupling matrix.
     ublas::diagonal_matrix<T>   mu;     //<! Static friction coefficients.
     mutable ublas::vector<T> W; //<! Floes' speed vector.
+    int nb_floes; //<! Number of floes 
+    int nb_contacts; //<! Number of contacts
+
 
 private:
     TGraph const& m_graph; //<! The contact graph.
+    ublas::vector<T> calc_floe_impulses(ublas::vector<T> const& normal, ublas::vector<T> const& tangential) const;
 };
 
 template < typename T, typename TGraph >
@@ -88,10 +100,10 @@ init()
     namespace fg = floe::geometry;
     
     // Number of floes 
-    const size_t n = num_vertices( m_graph );
+    const size_t n = nb_floes = num_vertices( m_graph );
 
     // Number of contact
-    const size_t m = num_contacts( m_graph );
+    const size_t m = nb_contacts = num_contacts( m_graph );
     
     // Mass & momentum matrix (and inverse) initialization
     M.resize(3*n, 3*n, false);
@@ -144,8 +156,6 @@ init()
             const point_type tangent = contact.frame.u();
 
             // Vector from the mass center to the contact point
-            // point_type r1 = contact.frame.center(); fg::subtract_point( r1, floe1->frame().center() );
-            // point_type r2 = contact.frame.center(); fg::subtract_point( r2, floe2->frame().center() );
             point_type r1 = (c == 1) ? contact.r2() : contact.r1();
             point_type r2 = (c == 1) ? contact.r1() : contact.r2();
 
@@ -192,14 +202,14 @@ init()
 }
 
 template <typename T, typename TGraph>
-floe::lcp::LCP<T>
+typename GraphLCP<T, TGraph>::lcp_type
 GraphLCP<T, TGraph>::
 getLCP() const
 {
     using namespace boost::numeric::ublas;
     
-    const std::size_t n = J.size1()/3; // Hum ...
-    const std::size_t m = J.size2();
+    const std::size_t n = nb_floes;
+    const std::size_t m = nb_contacts;
     
     // LCP main matrix
     lcp::LCP<T> lcp(4*m);
@@ -251,12 +261,12 @@ getLCP() const
 
 
 template <typename T, typename TGraph>
-floe::lcp::LCP<T>
+typename GraphLCP<T, TGraph>::lcp_type
 GraphLCP<T, TGraph>::
 getLCP_d(lcp::LCP<T> const& lcp_c, ublas::vector<T> const& Solc, T epsilon) const
 {
     using namespace boost::numeric::ublas;
-    const std::size_t m = J.size2();
+    const std::size_t m = nb_contacts;
 
     auto lcp_d = lcp_c;
     ublas::vector<T> ezc = epsilon * subrange(lcp_c.z, 0, m);
@@ -278,7 +288,7 @@ GraphLCP<T, TGraph>::
 born_sup_d(lcp::LCP<T> const& lcp_c, T epsilon) const
 {
     using namespace boost::numeric::ublas;
-    const std::size_t m = J.size2();
+    const std::size_t m = nb_contacts;
 
     ublas::vector<T> ezc = epsilon * subrange(lcp_c.z, 0, m);
     return inner_prod(
@@ -289,6 +299,54 @@ born_sup_d(lcp::LCP<T> const& lcp_c, T epsilon) const
                     ublas::vector<T>(prod(J, ezc))
                 ))
             ) / inner_prod( prod(trans(W), M), W) );
+}
+
+template <typename T, typename TGraph>
+ublas::vector<T>
+GraphLCP<T, TGraph>::
+calc_floe_impulses(ublas::vector<T> const& normal, ublas::vector<T> const& tangential) const {
+    std::size_t m = nb_contacts;
+    ublas::vector<T> contact_impulses(m);
+    for (std::size_t i = 0; i < m; ++i)
+    {
+        contact_impulses[i] = sqrt(pow(normal[i], 2) + pow(tangential[2*i] + tangential[2*i + 1], 2));
+    }
+    std::size_t n = J.size1() / 3;
+    ublas::vector<T> floe_impulses(n, 0);
+    std::size_t j = 0;
+    for ( auto const& edge : make_iterator_range( edges( m_graph ) ) )
+    {
+        for ( int i = 0; i < m_graph[edge].size(); ++i ) // iter over contacts
+        {
+            floe_impulses[source(edge, m_graph)] += contact_impulses[j];
+            floe_impulses[target(edge, m_graph)] += contact_impulses[j];
+            ++j;
+        }
+    }
+    return floe_impulses;
+}
+
+template <typename T, typename TGraph>
+ublas::vector<T>
+GraphLCP<T, TGraph>::
+impulse_vector(lcp_type const& lcp_c, lcp_type const& lcp_d, T epsilon) const {
+    auto const& z_c = lcp_c.z;
+    auto const& z_d = lcp_d.z;
+    std::size_t m= J.size2();
+    auto normal = (1 + epsilon) * subrange(z_c, 0, m) + subrange(z_d, 0, m);
+    auto tangential = subrange(z_c, m, 3*m) + subrange(z_d, m, 3*m);
+    return calc_floe_impulses(normal, tangential);
+}
+
+template <typename T, typename TGraph>
+ublas::vector<T>
+GraphLCP<T, TGraph>::
+impulse_vector(lcp_type const& lcp_c, T epsilon) const {
+    auto const& z_c = lcp_c.z;
+    std::size_t m = nb_contacts;
+    auto normal = (1 + epsilon) * subrange(z_c, 0, m);
+    auto tangential = subrange(z_c, m, 3*m);
+    return calc_floe_impulses(normal, tangential);
 }
 
 

@@ -4,15 +4,14 @@
  * \author Quentin Jouet
  */
 
-#ifndef OPE_PHYSICAL_DATA_HPP
-#define OPE_PHYSICAL_DATA_HPP
+#ifndef OPE_EXPLICIT_PHYSICAL_DATA_HPP
+#define OPE_EXPLICIT_PHYSICAL_DATA_HPP
 
 #include "floe/geometry/arithmetic/point_operators.hpp"
-#include "floe/io/matlab/topaz_import.hpp"
 #include <cmath>
 #include <vector>
 #include <algorithm>
-#include <iostream> // DEBUG
+// #include <iostream> // DEBUG
 
 
 namespace floe { namespace ope
@@ -26,7 +25,7 @@ namespace floe { namespace ope
 
 
 template <typename TPoint>
-class PhysicalData
+class ExplicitPhysicalData
 {
 
 public:
@@ -36,20 +35,30 @@ public:
     using point_vector = std::vector<point_type>;
 
     //! Constructor
-    PhysicalData(value_type const& time_ref) : m_time_ref{time_ref} {}
+    ExplicitPhysicalData(value_type const& time_ref) : m_time_ref{time_ref},
+        m_window_width{1}, m_window_height{1}, m_water_mode{2}, m_air_mode{0} {}
 
-    //! water speed accessor
-    // point_type water_speed(point_type pt = {0,0}) { return {0,0}; } // Null
-    // point_type water_speed(point_type pt = {0,0}) { return - pt / std::max(2000., norm2(pt)); } // convergent current
     point_type water_speed(point_type pt = {0,0}) {
-        int sign{(int(m_time_ref / 3000) % 3 == 2) ? 1 : -1};
-        // return sign * pt / (3 * norm2(pt));
-        return sign * pt / std::max(600., 3 * norm2(pt));
-    } // convergent current
+        switch(m_water_mode){
+            case 1:
+                return centered_convergent_field(pt, 1);
+            case 2:
+                return convergent_outside_window_field(pt);
+            default:
+                return {0,0};
+        }
+    }
 
-    //! air speed accessor
-    point_type air_speed(point_type = {0,0}) { return {0,0}; } // Null
-    // point_type air_speed(point_type = {0,0}) { return {10,0}; } // Null
+    point_type air_speed(point_type pt = {0,0}) {
+        switch(m_air_mode){
+            case 1:
+                return x_convergent_then_constant(pt);
+            case 2:
+                return convergent_outside_window_field(pt);
+            default:
+                return {0,0};
+        }
+    }
 
     void update_water_speed(point_type diff_speed){}
     //! OBL speed accessor for output
@@ -58,13 +67,46 @@ public:
     //! Load ocean and wind data from a topaz file
     void load_matlab_topaz_data(std::string const& filename) {}
 
+    void set_window_size(value_type width, value_type height) {
+        m_window_width = width;
+        m_window_height = height;
+    }
+
+    void set_modes(int water_mode, int air_mode) {
+        m_water_mode = water_mode;
+        m_air_mode = air_mode;
+    }
+
 private:
 
     value_type const& m_time_ref; //!< reference to time variable
+    value_type m_window_width;
+    value_type m_window_height;
+    int m_water_mode;
+    int m_air_mode;
+
+    //! center convergent current (negative coeff will give divergent field)
+    point_type centered_convergent_field(point_type pt = {0,0}, value_type coeff = 1) { return - coeff * pt / norm2(pt); }
+
+    //! convergent current outside null rectangle window
+    point_type convergent_outside_window_field(point_type pt = {0,0}) {
+        value_type x{0}, y{0};
+        if (std::abs(pt.x) > m_window_width / 2) x = - pt.x / std::abs(pt.x);
+        if (std::abs(pt.y) > m_window_height / 2) y = - pt.y / std::abs(pt.y);
+        return {x,y};
+    }
+
+    //! x axis convergent wind, then constant
+    point_type x_convergent_then_constant(point_type pt = {0,0}, value_type coeff = 10, point_type constant = {10,0}) {
+        if (m_time_ref < 1500)
+            return {0, - coeff * (pt.y / (100 + std::abs(pt.y)))};
+        else
+            return constant;
+    }
 };
 
 
 }} // namespace floe::ope
 
 
-#endif // OPE_PHYSICAL_DATA_HPP
+#endif // OPE_EXPLICIT_PHYSICAL_DATA_HPP

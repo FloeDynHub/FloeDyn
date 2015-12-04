@@ -220,7 +220,7 @@ MatlabDetector<TFloe, TContact>::update()
         // Launch collisions detection
         detect();
         // manage collision mode
-        detection_mode();
+        // detection_mode(); // disabled because it can create too big LCPs
         return true;
     } else {
         std::cout << " INTERPENETRATION ";

@@ -7,9 +7,7 @@
 #ifndef OPE_LCP_MANAGER_HPP
 #define OPE_LCP_MANAGER_HPP
 
-#include "floe/ope/LCP_solver.hpp"
 #include "floe/ope/time_scale_manager.hpp"
-
 #include <iostream> // debug
 
 #ifdef _OPENMP
@@ -26,13 +24,14 @@ namespace floe { namespace ope
  */
 
 
-template<typename T>
+template<typename TSolver>
 class LCPManager
 {
 
 public:
-    using value_type = T;
-    using solver_type = LCPSolver<value_type>;
+    using value_type = typename TSolver::value_type;
+    using solver_type = TSolver;
+    using value_vector = boost::numeric::ublas::vector<value_type>;
 
     //! Destructor
     ~LCPManager(){ printf ("#TOTAL LCP solve : %d / %d (%f %%) \n", m_nb_lcp_success, m_nb_lcp, success_ratio() ); }
@@ -54,7 +53,7 @@ private:
 
     //! Update floes state with LCP solution
     template<typename TContactGraph>
-    void update_floes_state(TContactGraph& graph, const boost::numeric::ublas::vector<value_type> Sol);
+    void update_floes_state(TContactGraph& graph, const std::array<value_vector, 2> Sol);
 };
 
 
@@ -76,11 +75,8 @@ void LCPManager<T>::solve_contacts(TContactGraph& contact_graph)
                 bool success;
                 auto Sol = m_solver.solve( graph, success );
                 mark_solved(graph, success);
-                if (success) 
-                {
-                    nb_success++;
-                    update_floes_state(graph, Sol);
-                }
+                if (success) nb_success++;
+                update_floes_state(graph, Sol);
             }
             asubgraphs = active_subgraphs( subgraph );
             loop_cnt++;
@@ -123,12 +119,13 @@ void LCPManager<T>::solve_contacts(TContactGraph& contact_graph)
 
 template<typename T>
 template<typename TContactGraph>
-void LCPManager<T>::update_floes_state(TContactGraph& graph, const boost::numeric::ublas::vector<value_type> Sol){
+void LCPManager<T>::update_floes_state(TContactGraph& graph, const std::array<value_vector, 2> Sol){
 
     for ( auto const v : boost::make_iterator_range( vertices(graph) ) )
     {
-        graph[v]->state().speed = {Sol(3*v), Sol(3*v + 1)};
-        graph[v]->state().rot = Sol(3*v + 2);
+        graph[v]->state().speed = {Sol[0](3*v), Sol[0](3*v + 1)};
+        graph[v]->state().rot = Sol[0](3*v + 2);
+        graph[v]->add_impulse(Sol[1](v));
     }
 }
 

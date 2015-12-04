@@ -7,8 +7,6 @@
 #ifndef OPE_COLLISION_MANAGER_HPP
 #define OPE_COLLISION_MANAGER_HPP
 
-#include "floe/ope/LCP_manager.hpp"
-
 namespace floe { namespace ope
 {
 
@@ -18,12 +16,12 @@ namespace floe { namespace ope
  *
  */
 
-template<typename TFloe>
+template<typename TManager_h>
 class CollisionManager
 {
 
 public:
-    using manager_h_type = floe::ope::LCPManager<typename TFloe::value_type>;
+	using manager_h_type = TManager_h;
 
     inline manager_h_type& get_manager_h(){ return m_manager_h; }
 

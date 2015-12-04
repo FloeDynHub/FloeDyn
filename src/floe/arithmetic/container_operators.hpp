@@ -418,6 +418,30 @@ min( const T & arg ) {
 }
 
 /*
+ * Comparison operations
+ */
+
+template< class T >
+inline
+typename activate<T, bool>::type
+operator==( T const& lhs, T const& rhs )
+{
+	bool resp = true;
+    for (size_t i = 0 ; i < size_impl<T>::size() ; ++i)
+        if (lhs[i] != rhs[i]) { resp = false; break; }
+    return resp;
+}
+
+template< class T >
+inline
+typename activate<T, bool>::type
+operator!=( T const& lhs, T const& rhs )
+{
+	return (!(lhs == rhs));
+}
+
+
+/*
  * Output operations
  */
 template< class T >

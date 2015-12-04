@@ -158,7 +158,6 @@ private:
                     *m_mesh,
                     strategy
             );
-
             return m_moment_cst;
         }
     }

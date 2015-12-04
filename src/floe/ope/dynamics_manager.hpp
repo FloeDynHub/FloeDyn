@@ -9,7 +9,6 @@
 
 #include "floe/integration/gauss_legendre.hpp"
 #include "floe/integration/integrate.hpp"
-#include "floe/ope/external_forces.hpp"
 #include "floe/io/matlab/pze_import.hpp"
 
 #ifdef _OPENMP
@@ -29,18 +28,18 @@ namespace floe { namespace ope
  */
 
 
-template <typename TFloeGroup>
+template <typename TExternalForces>
 class DynamicsManager
 {
 
 public:
-
-    using floe_group_type = TFloeGroup;
+    using external_forces_type = TExternalForces;
+    using floe_group_type = typename external_forces_type::floe_group_type;
     using floe_type = typename floe_group_type::floe_type;
     using point_type = typename floe_type::point_type;
     using value_type = typename floe_type::value_type;
+    using state_type = typename floe_type::state_type;
     using integration_strategy = floe::integration::RefGaussLegendre<value_type,2,2>;
-    using external_forces_type = ExternalForces<TFloeGroup>;
 
     //! Constructor
     DynamicsManager(value_type const& time_ref) : m_external_forces{time_ref}, m_ocean_window_area{0}, m_OBL_status{0} {}
@@ -63,6 +62,9 @@ public:
     inline void set_OBL_speed(point_type OBL_speed) { return m_external_forces.update_water_speed(OBL_speed); }
     inline void set_OBL_status(int status) { m_OBL_status = status; }
 
+    //! Accessor for specific use
+    external_forces_type& get_external_forces() { return m_external_forces; }
+
 protected:
 
     external_forces_type m_external_forces; //! External forces manager
@@ -71,70 +73,61 @@ protected:
 
     //! Move one floe
     virtual void move_floe(floe_type& floe, value_type delta_t);
-    //! Translation part of one floe's movement
-    void translate_floe(floe_type& floe, value_type delta_t);
-    //! Rotation part of one floe's movement
-    void rotate_floe(floe_type& floe, value_type delta_t);
     //! Ocean window area accessor
     virtual value_type ocean_window_area() { return m_ocean_window_area; }
 };
 
 
-template <typename TFloeGroup>
+template <typename TExternalForces>
 void
-DynamicsManager<TFloeGroup>::move_floes(floe_group_type& floe_group, value_type delta_t)
+DynamicsManager<TExternalForces>::move_floes(floe_group_type& floe_group, value_type delta_t)
 {   
     // OpenMP doesn't like this syntax
     // for (auto& floe : floe_group.get_floes())
     //     move_floe(floe, delta_t);
     #pragma omp parallel for
-    for (std::size_t i=0; i < floe_group.get_floes().size(); ++i)
+    for (std::size_t i=0; i < floe_group.get_floes().size(); ++i){
         move_floe(floe_group.get_floes()[i], delta_t);
+    }
     update_ocean(floe_group, delta_t);
 }
 
 
-template <typename TFloeGroup>
+template <typename TExternalForces>
 void
-DynamicsManager<TFloeGroup>::move_floe(floe_type& floe, value_type delta_t)
+DynamicsManager<TExternalForces>::move_floe(floe_type& floe, value_type delta_t)
 {
-    translate_floe(floe, delta_t);
-    rotate_floe(floe, delta_t);
-    floe.update(); // alternative : pour ne pas avoir à update() : utiliser floe.set_state(new_state)
-}
+    if (floe.is_obstacle()) return; // Obstacles don't move
 
+    state_type new_state = floe.state();
 
-template <typename TFloeGroup>
-void
-DynamicsManager<TFloeGroup>::translate_floe(floe_type& floe, value_type delta_t)
-{
+    // Translation part
     auto drag_force = floe::integration::integrate(
         m_external_forces.total_drag(floe),
         floe.mesh(),
         integration_strategy()
     );
-    floe.state().pos += delta_t * floe.state().speed;
-    floe.state().speed += ( delta_t / floe.mass() ) * drag_force
+    new_state.pos += delta_t * floe.state().speed;
+    new_state.speed += ( delta_t / floe.mass() ) * drag_force
                          + delta_t * m_external_forces.coriolis_effect(floe);
-}
 
-
-template <typename TFloeGroup>
-void
-DynamicsManager<TFloeGroup>::rotate_floe(floe_type& floe, value_type delta_t)
-{
+    // Rotation part
     auto rot_drag_force = floe::integration::integrate(
         m_external_forces.total_rot_drag(floe),
         floe.mesh(),
         integration_strategy()
     );
-    floe.state().theta += delta_t * floe.state().rot;
-    floe.state().rot += ( delta_t / floe.moment_cst() ) * rot_drag_force;
+    new_state.theta += delta_t * floe.state().rot;
+    new_state.rot += ( delta_t / floe.moment_cst() ) * rot_drag_force;    
+
+    // Floe update
+    floe.set_state(new_state);
 }
 
-template <typename TFloeGroup>
+
+template <typename TExternalForces>
 void
-DynamicsManager<TFloeGroup>::update_ocean(TFloeGroup& floe_group, value_type delta_t)
+DynamicsManager<TExternalForces>::update_ocean(floe_group_type& floe_group, value_type delta_t)
 {   
     point_type diff_speed{0,0};
     if (m_OBL_status)
@@ -160,9 +153,9 @@ DynamicsManager<TFloeGroup>::update_ocean(TFloeGroup& floe_group, value_type del
     m_external_forces.update_water_speed( diff_speed );
 }
 
-template <typename TFloeGroup>
+template <typename TExternalForces>
 void
-DynamicsManager<TFloeGroup>::load_matlab_ocean_window_data(std::string const& filename, floe_group_type const& floe_group)
+DynamicsManager<TExternalForces>::load_matlab_ocean_window_data(std::string const& filename, floe_group_type const& floe_group)
 {
     m_ocean_window_area = floe::io::matlab::ocean_window_area_from_file(filename);
     if (m_ocean_window_area == 0)
