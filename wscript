@@ -17,15 +17,9 @@ Build and run unit tests : ./waf test
 Build a single test ("^STEST_" files) : ./waf TEST --name <filename>
 
 Compilation options (available for tests too) :
-    --optim to get release product
+    --debug to get debug product
     --omp to get omp parallelisation (when compiler allows it)
 
-Display floes from output file :
-    ./waf plot_floes (or plot_floes_fast for multiprocessed faster version)
-    options :
-        --name <out_filename> : output_filename to consider
-        --vid : make video (automatic with plot_floes_fast)
-        --step <step> : do not read every recorded time, only one in <step>, to get a faster animation
 """
 
 import os
@@ -57,12 +51,10 @@ def options(opt):
     opt.add_option('--name', action='store', default="", dest='name')
     opt.add_option('--target', action='store', default="", dest='target')
     opt.add_option(
-        '--optim', action='store_false', default=True, dest='debug')
+        '--debug', action='store_true', default=False, dest='debug')
     opt.add_option('--gcc', action='store_true', default=False, dest='gcc')
     opt.add_option('--icc', action='store_true', default=False, dest='icc')
     opt.add_option('--omp', action='store_true', default=False, dest='omp')
-    opt.add_option('--step', action='store', default="", dest='step_plot')
-    opt.add_option('--vid', action='store_true', default=False, dest='vid')
 
 
 def configure(conf):
@@ -124,7 +116,6 @@ def run_tests(ctx):
 def get_option_dict(debug=True):
     OPTION_DICT = {
         "includes": [ '../src',
-                      '/usr/local/Cellar/boost/1.58.0/include'
                       '/usr/local/include',
                       '/usr/include',
                       '/usr/local/include/eigen3',
@@ -132,7 +123,9 @@ def get_option_dict(debug=True):
         "lib": ['boost_system',
                 'matio',
                 "hdf5",
-                "hdf5_cpp"],
+                "hdf5_cpp",
+                "CGAL", "gmp", "mpfr", "boost_thread"
+                ],
         "libpath": ["/usr/local/lib", "/usr/lib"] + os.environ.get("LD_LIBRARY_PATH", "/").split(":")
     }
     if debug:
@@ -188,7 +181,7 @@ def test(ctx):
     # TODO find a simple way to forward options
     omp_opt = " --omp" if ctx.options.omp else ""
     name_opt = " --name %s" % ctx.options.name if ctx.options.name else ""
-    debug_opt = " --optim" if not ctx.options.debug else ""
+    debug_opt = " --debug" if ctx.options.debug else ""
     err = ctx.exec_command('./waf build --target unittests%s%s%s' % (
         name_opt, omp_opt, debug_opt))
     if not err:
@@ -200,20 +193,8 @@ def TEST(ctx):
     """Build a single test ("^STEST_" files) (to run manually)"""
     omp_opt = " --omp" if ctx.options.omp else ""
     name_opt = " --name %s" % ctx.options.name if ctx.options.name else ""
-    debug_opt = " --optim" if not ctx.options.debug else ""
+    debug_opt = " --debug" if ctx.options.debug else ""
     ctx.exec_command('./waf build --target TEST%s%s%s' % (
         name_opt, omp_opt, debug_opt))
     print("to run the test : ./build/%s <args>" % TEST_target)
 
-
-
-from plot import plot_floes, plot_last_rec, plot_floes_fast
-
-def plot(ctx):
-    plot_floes(ctx.options.name, int(ctx.options.step_plot), ctx.options.vid )
-
-def plot_fast(ctx):
-    plot_floes_fast(ctx.options.name, int(ctx.options.step_plot))
-
-def plot_lr(ctx):
-    plot_last_rec(ctx.options.name)
