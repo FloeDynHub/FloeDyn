@@ -5,7 +5,6 @@
 
 TEST_CASE( "Test Collision Manager", "[ope]" ) {
 
-    using namespace floe::ope;
     collision_manager_type M;
     // REQUIRE(P.get_proximity_detector().m_detector_h.num_local_disks() == 8611 );
 }

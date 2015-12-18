@@ -1,5 +1,5 @@
 /*!
- * \file variable/floe_group_h.hpp
+ * \file floes/floe_group_h.hpp
  * \brief Discret Floe Configuration class
  * \author Quentin Jouet
  */
@@ -8,10 +8,10 @@
 #define VARIABLE_FLOES_H_HPP
 
 
-#include "floe/variable/floe_h.hpp"
+#include "floe/floes/floe_h.hpp"
 
 
-namespace floe { namespace variable
+namespace floe { namespace floes
 {
 
 /*! FloeGroup_h
@@ -40,7 +40,7 @@ public:
 
 };
 
-}} // namespace floe::variable
+}} // namespace floe::floes
 
 
 #endif // VARIABLE_FLOES_H_HPP

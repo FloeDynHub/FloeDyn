@@ -14,7 +14,7 @@
 #include "floe/state/space_time_state.hpp"
 #include "floe/geometry/frame/frame_transformers.hpp"
 
-#include "floe/variable/floe_h.hpp"
+#include "floe/floes/floe_h.hpp"
 #include "floe/geometry/arithmetic/dot_product.hpp"
 
 #include "floe/floes/floe_interface.hpp"
@@ -54,7 +54,7 @@ public:
     typedef TStaticFloe                         static_floe_type;
     typedef TState                              state_type;
 
-    using floe_h_type = floe::variable::Floe_h<mesh_type>;
+    using floe_h_type = floe::floes::Floe_h<mesh_type>;
     using Uptr_geometry_type = std::unique_ptr<geometry_type>;
     using floe_interface_type = FloeInterface<TStaticFloe, TState>;
 

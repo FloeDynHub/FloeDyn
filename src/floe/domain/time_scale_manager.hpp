@@ -1,5 +1,5 @@
 /*!
- * \file ope/time_scale_manager.hpp
+ * \file domain/time_scale_manager.hpp
  * \brief Time Scale Manager
  * \author Quentin Jouet
  */
@@ -17,7 +17,7 @@
 #include <omp.h>
 #endif
 
-namespace floe { namespace ope
+namespace floe { namespace domain
 {
 
 /*! TimeScaleManager
@@ -264,7 +264,7 @@ TimeScaleManager<TDetector>::delta_t_secu_fast(
 }
 
 
-}} // namespace floe::ope
+}} // namespace floe::domain
 
 
 #endif // OPE_TIME_SCALE_MANAGER_HPP

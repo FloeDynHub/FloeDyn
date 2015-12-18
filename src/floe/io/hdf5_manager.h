@@ -1,5 +1,5 @@
 /*!
- * \file variable/hdf5_manager.h
+ * \file io/hdf5_manager.h
  * \brief HDF5 manager for io
  * \author Quentin Jouet
  */
@@ -11,7 +11,7 @@
 #include <vector>
 #include <algorithm>
 #include <ctime>
-#include "floe/variable/floe_group.hpp"
+#include "floe/floes/floe_group.hpp"
 
 #include "H5Cpp.h"
 #ifndef H5_NO_NAMESPACE

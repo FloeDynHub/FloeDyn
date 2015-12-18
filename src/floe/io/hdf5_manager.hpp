@@ -1,5 +1,5 @@
 /*!
- * \file variable/hdf5_manager.h
+ * \file floes/hdf5_manager.h
  * \brief HDF5 manager for io
  * \author Quentin Jouet
  */

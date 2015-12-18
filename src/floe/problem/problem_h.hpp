@@ -11,7 +11,7 @@
 #include "floe/floes/static_floe.hpp"
 #include "floe/floes/floe_exception.hpp"
 #include "floe/lcp/builder/graph_to_lcp.hpp"
-#include "floe/ope/time_scale_manager.hpp"
+#include "floe/domain/time_scale_manager.hpp"
 
 #include <iostream> // debug
 #include <chrono>
@@ -46,7 +46,7 @@ public:
                   m_collision_manager_h{nullptr} {}
 
     using detector_h_type = TDetector;
-    using time_scale_manager_type = ope::TimeScaleManager<detector_h_type>;
+    using time_scale_manager_type = domain::TimeScaleManager<detector_h_type>;
 
 
     //! Solver

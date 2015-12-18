@@ -1,5 +1,5 @@
 /*!
- * \file ope/periodic_dynamics_manager.h
+ * \file dynamics/periodic_dynamics_manager.h
  * \brief Extended dynamics manager handling translations for periodic space
  * \author Quentin Jouet
  */
@@ -7,10 +7,10 @@
 #ifndef OPE_PERIODIC_DYNAMICS_MANAGER_H
 #define OPE_PERIODIC_DYNAMICS_MANAGER_H
 
-#include "floe/ope/dynamics_manager.h"
+#include "floe/dynamics/dynamics_manager.h"
 
 
-namespace floe { namespace ope
+namespace floe { namespace dynamics
 {
 
 /*! DynamicsManager
@@ -47,7 +47,7 @@ private:
 };
 
 
-}} // namespace floe::ope
+}} // namespace floe::dynamics
 
 
 #endif // OPE_PERIODIC_DYNAMICS_MANAGER_H

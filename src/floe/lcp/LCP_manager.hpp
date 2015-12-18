@@ -1,5 +1,5 @@
 /*!
- * \file ope/LCP_manager.hpp
+ * \file lcp/LCP_manager.hpp
  * \brief LCP manager
  * \author Quentin Jouet
  */
@@ -7,7 +7,7 @@
 #ifndef OPE_LCP_MANAGER_HPP
 #define OPE_LCP_MANAGER_HPP
 
-#include "floe/ope/time_scale_manager.hpp"
+#include "floe/domain/time_scale_manager.hpp"
 #include <boost/numeric/ublas/vector_proxy.hpp>
 #include <boost/numeric/ublas/blas.hpp>
 #include <iostream> // debug
@@ -17,7 +17,7 @@
 #include <omp.h>
 #endif
 
-namespace floe { namespace ope
+namespace floe { namespace lcp
 {
 
 /*! LCPManager
@@ -134,7 +134,7 @@ void LCPManager<T>::update_floes_state(TContactGraph& graph, const std::array<va
 
 
 
-}} // namespace floe::ope
+}} // namespace floe::lcp
 
 
 #endif // OPE_LCP_MANAGER_HPP

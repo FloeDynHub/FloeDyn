@@ -13,7 +13,7 @@ using namespace std;
 
 TEST_CASE( "Test distance between floes", "[collision]" ) {
     
-    using namespace floe::variable;
+    using namespace floe::floes;
     using namespace std;
 
     using detector_type = typename proximity_detector_type::detector_h_type;
@@ -84,7 +84,7 @@ TEST_CASE( "Test distance between floes", "[collision]" ) {
     
 
     using domain_type = floe::domain::Domain;
-    using time_mgr_type = floe::ope::TimeScaleManager<domain_type, decltype(detector)>;
+    using time_mgr_type = floe::domain::TimeScaleManager<domain_type, decltype(detector)>;
     time_mgr_type time_mgr;
     domain_type domain;
     cout << "min DT : " << time_mgr.delta_t_secu(&domain, &detector);

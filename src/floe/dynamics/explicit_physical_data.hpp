@@ -1,5 +1,5 @@
 /*!
- * \file ope/explicit_physical_data.hpp
+ * \file dynamics/explicit_physical_data.hpp
  * \brief Physical datas (air & ocean speed)
  * \author Quentin Jouet
  */
@@ -14,7 +14,7 @@
 // #include <iostream> // DEBUG
 
 
-namespace floe { namespace ope
+namespace floe { namespace dynamics
 {
 
 /*! PhysicalData
@@ -106,7 +106,7 @@ private:
 };
 
 
-}} // namespace floe::ope
+}} // namespace floe::dynamics
 
 
 #endif // OPE_EXPLICIT_PHYSICAL_DATA_HPP

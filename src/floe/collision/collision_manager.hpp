@@ -1,5 +1,5 @@
 /*!
- * \file ope/collision_manager.hpp
+ * \file collision/collision_manager.hpp
  * \brief Collision manager
  * \author Quentin Jouet
  */
@@ -7,7 +7,7 @@
 #ifndef OPE_COLLISION_MANAGER_HPP
 #define OPE_COLLISION_MANAGER_HPP
 
-namespace floe { namespace ope
+namespace floe { namespace collision
 {
 
 /*! CollisionManager
@@ -31,7 +31,7 @@ private:
 
 };
 
-}} // namespace floe::ope
+}} // namespace floe::collision
 
 
 #endif // OPE_COLLISION_MANAGER_HPP

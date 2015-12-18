@@ -1,5 +1,5 @@
 /*!
- * \file ope/toric_topology.hpp
+ * \file dynamics/toric_topology.hpp
  * \brief Space topology and ghost creation strategy for a periodic rectangle
  * \author Quentin Jouet
  */

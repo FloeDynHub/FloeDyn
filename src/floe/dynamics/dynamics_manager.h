@@ -1,5 +1,5 @@
 /*!
- * \file ope/dynamics_manager.h
+ * \file dynamics/dynamics_manager.h
  * \brief Dynamics manager
  * \author Quentin Jouet
  */
@@ -14,7 +14,7 @@
  #include <iostream> // DEBUG
 
 
-namespace floe { namespace ope
+namespace floe { namespace dynamics
 {
 
 /*! DynamicsManager
@@ -75,7 +75,7 @@ protected:
 };
 
 
-}} // namespace floe::ope
+}} // namespace floe::dynamics
 
 
 #endif // OPE_DYNAMICS_MANAGER_H

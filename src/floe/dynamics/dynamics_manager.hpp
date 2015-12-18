@@ -1,5 +1,5 @@
 /*!
- * \file ope/dynamics_manager.hpp
+ * \file dynamics/dynamics_manager.hpp
  * \brief Dynamics manager
  * \author Quentin Jouet
  */
@@ -7,7 +7,7 @@
 #ifndef OPE_DYNAMICS_MANAGER_HPP
 #define OPE_DYNAMICS_MANAGER_HPP
 
-#include "floe/ope/dynamics_manager.h"
+#include "floe/dynamics/dynamics_manager.h"
 
 #include "floe/integration/gauss_legendre.hpp"
 #include "floe/integration/integrate.hpp"
@@ -20,7 +20,7 @@
  #include <iostream> // DEBUG
 
 
-namespace floe { namespace ope
+namespace floe { namespace dynamics
 {
 
 template<typename T>
@@ -113,7 +113,7 @@ DynamicsManager<TExternalForces, TFloeGroup>::load_matlab_ocean_window_data(std:
 }
 
 
-}} // namespace floe::ope
+}} // namespace floe::dynamics
 
 
 #endif // OPE_DYNAMICS_MANAGER_HPP

@@ -1,5 +1,5 @@
 /*!
- * \file ope/physical_data.hpp
+ * \file dynamics/physical_data.hpp
  * \brief Physical datas (air & ocean speed)
  * \author Quentin Jouet
  */
@@ -14,7 +14,7 @@
 #include <iostream> // DEBUG
 
 
-namespace floe { namespace ope
+namespace floe { namespace dynamics
 {
 
 /*! PhysicalData
@@ -178,7 +178,7 @@ PhysicalData<TPoint>::update_water_speed(point_type diff_speed)
 
 
 
-}} // namespace floe::ope
+}} // namespace floe::dynamics
 
 
 #endif // OPE_PHYSICAL_DATA_HPP

@@ -1,5 +1,5 @@
 /*!
- * \file ope/LCP_solver.h
+ * \file lcp/solver/LCP_solver.h
  * \brief LCP solver
  * \author Quentin Jouet
  */
@@ -15,7 +15,7 @@
 
 #include <iostream> // debug
 
-namespace floe { namespace ope
+namespace floe { namespace lcp { namespace solver
 {
 
 /*! LCPSolver
@@ -81,7 +81,7 @@ inline bool is_nan(const T t){
 }
 
 
-}} // namespace floe::ope
+}}} // namespace floe::lcp::solver
 
 
 #endif // OPE_LCP_SOLVER_H

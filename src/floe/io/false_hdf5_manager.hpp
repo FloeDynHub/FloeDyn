@@ -1,5 +1,5 @@
 /*!
- * \file variable/false_hdf5_manager.hpp
+ * \file floes/false_hdf5_manager.hpp
  * \brief Empty HDF5 manager for g++ testing (no hdf5 support for MacOs/gcc)
  * \author Quentin Jouet
  */
@@ -11,7 +11,7 @@
 #include <vector>
 #include <algorithm>
 #include <string>
-#include "floe/variable/floe_group.hpp"
+#include "floe/floes/floe_group.hpp"
 
 namespace floe { namespace io
 {

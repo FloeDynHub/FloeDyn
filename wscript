@@ -190,9 +190,6 @@ def forward_options(opt_list, options):
 
 def TESTS(ctx):
     """Build, run and clean tests using Catch Framework"""
-    print './waf build --target TESTS {}'.format(
-        forward_options(["omp", "name", "debug"], ctx.options))
-    return 0
     err = ctx.exec_command('./waf build --target TESTS {}'.format(
         forward_options(["omp", "name", "debug"], ctx.options)))
     if not err:

@@ -3,7 +3,7 @@
 
 #include "floe/floes/static_floe.hpp"
 #include "floe/floes/kinematic_floe.hpp"
-#include "floe/variable/floe_group.hpp"
+#include "floe/floes/floe_group.hpp"
 #include "floe/collision/matlab/periodic_detector.hpp"
 #include "floe/topology/toric_topology.hpp"
 #include <cmath>
@@ -11,7 +11,7 @@
 
 TEST_CASE( "Test Interpenetration", "[geometry]" ) {
     
-    using namespace floe::variable;
+    using namespace floe::floes;
     using namespace std;
 
     using value_type = double;

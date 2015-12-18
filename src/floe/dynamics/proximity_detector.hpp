@@ -1,5 +1,5 @@
 /*!
- * \file ope/proximity_detector.hpp
+ * \file dynamics/proximity_detector.hpp
  * \brief Proximity Detector
  * \author Quentin Jouet
  */
@@ -8,7 +8,7 @@
 #define PROBLEM_PROXIMITY_DETECTOR_HPP
  
 
-namespace floe { namespace ope
+namespace floe { namespace dynamics
 {
 
 /*! ProximityDetector
@@ -32,7 +32,7 @@ private:
 
 };
 
-}} // namespace floe::ope
+}} // namespace floe::dynamics
 
 
 #endif // PROBLEM_PROXIMITY_DETECTOR_HPP

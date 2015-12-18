@@ -1,12 +1,12 @@
 #include "../tests/catch.hpp"
 #include <iostream>
 #include "floe/geometry/geometries/point.hpp" 
-#include "floe/ope/physical_data.hpp"
+#include "floe/dynamics/physical_data.hpp"
 
 
 TEST_CASE( "Test physical data manager", "[ope]" ) {
     
-    using namespace floe::ope;
+    using namespace floe::dynamics;
     using namespace std;
     using point_type = floe::geometry::Point<double>;
 

@@ -29,7 +29,7 @@
 #include <boost/geometry/algorithms/intersects.hpp>
 #include <algorithm>
 
-#include "floe/ope/time_scale_manager.hpp"
+#include "floe/domain/time_scale_manager.hpp"
 
 #ifdef _OPENMP
 #include <omp.h>
@@ -180,7 +180,7 @@ protected:
         return { m_floes[n1], m_floes[n2], point1, point2 }; }
     inline virtual std::size_t real_floe_id(std::size_t n) const { return n; }
 
-    friend class ope::TimeScaleManager<MatlabDetector<TFloe, TContact>>;
+    friend class domain::TimeScaleManager<MatlabDetector<TFloe, TContact>>;
 
 };
 

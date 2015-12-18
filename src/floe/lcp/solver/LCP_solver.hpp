@@ -1,5 +1,5 @@
 /*!
- * \file ope/LCP_solver.hpp
+ * \file lcp/solver/LCP_solver.hpp
  * \brief LCP solver
  * \author Quentin Jouet
  */
@@ -7,7 +7,7 @@
 #ifndef OPE_LCP_SOLVER_HPP
 #define OPE_LCP_SOLVER_HPP
 
-#include "floe/ope/LCP_solver.h"
+#include "floe/lcp/solver/LCP_solver.h"
 
 #include "floe/lcp/solver/lexicolemke.hpp"
 #include "floe/lcp/solver/lemke_eigen.hpp"
@@ -16,7 +16,7 @@
 #include <algorithm>
 
 
-namespace floe { namespace ope
+namespace floe { namespace lcp { namespace solver
 {
 
 
@@ -325,7 +325,7 @@ T LCPSolver<T>::random_real(T max)
 }
 
 
-}} // namespace floe::ope
+}}} // namespace floe::lcp::solver
 
 
 #endif // OPE_LCP_SOLVER_HPP

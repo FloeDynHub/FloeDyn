@@ -92,7 +92,7 @@ private:
             return n;
     }
 
-    friend class ope::TimeScaleManager<PeriodicMatlabDetector<TFloe, TSpaceTopology, TGhostFloe, TContact>>;
+    friend class domain::TimeScaleManager<PeriodicMatlabDetector<TFloe, TSpaceTopology, TGhostFloe, TContact>>;
 };
 
 

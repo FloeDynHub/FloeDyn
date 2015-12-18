@@ -1,5 +1,5 @@
 /*!
- * \file variable/floe_group.hpp
+ * \file floes/floe_group.hpp
  * \brief Floe Configuration class
  * \author Quentin Jouet
  */
@@ -8,7 +8,7 @@
 #define VARIABLE_FLOES_HPP
 
 #include <iostream>
-#include "floe/variable/floe_group_h.hpp"
+#include "floe/floes/floe_group_h.hpp"
 
 #include "floe/io/matlab/list_so_to_floes.hpp"
 #include "floe/io/matlab/list_so_import.hpp"
@@ -16,7 +16,7 @@
 
  #include <algorithm>
 
-namespace floe { namespace variable
+namespace floe { namespace floes
 {
 
 /*! FloeGroup
@@ -35,7 +35,7 @@ class FloeGroup
 public:
 
     using floe_type = TFloe;
-    using floe_group_h_type = floe::variable::FloeGroup_h<
+    using floe_group_h_type = floe::floes::FloeGroup_h<
         typename floe_type::floe_h_type
     >;
     using value_type = typename TFloe::value_type;
@@ -184,7 +184,7 @@ void FloeGroup<TFloe>::stop_floes_in_window(value_type width, value_type height)
 }
 
 
-}} // namespace floe::variable
+}} // namespace floe::floes
 
 
 #endif // VARIABLE_FLOES_HPP

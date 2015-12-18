@@ -1,5 +1,5 @@
 /*!
- * \file ope/generator_LCP_solver.hpp
+ * \file lcp/solver/generator_LCP_solver.hpp
  * \brief LCP solver for generator
  * \author Quentin Jouet
  */
@@ -19,7 +19,7 @@
 
 #include <iostream> // debug
 
-namespace floe { namespace ope
+namespace floe { namespace lcp { namespace solver
 {
 
 /*! LCPSolver
@@ -56,7 +56,7 @@ bool GeneratorLCPSolver<T>::LCPtest(int compt, value_type EC, value_type born_EC
 }
 
 
-}} // namespace floe::ope
+}}} // namespace floe::lcp::solver
 
 
 #endif // OPE_GENERATOR_LCP_SOLVER_HPP

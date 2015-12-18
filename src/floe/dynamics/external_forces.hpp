@@ -1,5 +1,5 @@
 /*!
- * \file ope/external_forces.hpp
+ * \file dynamics/external_forces.hpp
  * \brief External forces
  * \author Quentin Jouet
  */
@@ -13,7 +13,7 @@
 #include <cmath>
 
 
-namespace floe { namespace ope
+namespace floe { namespace dynamics
 {
 
 /*! ExternalForces
@@ -214,7 +214,7 @@ ExternalForces<TFloe, TPhysicalData>::deep_ocean_friction()
 }
 
 
-}} // namespace floe::ope
+}} // namespace floe::dynamics
 
 
 #endif // OPE_EXTERNAL_FORCES_HPP

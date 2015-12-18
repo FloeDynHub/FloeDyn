@@ -1,5 +1,5 @@
 /*!
- * \file variable/floe_h.hpp
+ * \file floes/floe_h.hpp
  * \brief Discret Floe
  * \author Quentin Jouet
  */
@@ -12,7 +12,7 @@
 #include "floe/geometry/geometries/triangle_mesh.hpp"   // Default mesh type
 
 
-namespace floe { namespace variable
+namespace floe { namespace floes
 {
 
 /*! Floe_h
@@ -34,7 +34,7 @@ public:
 
 };
 
-}} // namespace floe::variable
+}} // namespace floe::floes
 
 
 #endif // VARIABLE_FLOE_H_HPP
