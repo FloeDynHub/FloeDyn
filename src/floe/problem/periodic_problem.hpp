@@ -49,7 +49,7 @@ public:
     PeriodicProblem(TSpaceTopology& topology) : base_class(), m_space_topology{topology} {}
 
     //! Load initial state and construct topology from matlab file
-    virtual inline void load_matlab_config(std::string const& filename) override {
+    virtual void load_matlab_config(std::string const& filename) override {
         base_class::load_matlab_config(filename);
         load_topology_from_matlab(filename);
     }

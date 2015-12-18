@@ -4,13 +4,12 @@
  * \author Quentin Jouet
  */
 
-#ifndef GENERATOR_GENERATOR_HPP
-#define GENERATOR_GENERATOR_HPP
+#ifndef GENERATOR_GENERATOR_DEF_HPP
+#define GENERATOR_GENERATOR_DEF_HPP
+
+#include "floe/generator/generator.h"
 
 // Boost geometry
-#include "floe/geometry/geometry.hpp"
-#include "floe/geometry/geometries/point.hpp"   
-#include "floe/geometry/geometries/multi_point.hpp"
 #include "floe/geometry/frame/frame_transformers.hpp"
 #include "floe/arithmetic/container_operators.hpp"
 
@@ -22,9 +21,6 @@
 #include <CGAL/Delaunay_mesh_face_base_2.h>
 #include <CGAL/Delaunay_mesh_size_criteria_2.h>
 
-// Floes
-#include "floe/floes/kinematic_floe.hpp"
-
 // Matlab io
 #include <matio.h>
 
@@ -32,7 +28,6 @@
 #include <ctime>
 #include <algorithm>
 #include <random>
-#include <vector>
 
 
 #include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
@@ -41,64 +36,24 @@
 #include <CGAL/Delaunay_mesh_face_base_2.h>
 #include <CGAL/Delaunay_mesh_size_criteria_2.h>
 
-
 // TEST
- #include "floe/integration/gauss_legendre.hpp"
+#include "floe/integration/gauss_legendre.hpp"
 #include "floe/integration/integrate.hpp"
 
 namespace floe { namespace generator {
 
-template<typename TProblem>
-class Generator
-{
-public:
-    using value_type = typename TProblem::value_type;
-    using floe_type = typename TProblem::floe_group_type::floe_type;
-    using point_type = typename floe_type::point_type;
-    using multi_point_type = floe::geometry::MultiPoint<point_type>;
-    using polygon_type = typename floe_type::geometry_type;
-    using static_floe_type = typename floe_type::static_floe_type;
-    using mesh_type = typename floe_type::mesh_type;
-    using scale_transformer = boost::geometry::strategy::transform::scale_transformer<value_type, 2, 2>;
+// CGAL typedefs
+using K = CGAL::Exact_predicates_inexact_constructions_kernel;
+using Vb = CGAL::Triangulation_vertex_base_2<K>;
+using Fb = CGAL::Delaunay_mesh_face_base_2<K>;
+using Tds = CGAL::Triangulation_data_structure_2<Vb, Fb>;
+using CDT = CGAL::Constrained_Delaunay_triangulation_2<K, Tds>;
+using Criteria = CGAL::Delaunay_mesh_size_criteria_2<CDT>;
+using Vertex_handle = CDT::Vertex_handle;
+using Point = CDT::Point;
 
-    // CGAL typedefs
-    using K = CGAL::Exact_predicates_inexact_constructions_kernel;
-    using Vb = CGAL::Triangulation_vertex_base_2<K>;
-    using Fb = CGAL::Delaunay_mesh_face_base_2<K>;
-    using Tds = CGAL::Triangulation_data_structure_2<Vb, Fb>;
-    using CDT = CGAL::Constrained_Delaunay_triangulation_2<K, Tds>;
-    using Criteria = CGAL::Delaunay_mesh_size_criteria_2<CDT>;
-    using Vertex_handle = CDT::Vertex_handle;
-    using Point = CDT::Point;
-
-    Generator() : m_problem{} {}
-
-    //! Generate floe set with given number of floe and concentration
-    void generate_floe_set(std::size_t number, value_type concentration);
-    typename TProblem::floe_group_type& get_floe_group() { return m_problem.get_floe_group(); }
-    std::array<value_type, 4> get_window() { return m_window; }
-
-private:
-    TProblem m_problem;
-    std::array<value_type, 4> m_window;
-    //! Floe size repartition (exponential)
-    std::vector<value_type> random_size_repartition(std::size_t n, value_type R_max);
-    std::vector<value_type> exp_size_repartition(std::size_t n, value_type R_max);
-    //! Random floe group
-    void random_floe_group(std::size_t n);
-    //! Spiral dispatcher
-    std::vector<point_type> spiral_distribution(std::vector<value_type> const& size_distribution, value_type Rmax);
-
-    void load_biblio_floe(std::string filename);
-    void discretize_biblio_floe(std::size_t n);
-    void generate_meshes();
-
-    std::size_t m_biblio_size;
-    std::vector<multi_point_type> m_biblio_floe;
-    std::vector<polygon_type> m_biblio_floe_h;
-    std::vector<mesh_type> m_biblio_floe_h_meshes;
-    std::vector<static_floe_type> m_static_floe_list;
-};
+template<typename T>
+using scale_transformer = boost::geometry::strategy::transform::scale_transformer<T, 2, 2>;
 
 
 template<typename TProblem>
@@ -114,15 +69,17 @@ Generator<TProblem>::generate_floe_set(std::size_t nb_floes, value_type concentr
     value_type win_width = sqrt(m_problem.get_floe_group().total_area() / concentration);
     std::cout << "WIDTH WINDOW : " << win_width << std::endl;
     m_window = {{-win_width / 2, win_width / 2, -win_width / 2, win_width / 2}};
-    m_problem.get_dynamics_manager().get_external_forces().get_physical_data().set_window_size(win_width * 0.99, win_width * 0.99);
+    auto& physical_data = m_problem.get_dynamics_manager().get_external_forces().get_physical_data();
+    physical_data.set_window_size(win_width * 0.99, win_width * 0.99);
+    physical_data.set_modes(2,0);
     value_type end_time = 2000;
     bool init = true;
     do {
-        m_problem.solve(end_time, DT_DEFAULT, 0, 10, init);
+        m_problem.solve(end_time, 10, 0, 10, init);
         m_problem.get_floe_group().stop_floes_in_window(win_width, win_width);
         std::cout << " Concentration : " << m_problem.floe_concentration() << std::endl;
         end_time += 500; init = false;
-        if (QUIT) break; // exit normally after SIGINT
+        if (*m_problem.QUIT) break; // exit normally after SIGINT
     } while (m_problem.get_floe_group().kinetic_energy() != 0);
 }
 
@@ -146,8 +103,8 @@ Generator<TProblem>::random_floe_group(std::size_t n)
         auto& base_shape = m_biblio_floe_h[idx];
         auto mesh = m_biblio_floe_h_meshes[idx];
         polygon_type shape;
-        geometry::transform( base_shape, shape, scale_transformer{ sizes[i] } );
-        geometry::transform( mesh, mesh, scale_transformer{ sizes[i] } );
+        geometry::transform( base_shape, shape, scale_transformer<value_type>{ sizes[i] } );
+        geometry::transform( mesh, mesh, scale_transformer<value_type>{ sizes[i] } );
 
         // Create Kinematic floe
         auto& floe = list_floes[i];
@@ -221,9 +178,9 @@ Generator<TProblem>::spiral_distribution(std::vector<value_type> const& size_dis
     {
         value_type d_theta, d_R, r = *it;
         if (R < R_max)
-            d_theta = r * 1.02 / R_max, d_R = r * 1.02;
+            d_theta = r * 1.2 / R_max, d_R = r * 1.2;
         else
-            d_theta = r * 1.02 / R, d_R = (Rmax / M_PI + 1) * (r / R);
+            d_theta = r * 1.2 / R, d_R = (Rmax / M_PI + 1) * (r / R);
 
         if (it == size_distribution.begin())
         {
@@ -285,7 +242,7 @@ void Generator<TProblem>::load_biblio_floe(std::string filename)
         value_type radius{static_cast<value_type*>(Rmin->data)[i]};
         point_type center{static_cast<value_type*>(Cmin->data)[i], static_cast<value_type*>(Cmin->data)[m_biblio_size + i]};
         // geometry::transform( shape, shape, geometry::frame::transformer( typename floe_type::frame_type{-center, 0} )); // done when creating mesh
-        geometry::transform( shape, shape, scale_transformer{ 1 / radius } );
+        geometry::transform( shape, shape, scale_transformer<value_type>{ 1 / radius } );
 
         // Save geometry
         m_biblio_floe.push_back(shape);
@@ -375,4 +332,4 @@ void Generator<TProblem>::generate_meshes()
 }} // namespace floe::generator
 
 
-#endif // GENERATOR_GENERATOR_HPP
+#endif // GENERATOR_GENERATOR_DEF_HPP

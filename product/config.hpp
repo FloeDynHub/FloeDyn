@@ -4,31 +4,30 @@
 
 #include "floe/problem/problem.hpp"
 
-#include "floe/ope/proximity_detector.hpp"
+// #include "floe/ope/proximity_detector.hpp"
+// #include "floe/collision/matlab/detector.h"
 
 #include "floe/ope/LCP_manager.hpp"
-#include "floe/collision/matlab/detector.hpp"
-
-#include "floe/ope/LCP_solver.hpp"
+#include "floe/ope/LCP_solver.h"
 #include "floe/ope/generator_LCP_solver.hpp"
 #include "floe/ope/collision_manager.hpp"
+
+#include "floe/ope/proximity_detector.hpp"
+#include "floe/collision/matlab/detector.h"
 
 #include "floe/ope/physical_data.hpp"
 #include "floe/ope/explicit_physical_data.hpp"
 #include "floe/ope/external_forces.hpp"
-#include "floe/ope/dynamics_manager.hpp"
+#include "floe/ope/dynamics_manager.h"
 #include "floe/domain/domain.hpp"
 
-#include "floe/integration/integrate.hpp"
-#include "floe/integration/gauss_legendre.hpp"
-
-#include "floe/generator/generator.hpp"
+#include "floe/generator/generator.h"
 
 #ifdef PBC
 #include "floe/problem/periodic_problem.hpp"
 #include "floe/topology/toric_topology.hpp"
-#include "floe/collision/matlab/periodic_detector.hpp"
-#include "floe/ope/periodic_dynamics_manager.hpp"
+#include "floe/collision/matlab/periodic_detector.h"
+#include "floe/ope/periodic_dynamics_manager.h"
 #endif
 
 
@@ -54,10 +53,10 @@ using generator_collision_manager_type = floe::ope::CollisionManager<generator_m
 
 using point_type = typename floe_type::point_type;
 using physical_data_type = floe::ope::PhysicalData<point_type>;
-using external_forces_type = floe::ope::ExternalForces<floe_group_type, physical_data_type>;
+using external_forces_type = floe::ope::ExternalForces<floe_type, physical_data_type>;
 using generator_physical_data_type = floe::ope::ExplicitPhysicalData<point_type>;
-using generator_external_forces_type = floe::ope::ExternalForces<floe_group_type, generator_physical_data_type>;
-using generator_dynamics_manager_type = floe::ope::DynamicsManager<generator_external_forces_type>;
+using generator_external_forces_type = floe::ope::ExternalForces<floe_type, generator_physical_data_type>;
+using generator_dynamics_manager_type = floe::ope::DynamicsManager<generator_external_forces_type, floe_group_type>;
 
 using domain_type = floe::domain::Domain<real>;
 
@@ -66,7 +65,7 @@ using topology_type = floe::topology::ToricTopology<typename floe_type::point_ty
 using periodic_proximity_detector_type = floe::ope::ProximityDetector<
     floe::collision::matlab::PeriodicMatlabDetector<floe_type, topology_type>
 >;
-using dynamics_manager_type = floe::ope::PeriodicDynamicsManager<external_forces_type, topology_type>;
+using dynamics_manager_type = floe::ope::PeriodicDynamicsManager<external_forces_type, floe_group_type, topology_type>;
 using problem_type = PeriodicProblem<
     floe_group_type,
     periodic_proximity_detector_type,
@@ -76,7 +75,7 @@ using problem_type = PeriodicProblem<
     topology_type
 >;
 #else // Free boundary conditions types
-using dynamics_manager_type = floe::ope::DynamicsManager<external_forces_type>;
+using dynamics_manager_type = floe::ope::DynamicsManager<external_forces_type, floe_group_type>;
 using problem_type = Problem<
     floe_group_type,
     proximity_detector_type,

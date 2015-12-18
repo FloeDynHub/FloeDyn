@@ -1,7 +1,6 @@
 #include "../tests/catch.hpp"
 
 #include <iostream>
-#include "floe/geometry/arithmetic/point_operators.hpp"
 #include "floe/geometry/geometries/point.hpp"
 #include "floe/state/space_time_state.hpp"
 

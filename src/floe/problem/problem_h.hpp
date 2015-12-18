@@ -79,45 +79,72 @@ private:
     time_scale_manager_type m_time_scale_manager; //!< Time scale manager at discrete level
 
     //! Proximity detection (inter-floe distance and eventual collisions)
-    void do_detection(){
-        if (!m_detector->update()) // we have a floe interpenetration
-            m_domain_h->rewind_time();
-    }
+    void do_detection();
 
     //! Collision solving
-    void manage_collisions(){
-        m_collision_manager_h->solve_contacts(m_detector->contact_graph());
-    }
+    void manage_collisions();
 
     //! move one time step forward
-    void step_solve(){
-        do_detection();
-        manage_collisions();
-        m_time_scale_manager.delta_t_secu(m_domain_h, m_detector);
-    }
-
-    /* // chrono version (dev)
-    void step_solve(){
-        using namespace std;
-        auto t_start = chrono::high_resolution_clock::now();
-        do_detection();
-        auto t_end = chrono::high_resolution_clock::now();
-        cout << "detection : " << chrono::duration<double, std::milli>(t_end-t_start).count() << " ms" << endl;
-
-        t_start = chrono::high_resolution_clock::now();
-        manage_collisions();
-        t_end = chrono::high_resolution_clock::now();
-        cout << "collisions : " << chrono::duration<double, std::milli>(t_end-t_start).count() << " ms" << endl;
-
-        t_start = chrono::high_resolution_clock::now();
-        m_domain_h->set_time_step(m_time_scale_manager.delta_t_secu(
-            m_domain_h, m_detector));
-        t_end = chrono::high_resolution_clock::now();
-        cout << "delta_t_secu : " << chrono::duration<double, std::milli>(t_end-t_start).count() << " ms" << endl;
-    }*/
-
+    void step_solve();
 
 };
+
+template <
+    typename TDomain_h,
+    typename TFloeGroup_h,
+    typename TDetector,
+    typename TCollisionManager_h
+>
+void Problem_h<TDomain_h, TFloeGroup_h, TDetector, TCollisionManager_h>
+::do_detection(){
+    if (!m_detector->update()) // we have a floe interpenetration
+        m_domain_h->rewind_time();
+}
+
+template <
+    typename TDomain_h,
+    typename TFloeGroup_h,
+    typename TDetector,
+    typename TCollisionManager_h
+>
+void Problem_h<TDomain_h, TFloeGroup_h, TDetector, TCollisionManager_h>
+::manage_collisions(){
+    m_collision_manager_h->solve_contacts(m_detector->contact_graph());
+}
+
+template <
+    typename TDomain_h,
+    typename TFloeGroup_h,
+    typename TDetector,
+    typename TCollisionManager_h
+>
+void Problem_h<TDomain_h, TFloeGroup_h, TDetector, TCollisionManager_h>
+::step_solve(){
+    do_detection();
+    manage_collisions();
+    m_time_scale_manager.delta_t_secu(m_domain_h, m_detector);
+}
+
+/* // step_solve chrono version (dev)
+void step_solve(){
+    using namespace std;
+    auto t_start = chrono::high_resolution_clock::now();
+    do_detection();
+    auto t_end = chrono::high_resolution_clock::now();
+    cout << "detection : " << chrono::duration<double, std::milli>(t_end-t_start).count() << " ms" << endl;
+
+    t_start = chrono::high_resolution_clock::now();
+    manage_collisions();
+    t_end = chrono::high_resolution_clock::now();
+    cout << "collisions : " << chrono::duration<double, std::milli>(t_end-t_start).count() << " ms" << endl;
+
+    t_start = chrono::high_resolution_clock::now();
+    m_domain_h->set_time_step(m_time_scale_manager.delta_t_secu(
+        m_domain_h, m_detector));
+    t_end = chrono::high_resolution_clock::now();
+    cout << "delta_t_secu : " << chrono::duration<double, std::milli>(t_end-t_start).count() << " ms" << endl;
+}*/
+
 
 }} // namespace floe::problem
 

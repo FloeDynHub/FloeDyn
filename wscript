@@ -10,7 +10,7 @@ USAGE
 Build main product : ./waf --target <targ>
     whith <targ> = FLOE or FLOE_PBC (PBC for Periodic Boundary Conditions)
 
-Build and run unit tests : ./waf test
+Build and run unit tests : ./waf TESTS
     options:
         --name <str> : restrict to test filenames containing str)
 
@@ -27,7 +27,7 @@ import fnmatch
 from subprocess import call, Popen, PIPE, STDOUT
 import time
 
-top = "."
+
 out = "build"
 
 test_target = 'catchtest'
@@ -49,7 +49,7 @@ def options(opt):
     opt.load('compiler_cxx gxx boost')
     # opt.add_option('--run', action='store_true', default=False, dest='run')
     opt.add_option('--name', action='store', default="", dest='name')
-    opt.add_option('--target', action='store', default="", dest='target')
+    opt.add_option('-t','--target', action='store', default="", dest='target')
     opt.add_option(
         '--debug', action='store_true', default=False, dest='debug')
     opt.add_option('--gcc', action='store_true', default=False, dest='gcc')
@@ -72,14 +72,17 @@ def configure(conf):
         msg="Checking for 'matio 1.5.2'", mandatory=False)
 
 
+def recursive_file_finder(folder="", pattern=""):
+    file_list = []
+    for root, dirnames, filenames in os.walk(folder):
+        for filename in fnmatch.filter(filenames, pattern):
+            file_list.append(os.path.join(root, filename))
+    return file_list
+
+
 def list_test_cpp(pattern=""):
     """return all .cpp filename in tests/ with name begining by 'test'"""
-    # use glob instead ?
-    cpp_list = ["tests/main.cpp"]
-    for root, dirnames, filenames in os.walk('tests'):
-        for filename in fnmatch.filter(filenames, 'test*.cpp'):
-            if pattern in filename:
-                cpp_list.append(os.path.join(root, filename))
+    cpp_list = ["tests/main.cpp"] + recursive_file_finder('tests', 'test*{}*.cpp'.format(pattern) )
     return cpp_list
 
 
@@ -88,11 +91,7 @@ def find_STEST_cpp(pattern=""):
     return a .cpp filname if only 1 is found in tests/containing
     the given pattern
     """
-    cpp_list = []
-    for root, dirnames, filenames in os.walk('tests'):
-        for filename in fnmatch.filter(filenames, 'STEST*.cpp'):
-            if pattern in filename:
-                cpp_list.append(os.path.join(root, filename))
+    cpp_list = recursive_file_finder('tests', 'STEST*{}*.cpp'.format(pattern) )
     if len(cpp_list) > 1:
         print(len(cpp_list), " corresponding tests found :")
         print(" ".join(cpp_list))
@@ -104,7 +103,7 @@ def find_STEST_cpp(pattern=""):
 
 def clean_tests(ctx):
     print('cleaning tests...')
-    ctx.exec_command('./waf clean --target unittests')
+    ctx.exec_command('./waf clean --target TESTS')
 
 
 @timeit
@@ -158,32 +157,44 @@ def build(bld):
     if bld.options.omp:
         opts["linkflags"].append("-fopenmp")
         opts["cxxflags"].append("-fopenmp")
-    if bld.options.target == "unittests":  # using Catch framework
-        opts["source"] = list_test_cpp(bld.options.name)
+    if bld.options.target in ["FLOE", "FLOE_PBC"]:
+        opts["source"] = ["product/FLOE.cpp"] + recursive_file_finder("src/floe", "*.cpp")
+        opts["target"] = bld.options.target
+        if bld.options.target == "FLOE_PBC":
+            opts["defines"].append('PBC')
+        bld.program(**opts)
+    elif "FLOE" in bld.options.target:
+        opts["source"] = ["product/{}.cpp".format(bld.options.target)] + recursive_file_finder("src/floe", "*.cpp")
+        opts["target"] = bld.options.target
+        bld.program(**opts)
+    elif bld.options.target == "TESTS":  # using Catch framework
+        opts["source"] = list_test_cpp(bld.options.name) + recursive_file_finder("src/floe", "*.cpp")
         opts["target"] = test_target
         bld.program(**opts)
     elif bld.options.target == "TEST":
         opts["source"] = find_STEST_cpp(bld.options.name) or bld.fatal('STOP')
         opts["target"] = TEST_target
         bld.program(**opts)
-    elif bld.options.target in ["FLOE", "FLOE_PBC"]:
-        opts["source"] = ["product/FLOE.cpp"]
-        opts["target"] = bld.options.target
-        if bld.options.target == "FLOE_PBC":
-            opts["defines"].append('PBC')
-        bld.program(**opts)
     else:
-        print("nothing to build yet")
+        print("Nothing to build.")
 
 
-def test(ctx):
+def forward_options(opt_list, options):
+    def my_str(var):
+        return " " + var if isinstance(var, basestring) else ""
+    def format_opt(opt):
+        opt_val = getattr(options, opt, "")
+        return "--{}{}".format(opt, my_str(opt_val)) if opt_val else ""
+    return " ".join([format_opt(opt) for opt in opt_list ])
+
+
+def TESTS(ctx):
     """Build, run and clean tests using Catch Framework"""
-    # TODO find a simple way to forward options
-    omp_opt = " --omp" if ctx.options.omp else ""
-    name_opt = " --name %s" % ctx.options.name if ctx.options.name else ""
-    debug_opt = " --debug" if ctx.options.debug else ""
-    err = ctx.exec_command('./waf build --target unittests%s%s%s' % (
-        name_opt, omp_opt, debug_opt))
+    print './waf build --target TESTS {}'.format(
+        forward_options(["omp", "name", "debug"], ctx.options))
+    return 0
+    err = ctx.exec_command('./waf build --target TESTS {}'.format(
+        forward_options(["omp", "name", "debug"], ctx.options)))
     if not err:
         run_tests(ctx)
         # clean_tests(ctx)
@@ -191,10 +202,7 @@ def test(ctx):
 
 def TEST(ctx):
     """Build a single test ("^STEST_" files) (to run manually)"""
-    omp_opt = " --omp" if ctx.options.omp else ""
-    name_opt = " --name %s" % ctx.options.name if ctx.options.name else ""
-    debug_opt = " --debug" if ctx.options.debug else ""
-    ctx.exec_command('./waf build --target TEST%s%s%s' % (
-        name_opt, omp_opt, debug_opt))
+    ctx.exec_command('./waf build --target TEST {}'.format(
+        forward_options(["omp", "name", "debug"], ctx.options)))
     print("to run the test : ./build/%s <args>" % TEST_target)
 

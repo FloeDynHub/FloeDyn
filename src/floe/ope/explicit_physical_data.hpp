@@ -41,7 +41,7 @@ public:
     point_type water_speed(point_type pt = {0,0}) {
         switch(m_water_mode){
             case 1:
-                return centered_convergent_field(pt, 1);
+                return centered_convergent_field(pt, 0.1);
             case 2:
                 return convergent_outside_window_field(pt);
             default:

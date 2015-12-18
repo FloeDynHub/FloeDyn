@@ -7,8 +7,9 @@
 #include "floe/collision/matlab/periodic_detector.hpp"
 #include "floe/topology/toric_topology.hpp"
 #include <cmath>
+#include <chrono>
 
-TEST_CASE( "Test boost geometry intersects algorithm", "[geometry]" ) {
+TEST_CASE( "Test Interpenetration", "[geometry]" ) {
     
     using namespace floe::variable;
     using namespace std;

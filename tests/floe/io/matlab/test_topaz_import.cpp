@@ -4,7 +4,7 @@
 #include "floe/geometry/geometries/point.hpp" 
 
 
-TEST_CASE( "Test Collision Manager", "[ope]" ) {
+TEST_CASE( "Test matlab topaz data import", "[ope]" ) {
 
 	using namespace floe::io::matlab;
 	using point_vector_type = std::vector<floe::geometry::Point<double>>;

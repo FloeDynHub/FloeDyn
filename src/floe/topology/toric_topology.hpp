@@ -9,6 +9,7 @@
 
 #include "floe/geometry/arithmetic/point_operators.hpp"
 #include <iostream> // DEBUG
+#include <vector>
 
 namespace floe { namespace topology
 {

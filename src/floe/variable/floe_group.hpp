@@ -63,21 +63,13 @@ public:
     point_type mass_center() const;
     //! bounding window of floe group (return array of min_x, max_x, min_y, max_y)
     std::array<value_type, 4> bounding_window(value_type margin = 1) const;
+    //! bounding window area
+    value_type bounding_window_area(value_type margin = 1) const;
     //! Floe Concentration
     value_type floe_concentration() const;
 
     //! Stops floes contained in centered window (for generator)
-    void stop_floes_in_window(value_type width, value_type height) {
-        for (auto& floe : m_list_floe)
-        {
-            auto const& out = floe.geometry().outer();
-            if (std::all_of(out.begin(), out.end(), [&](point_type const& pt){ return (std::abs(pt.x) < width / 2 && std::abs(pt.y) < height / 2); }))
-            {
-                floe.state().speed = point_type{0,0}; floe.state().rot = 0;
-            }
-        }
-            
-    }
+    void stop_floes_in_window(value_type width, value_type height);
     
 private:
 
@@ -165,9 +157,30 @@ FloeGroup<TFloe>::bounding_window(value_type margin) const
 
 template<typename TFloe>
 typename FloeGroup<TFloe>::value_type
+FloeGroup<TFloe>::bounding_window_area(value_type margin) const {
+    auto a = bounding_window(margin);
+    return ((a[1] - a[0]) * (a[3] - a[2]));
+}
+
+template<typename TFloe>
+typename FloeGroup<TFloe>::value_type
 FloeGroup<TFloe>::floe_concentration() const {
-    auto a = bounding_window(0);
-    return total_area() / ((a[1] - a[0]) * (a[3] - a[2]));
+    return total_area() / bounding_window_area(0);
+}
+
+template <
+    typename TFloe
+>
+void FloeGroup<TFloe>::stop_floes_in_window(value_type width, value_type height)
+{
+    for (auto& floe : m_list_floe)
+    {
+        auto const& out = floe.geometry().outer();
+        if (std::all_of(out.begin(), out.end(), [&](point_type const& pt){ return (std::abs(pt.x) < width / 2 && std::abs(pt.y) < height / 2); }))
+        {
+            floe.state().speed = point_type{0,0}; floe.state().rot = 0;
+        }
+    }   
 }
 
 

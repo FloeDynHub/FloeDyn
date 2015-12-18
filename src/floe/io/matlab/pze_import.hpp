@@ -10,6 +10,7 @@
 #include <ios>
 #include <string>
 #include <vector>
+#include <array>
 #include <matio.h>
 #include <algorithm>
 
@@ -27,10 +28,9 @@ using namespace std;
  * \tparam T Value type used by matlab.
  * \param file_name File name.
  */
-std::array<double, 4> read_pze_from_file( std::string const& file_name )
+template<typename T=double>
+std::array<T, 4> read_pze_from_file( std::string const& file_name )
 {
-    using T = double; // Coordinate type
-
     mat_t *matfp;
 
     // Opening file
@@ -74,7 +74,6 @@ std::array<double, 4> read_pze_from_file( std::string const& file_name )
     Mat_Close(matfp);
 
     return {{min_x, max_x, min_y, max_y}};
-    // return TTopology{min_x, max_x, min_y, max_y};
 }
 
 template <typename TTopology>
@@ -84,6 +83,7 @@ TTopology topology_from_file( std::string const& file_name )
     return TTopology{A[0], A[1], A[2], A[3]};
 }
 
+template<typename T=double>
 double ocean_window_area_from_file( std::string const& file_name )
 {   
     auto A = read_pze_from_file(file_name);

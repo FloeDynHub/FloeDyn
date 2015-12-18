@@ -11,6 +11,7 @@
 
 #include <cmath>
 #include <ostream>
+#include "floe/geometry/arithmetic/point_operators.hpp"
 
 namespace floe { namespace state
 {

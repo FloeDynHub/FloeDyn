@@ -9,7 +9,7 @@
 
 #include <vector>
 
-#include "collision/detector.hpp"
+#include "collision/detector.h"
 
 namespace floe { collision { draft {
 

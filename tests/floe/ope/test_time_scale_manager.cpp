@@ -4,14 +4,14 @@
 #include "floe/floes/static_floe.hpp"
 #include "floe/floes/kinematic_floe.hpp"
 #include "floe/variable/floe_group.hpp"
-#include "floe/collision/matlab/detector.hpp"
+#include "floe/collision/matlab/detector.h"
 #include "floe/domain/domain.hpp"
 #include <chrono>
 
 
 namespace ff = floe::floes;
 
-TEST_CASE( "Test Dynamics Manager", "[ope]" ) {
+TEST_CASE( "Test Time Scale Manager", "[ope]" ) {
 
     using namespace std;
     using namespace floe::ope;
@@ -20,8 +20,8 @@ TEST_CASE( "Test Dynamics Manager", "[ope]" ) {
     using floe_type = ff::KinematicFloe<ff::StaticFloe<real>>;
     using floe_group_type = floe::variable::FloeGroup<floe_type>;
     using TDetector = floe::collision::matlab::MatlabDetector<floe_type>;
-    using TDomain = floe::domain::Domain;
-    using time_scale_manager_type = TimeScaleManager<TDomain, TDetector>;
+    using TDomain = floe::domain::Domain<real>;
+    using time_scale_manager_type = TimeScaleManager<TDetector>;
 
     TDomain domain;
 

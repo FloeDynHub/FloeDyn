@@ -1,7 +1,6 @@
 #include "../tests/catch.hpp"
 
 #include <iostream>
-#include <boost/timer/timer.hpp>
 
 #include "floe/geometry/geometry.hpp"
 
@@ -28,23 +27,17 @@ TEST_CASE( "Test list_so_to_floes", "[io/matlab]" )
 
     MatlabListSolid<double> list_so;
     cout << "Reading \"" << mat_file_name << "\" ... " << endl;
-    boost::timer::cpu_timer timer;
     read_list_so_from_file( mat_file_name, list_so);
-    timer.stop();
-    cout << "\t" << timer.format() << endl;
 
-    cout << "Importing floes ... " << endl;
-    timer.start();
-    auto floes = list_so_to_floes<TKinematicFloe>( list_so );
-    timer.stop();
-    cout << "\t" << timer.format() << endl;
+    std::vector<TKinematicFloe> list_floes;
+    list_so_to_floes( list_so, list_floes );
 
-    REQUIRE(floes.size() == 350);
+    REQUIRE(list_floes.size() == 350);
 
-    for (auto& floe : floes)
+    for (auto& floe : list_floes)
         floe.update(); // TODO Avoid that ! (move doesn't move internal pointers)
 
-    cout << floes[0].area() << endl;
-    cout << fg::dsv(floes[0].geometry().outer()[0]) << endl;
+    cout << list_floes[0].area() << endl;
+    cout << fg::dsv(list_floes[0].geometry().outer()[0]) << endl;
 
 }

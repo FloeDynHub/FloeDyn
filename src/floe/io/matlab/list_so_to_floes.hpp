@@ -20,6 +20,7 @@
 namespace floe { namespace io { namespace matlab
 {
 
+
 /*! Convert a MatlabListSolid structure (e.g. list_so) to a list of Floes.
  *
  * \tparam TKinematicFloe Type of the kinematic floe.
@@ -28,6 +29,14 @@ namespace floe { namespace io { namespace matlab
  *
  * \todo Instead having a template for list_so, use only a template for T and accept MatlabListSolid<T> parameter.
  */
+template < 
+    typename TKinematicFloe,
+    typename TMatlabListSolid
+>
+void
+list_so_to_floes( TMatlabListSolid const&, std::vector<TKinematicFloe>&);
+
+
 template < 
     typename TKinematicFloe,
     typename TMatlabListSolid
@@ -48,16 +57,20 @@ list_so_to_floes( TMatlabListSolid const& list_so, std::vector<TKinematicFloe>& 
         throw std::length_error("geo and mov list are of different sizes.");
 
     std::size_t n_floes = list_so.geo.size();
-    list_floes.resize(n_floes);
+    int nb_floes_to_skip = 0;//FLOE_SKIP;
+    list_floes.resize(n_floes - nb_floes_to_skip);
 
     // Import each floe
+    int nb_skipped = 0;
     for ( std::size_t i = 0; i < n_floes; ++i )
     {
+        if ((n_floes - i) % 20 == 0 && (n_floes - i) <= 20 * nb_floes_to_skip)
+        { nb_skipped++; std::cout << i << " " << nb_skipped << std::endl; continue; }
         auto const& solid = list_so.geo[i];
         auto const& movement = list_so.mov[i];
         
         // Create Kinematic floe
-        auto& floe = list_floes[i];
+        auto& floe = list_floes[i-nb_skipped];
         // link static floe
         floe.attach_static_floe_ptr(std::unique_ptr<TStaticFloe>(new TStaticFloe()));
         

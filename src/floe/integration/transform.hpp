@@ -214,7 +214,6 @@ typename detail::transform::return_type<TFunction,TGeometry>::type
     transform( TFunction const& function, TGeometry const& geometry, TStrategy const& strategy )
 {
     floe::geometry::concept::check<TGeometry const>();
-
     return dispatch::transform<TGeometry>::apply( function, geometry, strategy );
 }
 

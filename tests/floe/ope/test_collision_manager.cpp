@@ -1,11 +1,11 @@
 #include "../tests/catch.hpp"
 #include <iostream>
-#include "floe/ope/collision_manager.hpp"
+#include "../product/config/config_collision.hpp"
 
 
 TEST_CASE( "Test Collision Manager", "[ope]" ) {
 
     using namespace floe::ope;
-    CollisionManager M;
+    collision_manager_type M;
     // REQUIRE(P.get_proximity_detector().m_detector_h.num_local_disks() == 8611 );
 }

@@ -8,7 +8,10 @@
 #define OPE_LCP_MANAGER_HPP
 
 #include "floe/ope/time_scale_manager.hpp"
+#include <boost/numeric/ublas/vector_proxy.hpp>
+#include <boost/numeric/ublas/blas.hpp>
 #include <iostream> // debug
+#include <array>
 
 #ifdef _OPENMP
 #include <omp.h>
@@ -29,8 +32,8 @@ class LCPManager
 {
 
 public:
-    using value_type = typename TSolver::value_type;
     using solver_type = TSolver;
+    using value_type = typename solver_type::value_type;
     using value_vector = boost::numeric::ublas::vector<value_type>;
 
     //! Destructor
