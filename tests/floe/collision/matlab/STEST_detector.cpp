@@ -11,7 +11,7 @@
 #include "floe/geometry/geometry.hpp"
 #include "floe/floes/static_floe.hpp"
 #include "floe/floes/kinematic_floe.hpp"
-#include "floe/collision/matlab/detector.h"
+#include "floe/collision/matlab/detector.hpp"
 
 int main(int argc, char* argv[])
 {

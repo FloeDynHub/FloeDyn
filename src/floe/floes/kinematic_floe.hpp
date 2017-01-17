@@ -129,6 +129,7 @@ public:
 
     //! Mu accessors
     inline value_type    mu_static() const   { return has_static_floe() ? m_floe->mu_static() : -1; }
+    inline void set_mu_static(value_type mu_static) { if (has_static_floe()) m_floe->set_mu_static(mu_static); }
 
     //! Floe_h accessor
     inline floe_h_type& get_floe_h() { return m_floe_h; }
@@ -137,9 +138,11 @@ public:
     value_type kinetic_energy() const;
 
     //! Get total received impulse
-    value_type total_received_impulse() const { return m_total_impulse_received; };
+    value_type total_received_impulse() const { return m_total_impulse_received; }
     //! Add received impulse
-    void add_impulse(value_type impulse) const { m_total_impulse_received += impulse; };
+    void add_impulse(value_type impulse) const { m_total_impulse_received += impulse; }
+    //! Reset received impulse
+    void reset_impulse(value_type new_impulse = 0) const { m_total_impulse_received = new_impulse; }
 
 private:
 

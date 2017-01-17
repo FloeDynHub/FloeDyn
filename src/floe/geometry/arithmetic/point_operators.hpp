@@ -60,7 +60,7 @@ template <
     typename TCoordinate,
     typename TCoordinateSystem
 >
-struct value_type< fg::Point<TCoordinate, TCoordinateSystem> >
+struct valueType< fg::Point<TCoordinate, TCoordinateSystem> >
 {
     typedef TCoordinate type;
 };

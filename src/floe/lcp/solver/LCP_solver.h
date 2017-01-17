@@ -1,5 +1,5 @@
 /*!
- * \file lcp/solver/LCP_solver.h
+ * \file lcp/solver/LCP_solver2.h
  * \brief LCP solver
  * \author Quentin Jouet
  */
@@ -12,8 +12,10 @@
 #include <boost/numeric/ublas/vector_proxy.hpp>
 #include <boost/numeric/ublas/blas.hpp>
 #include <random>
+#include <tuple>
 
 #include <iostream> // debug
+
 
 namespace floe { namespace lcp { namespace solver
 {
@@ -34,22 +36,45 @@ public:
     using lcp_type = floe::lcp::LCP<T>;
     using value_type = T;
 
-    LCPSolver() : epsilon{0.4}, m_random_generator{}, m_uniform_distribution{-1, 1} {} // todo : should epsilon be runtime parameter ?
+    LCPSolver(value_type epsilon) : epsilon{epsilon}, m_random_generator{}, m_uniform_distribution{-1, 1},
+        m_nb_solvers{1}, m_solver_stats(3, m_nb_solvers, 0) {}
+
+    // ~LCPSolver(){
+        // std::cout << "LCP solver stats : " << std::endl;
+        // std::cout << m_solver_stats << std::endl;
+        // for (auto i = 0; i< m_solver_stats.size1(); ++i )
+        // {
+        //     int tot = 0;
+        //     for (auto j = 0; j< m_solver_stats.size2(); ++j ) tot += m_solver_stats(i,j);
+        //     std::cout << tot << " ";
+        // }
+        // std::cout << std::endl;
+    // }
 
     //! Solve LCP
     bool solve( lcp_type& lcp );
     template<typename TContactGraph>
     std::array<vector<value_type>, 2> solve( TContactGraph& graph, bool& success  );
 
+    int nb_solver_run{0}; // test (nb call run_solver() in step)
+    double chrono_solver{0.0}; // test perf
+    double max_chrono_solver{0.0}; // test perf
+
 protected:
 
     value_type epsilon; //!< energy restitution coeff
     std::default_random_engine m_random_generator;
     std::uniform_real_distribution<value_type> m_uniform_distribution;
+    int m_nb_solvers;
+    
+    matrix<int> m_solver_stats; // test solver stats
 
     //! Random small perturbation of LCP
     lcp_type random_perturbation(lcp_type& lcp, value_type max);
+    void random_perturbation2(lcp_type& lcp, value_type max);
     value_type random_real(value_type max);
+    bool run_solver(lcp_type& lcp, int id);
+
 
     //! Test LCP solution validity
     virtual bool LCPtest(int compt, value_type EC, value_type born_EC, value_type Err, bool VRelNtest );

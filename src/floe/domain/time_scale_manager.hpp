@@ -11,6 +11,8 @@
 #include "floe/geometry/geometries/multi_point.hpp"
 #include "floe/geometry/frame/frame_transformers.hpp"
 
+// #include "floe/collision/matlab/proximity_data.hpp"
+
 #include <cmath>
 
 #ifdef _OPENMP
@@ -27,27 +29,34 @@ namespace floe { namespace domain
  *
  */
 
-template<typename TDetector>
+template<typename TProxData>
 class TimeScaleManager
 {
 
 public:
-    using value_type = typename TDetector::value_type;
-    using point_type = typename TDetector::point_type;
-    using floe_type = typename TDetector::floe_type;
-    using optim_type = typename TDetector::optim_type;
+    using proximity_data_type = TProxData;
+    using value_type = typename proximity_data_type::value_type;
+    using floe_type = typename proximity_data_type::floe_type;
+    using point_type = typename floe_type::point_type;
+    using optim_type = typename proximity_data_type::optim_type;
     using frame_type = typename floe_type::frame_type;
     using multi_point_type = floe::geometry::MultiPoint<point_type>;
-    using floe_interface_type = typename TDetector::floe_interface_type;
-    using optim_interface_type = typename TDetector::optim_interface_type;
+    using floe_interface_type = typename floe_type::floe_interface_type;
+    using optim_interface_type = typename optim_type::optim_interface_type;
+
+    TimeScaleManager() : m_prox_data{nullptr} {}
 
     /*!
      * Returns time step taking all floes into account, base on detector informations
      */
     template <typename TDomain>
-    value_type delta_t_secu(TDomain* domain, TDetector* detector);
+    value_type delta_t_secu(TDomain* domain);
+
+    inline void set_prox_data_ptr(proximity_data_type const* ptr) { m_prox_data = ptr; }
 
 private:
+
+    proximity_data_type const* m_prox_data;
 
     /*!
      * Returns maximal delta_t for 2 floes beeing close
@@ -81,39 +90,36 @@ private:
 template <typename TDetector>
 template <typename TDomain>
 typename TimeScaleManager<TDetector>::value_type
-TimeScaleManager<TDetector>::delta_t_secu(TDomain* domain, TDetector* detector)
+TimeScaleManager<TDetector>::delta_t_secu(TDomain* domain)
 {
     value_type dt_default = domain->default_time_step();
     
-    if (detector->interpenetration())
+    if (m_prox_data->interpenetration())
     {
-        domain->set_time_step(domain->time_step() / 2);
+        domain->set_time_step(domain->time_step() / 5);
         return domain->time_step();
     }
 
-    detector->clean_dist_opt();
-    auto const& dist_secu = detector->m_dist_secu;
-    auto& dist_opt = detector->m_dist_opt;
-    auto& indics = detector->m_indic;
-    auto& floes = detector->m_floes;
-    auto& optims = detector->m_optims;
     value_type global_min_dt = dt_default;
     
     #pragma omp parallel for
-    for (std::size_t i = 0; i < dist_secu.size1(); ++i)
+    for (std::size_t i = 0; i < m_prox_data->size1(); ++i)
     {
-        for ( std::size_t j = i+ 1; j != dist_secu.size2(); ++j )
+        for ( std::size_t j = i+ 1; j != m_prox_data->size2(); ++j )
         {
             value_type delta_t;
-            if (indics(i,j) == 0)
+            if (m_prox_data->get_indic(i,j) == 0)
             {   
-                delta_t = delta_t_secu_fast(dist_secu(i,j),
-                    *floes[i], detector->get_floe(j), *optims[i], detector->get_optim(j));
+                delta_t = delta_t_secu_fast(
+                    m_prox_data->get_dist_secu(i,j),
+                    m_prox_data->get_floe(i), m_prox_data->get_floe_itf(j), m_prox_data->get_optim(i), m_prox_data->get_optim_itf(j));
             }
             else
             {
-                delta_t = delta_t_secu(dist_secu(i,j), dist_opt(i,j),
-                         *floes[i], detector->get_floe(j), *optims[i], detector->get_optim(j), indics(i,j), dt_default);  
+                delta_t = delta_t_secu(
+                    m_prox_data->get_dist_secu(i,j), m_prox_data->get_dist_opt(i,j),
+                    m_prox_data->get_floe(i), m_prox_data->get_floe_itf(j), m_prox_data->get_optim(i), m_prox_data->get_optim_itf(j),
+                    m_prox_data->get_indic(i,j), dt_default);  
             }
 
             global_min_dt = std::min(

@@ -79,7 +79,7 @@ public:
      *
      * Detects frame change of the floe and update optimization datas.
      */
-    void update();
+    void update(bool update_local_disks=true);
 
     //! Global disk accessors
     inline circle_type const&   global_disk()   const   { return m_global_disk; }
@@ -212,7 +212,7 @@ OptimizedFloe<TFloe>::init()
 //! Update optimization datas.
 template< typename TFloe >
 void
-OptimizedFloe<TFloe>::update()
+OptimizedFloe<TFloe>::update(bool update_local_disks)
 {
     // New frame
     const auto new_frame = m_floe.frame();
@@ -223,8 +223,10 @@ OptimizedFloe<TFloe>::update()
     // Transforming global disk
     geometry::transform( m_global_disk, m_global_disk, trans );
 
-    // Transforming local disks
-    geometry::transform( m_local_disks, m_local_disks, trans );
+    if (update_local_disks){
+        // Transforming local disks
+        geometry::transform( m_local_disks, m_local_disks, trans );
+    }
 
     m_frame = new_frame;
 }

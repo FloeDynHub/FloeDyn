@@ -4,7 +4,7 @@
 #ifdef PBC
 #include "floe/topology/toric_topology.hpp"
 #endif
-
+namespace types {
 
 using value_type = double;
 using point_type = floe::geometry::Point<value_type>;
@@ -13,5 +13,6 @@ using point_type = floe::geometry::Point<value_type>;
 using topology_type = floe::topology::ToricTopology<point_type>;
 #endif
 
+} // namespace types
 
 #endif // PRODUCT_CONFIG_CONFIG_BASE_HPP

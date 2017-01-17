@@ -37,7 +37,7 @@ public:
     using state_type = typename floe_type::state_type;
 
     //! Constructor
-    DynamicsManager(value_type const& time_ref) : m_external_forces{time_ref}, m_ocean_window_area{0}, m_OBL_status{0} {}
+    DynamicsManager(value_type const& time_ref, int OBL_status) : m_external_forces{time_ref}, m_ocean_window_area{0}, m_OBL_status{OBL_status} {}
 
     //! Floes state update
     void move_floes(floe_group_type& floe_group, value_type delta_t);

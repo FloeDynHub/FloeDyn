@@ -46,7 +46,6 @@ bool lexicolemke<double>( floe::lcp::LCP<double>& lcp)
         lcp.w.data().begin(), 
         &info 
     );
-
     return info == 0;
 }
 
@@ -67,7 +66,7 @@ void lcp_lexicolemke(int dim, const double * M, const double * q, double *zlem ,
     int ITER;
     int nobasis;
     //int itermax = options->iparam[0];
-    int itermax = 40*dim;
+    int itermax = std::min(40*dim, 2000);
 
     i=0;
     int n = dim;

@@ -11,6 +11,9 @@
 #include <vector>
 #include <algorithm>
 #include <ctime>
+#include <math.h>
+#include <memory>
+#include "boost/multi_array.hpp"
 #include "floe/floes/floe_group.hpp"
 
 #include "H5Cpp.h"
@@ -64,12 +67,20 @@ public:
     //! Destructor
     ~HDF5Manager();
 
+    //! make input file from floe_group
+    void make_input_file(const dynamics_mgr_type& dynamics_manager);
     //! Save the current simulation state for output
     void save_step(value_type time, const dynamics_mgr_type&);
+    //! Flush temporarily saved data
+    void flush();
     //! Recover simulation state from file
     double recover_states(H5std_string filename, value_type time, floe_group_type&, dynamics_mgr_type&);
-    //! Recover simulation state from file
-    inline void set_floe_group(floe_group_type const& floe_group) { m_floe_group = &floe_group; };
+    void set_floe_group(floe_group_type const& floe_group) {
+        m_floe_group = &floe_group; 
+        m_data_chunk_states.resize(boost::extents[m_flush_max_step][floe_group.get_floes().size()][9]);
+    };
+    inline std::string const& out_file_name(){ return m_out_file_name; }
+
 
 private:
 
@@ -81,23 +92,20 @@ private:
     floe_group_type const* m_floe_group;
 
     vector<vector<vector<vector<value_type>>>> m_data_chunk_boundaries; //!< Temp saved floe boundaries
-    vector<vector<saved_state_type>> m_data_chunk_states; //!< Temp saved floe states
+    boost::multi_array<value_type, 3> m_data_chunk_states; //!< Temp saved floe states
     value_type* m_data_chunk_time; //!< Temp saved times
-    vector<std::array<value_type, 2>> m_data_chunk_mass_center; //!< Temp saved floe group mass centers
-    vector<std::array<value_type, 2>> m_data_chunk_OBL_speed; //!< Temp saved ocean datas
-
-    //! Flush temporarily saved data
-    void write_chunk();
+    boost::multi_array<value_type, 2> m_data_chunk_mass_center; //!< Temp saved floe group mass centers
+    boost::multi_array<value_type, 2> m_data_chunk_OBL_speed; //!< Temp saved ocean datas
 
     //! out floe shapes (boundary in relative frame)
     void write_shapes();
-
     //! Partial writings :
     void write_boundaries();
     void write_states();
     void write_time();
     void write_mass_center();
     void write_OBL_speed();
+    void write_window();
 
 };
 

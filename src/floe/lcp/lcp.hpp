@@ -39,7 +39,7 @@ struct LCP
 
     //! Constructor given the dimension of the problem.
     LCP( std::size_t n )
-        : dim(n), A(n, n), q(n), w(n), z(n)
+        : dim(n), A(n, n), q(n), w(n), z(n,0.0)
     {}
 };
 

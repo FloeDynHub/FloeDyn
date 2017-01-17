@@ -13,8 +13,10 @@
 #include "floe/dynamics/periodic_dynamics_manager.h"
 #endif
 
+namespace types {
 
 using physical_data_type = floe::dynamics::PhysicalData<point_type>;
+// using physical_data_type = floe::dynamics::ExplicitPhysicalData<point_type>;
 using external_forces_type = floe::dynamics::ExternalForces<floe_type, physical_data_type>;
 using generator_physical_data_type = floe::dynamics::ExplicitPhysicalData<point_type>;
 using generator_external_forces_type = floe::dynamics::ExternalForces<floe_type, generator_physical_data_type>;
@@ -28,5 +30,6 @@ using dynamics_manager_type = floe::dynamics::PeriodicDynamicsManager<external_f
 using dynamics_manager_type = floe::dynamics::DynamicsManager<external_forces_type, floe_group_type>;
 #endif
 
+} // namespace types
 
 #endif // PRODUCT_CONFIG_CONFIG_DYNAMICS_HPP

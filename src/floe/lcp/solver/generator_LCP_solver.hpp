@@ -39,7 +39,7 @@ public:
     using base_class = LCPSolver<T>;
     using value_type = T;
 
-    GeneratorLCPSolver() : base_class() { base_class::epsilon = 0; }
+    GeneratorLCPSolver(value_type epsilon) : base_class(epsilon) {}
 
 private:
 

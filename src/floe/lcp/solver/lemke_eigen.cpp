@@ -52,6 +52,7 @@ bool lemke<double>( floe::lcp::LCP<double>& lcp)
         z
     );
     
+    // std::cout << "*" << err << "*"; // test
     if (err == 0){
       Map<VectorXd>(lcp.z.data().begin(), lcp.dim, 1) = z;
       return true;
@@ -68,7 +69,7 @@ int lcp_lemke(const Eigen::MatrixXd& _M, const Eigen::VectorXd& _q,
 
   const double zer_tol = 1e-10;
   const double piv_tol = 1e-10;
-  int maxiter = 1000;
+  int maxiter = 1000;//25*n;//1000;
   int err = 0;
 
   if (_q.minCoeff() > 0) {
@@ -280,8 +281,8 @@ int lcp_lemke(const Eigen::MatrixXd& _M, const Eigen::VectorXd& _q,
     bas[lvindex] = entering;
   }
 
-  if (iter >= maxiter && leaving != t)
-    err = 1;
+  // if (iter >= maxiter && leaving != t) // commented by quentin
+  //   err = 1;                           // commented by quentin
 
   if (err == 0) {
     for (size_t i = 0; i < bas.size(); ++i) {
@@ -293,12 +294,12 @@ int lcp_lemke(const Eigen::MatrixXd& _M, const Eigen::VectorXd& _q,
     Eigen::VectorXd realZ = _z.segment(0, n);
     _z = realZ;
 
-    // uncommented by quentin
+
     // if (!validate(_M, _z, _q)) {
       // _z = VectorXd::Zero(n);
       // err = 3;
     // }
-    // uncommented by quentin
+
   } else {
     _z = Eigen::VectorXd::Zero(n);  // solve failed, return a 0 vector
   }

@@ -47,7 +47,7 @@ list_so_to_floes( TMatlabListSolid const& list_so, std::vector<TKinematicFloe>& 
 
     // Typedefs
     using TStaticFloe = typename TKinematicFloe::static_floe_type;
-    using real        = typename TKinematicFloe::value_type;
+    // using real        = typename TKinematicFloe::value_type;
     using TGeometry   = typename TKinematicFloe::geometry_type;
     using TMesh       = typename TKinematicFloe::mesh_type;
     using TState      = typename TKinematicFloe::state_type;
@@ -57,7 +57,7 @@ list_so_to_floes( TMatlabListSolid const& list_so, std::vector<TKinematicFloe>& 
         throw std::length_error("geo and mov list are of different sizes.");
 
     std::size_t n_floes = list_so.geo.size();
-    int nb_floes_to_skip = 0;//FLOE_SKIP;
+    std::size_t nb_floes_to_skip = 0;//FLOE_SKIP;
     list_floes.resize(n_floes - nb_floes_to_skip);
 
     // Import each floe

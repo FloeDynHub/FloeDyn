@@ -5,14 +5,12 @@
 #include <boost/numeric/ublas/io.hpp>
 
 #include "floe/geometry/geometry.hpp"
+#include "floe/geometry/geometries/point.hpp"
 #include "floe/geometry/frame/theta_frame.hpp"
 #include "floe/geometry/frame/frame_transformers.hpp"
 #include "floe/geometry/geometries/circle.hpp"
-#include "floe/geometry/arithmetic/point_operators.hpp"
 
-#include <cmath>
 #include <chrono>
-#include <numeric>
 
 TEST_CASE( "Test frame transformer", "[frame]" ) {
 
@@ -25,16 +23,16 @@ TEST_CASE( "Test frame transformer", "[frame]" ) {
     using polygon = boost::geometry::model::polygon<point_type, false, false>;
 
 
-    const auto transf = frame::transformer( frame_type{point_type{200000, 150000}, 1300000 * M_PI} );
+    const auto transf = frame::transformer( frame_type{point_type{2,4}, 0.7} );
 
     polygon P{};
     polygon P1{};
 
     std::vector<point_type> V{
+        point_type{0,0},
+        point_type{1,0},
         point_type{1,1},
-        point_type{-1,1},
-        point_type{-1,-1},
-        point_type{1,-1}
+        point_type{0,1}
     };
 
     for (auto& point: V)
@@ -49,12 +47,9 @@ TEST_CASE( "Test frame transformer", "[frame]" ) {
 
     double D2{distance(P.outer()[0], P.outer()[2])};
 
-    auto mass_center = std::accumulate(P1.outer().begin(), P1.outer().end(), point_type{0,0}) / 4;
-    cout << mass_center;
-
     REQUIRE(D1 == D2);
 
-    /*
+
     int N = 2000;
     polygon B{}, B2{};
     for (int i = 0; i < N ; ++i)
@@ -97,5 +92,4 @@ TEST_CASE( "Test frame transformer", "[frame]" ) {
     t_end = chrono::high_resolution_clock::now();
     cout << "boost rotate : " << chrono::duration<double, std::milli>(t_end-t_start).count() << " ms" << endl;
     // CHRONO TRANSFORM
-    */
 }

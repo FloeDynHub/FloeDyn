@@ -19,6 +19,6 @@ using generator_problem_type = floe::problem::Problem<
 >;
 using generator_type = floe::generator::Generator<generator_problem_type>;
 
-}
+} // namespace types
 
 #endif // PRODUCT_CONFIG_CONFIG_GENERATOR_HPP

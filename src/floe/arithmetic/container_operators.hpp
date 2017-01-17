@@ -27,7 +27,7 @@ namespace container_operators {
 
 using std::size_t;
 
-/*! Standard implementation to get the size, value_type and construct & fill new object.
+/*! Standard implementation to get the size, valueType and construct & fill new object.
  *
  * Work perfectly with std::array ;)
  */
@@ -40,9 +40,9 @@ struct size_impl {
 
 template< typename T,
 	class = typename std::enable_if< ! std::is_fundamental<T>::value >::type >
-struct value_type
+struct valueType
 {
-	typedef typename T::value_type type; //!< We can probably also use decltype(T()[0])
+	typedef typename T::valueType type; //!< We can probably also use decltype(T()[0])
 };
 
 template< typename T >
@@ -128,8 +128,8 @@ void compound( Function fn )
  * TODO: at compile-time
  */
 template< class T, class Operator >
-typename value_type<T>::type
-reduce( const T & lhs, Operator op, typename value_type<T>::type init ) {
+typename valueType<T>::type
+reduce( const T & lhs, Operator op, typename valueType<T>::type init ) {
         for (size_t i = 0 ; i < size_impl<T>::size() ; ++i)
                 init = op(init, lhs[i]);
         return init;
@@ -386,34 +386,34 @@ FAST_UNARY( abs  , abs(arg[i])  )
  * Reduction operations
  */
 template< class T >
-typename activate<T, typename value_type<T>::type >::type
+typename activate<T, typename valueType<T>::type >::type
 sum( const T & arg ) {
-	return tools::reduce( arg, std::plus<typename value_type<T>::type>(), typename value_type<T>::type(0) );
+	return tools::reduce( arg, std::plus<typename valueType<T>::type>(), typename valueType<T>::type(0) );
 }
 
 template< class T >
-typename activate<T, typename value_type<T>::type >::type
+typename activate<T, typename valueType<T>::type >::type
 prod( const T & arg ) {
-	return tools::reduce( arg, std::multiplies<typename value_type<T>::type>(), typename value_type<T>::type(1) );
+	return tools::reduce( arg, std::multiplies<typename valueType<T>::type>(), typename valueType<T>::type(1) );
 }
 
 template< class T >
-typename activate<T, typename value_type<T>::type >::type
+typename activate<T, typename valueType<T>::type >::type
 norm2( const T & arg ) {
 	return sqrt(sum(arg * arg));
 }
 
 template< class T >
-typename activate<T, typename value_type<T>::type >::type
+typename activate<T, typename valueType<T>::type >::type
 max( const T & arg ) {
-	typedef typename value_type<T>::type V;
+	typedef typename valueType<T>::type V;
 	return tools::reduce( arg, [&] (const V& a, const V& b) { return std::max(a, b); }, arg[0] ); 
 }
 
 template< class T >
-typename activate<T, typename value_type<T>::type >::type
+typename activate<T, typename valueType<T>::type >::type
 min( const T & arg ) {
-	typedef typename value_type<T>::type V;
+	typedef typename valueType<T>::type V;
 	return tools::reduce( arg, [&] (const V& a, const V& b) { return std::min(a, b); }, arg[0] ); 
 }
 

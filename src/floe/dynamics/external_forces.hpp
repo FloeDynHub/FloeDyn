@@ -76,9 +76,9 @@ private:
     physical_data_type m_physical_data;
 
     const value_type rho_w = 1024.071; //!< Water density
-    const value_type C_w = 5 * 1e-3; //!< Oceanic skin drag coeff
+    const value_type C_w = 5 * 1e-3; //!< Oceanic skin drag average coeff
     const value_type rho_a = 1.341; //!< Air density
-    const value_type C_a = 1.7 * 1e-3; //!< Atmospheric skin drag coeff
+    const value_type C_a = 1.7 * 1e-3; //!< Atmospheric skin drag average coeff
 
     const value_type R_earth = 6371 * 1e3; //!< earth radius
     const value_type V_earth = 7.292 * 1e-5; //!< Earth angular velocity
@@ -119,7 +119,7 @@ ExternalForces<TFloe, TPhysicalData>::ocean_drag(floe_type& floe)
         auto speed_p = state.speed 
             + state.rot * fg::direct_orthogonal(p - state.pos);
         auto V = water_speed(p) - speed_p;
-        return rho_w * C_w * norm2(V) * V;
+        return rho_w * floe.static_floe().C_w() * norm2(V) * V;
     };
 }
 

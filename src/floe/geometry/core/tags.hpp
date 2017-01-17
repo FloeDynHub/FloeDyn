@@ -45,7 +45,7 @@ struct single_tag_of<multi_static_polygon_tag>
 };
 
 //! Simple static polygon
-struct simple_static_polygon_tag : single_tag, polygon_tag {};
+struct simple_static_polygon_tag : polygon_tag {};
 
 //! Multi simple static polygon
 struct multi_simple_static_polygon_tag : multi_tag, polygonal_tag {};

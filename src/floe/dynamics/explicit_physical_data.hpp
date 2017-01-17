@@ -36,28 +36,14 @@ public:
 
     //! Constructor
     ExplicitPhysicalData(value_type const& time_ref) : m_time_ref{time_ref},
-        m_window_width{1}, m_window_height{1}, m_water_mode{2}, m_air_mode{0} {}
+        m_window_width{1}, m_window_height{1}, m_water_mode{0}, m_air_mode{4} {}
 
     point_type water_speed(point_type pt = {0,0}) {
-        switch(m_water_mode){
-            case 1:
-                return centered_convergent_field(pt, 0.1);
-            case 2:
-                return convergent_outside_window_field(pt);
-            default:
-                return {0,0};
-        }
+        return get_speed(pt, m_water_mode);
     }
 
     point_type air_speed(point_type pt = {0,0}) {
-        switch(m_air_mode){
-            case 1:
-                return x_convergent_then_constant(pt);
-            case 2:
-                return convergent_outside_window_field(pt);
-            default:
-                return {0,0};
-        }
+        return get_speed(pt, m_air_mode);
     }
 
     void update_water_speed(point_type diff_speed){}
@@ -85,15 +71,48 @@ private:
     int m_water_mode;
     int m_air_mode;
 
+    point_type get_speed(point_type pt = {0,0}, int mode=0){
+        switch(mode){
+            case 1:
+                return centered_convergent_field(pt);
+            case 2:
+                return convergent_outside_window_field(pt);
+            case 3:
+                return convergent_outside_window_circular_inside_field(pt);
+            case 4:
+                return x_convergent_then_constant(pt);
+            default:
+                return {0,0};
+        }
+    }
+
     //! center convergent current (negative coeff will give divergent field)
     point_type centered_convergent_field(point_type pt = {0,0}, value_type coeff = 1) { return - coeff * pt / norm2(pt); }
 
     //! convergent current outside null rectangle window
-    point_type convergent_outside_window_field(point_type pt = {0,0}) {
+    point_type convergent_outside_window_field(point_type pt = {0,0}, value_type speed = 30) {
         value_type x{0}, y{0};
-        if (std::abs(pt.x) > m_window_width / 2) x = - pt.x / std::abs(pt.x);
-        if (std::abs(pt.y) > m_window_height / 2) y = - pt.y / std::abs(pt.y);
+        if (std::abs(pt.x) > m_window_width / 2) x = - speed * pt.x / std::abs(pt.x);
+        if (std::abs(pt.y) > m_window_height / 2) y = - speed * pt.y / std::abs(pt.y);
         return {x,y};
+    }
+
+    //! convergent current outside null rectangle window
+    point_type circular_inside_window_field(point_type pt = {0,0}, value_type in_speed=10) {
+        value_type x{0}, y{0};
+        if (std::abs(pt.x) <= m_window_width / 2 and std::abs(pt.y) <= m_window_height / 2){
+            if (std::abs(pt.x) < std::abs(pt.y)) x = - 10 * pt.y / std::abs(pt.y);
+            if (std::abs(pt.x) >= std::abs(pt.y)) y = 10 * pt.x / std::abs(pt.x);
+        }
+        return {x,y};
+    }
+
+    //! convergent current outside null rectangle window
+    point_type convergent_outside_window_circular_inside_field(
+        point_type pt = {0,0}, value_type out_speed=30, value_type in_speed=10
+    ){
+        return convergent_outside_window_field(pt, out_speed)
+            + circular_inside_window_field(pt, in_speed);
     }
 
     //! x axis convergent wind, then constant
@@ -102,6 +121,11 @@ private:
             return {0, - coeff * (pt.y / (100 + std::abs(pt.y)))};
         else
             return constant;
+    }
+
+    //! x axis convergent wind, then constant
+    point_type vortex(point_type pt = {0,0}, value_type coeff = 10, point_type constant = {10,0}) {
+        return {0,0};
     }
 };
 

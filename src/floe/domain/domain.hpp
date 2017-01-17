@@ -37,10 +37,12 @@ public:
     inline void set_time_step(real delta_t ) { m_delta_t = delta_t; }
     inline real default_time_step() const { return m_delta_t_default; }
     inline void set_default_time_step(real delta_t ) { m_delta_t_default = delta_t; }
-    inline void set_out_step(real out_step ) { m_out_step = out_step; m_next_out_limit = (std::floor(m_t / m_out_step) + 1) * m_out_step; }
+    inline void set_out_step(real out_step ) {
+        m_out_step = out_step;
+        if (time() > 0) m_next_out_limit = (std::floor(m_t / m_out_step) + 1) * m_out_step;
+    }
     inline void update_time() { m_t += m_delta_t; }
     inline void rewind_time() { m_t -= m_delta_t; }
-    // inline void update_last_out() { m_last_out = m_t; }
     inline void update_next_out_limit() { m_next_out_limit += m_out_step; }
     inline bool need_step_output() { return (m_out_step && m_t >= m_next_out_limit); }
 
@@ -52,7 +54,6 @@ private:
 
     // output
     real m_out_step; //!< Time step between simulation state outputs
-    // real m_last_out;
     real m_next_out_limit; //!< Next time limit for state ouput
 
 };

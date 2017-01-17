@@ -20,7 +20,7 @@
 #include "floe/floes/static_floe.hpp"
 #include "floe/floes/kinematic_floe.hpp"
 
-#include "floe/collision/matlab/detector.h"
+#include "floe/collision/matlab/detector.hpp"
 
 #include "floe/lcp/builder/graph_to_lcp.hpp"
 //#include "floe/lcp/solver/lexicolemke_eigen.hpp"

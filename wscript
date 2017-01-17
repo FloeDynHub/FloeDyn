@@ -8,7 +8,7 @@ Documentation : https://waf.io/book/
 
 USAGE
 Build main product : ./waf --target <targ>
-    whith <targ> = FLOE or FLOE_PBC (PBC for Periodic Boundary Conditions)
+    with <targ> = FLOE or FLOE_PBC (PBC for Periodic Boundary Conditions)
 
 Build and run unit tests : ./waf TESTS
     options:
@@ -47,22 +47,27 @@ def timeit(func):
 
 def options(opt):
     opt.load('compiler_cxx gxx boost')
+    # Build opts :
     # opt.add_option('--run', action='store_true', default=False, dest='run')
     opt.add_option('--name', action='store', default="", dest='name')
     opt.add_option('-t','--target', action='store', default="", dest='target')
     opt.add_option(
         '--debug', action='store_true', default=False, dest='debug')
+    opt.add_option('--omp', action='store_true', default=False, dest='omp')
+    # configure opts :
     opt.add_option('--gcc', action='store_true', default=False, dest='gcc')
     opt.add_option('--icc', action='store_true', default=False, dest='icc')
-    opt.add_option('--omp', action='store_true', default=False, dest='omp')
+    # opt.add_option('--mpi', action='store_true', default=False, dest='mpi')
 
 
 def configure(conf):
     conf.check_waf_version(mini='1.8.8')
     if conf.options.gcc:
         conf.load('g++')
+        # if conf.options.mpi:
+        #     conf.env['CXX'] = 'mpicxx'
     elif conf.options.icc:
-        conf.load('icpc')
+        conf.load('icpc')  
     else:
         conf.load('compiler_cxx')
     conf.check_cfg(atleast_pkgconfig_version='0.0.0')
@@ -118,14 +123,19 @@ def get_option_dict(debug=True):
                       '/usr/local/include',
                       '/usr/include',
                       '/usr/local/include/eigen3',
-                    ] + [path for path in os.environ["PATH"].split(":") if not "bin" in path],
+                      # '/usr/local/include/siconos',
+                    ], #+ [path for path in os.environ["PATH"].split(":") if not "bin" in path],
         "lib": ['boost_system',
+                'boost_program_options',
                 'matio',
                 "hdf5",
                 "hdf5_cpp",
-                "CGAL", "gmp", "mpfr", "boost_thread"
+                "CGAL", "gmp", "mpfr", "boost_thread",
+                # "siconos_numerics"
                 ],
-        "libpath": ["/usr/local/lib", "/usr/lib"] + os.environ.get("LD_LIBRARY_PATH", "/").split(":")
+        "libpath": ["/usr/local/lib", "/usr/lib"], # + os.environ.get("LD_LIBRARY_PATH", "/").split(":"),
+        "framework": ["Accelerate"],
+        "frameworkpath" : ["/System/Library/Frameworks"]
     }
     if debug:
         OPTION_DICT.update({
@@ -145,18 +155,30 @@ def get_option_dict(debug=True):
                  "-O3",
                  # "-march=native", # g++ fails with this
                  "-mtune=native",
-                 "-Wall",# "-Wextra",
+                 "-Wall", "-Wextra", #"-Wshadow",
+                 "-Wno-unused-parameter",
+                 "-Wno-gnu-anonymous-struct", "-Wno-nested-anon-types", # floe/geometry/geometries/point.hpp
+                 "-pedantic"
              ],
             "defines": ["NDEBUG"]
         })
+    OPTION_DICT["cxxflags"].extend(os.environ.get("CFLAGS", "").split(" "))
+    OPTION_DICT["linkflags"].extend(os.environ.get("LDFLAGS", "").split(" "))
     return OPTION_DICT
 
+import subprocess
 
 def build(bld):
     opts = get_option_dict(bld.options.debug)
     if bld.options.omp:
         opts["linkflags"].append("-fopenmp")
         opts["cxxflags"].append("-fopenmp")
+    if "MPI" in bld.options.target:
+        opts["linkflags"].extend(["-lmpi_cxx", "-lmpi"])
+        opts["defines"].append('MPIRUN')
+        opts["cxxflags"].extend(subprocess.check_output(["mpicc", "--showme:compile"]).strip().split(" "))
+        opts["linkflags"].extend(subprocess.check_output(["mpicc", "--showme:link"]).strip().split(" "))
+        # print opts["linkflags"]
     if bld.options.target in ["FLOE", "FLOE_PBC"]:
         opts["source"] = ["product/FLOE.cpp"] + recursive_file_finder("src/floe", "*.cpp")
         opts["target"] = bld.options.target
@@ -164,6 +186,7 @@ def build(bld):
             opts["defines"].append('PBC')
         bld.program(**opts)
     elif "FLOE" in bld.options.target:
+        print "TARGET", bld.options.target
         opts["source"] = ["product/{}.cpp".format(bld.options.target)] + recursive_file_finder("src/floe", "*.cpp")
         opts["target"] = bld.options.target
         bld.program(**opts)

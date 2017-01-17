@@ -11,6 +11,11 @@
 #include "floe/problem/periodic_problem.hpp"
 #endif
 
+#ifdef MPIRUN
+#include "floe/problem/mpi_master_problem.hpp"
+#include "floe/problem/mpi_worker_problem.hpp"
+#endif
+
 namespace types {
 
 using namespace floe::problem;
@@ -34,6 +39,11 @@ using problem_type = Problem<
 >;
 #endif
 
-}
+#ifdef MPIRUN
+using master_problem_type = MPIMasterProblem<problem_type>;
+using worker_problem_type = MPIWorkerProblem<problem_type>;
+#endif
+
+} // namespace types
 
 #endif // PRODUCT_CONFIG_CONFIG_PROBLEM_HPP

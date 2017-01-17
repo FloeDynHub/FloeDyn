@@ -66,7 +66,7 @@ DynamicsManager<TExternalForces, TFloeGroup>::move_floe(floe_type& floe, value_t
         integration_strategy<value_type>()
     );
     new_state.theta += delta_t * floe.state().rot;
-    new_state.rot += ( delta_t / floe.moment_cst() ) * rot_drag_force;    
+    new_state.rot += ( delta_t / floe.moment_cst() ) * rot_drag_force;
 
     // Floe update
     floe.set_state(new_state);

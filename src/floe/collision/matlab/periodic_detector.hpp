@@ -18,22 +18,20 @@ namespace floe { namespace collision { namespace matlab
 
 //! Update detector
 template <
-    typename TFloe,
+    typename TFloeGroup,
     typename TSpaceTopology,
     typename TGhostFloe,
     typename TContact
 >
 void
-PeriodicMatlabDetector<TFloe, TSpaceTopology, TGhostFloe, TContact>::detect()
+PeriodicMatlabDetector<TFloeGroup, TSpaceTopology, TGhostFloe, TContact>::detect()
 {
     // Number of floes
-    const std::size_t N = base_class::m_floes.size();
-    const std::size_t Ng = m_ghost_floes.size();
+    const std::size_t N = base_class::get_nb_floes();
+    const std::size_t Ng = base_class::m_prox_data.nb_ghosts();
 
     // Resize matrix
-    base_class::m_indic.resize(N, N + Ng);
-    base_class::m_dist_opt = ublas::scalar_matrix<value_type>(N, N + Ng, 0);
-    base_class::m_dist_secu = ublas::scalar_matrix<value_type>(N, N + Ng, 0);
+    base_class::m_prox_data.resize(N, N + Ng);
 
     // Detection
     base_class::detect_step1();
@@ -41,77 +39,22 @@ PeriodicMatlabDetector<TFloe, TSpaceTopology, TGhostFloe, TContact>::detect()
 
 
 template <
-    typename TFloe,
+    typename TFloeGroup,
     typename TSpaceTopology,
     typename TGhostFloe,
     typename TContact
 >
-typename PeriodicMatlabDetector<TFloe, TSpaceTopology, TGhostFloe, TContact>::floe_interface_type const&
-PeriodicMatlabDetector<TFloe, TSpaceTopology, TGhostFloe, TContact>::get_floe(std::size_t n) const
-{
-    const std::size_t N { base_class::m_floes.size() };
-    if (n < N)
-        return *(base_class::m_floes[n]);
-    else
-        return m_ghost_floes[n - N];
-}
-
-
-template <
-    typename TFloe,
-    typename TSpaceTopology,
-    typename TGhostFloe,
-    typename TContact
->
-typename PeriodicMatlabDetector<TFloe, TSpaceTopology, TGhostFloe, TContact>::optim_interface_type const&
-PeriodicMatlabDetector<TFloe, TSpaceTopology, TGhostFloe, TContact>::get_optim(std::size_t n) const
-{
-    const std::size_t N { base_class::m_floes.size() };
-    if (n < N)
-        return *(base_class::m_optims[n]);
-    else
-        return m_ghost_optims[n - N];
-}
-
-
-template <
-    typename TFloe,
-    typename TSpaceTopology,
-    typename TGhostFloe,
-    typename TContact
->
-void
-PeriodicMatlabDetector<TFloe, TSpaceTopology, TGhostFloe, TContact>::set_dist_opt(
-    std::size_t n1, std::size_t n2, value_type val)
-{
-    const std::size_t N { base_class::m_floes.size() };
-    if (n2 >= N){
-        base_class::m_dist_opt(n1, n2) = val;
-    } else if (n1 >= N) {
-        base_class::m_dist_opt(n2, n1) = val;
-    } else {
-        base_class::m_dist_opt(n1, n2) = base_class::m_dist_opt(n2, n1) = val;
-    }
-}
-
-
-template <
-    typename TFloe,
-    typename TSpaceTopology,
-    typename TGhostFloe,
-    typename TContact
->
-typename PeriodicMatlabDetector<TFloe, TSpaceTopology, TGhostFloe, TContact>::contact_type
-PeriodicMatlabDetector<TFloe, TSpaceTopology, TGhostFloe, TContact>::create_contact(
+typename PeriodicMatlabDetector<TFloeGroup, TSpaceTopology, TGhostFloe, TContact>::contact_type
+PeriodicMatlabDetector<TFloeGroup, TSpaceTopology, TGhostFloe, TContact>::create_contact(
     std::size_t n1, std::size_t n2, point_type point1, point_type point2) const
 {
-    const std::size_t N { base_class::m_floes.size() };
+    const std::size_t N { base_class::get_nb_floes() };
     if (n2 >= N){
-        return {base_class::m_floes[n1], &m_ghost_floes[n2 - N], point1, point2 };
+        return { &base_class::get_floe(n1), &base_class::m_prox_data.get_ghost_floe(n2 - N), point1, point2 };
     } else if (n1 >= N) {
-        return {&m_ghost_floes[n1 - N], base_class::m_floes[n2], point1, point2 };
+        return {&base_class::m_prox_data.get_ghost_floe(n1 - N), &base_class::get_floe(n2), point1, point2 };
     } else {
-        return { base_class::m_floes[n1], base_class::m_floes[n2], point1, point2 };
+        return { &base_class::get_floe(n1), &base_class::get_floe(n2), point1, point2 };
     }
 }
 

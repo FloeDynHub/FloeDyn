@@ -3,21 +3,28 @@
 
 #include "../product/config/config_floes.hpp"
 
-#include "floe/dynamics/proximity_detector.hpp"
 #include "floe/collision/matlab/detector.h"
 
 #ifdef PBC
 #include "floe/collision/matlab/periodic_detector.h"
 #endif
 
-using proximity_detector_type = floe::dynamics::ProximityDetector<
-    floe::collision::matlab::MatlabDetector<floe_type>
->;
-#ifdef PBC // Periodic boundary conditions types
-using periodic_proximity_detector_type = floe::dynamics::ProximityDetector<
-    floe::collision::matlab::PeriodicMatlabDetector<floe_type, topology_type>
->;
+#ifdef MPIRUN
+#include "floe/collision/matlab/mpi_detector.hpp"
 #endif
 
+namespace types {
+
+#ifdef MPIRUN
+	using proximity_detector_type = floe::collision::matlab::MPIMatlabDetector<floe_group_type>;
+#else
+	using proximity_detector_type = floe::collision::matlab::MatlabDetector<floe_group_type>;
+#endif
+
+#ifdef PBC // Periodic boundary conditions types
+	using periodic_proximity_detector_type = floe::collision::matlab::PeriodicMatlabDetector<floe_group_type, topology_type>;
+#endif
+
+}
 
 #endif // PRODUCT_CONFIG_CONFIG_DETECTOR_HPP

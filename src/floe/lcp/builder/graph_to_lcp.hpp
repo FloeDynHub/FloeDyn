@@ -111,17 +111,17 @@ init()
 
     for ( size_t i = 0; i < 3*n; i += 3 )
     {
-        if ( m_graph[i/3]->is_obstacle() )
+        if ( m_graph[i/3].floe->is_obstacle() ) // fv_test
         {
             M(i+2,i+2)  = M(i+1, i+1)  = M(i, i) = std::numeric_limits<T>::max();
             invM(i+2,i+2) = invM(i+1, i+1) = invM(i, i) = 0;
         } 
         else 
         {
-            M(i+1, i+1) = M(i, i) = m_graph[i/3]->mass();
-            M(i+2, i+2) = m_graph[i/3]->moment_cst();
-            invM(i+1, i+1) = invM(i, i) = T(1) / m_graph[i/3]->mass();
-            invM(i+2, i+2) = T(1) / m_graph[i/3]->moment_cst();
+            M(i+1, i+1) = M(i, i) = m_graph[i/3].floe->mass(); // fv_test
+            M(i+2, i+2) = m_graph[i/3].floe->moment_cst(); // fv_test
+            invM(i+1, i+1) = invM(i, i) = T(1) / m_graph[i/3].floe->mass(); // fv_test
+            invM(i+2, i+2) = T(1) / m_graph[i/3].floe->moment_cst(); // fv_test
         }
     }
 
@@ -138,7 +138,7 @@ init()
     {
 
         const pair<size_t, size_t> id = minmax( source(edge, m_graph), target(edge, m_graph) );
-        auto const* floe1 = m_graph[id.first];
+        auto const* floe1 = m_graph[id.first].floe; // fv_test
         // auto const* floe2 = m_graph[id.second];
 
         const size_t i1 = 3*id.first;
@@ -243,7 +243,7 @@ getLCP() const
     namespace fg = floe::geometry;
     for (std::size_t i = 0; i < 3*n; i+=3)
     {
-        auto const state = m_graph[i/3]->state();
+        auto const state = m_graph[i/3].floe->state(); // fv_test
         W(i)   = fg::get<0>(state.speed);
         W(i+1) = fg::get<1>(state.speed);
         W(i+2) = state.rot;
@@ -316,7 +316,7 @@ calc_floe_impulses(ublas::vector<T> const& normal, ublas::vector<T> const& tange
     std::size_t j = 0;
     for ( auto const& edge : make_iterator_range( edges( m_graph ) ) )
     {
-        for ( int i = 0; i < m_graph[edge].size(); ++i ) // iter over contacts
+        for ( std::size_t i = 0; i < m_graph[edge].size(); ++i ) // iter over contacts
         {
             floe_impulses[source(edge, m_graph)] += contact_impulses[j];
             floe_impulses[target(edge, m_graph)] += contact_impulses[j];

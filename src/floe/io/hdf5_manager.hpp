@@ -33,22 +33,20 @@ std::string gen_random(const int len) {
 template <typename TFloeGroup, typename TDynamicsMgr>
 HDF5Manager<TFloeGroup, TDynamicsMgr>::HDF5Manager(floe_group_type const& floe_group) :
     m_out_file_name{"io/outputs/out_" + gen_random(5) + ".h5"},
-    m_out_file{nullptr}, m_step_count{0}, m_chunk_step_count{0}, m_flush_max_step{20},
+    m_out_file{nullptr}, m_step_count{0}, m_chunk_step_count{0}, m_flush_max_step{2},
     m_floe_group{&floe_group},
-    m_data_chunk_time{new value_type[m_flush_max_step]}
-    {
-        m_data_chunk_states.reserve(m_flush_max_step);
-        m_data_chunk_mass_center.reserve(m_flush_max_step);
-        m_data_chunk_OBL_speed.reserve(m_flush_max_step);
-    }
+    m_data_chunk_states(boost::extents[0][0][0]),
+    m_data_chunk_time{new value_type[m_flush_max_step]},
+    m_data_chunk_mass_center(boost::extents[m_flush_max_step][2]),
+    m_data_chunk_OBL_speed(boost::extents[m_flush_max_step][2])
+    {}
 
 
 template <typename TFloeGroup, typename TDynamicsMgr>
 HDF5Manager<TFloeGroup, TDynamicsMgr>::~HDF5Manager()
 {
-    if (m_chunk_step_count != 0)
-        write_chunk();
-    std::cout << "OUT FILE : " << m_out_file_name << std::endl;
+    flush();
+    if (m_step_count) std::cout << "OUT FILE : " << m_out_file_name << std::endl;
 }
 
 
@@ -76,11 +74,11 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::save_step(value_type time, const dyn
     }
     */
     // save states
-    vector<saved_state_type> states_step_data(floe_list.size());
-    floe_id = 0;
+    if (m_data_chunk_states.size() == 0) m_data_chunk_states.resize(boost::extents[m_flush_max_step][floe_list.size()][9]);
     for(auto const& floe : floe_list)
     {
-        states_step_data[floe_id] = {{
+        int k{0};
+        for (auto& val: {
             floe.state().real_position().x,
             floe.state().real_position().y,
             floe.state().theta,
@@ -90,36 +88,40 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::save_step(value_type time, const dyn
             floe.total_received_impulse(),
             floe.state().pos.x,
             floe.state().pos.y
-        }};
+        }){
+            m_data_chunk_states[m_chunk_step_count][floe_id][k++] = val;
+        }
         floe_id++;
     }
-    m_data_chunk_states[m_chunk_step_count] = states_step_data;
 
     // save time
     m_data_chunk_time[m_chunk_step_count] = time;
 
     // save mass center
     auto mass_center = floe_group.mass_center();
-    m_data_chunk_mass_center[m_chunk_step_count] = {{mass_center.x, mass_center.y}};
+    m_data_chunk_mass_center[m_chunk_step_count][0] = mass_center.x;
+    m_data_chunk_mass_center[m_chunk_step_count][1] = mass_center.y;
 
     // save OBL speed
     auto OBL_speed = dynamics_manager.OBL_speed();
-    m_data_chunk_OBL_speed[m_chunk_step_count] = {{OBL_speed.x, OBL_speed.y}};
-
+    m_data_chunk_OBL_speed[m_chunk_step_count][0] = OBL_speed.x;
+    m_data_chunk_OBL_speed[m_chunk_step_count][1] = OBL_speed.y;
 
     m_step_count++;
     m_chunk_step_count++;
 
-    if (m_step_count % m_flush_max_step == 0)
+    if (m_step_count % m_flush_max_step == 0) // TODO change test to (m_chunk_step_count == m_flush_max_step) ?
     {
-        write_chunk();
+        flush();
         m_chunk_step_count = 0;
     }
 };
 
 
 template <typename TFloeGroup, typename TDynamicsMgr>
-void HDF5Manager<TFloeGroup, TDynamicsMgr>::write_chunk() {
+void HDF5Manager<TFloeGroup, TDynamicsMgr>::flush() {
+    if (m_chunk_step_count == 0)
+        return;
     try
     {   
         /*
@@ -147,6 +149,9 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::write_chunk() {
 
         try { m_out_file->openGroup("floe_shapes"); }
         catch (...) { write_shapes(); }
+
+        try { m_out_file->openDataSet("window"); }
+        catch (...) { write_window(); }
 
         // write_boundaries();
         write_states();
@@ -227,7 +232,7 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::write_boundaries() {
         // Define memory space.
         DataSpace memspace{RANK, chunk_dims, NULL};
 
-        value_type data[m_chunk_step_count][dimsf[1]][dimsf[2]];
+        boost::multi_array<value_type, 3> data(boost::extents[m_chunk_step_count][dimsf[1]][dimsf[2]]);
         for (std::size_t j = 0; j != floe_chunk.size(); ++j)
         {
             for (std::size_t k = 0; k != floe_chunk[j].size(); ++k)
@@ -238,7 +243,7 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::write_boundaries() {
         }
 
         // Write data to the extended portion of the dataset.
-        dataset.write(data, PredType::NATIVE_DOUBLE, memspace, filespace);
+        dataset.write(data.data(), PredType::NATIVE_DOUBLE, memspace, filespace);
     }
 
     // clearing buffer
@@ -279,21 +284,8 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::write_states() {
     filespace.selectHyperslab(H5S_SELECT_SET, chunk_dims, offset);
     // Define memory space.
     DataSpace memspace{RANK, chunk_dims, NULL};
-    value_type data[chunk_dims[0]][chunk_dims[1]][chunk_dims[2]];
-    for (std::size_t j = 0; j != chunk_dims[0]; ++j)
-    {
-        for (std::size_t k = 0; k != chunk_dims[1]; ++k)
-        {
-            for (std::size_t l = 0; l!=chunk_dims[2]; ++l)
-                data[j][k][l] = m_data_chunk_states[j][k][l];
-        }
-    }
-    // Write data to the extended portion of the dataset.
-    states_dataset.write(data, PredType::NATIVE_DOUBLE, memspace, filespace);
 
-    // clearing buffer
-    // m_data_chunk_states.clear();
-
+    states_dataset.write(m_data_chunk_states.data(), PredType::NATIVE_DOUBLE, memspace, filespace);
 };
 
 
@@ -329,7 +321,6 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::write_time() {
     // Define memory space.
     DataSpace memspace{1, chunk_dimst, NULL};
     time_dataset.write(m_data_chunk_time, PredType::NATIVE_DOUBLE, memspace, filespace);
-
 };
 
 template <typename TFloeGroup, typename TDynamicsMgr>
@@ -365,17 +356,7 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::write_mass_center() {
     // Define memory space.
     DataSpace memspace{RANK, chunk_dims, NULL};
 
-    value_type data[chunk_dims[0]][chunk_dims[1]];
-    for (std::size_t j = 0; j != chunk_dims[0]; ++j)
-    {
-        for (std::size_t k = 0; k != chunk_dims[1]; ++k)
-        {
-            data[j][k] = m_data_chunk_mass_center[j][k];
-        }
-    }
-
-    dataset.write(data, PredType::NATIVE_DOUBLE, memspace, filespace);
-
+    dataset.write(m_data_chunk_mass_center.data(), PredType::NATIVE_DOUBLE, memspace, filespace);
 };
 
 template <typename TFloeGroup, typename TDynamicsMgr>
@@ -411,17 +392,7 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::write_OBL_speed() {
     // Define memory space.
     DataSpace memspace{RANK, chunk_dims, NULL};
 
-    value_type data[chunk_dims[0]][chunk_dims[1]];
-    for (std::size_t j = 0; j != chunk_dims[0]; ++j)
-    {
-        for (std::size_t k = 0; k != chunk_dims[1]; ++k)
-        {
-            data[j][k] = m_data_chunk_OBL_speed[j][k];
-        }
-    }
-
-    dataset.write(data, PredType::NATIVE_DOUBLE, memspace, filespace);
-
+    dataset.write(m_data_chunk_OBL_speed.data(), PredType::NATIVE_DOUBLE, memspace, filespace);
 };
 
 template <typename TFloeGroup, typename TDynamicsMgr>
@@ -445,7 +416,7 @@ double HDF5Manager<TFloeGroup, TDynamicsMgr>::recover_states(
     */
     hsize_t dims_out[1];
     time_dataspace.getSimpleExtentDims( dims_out, NULL);
-    value_type data_time[dims_out[0]];
+    std::vector<value_type> data_time(dims_out[0]);
     for (std::size_t j = 0; j!= dims_out[0]; ++j)
         data_time[j] = 0;
      /*
@@ -455,8 +426,8 @@ double HDF5Manager<TFloeGroup, TDynamicsMgr>::recover_states(
     /*
     * Read data from the file
     */
-    time_dataset.read( data_time, PredType::NATIVE_DOUBLE, time_memspace, time_dataspace );
-
+    time_dataset.read( data_time.data(), PredType::NATIVE_DOUBLE, time_memspace, time_dataspace );
+    // find time index to read
     hsize_t i = 0;
     while (data_time[i] < time && i < dims_out[0])
         ++i;
@@ -495,17 +466,18 @@ double HDF5Manager<TFloeGroup, TDynamicsMgr>::recover_states(
     * Read data from hyperslab in the file into the hyperslab in
     * memory and display the data.
     */
-    value_type data_out[dims_out[1]][dims_out[2]];
-    dataset.read( data_out, PredType::NATIVE_DOUBLE, memspace, dataspace );
+    boost::multi_array<value_type, 2> data_out(boost::extents[dims_out[1]][dims_out[2]]);
+    dataset.read( data_out.data(), PredType::NATIVE_DOUBLE, memspace, dataspace );
 
     std::size_t floe_id = 0;
     for (auto& floe : floe_group.get_floes())
     {
         floe.set_state({
             {data_out[floe_id][0], data_out[floe_id][1]}, data_out[floe_id][2],
-            {data_out[floe_id][3], data_out[floe_id][4]}, data_out[floe_id][5]
+            {data_out[floe_id][3], data_out[floe_id][4]}, data_out[floe_id][5],
+            {0,0}
         });
-        floe.add_impulse(data_out[floe_id][6]);
+        floe.reset_impulse(data_out[floe_id][6]);
         floe_id++;
     }
 
@@ -521,8 +493,8 @@ double HDF5Manager<TFloeGroup, TDynamicsMgr>::recover_states(
     dataspace.selectHyperslab( H5S_SELECT_SET, count, offset );
     hsize_t     dimsm[1] {dims_out[1]};              /* memory space dimensions */
     DataSpace memspace( 1, dimsm );
-    value_type data_out[dims_out[1]];
-    dataset.read( data_out, PredType::NATIVE_DOUBLE, memspace, dataspace );
+    std::vector<value_type> data_out(dims_out[1]);
+    dataset.read( data_out.data(), PredType::NATIVE_DOUBLE, memspace, dataspace );
     point_type OBL_speed{data_out[0], data_out[1]};
     dynamics_manager.set_OBL_speed(OBL_speed);
     // std::cout << " OBL " << OBL_speed;
@@ -530,11 +502,11 @@ double HDF5Manager<TFloeGroup, TDynamicsMgr>::recover_states(
 
     }
 
-    if (i + 1 == dims_out[0]){
-        // We keep input file as output file
+    // if (i + 1 == dims_out[0]){
+        // We keep recover file as output file
         m_step_count = i + 1;
         m_out_file_name = filename;
-    }
+    // }
 
     return data_time[i];
 
@@ -572,7 +544,8 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::write_shapes() {
              * datatype and default dataset creation properties.
              */
             DataSet dataset = floe_shape_group.createDataSet(H5std_string{std::to_string(i)},datatype, dataspace);
-            value_type data[dimsf[0]][dimsf[1]];
+            // auto data = new value_type[dimsf[0] * dimsf[1]];
+            boost::multi_array<value_type, 2> data(boost::extents[dimsf[0]][dimsf[1]]);
             for (std::size_t j = 0; j!= dimsf[0]; ++j)
             {
                 data[j][0] = boundary[j].x;
@@ -582,10 +555,88 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::write_shapes() {
              * Write the data to the dataset using default memory space, file
              * space, and transfer properties.
              */
-            dataset.write( data, PredType::NATIVE_DOUBLE );
+            dataset.write( data.data(), PredType::NATIVE_DOUBLE );
         }
     }
 
+};
+
+template <
+    typename TFloeGroup,
+    typename TDynamicsMgr
+>
+void HDF5Manager<TFloeGroup, TDynamicsMgr>::write_window(){
+    H5File& file( *m_out_file );
+
+    const int   RANK = 1;
+    /* saving ocean window limits */
+    hsize_t     dims[RANK] = {4};
+    FloatType datatype( PredType::NATIVE_DOUBLE );
+    datatype.setOrder( H5T_ORDER_LE );
+    DataSpace dataspace( RANK, dims, dims );
+    DataSet dataset = file.createDataSet("window", datatype, dataspace);
+    auto const& win = m_floe_group->get_initial_window();
+    value_type data[4] = {win[0], win[1], win[2], win[3]};
+    dataset.write( data, PredType::NATIVE_DOUBLE );
+};
+
+template <typename TFloeGroup, typename TDynamicsMgr>
+void HDF5Manager<TFloeGroup, TDynamicsMgr>::make_input_file(const dynamics_mgr_type& dynamics_manager){
+    try
+    {   
+        // Prepare manager for writting an input file
+        flush();
+        save_step(0, dynamics_manager);
+        auto saved_out_filename = m_out_file_name;
+        /*
+         * Turn off the auto-printing when failure occurs so that we can
+         * handle the errors appropriately
+         */
+        Exception::dontPrint();
+
+        // Temporarily change out_file name
+        int nb_floe = m_floe_group->get_floes().size();
+        int conc = round(m_floe_group->initial_concentration() * 100);
+        m_out_file_name = "io/inputs/in_" + std::to_string(nb_floe)
+            + "f_" + std::to_string(conc) + "p_" + gen_random(5) + ".h5";
+        const H5std_string  FILE_NAME( m_out_file_name );
+
+        m_out_file = new H5File( FILE_NAME.c_str(), H5F_ACC_TRUNC );
+    
+        write_shapes();
+        write_window();
+        write_states();
+
+        // Close the file after each flush to keep a valid ouput even if program crashes
+        delete m_out_file;
+        std::cout << m_out_file_name << " written" << std::endl;
+
+        // Reset initial state
+        m_out_file_name = saved_out_filename;
+        m_chunk_step_count = 0;
+        m_step_count = 0;
+
+    }  // end of try block
+    // catch failure caused by the H5File operations
+    catch( FileIException error )
+    {
+        error.printError();
+    }
+    // catch failure caused by the DataSet operations
+    catch( DataSetIException error )
+    {
+        error.printError();
+    }
+    // catch failure caused by the DataSpace operations
+    catch( DataSpaceIException error )
+    {
+        error.printError();
+    }
+    // catch failure caused by the DataType operations
+    catch( DataTypeIException error )
+    {
+        error.printError();
+    }
 };
 
 

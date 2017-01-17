@@ -33,6 +33,7 @@ public:
     FloeContact(FloeContact<TContactPoint> const& fc) = default;
 
     inline void mark_solved( bool solved = true ) const { *m_solved = solved; }
+    inline void mark_changed() const { for (auto const& c : *this) *c.floe_states_changed = true; }
     inline bool is_solved() const { return *m_solved; }
     inline std::size_t n1() const { return m_id_ifloe1; }
     inline std::size_t n2() const { return m_id_ifloe2; }

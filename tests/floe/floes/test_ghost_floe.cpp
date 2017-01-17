@@ -3,7 +3,7 @@
 #include <iostream>
 
 #include "floe/floes/ghost_floe.hpp"
-#include "floe/floes/floe_group.hpp"
+#include "floe/variable/floe_group.hpp"
 
 // #include <chrono>
 #include <algorithm>
@@ -17,7 +17,7 @@ TEST_CASE( "Test ghost floe", "[floes]" ) {
     using floe_type = ff::KinematicFloe<ff::StaticFloe<double>>;
     using point_type = typename floe_type::point_type;
 
-    floe::floes::FloeGroup<floe_type> F;
+    floe::variable::FloeGroup<floe_type> F;
 
     // Import floes from Matlab configuration
     std::string mat_file_name = "tests/floe/io/matlab/1floe_rot1.mat";

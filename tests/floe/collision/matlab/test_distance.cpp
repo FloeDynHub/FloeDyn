@@ -2,8 +2,18 @@
 #include <iostream>
 #include <fstream>
 
-#include "../product/config/config_dynamics.hpp"
-#include "../product/config/config_detector.hpp"
+#include "floe/floes/static_floe.hpp"
+#include "floe/floes/kinematic_floe.hpp"
+#include "floe/variable/floe_group.hpp"
+#include "floe/collision/matlab/periodic_detector.hpp"
+#include "floe/topology/toric_topology.hpp"
+
+// For debug, shouldn't be here
+using VALUE_TYPE = double;
+VALUE_TYPE DT_DEFAULT{100};
+#include "floe/ope/time_scale_manager.hpp"
+#include "floe/domain/domain.hpp"
+// For debug, shouldn't be here
 
 #include <cmath>
 #include "matio.h"
@@ -13,13 +23,17 @@ using namespace std;
 
 TEST_CASE( "Test distance between floes", "[collision]" ) {
     
-    using namespace floe::floes;
+    using namespace floe::variable;
     using namespace std;
 
-    using detector_type = typename proximity_detector_type::detector_h_type;
+    using value_type = double;
+    using floe_type = floe::floes::KinematicFloe<floe::floes::StaticFloe<value_type>>;
+    using point_type = typename floe_type::point_type;
+    using TSpaceTopology = floe::topology::ToricTopology<point_type>;
+    using TDetector = floe::collision::matlab::PeriodicMatlabDetector<floe_type, TSpaceTopology>;
 
     // Create floe group
-    floe_group_type F;
+    FloeGroup<floe_type> F;
 
     // Import floes from Matlab configuration
     // std::string mat_file_name = "io/set_up_250sm_sz_60_list_so_350_str.mat";
@@ -27,11 +41,11 @@ TEST_CASE( "Test distance between floes", "[collision]" ) {
     F.load_matlab_config(mat_file_name);
 
     // create topology 
-    // auto space_topology = topology_type{-600, 600, -600, 600}; // Pze data (in matlab config)
+    auto space_topology = TSpaceTopology{-600, 600, -600, 600}; // Pze data (in matlab config)
 
     // Create detector and link it to floes
-    detector_type detector;
-    // detector.set_topology(space_topology);
+    TDetector detector;
+    detector.set_topology(space_topology);
     for (auto& floe : F.get_floes())
     {
         detector.push_back(&floe);
@@ -40,10 +54,10 @@ TEST_CASE( "Test distance between floes", "[collision]" ) {
     // update detector
     detector.update();
 
-    /*
+    
     auto const& d_secu = detector.get_dist_secu();
     auto const& d_opt = detector.get_dist_opt();
-
+    /*
     // disp min d_secu
     value_type min_d = std::numeric_limits<value_type>::max();
     for (std::size_t n1 = 0; n1 < d_secu.size1(); ++n1)
@@ -81,10 +95,10 @@ TEST_CASE( "Test distance between floes", "[collision]" ) {
     myfile.close();
 
     cout << "#NON-ZERO D_OPT = " << count_non_zero / 2 << endl;
-    
+    */
 
     using domain_type = floe::domain::Domain;
-    using time_mgr_type = floe::domain::TimeScaleManager<domain_type, decltype(detector)>;
+    using time_mgr_type = floe::ope::TimeScaleManager<domain_type, decltype(detector)>;
     time_mgr_type time_mgr;
     domain_type domain;
     cout << "min DT : " << time_mgr.delta_t_secu(&domain, &detector);
@@ -196,6 +210,5 @@ TEST_CASE( "Test distance between floes", "[collision]" ) {
             cout  << d.radius << " ";
         cout << endl;
     }
-    */
 
 }

@@ -9,6 +9,7 @@
 
 #include <cmath>
 #include <utility>
+// #include <memory>
 
 #include "floe/geometry/frame/uv_frame.hpp"
 #include "floe/geometry/core/access.hpp"
@@ -75,42 +76,25 @@ struct ContactPoint
     inline explicit
     operator frame_type() const { return frame; }
 
+    value_type relative_speed() const
+    {
+        if (*floe_states_changed) { calc_relative_speed(); *floe_states_changed = false; }
+        return *m_relative_speed;
+    }
+
     //! Calculate the relative speed of the two floes relatively to the contact frame
-    /*typename floe::geometry::coordinate_type<point_type>::type
-    relative_speed() const
+    void
+    calc_relative_speed() const
     {
         using namespace floe::geometry;
 
-        const auto state1 = floe1->state();
-        const auto state2 = floe2->state();
+        const auto& state1 = floe1->state();
+        const auto& state2 = floe2->state();
 
-        const point_type speed1 = {
-            get<0>(state1.speed) - ( get<1>(frame.center()) - get<1>(state1.pos) ) * state1.rot,
-            get<1>(state1.speed) + ( get<0>(frame.center()) - get<0>(state1.pos) ) * state1.rot
-        };
-        
-        const point_type speed2 = {
-            get<0>(state2.speed) - ( get<1>(frame.center()) - get<1>(state2.pos) ) * state2.rot,
-            get<1>(state2.speed) + ( get<0>(frame.center()) - get<0>(state2.pos) ) * state2.rot
-        };
+        const point_type& speed1 = state1.speed + direct_orthogonal( r1() ) * state1.rot;
+        const point_type& speed2 = state2.speed + direct_orthogonal( r2() ) * state2.rot;
 
-        return 
-              ( get<0>(speed2) - get<0>(speed1) ) * get<0>(frame.v())
-            + ( get<1>(speed2) - get<1>(speed1) ) * get<1>(frame.v());
-    }*/
-
-    typename floe::geometry::coordinate_type<point_type>::type
-    relative_speed() const
-    {
-        using namespace floe::geometry;
-
-        const auto state1 = floe1->state();
-        const auto state2 = floe2->state();
-
-        const point_type speed1 = state1.speed + direct_orthogonal( r1() ) * state1.rot;
-        const point_type speed2 = state2.speed + direct_orthogonal( r2() ) * state2.rot;
-
-        return dot_product(speed2 - speed1, frame.v());
+        *m_relative_speed = dot_product(speed2 - speed1, frame.v());
     }
 
     virtual point_type r1() const { 
@@ -125,14 +109,17 @@ struct ContactPoint
     //! Return true if the contact is active (relative speed of the two contact points is negative)
     inline bool is_active() const
     {
-        return relative_speed() < - dist / 50;
+        return relative_speed() < - dist / 50; // 10 = DT_DEFAULT // get dt_defaut ?
         // return relative_speed() < 0;
     }
 
     TFloe const* floe1; //!< First floe in contact
     TFloe const* floe2; //!< Second floe in contact
-    TFrame      frame;  //!< Frame of contact
+    TFrame       frame; //!< Frame of contact
     value_type dist; //!< Distance between floes at this point
+    mutable std::shared_ptr<value_type> m_relative_speed{std::make_shared<value_type>(-1)}; //!< Relative speed cash (for performances)
+    //! Floe states changed (Need new relative speed calculation), shared pointer to be shared with subgraphs.
+    mutable std::shared_ptr<bool> floe_states_changed{std::make_shared<bool> (true)};
 };
 
 //! Exterior function to test if a contact is active (should be the only place ...)

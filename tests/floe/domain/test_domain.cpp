@@ -5,7 +5,7 @@
 
 TEST_CASE( "Test Domain", "[doman]" ) {
     using namespace floe::domain;
-    Domain<double> D;
+    Domain D;
     REQUIRE( D.time() == 0 );
     REQUIRE( D.time_step() == 1 );
     D.set_time_step(0.1);

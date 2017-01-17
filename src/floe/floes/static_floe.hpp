@@ -60,7 +60,8 @@ public:
     using Uptr_geometry_type = std::unique_ptr<geometry_type>;
 
     //! Default constructor.
-    StaticFloe() : m_frame{0,0,0}, m_geometry{nullptr}, m_mesh{nullptr}, m_density{917}, m_mu_static{0.7}, m_area{-1}, m_moment_cst{-1} {}
+    StaticFloe() : m_frame{0,0,0}, m_geometry{nullptr}, m_mesh{nullptr}, m_density{917}, m_mu_static{0.7},
+                    m_thickness{1}, m_C_w{5 * 1e-3}, m_area{-1}, m_moment_cst{-1} {}
 
     //! Deleted copy-constructor.
     StaticFloe( StaticFloe const& ) = delete;
@@ -102,12 +103,21 @@ public:
     //! Mu accessors
     inline value_type const&    mu_static() const   { return m_mu_static; }
     inline value_type &         mu_static()         { return m_mu_static; }
+    inline void set_mu_static(value_type mu_static) { m_mu_static = mu_static; }
+
+    //! Thickness accessors
+    inline value_type thickness() const { return m_thickness; }
+    inline void set_thickness(value_type v){ m_thickness = v; }
+
+    //! Oceanic skin drag accessors
+    inline value_type C_w() const { return m_C_w; }
+    inline void set_C_w(value_type v){ m_C_w = v; }
 
     //! Area
     inline value_type area() const { return calc_area(); }
 
     //! Mass
-    inline density_type mass() const { return m_density * area(); }
+    inline density_type mass() const { return m_density * m_thickness * area(); }
 
     //! Momentum constant
     inline value_type moment_cst() const { return calc_moment_cst(); }
@@ -124,6 +134,8 @@ private:
     mesh_type* m_mesh;          //!< Mesh
     density_type m_density;     //!< Density
     value_type m_mu_static;     //!< Static friction coefficient
+    value_type m_thickness;     //!< Vertical thickness (constant over floe surface)
+    value_type m_C_w;     //!< Oceanic skin drag coeff
 
     mutable value_type m_area;  //!< Area (cached)
     // mutable density_type m_mass; //!< Mass (cached)

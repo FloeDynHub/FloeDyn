@@ -31,6 +31,15 @@
 namespace floe { namespace lcp { namespace solver
 {
 
+/*! Frontend to the lexicolemke LCP solver.
+ * 
+ * \tparam T    Fundamental type.
+ * \param lcp   The linear complementarity problem to solve.
+ * \return      true if the solver successed.
+ */
+template < typename T>
+bool lexicolemke( floe::lcp::LCP<T>& lcp );
+
 /*! LCP solver using Lemke algorithm with lexicographical ordering to avoid degenerate cases
  *
  * Original from SICONOS projet (see licence above).
@@ -43,16 +52,6 @@ namespace floe { namespace lcp { namespace solver
  * \param[out]  info    Equals 0 if solver successed.
  */
 void lcp_lexicolemke(int dim, const double * M, const double * q, double *zlem , double *wlem , int *info);
-
-/*! Frontend to the lexicolemke LCP solver.
- * 
- * \tparam T    Fundamental type.
- * \param lcp   The linear complementarity problem to solve.
- * \return      true if the solver successed.
- */
-template < typename T>
-bool lexicolemke( floe::lcp::LCP<T>& lcp );
-
 
 }}} // namespace floe::lcp::solver
 

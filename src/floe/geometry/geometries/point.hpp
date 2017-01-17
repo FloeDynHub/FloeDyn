@@ -23,7 +23,9 @@ template <
     typename TCoordinateSystem = boost::geometry::cs::cartesian
 >
 struct Point
-{
+{   
+    using value_type = TCoordinate;
+
     Point() : x{0}, y{0} {};
     
     Point( TCoordinate x, TCoordinate y ) : x{x}, y{y} {}   

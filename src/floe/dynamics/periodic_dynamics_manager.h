@@ -32,8 +32,8 @@ public:
     using topology_type = TSpaceTopology;
     // using integration_strategy = typename base_class::integration_strategy;
 
-    PeriodicDynamicsManager(value_type const& time_ref) :
-        base_class(time_ref), m_topology{nullptr} {}
+    PeriodicDynamicsManager(value_type const& time_ref, int OBL_status) :
+        base_class(time_ref, OBL_status), m_topology{nullptr} {}
 
     //! Set topology
     inline void set_topology(topology_type const& t) { m_topology = &t; }

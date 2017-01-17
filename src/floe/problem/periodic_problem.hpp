@@ -44,24 +44,18 @@ public:
     using point_type = typename TFloeGroup::floe_type::point_type;
 
     //! Default constructor
-    PeriodicProblem() : base_class() {}
+    PeriodicProblem(value_type epsilon, int OBL_status) : base_class(epsilon, OBL_status) {}
     //! Constructor from topology
     PeriodicProblem(TSpaceTopology& topology) : base_class(), m_space_topology{topology} {}
 
     //! Load initial state and construct topology from matlab file
-    virtual void load_matlab_config(std::string const& filename) override {
-        base_class::load_matlab_config(filename);
-        load_topology_from_matlab(filename);
-    }
+    virtual void load_matlab_config(std::string const& filename) override;
 
     //! construct topology from box information in Matlab file
-    void load_topology_from_matlab(std::string const& filename)  {
-        auto imported_topo = floe::io::matlab::topology_from_file<TSpaceTopology>(filename);
-        if (imported_topo.area() != 0)
-            set_topology(imported_topo);
-        else
-            auto_topology();
-    }
+    void load_topology_from_matlab(std::string const& filename);
+
+    //! Load initial state and construct topology from matlab file
+    virtual void load_h5_config(std::string const& filename) override;
 
     //! Set topology
     void set_topology(TSpaceTopology const& topology);
@@ -75,40 +69,62 @@ private:
 
     void set_topology_ptr(){
         base_class::m_dynamics_manager.set_topology(m_space_topology);
-        base_class::m_proximity_detector.m_detector_h.set_topology(m_space_topology);
+        base_class::m_proximity_detector.set_topology(m_space_topology);
     }
 
 };
 
-
-template <
-    typename TFloeGroup,
-    typename TProxymityDetector,
-    typename TCollisionManager,
-    typename TDynamicsManager,
-    typename TDomain,
-    typename TSpaceTopology
+// MACRO def to lighten file
+#define TEMPLATE_PERIO_PB template <\
+    typename TFloeGroup,\
+    typename TProxymityDetector,\
+    typename TCollisionManager,\
+    typename TDynamicsManager,\
+    typename TDomain,\
+    typename TSpaceTopology\
 >
-void
-PeriodicProblem<TFloeGroup, TProxymityDetector, TCollisionManager, TDynamicsManager, TDomain, TSpaceTopology>::
-set_topology(TSpaceTopology const& topology)
+#define PERIODIC_PROBLEM PeriodicProblem<TFloeGroup, TProxymityDetector, TCollisionManager, TDynamicsManager, TDomain, TSpaceTopology>
+
+
+TEMPLATE_PERIO_PB
+void PERIODIC_PROBLEM::load_matlab_config(std::string const& filename) {
+    base_class::load_matlab_config(filename);
+    load_topology_from_matlab(filename);
+}
+
+
+TEMPLATE_PERIO_PB
+void PERIODIC_PROBLEM::load_topology_from_matlab(std::string const& filename)  {
+    auto imported_topo = floe::io::matlab::topology_from_file<TSpaceTopology>(filename);
+    if (imported_topo.area() != 0)
+        set_topology(imported_topo);
+    else
+        auto_topology();
+}
+
+
+TEMPLATE_PERIO_PB
+void PERIODIC_PROBLEM::load_h5_config(std::string const& filename) {
+    base_class::load_h5_config(filename);
+    if (base_class::m_floe_group.initial_window_area())
+    {
+        auto a = base_class::m_floe_group.get_initial_window();
+        set_topology( TSpaceTopology{ a[0], a[1], a[2], a[3]} );
+    } else
+        auto_topology();
+}
+
+
+TEMPLATE_PERIO_PB
+void PERIODIC_PROBLEM::set_topology(TSpaceTopology const& topology)
 {
     m_space_topology = topology;
     set_topology_ptr();
 }
 
 
-template <
-    typename TFloeGroup,
-    typename TProxymityDetector,
-    typename TCollisionManager,
-    typename TDynamicsManager,
-    typename TDomain,
-    typename TSpaceTopology
->
-void
-PeriodicProblem<TFloeGroup, TProxymityDetector, TCollisionManager, TDynamicsManager, TDomain, TSpaceTopology>::
-auto_topology()
+TEMPLATE_PERIO_PB
+void PERIODIC_PROBLEM::auto_topology()
 {
     auto a = base_class::m_floe_group.bounding_window();
     set_topology( TSpaceTopology{ a[0], a[1], a[2], a[3]} );

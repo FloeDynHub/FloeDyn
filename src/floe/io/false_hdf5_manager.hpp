@@ -34,9 +34,14 @@ public:
     using value_type = typename TFloeGroup::value_type;
     using dynamics_mgr_type = TDynamicsMgr;
 
-    void save_step(value_type time, const floe_group_type&, const dynamics_mgr_type&){}
+    HDF5Manager(floe_group_type const& floe_group) {}
 
+    void save_step(value_type time, const dynamics_mgr_type&){}
+    void flush(){}
     double recover_states(std::string filename, value_type time, floe_group_type&, dynamics_mgr_type&){ return 0; }
+    inline void set_floe_group(floe_group_type const& floe_group) { }
+    std::string const& out_file_name(){}
+    void make_input_file(const dynamics_mgr_type& dynamics_manager){}
 
 };
 

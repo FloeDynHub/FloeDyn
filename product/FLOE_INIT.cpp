@@ -31,18 +31,25 @@ int main( int argc, char* argv[] )
     if (matlab_list_floe_filename == "generator") generate_floes = true; 
     std::string matlab_topaz_filename = "io/inputs/DataTopaz01.mat";
 
-    types::generator_problem_type P1;
-    P1.load_matlab_config(matlab_list_floe_filename);
-    auto& init_physical_data = P1.get_dynamics_manager().get_external_forces().get_physical_data();
-    init_physical_data.set_window_size(0,0);
-    init_physical_data.set_modes(2,0);
-    std::cout << "INIT..." << std::endl;
-    P1.solve(atoi(argv[2]), atof(argv[3]), atoi(argv[5]), atof(argv[4]));
-
     types::problem_type P;
+    {
+        types::generator_problem_type P1;
+        P1.QUIT = &QUIT;
+        P1.load_matlab_config(matlab_list_floe_filename);
+        auto& init_physical_data = P1.get_dynamics_manager().get_external_forces().get_physical_data();
+        init_physical_data.set_window_size(0,0);
+        init_physical_data.set_modes(1,0);
+        std::cout << "INIT..." << std::endl;
+        P1.solve(atoi(argv[6]), atof(argv[3]), atoi(argv[5]), atof(argv[4]));
+        P.set_floe_group(P1.get_floe_group());
+    }
+    
+
+    // types::problem_type P;
+    P.QUIT = &QUIT;
     std::cout << "read TOPAZ" << std::endl;
     P.load_matlab_topaz_data(matlab_topaz_filename);
-    P.set_floe_group(P1.get_floe_group());
+    // P.set_floe_group(P1.get_floe_group());
     std::cout << "SOLVE..." << std::endl;
     P.solve(atoi(argv[2]), atof(argv[3]), atoi(argv[5]), atof(argv[4]));
         

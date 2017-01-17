@@ -3,15 +3,14 @@
 
 #include "floe/floes/static_floe.hpp"
 #include "floe/floes/kinematic_floe.hpp"
-#include "floe/floes/floe_group.hpp"
+#include "floe/variable/floe_group.hpp"
 #include "floe/collision/matlab/periodic_detector.hpp"
 #include "floe/topology/toric_topology.hpp"
 #include <cmath>
-#include <chrono>
 
-TEST_CASE( "Test Interpenetration", "[geometry]" ) {
+TEST_CASE( "Test boost geometry intersects algorithm", "[geometry]" ) {
     
-    using namespace floe::floes;
+    using namespace floe::variable;
     using namespace std;
 
     using value_type = double;

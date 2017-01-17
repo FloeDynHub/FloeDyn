@@ -17,6 +17,7 @@
 
 #include <vector>
 #include <atomic>
+#include <iostream>
 
 
 namespace floe { namespace generator {
@@ -33,13 +34,13 @@ public:
     using static_floe_type = typename floe_type::static_floe_type;
     using mesh_type = typename floe_type::mesh_type;
 
-    Generator() : m_problem{} {}
+    Generator() : m_problem{0.0, 0} {}
 
     //! Generate floe set with given number of floe and concentration
-    void generate_floe_set(std::size_t number, value_type concentration);
+    void generate_floe_set(std::size_t number, value_type concentration, value_type max_size);
     typename TProblem::floe_group_type& get_floe_group() { return m_problem.get_floe_group(); }
-    std::array<value_type, 4> get_window() const { return m_window; }
-    value_type window_area() const { return (m_window[1] - m_window[0]) * (m_window[3] - m_window[2]); }
+    // std::array<value_type, 4> get_window() const { return m_window; }
+    // value_type window_area() const { return (m_window[1] - m_window[0]) * (m_window[3] - m_window[2]); }
     void set_exit_signal(std::atomic<bool>* QUIT){ m_problem.QUIT = QUIT; }
 
 private:
@@ -49,7 +50,7 @@ private:
     std::vector<value_type> random_size_repartition(std::size_t n, value_type R_max);
     std::vector<value_type> exp_size_repartition(std::size_t n, value_type R_max);
     //! Random floe group
-    void random_floe_group(std::size_t n);
+    void random_floe_group(std::size_t n, value_type max_size);
     //! Spiral dispatcher
     std::vector<point_type> spiral_distribution(std::vector<value_type> const& size_distribution, value_type Rmax);
 

@@ -31,6 +31,8 @@
 
 #include "floe/domain/time_scale_manager.hpp"
 
+#include "floe/collision/matlab/proximity_data.hpp"
+
 #ifdef _OPENMP
 #include <omp.h>
 #endif
@@ -54,18 +56,22 @@ namespace ublas = boost::numeric::ublas;
  * There is also a lot of functions in this file that have nothing to do here.
  *
  * \tparam TFloe Type of a floe (it must be a kinematic object).
+ * \tparam TProximityData  Type of internal data.
+ * \tparam TContact  Type of a contact point.
  */
 template <
-    typename TFloe,
-    typename TContact = ContactPoint<TFloe> 
+    typename TFloeGroup,
+    typename TProximityData = ProximityData<TFloeGroup, OptimizedFloe<typename TFloeGroup::floe_type>>,
+    typename TContact = ContactPoint<typename TFloeGroup::floe_type> 
 >
 class MatlabDetector
 {
 
 public:
     // Type traits
-    using floe_type = TFloe;
-    using optim_type = OptimizedFloe<TFloe>;
+    using floe_group_type = TFloeGroup;
+    using floe_type = typename floe_group_type::floe_type;
+    using optim_type = typename TProximityData::optim_type;
     using point_type = typename floe_type::point_type;
     using value_type = typename floe_type::value_type;
     using floe_interface_type = typename floe_type::floe_interface_type;
@@ -75,40 +81,36 @@ public:
     using contact_type = TContact;
     using contact_graph_type = ContactGraph<contact_type>;
     using contact_list_type = typename contact_graph_type::edge_property_type::base_class;
-
-    // typedef ublas::symmetric_matrix<value_type, ublas::lower> dist_matrix_type; // Type of distance matrix
-    // typedef ublas::symmetric_matrix<std::size_t, ublas::lower> indic_matrix_type; // Type of indicator matrix
-    using dist_matrix_type = ublas::matrix<value_type>; //!< Type of distance matrix
-    using indic_matrix_type = ublas::matrix<short>; //!< Type of indicator matrix
+    using proximity_data_type = TProximityData;
 
     //! Default constructor
     MatlabDetector()
-        : m_floes{}, m_optims{}, 
-          m_indic{0,0}, m_dist_secu{0,0}, m_dist_opt{0,0}, m_detection_mode{0}, m_detection_chgt{1}
-    {}
+        : m_prox_data{}, m_detection_mode{0}, m_detection_chgt{1} {}
 
     //! Deleted copy constructor
-    MatlabDetector( MatlabDetector<TFloe, TContact> const& ) = delete;
+    MatlabDetector( MatlabDetector<TFloeGroup, TContact> const& ) = delete;
 
     //! Deleted copy operator
-    MatlabDetector<TFloe, TContact>& operator= (MatlabDetector const&) = delete;
+    MatlabDetector<TFloeGroup, TContact>& operator= (MatlabDetector const&) = delete;
 
     //! Destructor
-    ~MatlabDetector() { for ( auto& optim_ptr : m_optims ) delete optim_ptr; }
+    ~MatlabDetector() { for ( auto& optim_ptr : m_prox_data.get_optims() ) delete optim_ptr; }
 
     /*! Add a floe in the detector scope
      * It automatically creates the optimization datas associated to the new floe.
      * \param floe_ptr Pointer to the floe to add.
      */
-    virtual void push_back( floe_type * floe_ptr )
-    {
-        m_floes.push_back(floe_ptr);
-        m_optims.push_back( new optim_type{*floe_ptr} );
-        m_previous_step_states.resize(m_floes.size());
+    // virtual void push_back( floe_type * floe_ptr )
+    // {
+    //     m_prox_data.push_back(floe_ptr);
+    // }
+
+    virtual void set_floe_group(floe_group_type const& floe_group){
+        m_prox_data.set_floe_group(floe_group);
     }
 
     //!Empty floe and optim lists
-    virtual void reset() { m_floes.clear(); m_optims.clear(); }
+    virtual void reset() { m_prox_data.reset(); }
 
     /*! Update collision informations
      *
@@ -120,37 +122,31 @@ public:
     contact_graph_type const& contact_graph() const { return m_contacts; }
 
     // Some informations
-    std::size_t num_local_disks() const { std::size_t cnt = 0; for (auto const& opt : m_optims) cnt += opt->local_disks().size(); return cnt; }
-    std::size_t num_points() const { std::size_t cnt = 0; for (auto const& floe : m_floes) cnt += floe->geometry().outer().size(); return cnt; }
-
-    inline bool interpenetration() const { return m_interpenetration; }
+    std::size_t num_local_disks() const { std::size_t cnt = 0; for (auto const& opt : m_prox_data.get_optims()) cnt += opt->local_disks().size(); return cnt; }
+    std::size_t num_points() const { std::size_t cnt = 0; for (auto const& floe : m_prox_data.get_floes() ) cnt += floe.geometry().outer().size(); return cnt; }
 
     //! Container accessors
-    inline virtual floe_interface_type const& get_floe(std::size_t n) const { return *(m_floes[n]); }
-    inline virtual optim_interface_type const& get_optim(std::size_t n) const { return *(m_optims[n]); }
+    inline std::size_t get_nb_floes() const { return m_prox_data.nb_floes(); }
+    inline floe_type const& get_floe(std::size_t n) const { return m_prox_data.get_floe(n); }
+    inline optim_type const& get_optim(std::size_t n) const { return m_prox_data.get_optim(n); }
+    inline virtual floe_interface_type const& get_floe_itf(std::size_t n) const { return m_prox_data.get_floe_itf(n); }
+    inline virtual optim_interface_type const& get_optim_itf(std::size_t n) const { return m_prox_data.get_optim_itf(n); }
 
-    //! if contact has not been solved, annul dist_opt
+    //! if contact has not been solved, cancel its dist_opt
     void clean_dist_opt();
 
     //! is there any floe interpenetration ? returns true if not.
     bool check_interpenetration();
-    void backup_step_states();
-    void recover_previous_step_states();
 
+    inline proximity_data_type const& data() { return m_prox_data; }
 
 protected:
-    std::vector<floe_type *>     m_floes; //!< Floes list.
-    std::vector<optim_type*>    m_optims; //!< Optimization datas list.
-
-    indic_matrix_type m_indic; //!< Indicator of collision (0=far away, 1=close, 2=contact)
-    dist_matrix_type m_dist_secu; //!< Security distance
-    dist_matrix_type m_dist_opt; //!< Optimial distance
+    proximity_data_type m_prox_data;
     contact_graph_type m_contacts; //!< Contact graph
     bool m_detection_mode; //! Detection mode ('eta_min' in matlab)
     bool m_detection_chgt; //! Detection status ('eta_chgt' in matlab)
-    bool m_interpenetration; //! Floe interpenetration
 
-    std::vector<typename floe_type::state_type> m_previous_step_states;
+    inline optim_type& get_optim(std::size_t n) { return m_prox_data.get_optim(n); }
 
     //! Talking about segments
     //! \todo put that somewhere else !
@@ -163,24 +159,20 @@ protected:
     inline point_type point_from_pos( segment_type const& segment, value_type pos ) const;
 
     void detection_mode(); // detection mode (min or max collision distance)
-    void prepare_detection(); // preparation
+    virtual void prepare_detection(); // preparation
+    virtual void prepare_optims();
+    void prepare_contact_graph();
     virtual void detect(); // initialization + detection
     //! Detects collisions in 4 main steps
-    void detect_step1();
+    virtual void detect_step1();
     void detect_step2( std::size_t n1, std::size_t n2 );
     void detect_step3( std::size_t n1, std::size_t n2, std::vector<std::size_t> const& ldisks1, std::vector<std::size_t> const& ldisks2 );
     
     template <typename TAdjacency>
     value_type detect_step4( std::size_t n1, std::size_t n2, std::vector<std::size_t> const& ldisks1, std::vector<std::size_t> const& ldisks2, TAdjacency const& adjacency);
 
-    inline virtual void set_dist_secu(std::size_t n1, std::size_t n2, value_type val) { m_dist_secu(n1, n2) = m_dist_secu(n2, n1) = val; }
-    inline virtual void set_indic(std::size_t n1, std::size_t n2, short val) { m_indic(n1, n2) = m_indic(n2, n1) = val; }
-    inline virtual void set_dist_opt(std::size_t n1, std::size_t n2, value_type val) { m_dist_opt(n1, n2) = m_dist_opt(n2, n1) = val; }
     inline virtual contact_type create_contact(std::size_t n1, std::size_t n2, point_type point1, point_type point2) const {
-        return { m_floes[n1], m_floes[n2], point1, point2 }; }
-    inline virtual std::size_t real_floe_id(std::size_t n) const { return n; }
-
-    friend class domain::TimeScaleManager<MatlabDetector<TFloe, TContact>>;
+        return { &m_prox_data.get_floe(n1), &m_prox_data.get_floe(n2), point1, point2 }; }
 
 };
 
