@@ -397,7 +397,8 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::write_OBL_speed() {
 
 template <typename TFloeGroup, typename TDynamicsMgr>
 double HDF5Manager<TFloeGroup, TDynamicsMgr>::recover_states(
-        H5std_string filename, value_type time, floe_group_type& floe_group, dynamics_mgr_type& dynamics_manager)
+        H5std_string filename, value_type time, floe_group_type& floe_group,
+        dynamics_mgr_type& dynamics_manager, bool keep_as_outfile)
 {
     
     /*
@@ -503,10 +504,11 @@ double HDF5Manager<TFloeGroup, TDynamicsMgr>::recover_states(
     }
 
     // if (i + 1 == dims_out[0]){
+    if (keep_as_outfile){
         // We keep recover file as output file
         m_step_count = i + 1;
         m_out_file_name = filename;
-    // }
+    }
 
     return data_time[i];
 

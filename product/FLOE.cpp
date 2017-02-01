@@ -132,11 +132,12 @@ int main( int argc, char* argv[] )
 
     std::cout << "read TOPAZ" << std::endl;
     P.load_matlab_topaz_data(matlab_topaz_filename);
+    P.get_dynamics_manager().get_external_forces().get_physical_data().set_storm_mode();
 
 
     if (vm.count("rectime"))
     {
-        P.recover_states_from_file("io/outputs/" + vm["recfile"].as<string>(), vm["rectime"].as<value_type>());
+        P.recover_states_from_file(vm["recfile"].as<string>(), vm["rectime"].as<value_type>());
     }
 
     

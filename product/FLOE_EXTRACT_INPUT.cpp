@@ -15,7 +15,7 @@ int main( int argc, char* argv[] )
 
     if ( argc < 2 )
     {
-        cout << "Usage: " << argv[0] << " <matlab_file_name> " << endl;
+        cout << "Usage: " << argv[0] << " <input_file_name> " << endl;
         return 1;
     }
 
@@ -38,6 +38,11 @@ int main( int argc, char* argv[] )
     problem_type P;
     P.QUIT = &QUIT;
     P.load_config(input_list_floe_filename);
+    if (argc > 2){
+        double rectime = atof(argv[2]);
+        P.load_matlab_topaz_data(matlab_topaz_filename); // segfault otherwise (?)
+        P.recover_states_from_file(input_list_floe_filename, rectime, false);
+    }
     P.make_input_file();
     // cout << P.get_floe_group().total_area();
 

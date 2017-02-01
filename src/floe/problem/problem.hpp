@@ -61,7 +61,7 @@ public:
         m_dynamics_manager.load_matlab_topaz_data(filename);
     }
     //! Recover simulation state from previous ouput file, at any recorded time t
-    virtual void recover_states_from_file(std::string const& filename, value_type t);
+    virtual void recover_states_from_file(std::string const& filename, value_type t, bool keep_as_outfile=true);
 
     //! set existing floe_group (from generator for example)
     virtual void set_floe_group(floe_group_type& floe_group);
@@ -167,8 +167,8 @@ void PROBLEM::load_h5_config(std::string const& filename) {
 
 
 TEMPLATE_PB
-void PROBLEM::recover_states_from_file(std::string const& filename, value_type t){
-    value_type saved_time = m_out_manager.recover_states(filename, t, m_floe_group, m_dynamics_manager);
+void PROBLEM::recover_states_from_file(std::string const& filename, value_type t, bool keep_as_outfile){
+    value_type saved_time = m_out_manager.recover_states(filename, t, m_floe_group, m_dynamics_manager, keep_as_outfile);
     m_domain.set_time(saved_time);
 }
 

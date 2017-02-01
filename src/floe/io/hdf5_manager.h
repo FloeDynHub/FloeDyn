@@ -74,7 +74,8 @@ public:
     //! Flush temporarily saved data
     void flush();
     //! Recover simulation state from file
-    double recover_states(H5std_string filename, value_type time, floe_group_type&, dynamics_mgr_type&);
+    double recover_states(H5std_string filename, value_type time, floe_group_type&,
+                          dynamics_mgr_type&, bool keep_as_outfile);
     void set_floe_group(floe_group_type const& floe_group) {
         m_floe_group = &floe_group; 
         m_data_chunk_states.resize(boost::extents[m_flush_max_step][floe_group.get_floes().size()][9]);

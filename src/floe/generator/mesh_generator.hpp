@@ -50,7 +50,8 @@ TMesh generate_mesh_for_shape(TShape const& shape)
     }
 
     std::list<Point> list_of_seeds;
-    list_of_seeds.push_back(Point(1000, 1000)); // /!\ domain must contain point (0,0)
+    auto out_of_domain_point = Point(1e10, 1e10);
+    list_of_seeds.push_back(out_of_domain_point);
 
     const int nb_cells = 20;
     const value_type cell_size{ sqrt(2 * floe::geometry::area(shape) / nb_cells) };
