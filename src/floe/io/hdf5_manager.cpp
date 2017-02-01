@@ -4,6 +4,7 @@
 #include <type_traits>
 
 template class floe::io::HDF5Manager<types::floe_group_type, types::dynamics_manager_type>;
-// constexpr if (!std::is_same<dynamics_manager_type, generator_dynamics_manager_type>::value)
+#ifndef SAME_PHYSICAL_DATA_FOR_GENERATOR
 template class floe::io::HDF5Manager<types::floe_group_type, types::generator_dynamics_manager_type>;
+#endif
 

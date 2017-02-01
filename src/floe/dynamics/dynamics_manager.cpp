@@ -2,14 +2,10 @@
 #include "floe/dynamics/dynamics_manager.hpp"
 #include <type_traits>
 
+template<int> struct dummy { };
+
 
 template class floe::dynamics::DynamicsManager<types::external_forces_type, types::floe_group_type>;
-// constexpr if (!std::is_same<types::external_forces_type, types::generator_external_forces_type>::value)
+#ifndef SAME_PHYSICAL_DATA_FOR_GENERATOR
 template class floe::dynamics::DynamicsManager<types::generator_external_forces_type, types::floe_group_type>;
-
-// Trying to conditionally explicit instantiate a type :
-// using foo = typename std::conditional<
-// 	std::is_same<types::external_forces_type, types::generator_external_forces_type>::value,
-// 	void,
-// 	floe::dynamics::DynamicsManager<types::generator_external_forces_type, types::floe_group_type>
-// >::type;
+#endif
