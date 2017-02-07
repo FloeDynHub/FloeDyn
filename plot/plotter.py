@@ -6,7 +6,7 @@ import numpy as np
 from matplotlib import transforms, cm, animation, colors, gridspec
 import matplotlib.pyplot as plt
 from matplotlib.patches import Circle, Polygon
-from matplotlib.collections import PatchCollection, PolyCollection
+from matplotlib.collections import PatchCollection, PolyCollection, CircleCollection
 
 from multiprocessing import Pool, Process, cpu_count
 from subprocess import call
@@ -14,14 +14,60 @@ from subprocess import call
 from utils import filename_without_extension, get_unused_path
 import h5py
 import datetime
+import math
 
 
-class FloeVideoPlotter(object):
+class AxeManager(object):
+    """
+    Made to allow named patches and collections in matplotlib Axes objects
+    """
+
+    def __init__(self, ax):
+        self.ax = ax
+        self.collections = {}
+        self.patch_lists = {}
+        self.patches = {}
+
+    def set_collection(self, key, obj):
+        idx = len(self.ax.collections)
+        self.ax.add_collection(obj)
+        self.collections[key] = idx
+
+    def set_patch(self, key, obj):
+        idx = len(self.ax.collections)
+        self.ax.add_patch(obj)
+        self.patches[key] = idx
+
+    def add_to_patch_list(self, key, obj):
+        idx = len(self.ax.patches)
+        self.ax.add_patch(obj)
+        if key in self.patch_lists:
+            self.patch_lists[key].append(idx)
+        else:
+            self.patch_lists[key] = [idx]
+
+    def get_patch_list(self, key):
+        return [self.ax.patches[i] for i in self.patch_lists[key]]
+
+    def get_patch(self, key):
+        return self.ax.patches[self.patches[key]]
+
+    def get_collection(self, key):
+        return self.ax.collections[self.collections[key]]
+
+
+class FloePlotter(object):
     """ Drawing floes from simulation output files """
 
     def __init__(self, options):
         self.OPTIONS = options
         self.writer = animation.FFMpegWriter(fps=30, metadata=dict(artist='Me'), extra_args=None)#, codec="libx264", bitrate=32000
+        self.colors = {
+            # "ocean" : '#162252',
+            "ocean" : 'white',
+            "circles": 'white',
+            "window": 'white'
+        }
 
     def do(self):
         funcs = {
@@ -33,65 +79,17 @@ class FloeVideoPlotter(object):
             self.writer.codec = "lib{}".format(self.OPTIONS.codec)
             # writer.extra_args = ['-profile:v', 'high444', '-tune:v', 'animation', '-preset:v', 'slow', '-level', '4.0', '-x264opts', 'crf=18']
             self.writer.extra_args = ['-profile:v', 'high444', '-tune:v', 'animation', '-preset:v', 'slow', '-level', '4.0']
-        funcs[self.OPTIONS.function](**vars(self.OPTIONS))
+        funcs[self.OPTIONS.function]()
 
     def get_final_video_path(self, input_file_path, video_ext="mp4"):
         filename = filename_without_extension(input_file_path)
         return get_unused_path(u'io/videos/{}.{}'.format(filename, video_ext))
 
-    def _init2(self, data, ax, begin=0):
-        "initializes floes (Polygon creation) for matplotlib animation creation (v3 : shapes)"
-        floes_collec = PolyCollection(data.get("floe_shapes"), linewidths=0.2,
-                                     cmap=cm.YlOrRd, norm=colors.PowerNorm(gamma=0.3))
-                                    # cmap=cm.Paired)#MPI
-        if getattr(self.OPTIONS, "color", True):
-            floes_collec.set_array(data.get("impulses")[begin])
-            floes_collec.set_clim([0, data["MAX_IMPULSE"]])
-            plt.colorbar(floes_collec, ax = ax, fraction = 0.05) # display color bar
-        else:
-            floes_collec.set_array(np.zeros(len(data.get("floe_shapes"))))
-        # ax.axes.get_yaxis().set_visible(False) # remove x axis informations
-        ax.add_collection(floes_collec)
-
-        if getattr(self.OPTIONS, "ghosts", False):
-            ghosts_collec = PolyCollection(data.get("floe_shapes") * 8, linewidths=0.2, alpha=0.4,
-                                         cmap=cm.YlOrRd, norm=colors.PowerNorm(gamma=0.3))
-                                        # cmap=cm.Paired)#MPI
-            ghosts_collec.set_clim(floes_collec.get_clim())
-            ghosts_collec.set_array(np.zeros(len(data.get("floe_shapes")) * 8))
-            ax.add_collection(ghosts_collec)
-
-        # Display generator window
-        if getattr(self.OPTIONS, "disp_window"):
-            w = data.get("window")
-            if w:
-                ax.add_patch( Polygon(((w[0], w[2]), (w[0], w[3]), (w[1], w[3]), (w[1], w[2])),
-                              True, facecolor=None, alpha=0.2,
-                              edgecolor="white", linewidth=0.2))
-        # END Display generator window
-
-        return ax
-
-
-    def _init2_dual(self, data, ax1, ax2, begin=0):
-        "initializes floes (Polygon creation) for matplotlib animation creation (v3 : shapes)"
-        ax1 = _init2(data, ax1)
-        first_idx, _ = data["total_trunk_indices"]
-        x = np.array(data.get("total_time")[0:first_idx])
-        ys = [np.array([data.get("total_impulses")[i][idx] for i in range(len(x))]) for idx in data.get("special_indices", [])]
-        for y in ys:
-            ax2.plot(x,y)
-        ax2.axis([data.get("total_time")[0], data.get("total_time")[-1], -100, data["MAX_IMPULSE"]])
-        ax2.set_title("Norm of the contact impulses applied to the obstacle")
-        # ax.set_xlabel("text") # bottom
-        return ax1, ax2
-
-
-    def _init1(self, data, ax, begin=0):
+    def _init1(self, data, ax):
         "initializes floes (Polygon creation) for matplotlib animation creation"
         for (i,s) in data.get("floe_outlines").iteritems():
             special = i=="1500"
-            polygon = Polygon(s[begin],
+            polygon = Polygon(s[0],
                               True,
                               facecolor="#FFF7ED" if not special else "#FA9A50",
                               linewidth=0.2,
@@ -99,26 +97,102 @@ class FloeVideoPlotter(object):
             ax.add_patch(polygon)
         return ax
 
-    def _update2(self, num, data, ax, step=1, begin=0):
+    def _update1(self, num, data, ax):
+        "updates floes (Polygons) positions for matplotlib animation creation"
+        begin, step = 0, 1
+        indic = begin + step * num
+        for i, s in enumerate(data.get("floe_outlines").itervalues()):
+            ax.patches[i].set_xy(s[indic])
+        ax.set_title("t = {}".format(str(datetime.timedelta(seconds=int(data.get("time")[indic])))))
+        if not data.get("static_axes"):
+            ax.axis('equal')
+            ax.relim()
+            ax.autoscale_view(True,True,True)
+        return ax,
+
+    def _display_window(self, data, ax_mgr):
+        # Display generator window
+        w = data.get("window")
+        if w:
+            ax_mgr.set_patch("window",Polygon(
+                ((w[0], w[2]), (w[0], w[3]), (w[1], w[3]), (w[1], w[2])),
+                # True, facecolor=None, alpha=0.2, edgecolor="white", linewidth=0.2))
+                True, facecolor="none", edgecolor=self.colors["window"], linewidth=1.5))
+
+    def _init_floes(self, data, ax_mgr):
+        "initializes floes (Polygon creation) for matplotlib animation creation (v3 : shapes)"
+        ax = ax_mgr.ax
+        ax.set_axis_bgcolor(self.colors["ocean"])
+        floes_collec = PolyCollection(
+            data.get("floe_shapes"),
+            linewidths=0.2,
+            # edgecolors="red", facecolors="none") # no facecolor mode
+            cmap=cm.YlOrRd, norm=colors.PowerNorm(gamma=0.3))
+            # cmap=cm.Paired)#MPI
+        if getattr(self.OPTIONS, "color", True):
+            floes_collec.set_array(data.get("impulses")[0])
+            floes_collec.set_clim([0, data["MAX_IMPULSE"]])
+            plt.colorbar(floes_collec, ax = ax, fraction = 0.05) # display color bar
+        else:
+            floes_collec.set_array(np.zeros(len(data.get("floe_shapes")))) # comment for no facecolor mode
+        # ax.axes.get_yaxis().set_visible(False) # remove x axis informations
+        ax_mgr.set_collection("floes", floes_collec)
+
+        if getattr(self.OPTIONS, "ghosts", False):
+            ghosts_collec = PolyCollection(data.get("floe_shapes") * 8, linewidths=0.2, alpha=0.4,
+                                         cmap=cm.YlOrRd, norm=colors.PowerNorm(gamma=0.3))
+                                        # cmap=cm.Paired)#MPI
+            ghosts_collec.set_clim(floes_collec.get_clim())
+            ghosts_collec.set_array(np.zeros(len(data.get("floe_shapes")) * 8))
+            ax_mgr.set_collection("floe_ghosts", ghosts_collec)
+
+    def _init_circles(self, data, ax_mgr, begin=0):
+        # floes_collec = CircleCollection(np.zeros(shape=(len(data.get(floe_shapes)), 2),
+        #                                 linewidths=0.2, facecolors=None, edgecolors="white"))
+        # ax.add_collection(floes_collec)
+        ax = ax_mgr.ax
+        for shape in data.get("floe_shapes"):
+            radius = max([math.sqrt(x**2+y**2) for x,y in shape])
+            # circle = Circle((0,0), radius, facecolor='none', edgecolor="white", linewidth=2)
+            circle = Circle((0,0), radius,
+                facecolor='none', edgecolor=self.colors["circles"],
+                linewidth=1
+            )
+            ax_mgr.add_to_patch_list("floe_bounding_circles", circle)
+        # return ax
+
+    def _init2(self, data, ax_mgr):
+        if getattr(self.OPTIONS, "disp_floes"):
+            self._init_floes(data, ax_mgr)
+        if getattr(self.OPTIONS, "disp_circles"):
+            self._init_circles(data, ax_mgr)
+        if getattr(self.OPTIONS, "disp_window"):
+            self._display_window(data, ax_mgr)
+
+        # return ax
+
+    def _update_floes(self, num, data, ax_mgr):
         """updates floes (Polygons) positions for matplotlib animation creation
         (version 3 : collection and compute outlines transforms"""
+        ax = ax_mgr.ax
+        begin, step = 0, 1
         indic = begin + step * num
         opt_ghosts, opt_color, opt_follow = (
             getattr(self.OPTIONS, opt) for opt in ["ghosts", "color", "follow"]
         )
 
         verts = self._transform_shapes(data.get("floe_shapes"), data.get("floe_states")[indic], opt_follow)
-        ax.collections[0].set_verts(verts)
+        ax_mgr.get_collection("floes").set_verts(verts)
 
         if opt_ghosts:
             ghosts_verts = [v for trans in d["ghosts_trans"] for v in translate_group(verts, trans)]
-            ax.collections[1].set_verts(ghosts_verts)
+            ax_mgr.get_collection("floe_ghosts").set_verts(ghosts_verts)
 
         if opt_color:
-            ax.collections[0].set_array(data.get("impulses")[indic])
+            ax_mgr.get_collection("floes").set_array(data.get("impulses")[indic])
             if opt_ghosts:
-                ax.collections[1].set_array(np.tile(data.get("impulses")[indic], 8))
-        ax.set_title("t = {}".format(str(datetime.timedelta(seconds=int(data.get("time")[indic])))))
+                ax_mgr.get_collection("floe_ghosts").set_array(np.tile(data.get("impulses")[indic], 8))
+        # ax.set_title("t = {}".format(str(datetime.timedelta(seconds=int(data.get("time")[indic])))))
         if not data.get("static_axes"):
             # ax.axis('equal')
             ax.relim()
@@ -138,17 +212,45 @@ class FloeVideoPlotter(object):
         # gstates = [(x[0] + i, x[1] + j) for i,j in ghosts_trans for x in data.get("floe_states")[indic]]
         # ax.collections[1].set_array(np.array([(int((x[0] - ax.get_xlim()[0]) / WZ) + int((x[1] - ax.get_ylim()[0]) / HZ) * N)%9 for x in gstates]))
         # # end MPI zones
-        return ax,
+        # return ax,
 
-    def _update2_dual(self, num, data, ax1, ax2, step=1, begin=0):
+    def _update_circles(self, num, data, ax_mgr):
+        # ax = ax_mgr.ax
+        begin, step = 0, 1
+        indic = begin + step * num
+        for state, circle in zip(data.get("floe_states")[indic], ax_mgr.get_patch_list("floe_bounding_circles")):
+            circle.center = state[0], state[1]
+        # return ax,
+
+    def _update2(self, num, data, ax_mgr):
+        """updates floes (Polygons) positions for matplotlib animation creation
+        (version 3 : collection and compute outlines transforms"""
+        if getattr(self.OPTIONS, "disp_floes"):
+            self._update_floes(num, data, ax_mgr)
+        if getattr(self.OPTIONS, "disp_circles"):
+            self._update_circles(num, data, ax_mgr)
+
+    def _init2_dual(self, data, ax1, ax2):
+        "initializes floes (Polygon creation) for matplotlib animation creation (v3 : shapes)"
+        ax1 = _init2(data, ax1)
+        first_idx, _ = data["total_trunk_indices"]
+        x = np.array(data.get("total_time")[0:first_idx])
+        ys = [np.array([data.get("total_impulses")[i][idx] for i in range(len(x))]) for idx in data.get("special_indices", [])]
+        for y in ys:
+            ax2.plot(x,y)
+        ax2.axis([data.get("total_time")[0], data.get("total_time")[-1], -100, data["MAX_IMPULSE"]])
+        ax2.set_title("Norm of the contact impulses applied to the obstacle")
+        # ax.set_xlabel("text") # bottom
+        return ax1, ax2
+
+    def _update2_dual(self, num, data, ax1, ax2):
         first_idx, _ = data["total_trunk_indices"]
         indic = first_idx + num
-        ax1, = _update2(num, data, ax1)
+        ax1, = self._update2(num, data, ax1)
         for i, idx in enumerate(data.get("special_indices")):
             ax2.lines[i].set_xdata(np.append(ax2.lines[i].get_xdata(), data.get("total_time")[indic]))
             ax2.lines[i].set_ydata(np.append(ax2.lines[i].get_ydata(), data.get("total_impulses")[indic][idx]))
         return ax1, ax2
-
 
     def _transform_shapes(self, floe_shapes, floe_states, follow=False):
         resp = floe_shapes
@@ -164,60 +266,52 @@ class FloeVideoPlotter(object):
     def translate_group(self, vertices, trans):
         return [np.add(shape, np.repeat([[trans[0], trans[1]]], len(shape), axis=0)) for shape in vertices]
 
-    def _update1(self, num, data, ax, step=1, begin=0):
-        "updates floes (Polygons) positions for matplotlib animation creation"
-        indic = begin + step * num
-        for i, s in enumerate(data.get("floe_outlines").itervalues()):
-            ax.patches[i].set_xy(s[indic])
-        ax.set_title("t = {}".format(str(datetime.timedelta(seconds=int(data.get("time")[indic])))))
-        if not data.get("static_axes"):
-            ax.axis('equal')
-            ax.relim()
-            ax.autoscale_view(True,True,True)
-        return ax,
+    def get_anim_fcts(self, version=None):
+        d = {
+            1: (self._init1,self._update1),
+            2: (self._init2,self._update2),
+            3: (self._init_circles, self._update_circles) # obsolete with -v 2 --circles --nofloes
+        }
+        return d[version or self.OPTIONS.version]
 
-    def anim_fcts(self, version):
-        d = {1: (self._init1,self._update1), 2: (self._init2,self._update2)}
-        return d[version]
-
-    def plot_floes(self, filename="out", step=1, version=2, make_video=1, **kwargs):
+    def plot_floes(self, make_video=1):
         "displays floes animation from hdf5 output file (simple plot or video creation)"
-        data_file    = h5py.File(filename, 'r')
+        data_file    = h5py.File(self.OPTIONS.filename, 'r')
         # Read Usefull data from file
-        data_global = self._get_useful_datas(data_file, step, version)
+        data_global = self._get_useful_datas(data_file)
         fig, ax = plt.subplots()
+        ax_mgr = AxeManager(ax)
         if getattr(self.OPTIONS, "hd", False):
             fig.set_size_inches(20, 15)
             fig.set_dpi(100)
-        init, update = self.anim_fcts(version)
-        ax = init(data_global, ax)
+        init, update = self.get_anim_fcts()
+        init(data_global, ax_mgr)
+        # print ax_mgr.patches
         if not data_global.get("static_axes"):
             ax.axis('equal') # automatic scale
         else:
             ax.axis(data_global.get("static_axes"))
-        ax.set_axis_bgcolor('#162252')
         anim = animation.FuncAnimation(
-            fig, update, len(data_global.get("time")), fargs=(data_global, ax),
+            fig, update, len(data_global.get("time")), fargs=(data_global, ax_mgr),
             interval=1, blit=False)
         if make_video:
-            anim.save(self.get_final_video_path(filename), writer=self.writer)
+            anim.save(self.get_final_video_path(self.OPTIONS.filename), writer=self.writer)
         else:
             plt.show()
 
-
-    def plot_one(self, filename, **kwargs):
+    def plot_one(self):
         "displays floes at last time recorded in output file"
-        init, update = self.anim_fcts(2)
-        file    = h5py.File(filename, 'r')
+        init, update = self.get_anim_fcts()
+        file    = h5py.File(self.OPTIONS.filename, 'r')
         fig, ax = plt.subplots()
+        ax_mgr = AxeManager(ax)
         idx = int(raw_input("Time index (-1 for last one) : "))
-        num = idx if idx != -1 else data_global.get("time").size - 1 # TODO data_global not declared !!
+        num = idx
         
-        data_global = self._get_useful_datas(file, 0, 2, num)
-        ax = init(data_global, ax)
+        data_global = self._get_useful_datas(file, num)
+        init(data_global, ax_mgr)
         ax.axis('equal')
-        ax.set_axis_bgcolor('#162252') 
-        ax, = update(0, data_global, ax)
+        update(0, data_global, ax_mgr)
         plt.show()
 
 
@@ -234,7 +328,7 @@ class FloeVideoPlotter(object):
             fig.set_size_inches(20, 15)
             fig.set_dpi(100)
         print 3
-        init, update = self.anim_fcts(version)
+        init, update = self.get_anim_fcts(version)
         ax = init(data_chunk, ax)
         print 4
         if not data_chunk.get("static_axes"):
@@ -242,7 +336,7 @@ class FloeVideoPlotter(object):
         else:
             ax.axis(data_chunk.get("static_axes"))
         print 5
-        ax.set_axis_bgcolor('#162252')
+        # ax.set_axis_bgcolor('#162252')
         anim = animation.FuncAnimation(
             fig, update, len(data_chunk.get("time")), fargs=(data_chunk, ax),
             interval=1, blit=False)
@@ -269,7 +363,7 @@ class FloeVideoPlotter(object):
             ax1.axis('equal') # automatic scale
         else:
             ax1.axis(data_chunk.get("static_axes"))
-        ax1.set_axis_bgcolor('#162252')
+        # ax1.set_axis_bgcolor('#162252')
         anim = animation.FuncAnimation(
             fig, update, len(data_chunk.get("time")), fargs=(data_chunk, ax1, ax2),
             interval=50, blit=False)
@@ -278,10 +372,10 @@ class FloeVideoPlotter(object):
     def make_partial_floe_video_dual_plot_helper(self, t):
         return self.make_partial_floe_video_dual_plot(*t)
 
-    def plot_floes_fast(self, filename="out", step=1, version=2, dual=False, **kwargs):
+    def plot_floes_fast(self, filename="out", dual=False, **kwargs):
         "Creates a video from hdf5 file output, using multiprocessing to go faster"
         data_file    = h5py.File(filename, 'r')
-        nb_step = int(ceil(len(data_file.get("time")) / step))
+        nb_step = int(ceil(len(data_file.get("time")) / self.OPTIONS.step))
         # Create multiple partial videos
         trunks = self._get_trunks(nb_step)
         nb_process = len(trunks)
@@ -289,11 +383,11 @@ class FloeVideoPlotter(object):
         call(['mkdir', temp_dir])
         partial_file_names = ["{}/{}.mpg".format(temp_dir, i) for i in range(nb_process)]
         # Read Usefull data from file
-        data_global = self._get_useful_datas(data_file, step, version)
+        data_global = self._get_useful_datas(data_file)
         # Build trunks datas
         L = [( partial_file_names[i],
-               self._get_useful_trunk_datas(data_global, trunk, version),
-                version ) for i,trunk in enumerate(trunks)]
+               self._get_useful_trunk_datas(data_global, trunk),
+                self.OPTIONS.version ) for i,trunk in enumerate(trunks)]
         # Launch process pool 
         p = Pool(nb_process)
         partial_video_maker = self.make_partial_floe_video_helper if not dual else make_partial_floe_video_dual_plot_helper
@@ -306,21 +400,21 @@ class FloeVideoPlotter(object):
         call(['rm', '-r', temp_dir])
 
 
-    def _get_useful_datas(self, data_file, step, version, single_step="OFF"):
+    def _get_useful_datas(self, data_file, single_step="OFF"):
         d = {}
         # File datas
         file_time_dependant_keys =["time", "floe_states", "mass_center"]
         if single_step == "OFF":
             for key in file_time_dependant_keys:
-                d[key] = data_file.get(key)[::step]
+                d[key] = data_file.get(key)[::self.OPTIONS.step]
         else:
             for key in file_time_dependant_keys:
-                d[key] = data_file.get(key)[single_step:single_step+1]
+                d[key] = [data_file.get(key)[single_step]]
         d["total_time"] = d["time"]
-        if version == 1:
-            d["floe_outlines"] = {k : dataset[::step]
+        if self.OPTIONS.version == 1:
+            d["floe_outlines"] = {k : dataset[::self.OPTIONS.step]
                 for k, dataset in data_file.get("floe_outlines").iteritems()}
-        elif version == 2:
+        elif self.OPTIONS.version >= 2:
             if data_file.get("floe_shapes") is not None:
                 d["floe_shapes"] = [np.array(data_file.get("floe_shapes").get(k)) for k  in sorted(list(data_file.get("floe_shapes")), key=int)]
             else:
@@ -345,7 +439,7 @@ class FloeVideoPlotter(object):
         return d
 
 
-    def _get_useful_trunk_datas(self, data_global, trunk, version):
+    def _get_useful_trunk_datas(self, data_global, trunk):
         """Slice global datas for a partial video"""
         d = {}
         trunked_keys = ["time", "floe_states", "impulses", "mass_center"]
@@ -358,10 +452,10 @@ class FloeVideoPlotter(object):
         for key in global_keys:
             d[key] = data_global.get(key)
         d["total_trunk_indices"] = (trunk[0], trunk[1])
-        if version == 1:
+        if self.OPTIONS.version == 1:
             d["floe_outlines"] = {k : dataset[trunk[0] : trunk[1]]
                 for k, dataset in data_global.get("floe_outlines").iteritems()}
-        elif version == 2:
+        elif self.OPTIONS.version >= 2:
             d["floe_shapes"] = data_global.get("floe_shapes")
         return d
 
@@ -372,9 +466,9 @@ class FloeVideoPlotter(object):
         imps = [np.subtract(imps[t], imps[max(t-n, 0)]) for t in range(len(imps))]
         # for imp in imps: # hide bad values
         #     np.putmask(imp, imp>1e6, 0)
-        for i in range(len(imps)):
-            if np.amax(imps[i]) > 1e8:
-                imps[i] = imps[i-1]
+        # for i in range(len(imps)):
+        #     if np.amax(imps[i]) > 1e8:
+        #         imps[i] = imps[i-1]
         return imps
 
 
