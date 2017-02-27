@@ -179,7 +179,7 @@ def build(bld):
         opts["cxxflags"].extend(subprocess.check_output(["mpicc", "--showme:compile"]).strip().split(" "))
         opts["linkflags"].extend(subprocess.check_output(["mpicc", "--showme:link"]).strip().split(" "))
         # print opts["linkflags"]
-    if bld.options.target in ["FLOE", "FLOE_PBC"]:
+    if bld.options.target in ["FLOE", "FLOE_PBC", "FLOE_MPI"]:
         opts["source"] = ["product/FLOE.cpp"] + recursive_file_finder("src/floe", "*.cpp")
         opts["target"] = bld.options.target
         if bld.options.target == "FLOE_PBC":
