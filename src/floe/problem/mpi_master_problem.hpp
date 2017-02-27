@@ -39,13 +39,14 @@ public:
     using point_type = typename TProblem::floe_group_type::floe_type::point_type;
     using message_type = typename base_class::message_type;
     using floe_distrib_type = typename TProblem::proximity_detector_type::floe_distrib_type;
+    using process_list_type = typename TProblem::proximity_detector_type::process_list_type;
 
     //! Default constructor
     MPIMasterProblem(value_type epsilon, int OBL_status) : base_class(epsilon, OBL_status), msg_pk{0} {}
 
     //! Solver of the problem (main method)
     virtual void solve(value_type end_time, value_type dt_default, value_type out_step = 0, bool reset = true) override;
-    virtual void recover_states_from_file(std::string const& filename, value_type t) override;
+    virtual void recover_states_from_file(std::string const& filename, value_type t, bool keep_as_outfile=true) override;
 
 private:
     //! last message id (increment for unicity)
@@ -59,7 +60,7 @@ private:
     //! Apply smooth dynamics to floes and verify interpenetration
     virtual void safe_move_floe_group() override;
 
-    std::set<int> request_jobs(floe::io::JobTag, floe_distrib_type const&, bool interpene=false);
+    std::set<int> request_jobs(floe::io::JobTag, process_list_type const&, bool interpene=false);
     bool handle_responses(std::set<int>&, floe::io::JobTag);
 
     void send_request(message_type&, int);
@@ -84,6 +85,10 @@ void MPIMasterProblem<TProblem>::solve(value_type end_time, value_type dt_defaul
         if (*this->QUIT) break; // exit normally after SIGINT
     }
     std::cout << " NB STEPS : " << this->m_step_nb << std::endl;
+    // request_jobs(floe::io::termination_signal, this->m_proximity_detector.floe_process_distribution());
+    // request_jobs(floe::io::termination_signal, this->m_proximity_detector.border_floe_process_distribution());
+    // request_jobs(floe::io::termination_signal, this->m_proximity_detector.crossing_floe_process_distribution());
+    request_jobs(floe::io::termination_signal, this->m_proximity_detector.all_worker_processes());
 }
 
 template<typename TProblem>
@@ -120,56 +125,76 @@ void MPIMasterProblem<TProblem>::step_solve(){
 template<typename TProblem>
 void MPIMasterProblem<TProblem>::test_perf(){
     auto t_start = std::chrono::high_resolution_clock::now();
-    auto msg_ids = request_jobs(floe::io::test_job, this->m_proximity_detector.floe_process_distribution());
-    auto msg_ids_2 = request_jobs(floe::io::test_job, this->m_proximity_detector.border_floe_process_distribution());
-    auto msg_ids_3 = request_jobs(floe::io::test_job, this->m_proximity_detector.crossing_floe_process_distribution());
-    msg_ids.insert(msg_ids_2.cbegin(), msg_ids_2.cend());
-    msg_ids.insert(msg_ids_3.cbegin(), msg_ids_3.cend());
+    // auto msg_ids = request_jobs(floe::io::test_job, this->m_proximity_detector.floe_process_distribution());
+    // auto msg_ids_2 = request_jobs(floe::io::test_job, this->m_proximity_detector.border_floe_process_distribution());
+    // auto msg_ids_3 = request_jobs(floe::io::test_job, this->m_proximity_detector.crossing_floe_process_distribution());
+    auto msg_ids = request_jobs(floe::io::test_job, this->m_proximity_detector.all_worker_processes());
+    // msg_ids.insert(msg_ids_2.cbegin(), msg_ids_2.cend());
+    // msg_ids.insert(msg_ids_3.cbegin(), msg_ids_3.cend());
     handle_responses(msg_ids, floe::io::test_job);
     auto t_end = std::chrono::high_resolution_clock::now();
     std::cout << "Chrono Empty job : " << std::chrono::duration<double, std::milli>(t_end-t_start).count() << " ms" << std::endl;
 }
 
+// template<typename TProblem>
+// int MPIMasterProblem<TProblem>::manage_collisions(){
+//     // TODO something more explicit !!
+//     bool still_collision{true};
+//     bool first{true};
+//     int loop_count{0};
+//     while (still_collision && loop_count < 20) {
+//         loop_count++;
+//         std::cout << "LCP : " << std::flush;
+//         auto msg_ids = request_jobs(floe::io::collision_job, this->m_proximity_detector.floe_process_distribution());
+//         still_collision = handle_responses(msg_ids, floe::io::collision_job);
+//         if (!(first || still_collision)) break;
+//         bool still_border_collision{true};
+//         bool border_first{true};
+//         int subloop_count{0};
+//         while (still_border_collision && subloop_count <= 10){
+//             subloop_count++;
+//             std::cout << "Border LCP : " << std::flush;
+//             msg_ids = request_jobs(floe::io::collision_job, this->m_proximity_detector.border_floe_process_distribution());
+//             still_border_collision = handle_responses(msg_ids, floe::io::collision_job);
+//             if (border_first) still_collision = still_border_collision;
+//             if (!(border_first || still_border_collision)) break;
+//             std::cout << "Cross LCP : " << std::flush;
+//             msg_ids = request_jobs(floe::io::collision_job, this->m_proximity_detector.crossing_floe_process_distribution());
+//             still_border_collision = handle_responses(msg_ids, floe::io::collision_job);
+//             if (border_first) still_collision = still_collision || still_border_collision;
+//             border_first = false;
+//         }    
+//         first = false;
+//     } 
+//     return 0;
+// }
+
 template<typename TProblem>
 int MPIMasterProblem<TProblem>::manage_collisions(){
     // TODO something more explicit !!
-    bool still_collision{true};
-    bool first{true};
+    int OK_SET = 0;
+    bool still_collision;
     int loop_count{0};
-    while (still_collision && loop_count < 20) {
-        loop_count++;
-        std::cout << "LCP : " << std::flush;
-        auto msg_ids = request_jobs(floe::io::collision_job, this->m_proximity_detector.floe_process_distribution());
+    auto keys = this->m_proximity_detector.collision_process_partition_keys();
+    int i = 0;
+    while (OK_SET < keys.size() and loop_count < 20 * keys.size()) {
+        std::cout << "LCP (" << keys[i] << ") : " << std::flush;
+        auto msg_ids = request_jobs(floe::io::collision_job, this->m_proximity_detector.process_partition().at(keys[i]));
         still_collision = handle_responses(msg_ids, floe::io::collision_job);
-        if (!(first || still_collision)) break;
-        bool still_border_collision{true};
-        bool border_first{true};
-        int subloop_count{0};
-        while (still_border_collision && subloop_count <= 10){
-            subloop_count++;
-            std::cout << "Border LCP : " << std::flush;
-            msg_ids = request_jobs(floe::io::collision_job, this->m_proximity_detector.border_floe_process_distribution());
-            still_border_collision = handle_responses(msg_ids, floe::io::collision_job);
-            if (border_first) still_collision = still_border_collision;
-            if (!(border_first || still_border_collision)) break;
-            std::cout << "Cross LCP : " << std::flush;
-            msg_ids = request_jobs(floe::io::collision_job, this->m_proximity_detector.crossing_floe_process_distribution());
-            still_border_collision = handle_responses(msg_ids, floe::io::collision_job);
-            if (border_first) still_collision = still_collision || still_border_collision;
-            border_first = false;
-        }    
-        first = false;
-    } 
+        if (!still_collision) { OK_SET++; } else { OK_SET = 0; }
+        i = (i+1)%keys.size();
+    }
     return 0;
 }
 
 template<typename TProblem>
 void MPIMasterProblem<TProblem>::compute_time_step(){
-    auto msg_ids = request_jobs(floe::io::time_step_job, this->m_proximity_detector.floe_process_distribution());
-    auto msg_ids_2 = request_jobs(floe::io::time_step_job, this->m_proximity_detector.border_floe_process_distribution());
-    auto msg_ids_3 = request_jobs(floe::io::time_step_job, this->m_proximity_detector.crossing_floe_process_distribution());
-    msg_ids.insert(msg_ids_2.cbegin(), msg_ids_2.cend());
-    msg_ids.insert(msg_ids_3.cbegin(), msg_ids_3.cend());
+    // auto msg_ids = request_jobs(floe::io::time_step_job, this->m_proximity_detector.floe_process_distribution());
+    // auto msg_ids_2 = request_jobs(floe::io::time_step_job, this->m_proximity_detector.border_floe_process_distribution());
+    // auto msg_ids_3 = request_jobs(floe::io::time_step_job, this->m_proximity_detector.crossing_floe_process_distribution());
+    // msg_ids.insert(msg_ids_2.cbegin(), msg_ids_2.cend());
+    // msg_ids.insert(msg_ids_3.cbegin(), msg_ids_3.cend());
+    auto msg_ids = request_jobs(floe::io::time_step_job, this->m_proximity_detector.all_worker_processes());
     value_type delta_t = std::numeric_limits<value_type>::max();
     while (msg_ids.size()){
         auto resp = receive_response();
@@ -199,12 +224,13 @@ void MPIMasterProblem<TProblem>::safe_move_floe_group(){
                 return;
             }
         }
-        auto msg_ids = request_jobs(floe::io::move_job, this->m_proximity_detector.floe_process_distribution(), interpene);
+        auto msg_ids = request_jobs(floe::io::move_job, this->m_proximity_detector.base_grid_processes(), interpene);
         interpene = handle_responses(msg_ids, floe::io::move_job);
         if (!interpene){
-            auto msg_ids_2 = request_jobs(floe::io::interpene_job, this->m_proximity_detector.border_floe_process_distribution());
-            auto msg_ids_3 = request_jobs(floe::io::interpene_job, this->m_proximity_detector.crossing_floe_process_distribution());
-            msg_ids_2.insert(msg_ids_3.cbegin(), msg_ids_3.cend());
+            // auto msg_ids_2 = request_jobs(floe::io::interpene_job, this->m_proximity_detector.process_partition());
+            // auto msg_ids_3 = request_jobs(floe::io::interpene_job, this->m_proximity_detector.crossing_floe_process_distribution());
+            // msg_ids_2.insert(msg_ids_3.cbegin(), msg_ids_3.cend());
+            auto msg_ids_2 = request_jobs(floe::io::interpene_job, this->m_proximity_detector.borders_processes());
             // border workers don't move any floe, they only check for interpenetration
             interpene = handle_responses(msg_ids_2, floe::io::move_job);
         }
@@ -212,22 +238,42 @@ void MPIMasterProblem<TProblem>::safe_move_floe_group(){
     } while (interpene);
 }
 
+// template<typename TProblem>
+// std::set<int> MPIMasterProblem<TProblem>::request_jobs(floe::io::JobTag tag, floe_distrib_type const& floe_distrib, bool interpene){
+//     std::set<int> msg_id_set;
+//     for (auto const& iter : floe_distrib)
+//     {
+//         message_type request{++msg_pk};
+//         msg_id_set.insert(msg_pk);
+//         request.set_tag(tag);
+//         request.store_time(this->m_domain.time());
+//         request.set_floe_ids(iter.second);
+//         request.store_states_light(this->get_floe_group(), request.floe_ids(), iter.first);
+//         request.interpenetration(interpene);
+//         if (tag==floe::io::move_job) {
+//             request.store_time_step(this->m_domain.time_step());
+//         }
+//         send_request(request, iter.first); // iter.first = process id
+//     }
+//     return msg_id_set;
+// }
+
 template<typename TProblem>
-std::set<int> MPIMasterProblem<TProblem>::request_jobs(floe::io::JobTag tag, floe_distrib_type const& floe_distrib, bool interpene){
+std::set<int> MPIMasterProblem<TProblem>::request_jobs(floe::io::JobTag tag, process_list_type const& process_ids, bool interpene){
     std::set<int> msg_id_set;
-    for (auto const& iter : floe_distrib)
+    for (int p_id : process_ids)
     {
         message_type request{++msg_pk};
         msg_id_set.insert(msg_pk);
         request.set_tag(tag);
         request.store_time(this->m_domain.time());
-        request.set_floe_ids(iter.second);
-        request.store_states_light(this->get_floe_group(), request.floe_ids(), iter.first);
+        request.set_floe_ids(this->m_proximity_detector.floe_process_distribution().at(p_id));
+        request.store_states_light(this->get_floe_group(), request.floe_ids(), p_id);
         request.interpenetration(interpene);
         if (tag==floe::io::move_job) {
             request.store_time_step(this->m_domain.time_step());
         }
-        send_request(request, iter.first); // iter.first = process id
+        send_request(request, p_id);
     }
     return msg_id_set;
 }
@@ -264,7 +310,7 @@ typename MPIMasterProblem<TProblem>::message_type MPIMasterProblem<TProblem>::re
 }
 
 template<typename TProblem>
-void MPIMasterProblem<TProblem>::recover_states_from_file(std::string const& filename, value_type t){
+void MPIMasterProblem<TProblem>::recover_states_from_file(std::string const& filename, value_type t, bool keep_as_outfile){
     base_class::recover_states_from_file(filename, t);
     this->get_floe_group().post_load_floe(); // erase erroneous states origin
 }

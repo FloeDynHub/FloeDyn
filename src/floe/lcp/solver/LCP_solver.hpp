@@ -108,8 +108,8 @@ LCPSolver<T>::solve( TContactGraph& graph, bool& success ) {
         }
         if (solved) break;
         // lcp = random_perturbation(lcp, 1e-10);
-        auto lcp = lcp_orig;
-        random_perturbation2(lcp, 1e-10);
+        // auto lcp = lcp_orig;
+        random_perturbation2(lcp, 5*1e-11);
     }
     
     if (!solved) {
@@ -184,7 +184,8 @@ LCPSolver<T>::solve( TContactGraph& graph, bool& success ) {
                 }
             }
             if (solved) break;
-            lcp = random_perturbation(lcp, 1e-10);
+            // lcp = random_perturbation(lcp, 1e-10);
+            random_perturbation2(lcp, 5*1e-11);
         }
         if (!solved)
         {
@@ -273,7 +274,7 @@ template<typename T>
 bool LCPSolver<T>::LCPtest(int compt, value_type EC, value_type born_EC, value_type Err, bool VRelNtest ){
     if (compt == 1)
     {
-        if (EC > born_EC*(1+1e-4) || Err > 1e-11 || !VRelNtest)
+        if (EC > born_EC*(1+1e-4) || Err > 5*1e-11 || !VRelNtest)
             return false;
     }
     else if (compt == 2)

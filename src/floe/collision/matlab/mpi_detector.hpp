@@ -33,8 +33,14 @@ public:
     using floe_interface_type = typename base_class::floe_interface_type;
     using optim_interface_type = typename base_class::optim_interface_type;
     using floe_distrib_type = std::map<int, std::vector<std::size_t>>;
+    using process_list_type = std::vector<int>;
+    using process_partition_type = std::map<std::string, process_list_type>;
+    using floe_multi_partition_type = std::map<std::string, floe_distrib_type>;
 
-    MPIMatlabDetector() : base_class() {}
+    MPIMatlabDetector() : base_class() {
+        this->init_grid_dimension();
+        this->partition_processes();
+    }
 
     //! Deleted copy constructor
     MPIMatlabDetector( MPIMatlabDetector<TFloeGroup, TContact> const& ) = delete;
@@ -42,47 +48,94 @@ public:
     //! Deleted copy operator
     MPIMatlabDetector<TFloeGroup, TContact>& operator= (MPIMatlabDetector const&) = delete;
 
-    inline floe_distrib_type const& floe_process_distribution() const { return m_floe_process_distribution; };
-    inline floe_distrib_type const& border_floe_process_distribution() const { return m_border_floe_process_distribution; };
-    inline floe_distrib_type const& crossing_floe_process_distribution() const { return m_crossing_floe_process_distribution; };
+    inline floe_distrib_type const& floe_process_distribution() const {
+        // return m_floe_process_distribution;
+        // return m_floe_process_distributions["grid"];
+        return m_floe_process_distrib;
+    };
+    inline process_partition_type const& process_partition() const {
+        return m_process_partition;
+    };
+    inline process_list_type all_worker_processes() const {
+        process_list_type resp(m_nb_workers);
+        std::iota(std::begin(resp), std::end(resp), 1);
+        return resp;
+    };
+    inline process_list_type const& base_grid_processes() const {
+        return m_process_partition.at("grid");
+    };
+    inline std::vector<std::string> collision_process_partition_keys() const {
+        // list partition keys
+        return {{ "grid", "x_border", "y_border", "crossing" }};
+    };
+    inline process_list_type borders_processes() const {
+        process_list_type resp;
+        for (auto& key : { "x_border", "y_border", "crossing" }){
+            resp.insert(
+                resp.end(),
+                this->process_partition().at(key).begin(),
+                this->process_partition().at(key).end()
+            );
+        }
+        return resp;
+    }
+    // inline floe_distrib_type const& border_floe_process_distribution() const {
+    //     // return m_border_floe_process_distribution;
+    // };
+    // inline floe_distrib_type const& x_border_floe_process_distribution() const {
+    //     // return m_border_floe_process_distribution;
+    //     return m_floe_process_distributions["x_border"];
+    // };
+    // inline floe_distrib_type const& y_border_floe_process_distribution() const {
+    //     // return m_border_floe_process_distribution;
+    //     return m_floe_process_distributions["x_border"];
+    // };
+    // inline floe_distrib_type const& crossing_floe_process_distribution() const {
+    //     return m_crossing_floe_process_distribution;
+    // };
     
     /* MASTER PART */
 
     void distribute_floes(){
-        resize_window();
-        // calc grid dimension
-        int nb_process;
-        MPI_Comm_size(MPI_COMM_WORLD, &nb_process);
-        int square_grid_dim = 0;
-        while (4 * (square_grid_dim + 1) * ((square_grid_dim + 1) - 1) + 2 <= nb_process) square_grid_dim++;
-        m_dim_grid = {{square_grid_dim, square_grid_dim}};
+        this->resize_window();
         // Clear previous distribution
-        m_floe_process_distribution.clear();
-        m_border_floe_process_distribution.clear();
-        m_crossing_floe_process_distribution.clear();
+        // m_floe_process_distribution.clear();
+        // m_border_floe_process_distribution.clear();
+        // m_crossing_floe_process_distribution.clear();
+        m_floe_process_distrib.clear();
         // Ocean division
         for (std::size_t i = 0; i < this->data().get_optims().size(); ++i){
             auto const& optim = this->data().get_optim(i);
-            distribute(optim, i);
+            this->distribute(optim, i);
         }
     }
 
     void display_floe_distrib(){
         std::cout << "Floe distrib " << "(" << this->grid_dim_x() << "x" << this->grid_dim_y() << ") : ";
-        for (auto const& iter : m_floe_process_distribution)
-            std::cout << "s" << iter.first << "(" << iter.second.size() << ") ";
+        for (auto const& p_id : m_process_partition["grid"])
+        {
+            std::cout << "s" << p_id << "(" << this->m_floe_process_distrib[p_id].size() << ") ";
+        }
         std::cout << "| Border : ";
-        for (auto const& iter : m_border_floe_process_distribution)
-            std::cout << "b" << iter.first << "(" << iter.second.size() << ") ";
+        for (auto const& p_id : m_process_partition["x_border"])
+        {
+            std::cout << "b" << p_id << "(" << this->m_floe_process_distrib[p_id].size() << ") ";
+        }
+        for (auto const& p_id : m_process_partition["y_border"])
+        {
+            std::cout << "b" << p_id << "(" << this->m_floe_process_distrib[p_id].size() << ") ";
+        }
         std::cout << " | Cross : ";
-        for (auto const& iter : m_crossing_floe_process_distribution)
-            std::cout << "c" << iter.first << "(" << iter.second.size() << ") ";
+        for (auto const& p_id : m_process_partition["crossing"])
+        {
+            std::cout << "c" << p_id << "(" << this->m_floe_process_distrib[p_id].size() << ") ";
+        }
         std::cout << std::endl;
     }
 
     virtual void set_floe_group(floe_group_type const& floe_group) override {
         base_class::set_floe_group(floe_group);
-        set_max_floe_radius();
+        this->set_max_floe_radius();
     }
 
     void set_max_floe_radius(){
@@ -101,15 +154,52 @@ public:
     }
 
 private:
-    floe_distrib_type m_floe_process_distribution;
-    floe_distrib_type m_border_floe_process_distribution;
-    floe_distrib_type m_crossing_floe_process_distribution;
+    // floe_distrib_type m_floe_process_distribution;
+    // floe_distrib_type m_border_floe_process_distribution;
+    // floe_distrib_type m_crossing_floe_process_distribution;
+    floe_distrib_type m_floe_process_distrib;
+    process_partition_type m_process_partition;
+    // floe_multi_partition_type m_floe_process_distributions;
     std::array<value_type, 4> m_window;
     std::array<int, 2> m_dim_grid;
+    int m_nb_workers;
     value_type m_max_floe_radius;
 
     inline int grid_dim_x() const { return m_dim_grid[0]; }
     inline int grid_dim_y() const { return m_dim_grid[1]; }
+
+    void init_grid_dimension(){
+        // calc grid dimension
+        int nb_process;
+        MPI_Comm_size(MPI_COMM_WORLD, &nb_process);
+        int square_grid_dim = 0;
+        while (4 * (square_grid_dim + 1) * ((square_grid_dim + 1) - 1) + 2 <= nb_process) square_grid_dim++;
+        m_dim_grid = {{square_grid_dim, square_grid_dim}};
+        m_nb_workers = 4 * square_grid_dim * (square_grid_dim - 1) + 1;
+    }
+
+    void partition_processes(){
+        int BASE_NUM_PROC = 1; // Start worker counting at 1 (0 is the master)
+        int size_grid = this->grid_dim_x() * this->grid_dim_y();
+        for (int i = 0; i < size_grid; i++){
+            m_process_partition["grid"].push_back(BASE_NUM_PROC + i);
+        }
+        BASE_NUM_PROC += size_grid;
+        int size_x_border = this->grid_dim_y() * (this->grid_dim_x() - 1);
+        for (int i = 0; i < size_x_border; i++){
+            m_process_partition["x_border"].push_back(BASE_NUM_PROC + i);
+        }
+        BASE_NUM_PROC += size_x_border;
+        int size_y_border = this->grid_dim_x() * (this->grid_dim_y() - 1);
+        for (int i = 0; i < size_y_border; i++){
+            m_process_partition["y_border"].push_back(BASE_NUM_PROC + i);
+        }
+        BASE_NUM_PROC += size_x_border;
+        int size_crossing = (this->grid_dim_x() - 1) * (this->grid_dim_y() - 1);
+        for (int i = 0; i < size_crossing; i++){
+            m_process_partition["crossing"].push_back(BASE_NUM_PROC + i);
+        }
+    }
 
     void resize_window(){
         // Update floe optimizers (but not their local disks)
@@ -133,7 +223,7 @@ void distribute(optim_type const& optim, std::size_t floe_id){
         value_type parcel_width = (m_window[1] - m_window[0]) / this->grid_dim_x();
         value_type parcel_height = (m_window[3] - m_window[2]) / this->grid_dim_y();
         // Coordinates relative to grid
-        auto X_grid = (optim.global_disk().center.x - m_window[0]) / parcel_width;     
+        auto X_grid = (optim.global_disk().center.x - m_window[0]) / parcel_width;
         auto Y_grid = (optim.global_disk().center.y - m_window[2]) / parcel_height;
         // indices of floe parcel
         int X_id{(int)floor(X_grid)};
@@ -150,23 +240,35 @@ void distribute(optim_type const& optim, std::size_t floe_id){
         };
         bool xy_border_floe{x_border_floe && y_border_floe};
         // assigning floe to related processes
-        int NUM_PROC = 1; // Start worker counting at 1 (0 is the master)
-        int worker_id = Y_id * this->grid_dim_x() + X_id + NUM_PROC ;
-        m_floe_process_distribution[worker_id].push_back(floe_id); // order : left->right, down->up
-        NUM_PROC += this->grid_dim_x() * this->grid_dim_y();
+        // int NUM_PROC = 1; // Start worker counting at 1 (0 is the master)
+        // int worker_id = Y_id * this->grid_dim_x() + X_id + NUM_PROC ;
+        int worker_id = Y_id * this->grid_dim_x() + X_id;
+        m_floe_process_distrib[m_process_partition["grid"][worker_id]].push_back(floe_id); // order : left->right, down->up
+        // m_floe_process_distributions["grid"][worker_id].push_back(floe_id);
+        // m_floe_process_distribution[worker_id].push_back(floe_id); // order : left->right, down->up
+        // NUM_PROC += this->grid_dim_x() * this->grid_dim_y();
         if (x_border_floe){
-            worker_id = Y_id * (this->grid_dim_x() - 1) + (X_border_id -1) + NUM_PROC;
-            m_border_floe_process_distribution[worker_id].push_back(floe_id);
+            // worker_id = Y_id * (this->grid_dim_x() - 1) + (X_border_id -1) + NUM_PROC;
+            worker_id = Y_id * (this->grid_dim_x() - 1) + (X_border_id -1);
+            m_floe_process_distrib[m_process_partition["x_border"][worker_id]].push_back(floe_id);
+            // m_border_floe_process_distribution[worker_id].push_back(floe_id);
+            // m_floe_process_distributions["x_border"][worker_id].push_back(floe_id);
         }
-        NUM_PROC += this->grid_dim_y() * (this->grid_dim_x() - 1);
+        // NUM_PROC += this->grid_dim_y() * (this->grid_dim_x() - 1);
         if (y_border_floe){
-            worker_id = X_id * (this->grid_dim_y() - 1) + (Y_border_id - 1) + NUM_PROC;
-            m_border_floe_process_distribution[worker_id].push_back(floe_id);
+            // worker_id = X_id * (this->grid_dim_y() - 1) + (Y_border_id - 1) + NUM_PROC;
+            worker_id = X_id * (this->grid_dim_y() - 1) + (Y_border_id - 1);
+            m_floe_process_distrib[m_process_partition["y_border"][worker_id]].push_back(floe_id);
+            // m_border_floe_process_distribution[worker_id].push_back(floe_id);
+            // m_floe_process_distributions["y_border"][worker_id].push_back(floe_id);
         }
-        NUM_PROC += this->grid_dim_x() * (this->grid_dim_y() - 1);
+        // NUM_PROC += this->grid_dim_x() * (this->grid_dim_y() - 1);
         if (xy_border_floe){
-            worker_id = (Y_border_id - 1) * (this->grid_dim_x() - 1) + (X_border_id -1) + NUM_PROC;
-            m_crossing_floe_process_distribution[worker_id].push_back(floe_id);
+            // worker_id = (Y_border_id - 1) * (this->grid_dim_x() - 1) + (X_border_id -1) + NUM_PROC;
+            worker_id = (Y_border_id - 1) * (this->grid_dim_x() - 1) + (X_border_id -1);
+            m_floe_process_distrib[m_process_partition["crossing"][worker_id]].push_back(floe_id);
+            // m_crossing_floe_process_distribution[worker_id].push_back(floe_id);
+            // m_floe_process_distributions["crossing"][worker_id].push_back(floe_id);
         }
     }
 };
