@@ -12,6 +12,7 @@
 #endif
 
  #include <iostream> // DEBUG
+#include <random>
 
 
 namespace floe { namespace dynamics
@@ -67,6 +68,7 @@ protected:
     external_forces_type m_external_forces; //! External forces manager
     value_type m_ocean_window_area; //! Ocean window area (for OBL computing)
     int m_OBL_status; //! OBL (Oceanic Boundary Layer) status : 0 = no coupling, 1 = coupling
+    std::default_random_engine m_random_generator;
 
     //! Move one floe
     virtual void move_floe(floe_type& floe, value_type delta_t);
