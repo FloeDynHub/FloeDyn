@@ -18,7 +18,14 @@
 namespace floe { namespace io
 {
 
-enum JobTag { collision_job, time_step_job, move_job, interpene_job, test_job };
+enum JobTag {
+    collision_job,
+    time_step_job,
+    move_job,
+    interpene_job,
+    test_job,
+    termination_signal
+};
 
 template <
     typename T
