@@ -98,6 +98,10 @@ private:
     boost::multi_array<value_type, 2> m_data_chunk_mass_center; //!< Temp saved floe group mass centers
     boost::multi_array<value_type, 2> m_data_chunk_OBL_speed; //!< Temp saved ocean datas
 
+    // output
+    value_type m_out_step; //!< Time step between simulation state outputs
+    value_type m_next_out_limit; //!< Next time limit for state ouput
+
     //! out floe shapes (boundary in relative frame)
     void write_shapes();
     //! Partial writings :
@@ -107,6 +111,14 @@ private:
     void write_mass_center();
     void write_OBL_speed();
     void write_window();
+
+    inline std::size_t nb_considered_floes() const { return m_floe_ids.size() ? m_floe_ids.size() : m_floe_group->get_floes().size(); }
+    inline typename floe_group_type::floe_type const& get_floe(std::size_t id) const {
+        return m_floe_ids.size() ? m_floe_group->get_floes()[m_floe_ids[id]] : m_floe_group->get_floes()[id];
+    }
+
+    inline void update_next_out_limit() { m_next_out_limit += m_out_step; }
+    inline bool need_step_output(value_type time) { return (m_out_step && time >= m_next_out_limit); }
 
 };
 
