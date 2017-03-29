@@ -28,10 +28,10 @@ def run():
         try:
             OPTIONS.static_axes = [float(x) for x in OPTIONS.static_axes.split(",")]
             OPTIONS.static_axes[3]
-        except ValueError, e:
-            raise Exception(u"Axes : valeurs incorrectes ({})".format(e))
-        except IndexError, e:
-            raise Exception(u"Axes : valeurs manquantes ({})".format(e))
+        except ValueError as e:
+            raise Exception("Axes : valeurs incorrectes ({})".format(e))
+        except IndexError as e:
+            raise Exception("Axes : valeurs manquantes ({})".format(e))
 
     plotter = FloePlotter(OPTIONS)
     plotter.do()

@@ -63,8 +63,8 @@ class FloePlotter(object):
         self.OPTIONS = options
         self.writer = animation.FFMpegWriter(fps=30, metadata=dict(artist='Me'), extra_args=None)#, codec="libx264", bitrate=32000
         self.colors = {
-            # "ocean" : '#162252',
-            "ocean" : 'white',
+            "ocean" : '#162252',
+            # "ocean" : 'white',
             "circles": 'white',
             "window": 'white'
         }
@@ -83,11 +83,11 @@ class FloePlotter(object):
 
     def get_final_video_path(self, input_file_path, video_ext="mp4"):
         filename = filename_without_extension(input_file_path)
-        return get_unused_path(u'io/videos/{}.{}'.format(filename, video_ext))
+        return get_unused_path('io/videos/{}.{}'.format(filename, video_ext))
 
     def _init1(self, data, ax):
         "initializes floes (Polygon creation) for matplotlib animation creation"
-        for (i,s) in data.get("floe_outlines").iteritems():
+        for (i,s) in data.get("floe_outlines").items():
             special = i=="1500"
             polygon = Polygon(s[0],
                               True,
@@ -101,7 +101,7 @@ class FloePlotter(object):
         "updates floes (Polygons) positions for matplotlib animation creation"
         begin, step = 0, 1
         indic = begin + step * num
-        for i, s in enumerate(data.get("floe_outlines").itervalues()):
+        for i, s in enumerate(data.get("floe_outlines").values()):
             ax.patches[i].set_xy(s[indic])
         ax.set_title("t = {}".format(str(datetime.timedelta(seconds=int(data.get("time")[indic])))))
         if not data.get("static_axes"):
@@ -122,10 +122,11 @@ class FloePlotter(object):
     def _init_floes(self, data, ax_mgr):
         "initializes floes (Polygon creation) for matplotlib animation creation (v3 : shapes)"
         ax = ax_mgr.ax
-        ax.set_axis_bgcolor(self.colors["ocean"])
+        ax.set_facecolor(self.colors["ocean"])
         floes_collec = PolyCollection(
             data.get("floe_shapes"),
-            linewidths=0.2,
+            # linewidths=0.2,
+            linewidths=0.05,
             # edgecolors="red", facecolors="none") # no facecolor mode
             cmap=cm.YlOrRd, norm=colors.PowerNorm(gamma=0.3))
             # cmap=cm.Paired)#MPI
@@ -305,14 +306,23 @@ class FloePlotter(object):
         file    = h5py.File(self.OPTIONS.filename, 'r')
         fig, ax = plt.subplots()
         ax_mgr = AxeManager(ax)
-        idx = int(raw_input("Time index (-1 for last one) : "))
+        if file.get("time") and len(file.get("time")):
+            idx = int(input("Time index (-1 for last one) : "))
+        else: # ex : input files
+            idx = 0
         num = idx
-        
-        data_global = self._get_useful_datas(file, num)
+
+        data_global = self._get_useful_datas(file, num, img=True)
         init(data_global, ax_mgr)
         ax.axis('equal')
         update(0, data_global, ax_mgr)
-        plt.show()
+        if getattr(self.OPTIONS, "hd", False):
+            # fig.set_size_inches(60, 45)
+            # fig.set_dpi(100)
+            # plt.savefig('{}.png'.format(self.OPTIONS.filename))
+            plt.savefig('{}.eps'.format(self.OPTIONS.filename), format='eps')#, dpi=1000)
+        else:
+            plt.show()
 
 
     #############################
@@ -321,27 +331,27 @@ class FloePlotter(object):
 
     def make_partial_floe_video(self, out_filename, data_chunk, version):
         "creates video directly from data"
-        print 1
+        print(1)
         fig, ax = plt.subplots()
-        print 2
+        print(2)
         if getattr(self.OPTIONS, "hd", False):
             fig.set_size_inches(20, 15)
             fig.set_dpi(100)
-        print 3
+        print(3)
         init, update = self.get_anim_fcts(version)
         ax = init(data_chunk, ax)
-        print 4
+        print(4)
         if not data_chunk.get("static_axes"):
             ax.axis('equal') # automatic scale
         else:
             ax.axis(data_chunk.get("static_axes"))
-        print 5
+        print(5)
         # ax.set_axis_bgcolor('#162252')
         anim = animation.FuncAnimation(
             fig, update, len(data_chunk.get("time")), fargs=(data_chunk, ax),
             interval=1, blit=False)
-        print 6
-        print out_filename
+        print(6)
+        print (out_filename)
         anim.save(out_filename, writer=self.writer)
 
     def make_partial_floe_video_helper(self, t):
@@ -372,10 +382,10 @@ class FloePlotter(object):
     def make_partial_floe_video_dual_plot_helper(self, t):
         return self.make_partial_floe_video_dual_plot(*t)
 
-    def plot_floes_fast(self, filename="out", dual=False, **kwargs):
+    def plot_floes_fast(self, dual=False, **kwargs):
         "Creates a video from hdf5 file output, using multiprocessing to go faster"
-        data_file    = h5py.File(filename, 'r')
-        nb_step = int(ceil(len(data_file.get("time")) / self.OPTIONS.step))
+        data_file    = h5py.File(self.OPTIONS.filename, 'r')
+        nb_step = int(math.ceil(len(data_file.get("time")) // self.OPTIONS.step))
         # Create multiple partial videos
         trunks = self._get_trunks(nb_step)
         nb_process = len(trunks)
@@ -395,25 +405,29 @@ class FloePlotter(object):
         p.close()
         p.join()
         # Concat all partial video
-        out_filename = self.get_final_video_path(filename)
+        out_filename = self.get_final_video_path(self.OPTIONS.filename)
         call(['ffmpeg',  '-i', 'concat:{}'.format("|".join(partial_file_names)), '-c', 'copy', out_filename])
         call(['rm', '-r', temp_dir])
 
 
-    def _get_useful_datas(self, data_file, single_step="OFF"):
+    def _get_useful_datas(self, data_file, single_step="OFF", img=False):
         d = {}
         # File datas
-        file_time_dependant_keys =["time", "floe_states", "mass_center"]
+        if not img:
+            file_time_dependant_keys =["time", "floe_states", "mass_center"]
+        else:
+            file_time_dependant_keys =["floe_states"] # allow input files to be plotted
         if single_step == "OFF":
             for key in file_time_dependant_keys:
                 d[key] = data_file.get(key)[::self.OPTIONS.step]
         else:
             for key in file_time_dependant_keys:
                 d[key] = [data_file.get(key)[single_step]]
-        d["total_time"] = d["time"]
+        if not img:
+            d["total_time"] = d["time"]
         if self.OPTIONS.version == 1:
             d["floe_outlines"] = {k : dataset[::self.OPTIONS.step]
-                for k, dataset in data_file.get("floe_outlines").iteritems()}
+                for k, dataset in data_file.get("floe_outlines").items()}
         elif self.OPTIONS.version >= 2:
             if data_file.get("floe_shapes") is not None:
                 d["floe_shapes"] = [np.array(data_file.get("floe_shapes").get(k)) for k  in sorted(list(data_file.get("floe_shapes")), key=int)]
@@ -447,6 +461,7 @@ class FloePlotter(object):
             "total_time","total_impulses", "MAX_IMPULSE", "window",
             "special_indices", "static_axes", "ghosts_trans"
         ]
+        print(trunk)
         for key in trunked_keys:
             d[key] = data_global.get(key)[trunk[0] : trunk[1]]
         for key in global_keys:
@@ -454,7 +469,7 @@ class FloePlotter(object):
         d["total_trunk_indices"] = (trunk[0], trunk[1])
         if self.OPTIONS.version == 1:
             d["floe_outlines"] = {k : dataset[trunk[0] : trunk[1]]
-                for k, dataset in data_global.get("floe_outlines").iteritems()}
+                for k, dataset in data_global.get("floe_outlines").items()}
         elif self.OPTIONS.version >= 2:
             d["floe_shapes"] = data_global.get("floe_shapes")
         return d
@@ -485,9 +500,9 @@ class FloePlotter(object):
 
 
     def _get_trunks(self, nb_steps):
-        nb_process = min(cpu_count(), max(nb_steps / 5, 1))
+        nb_process = min(cpu_count(), max(nb_steps // 5, 1))
         resp = []
-        trunk_size = nb_steps / nb_process
+        trunk_size = nb_steps // nb_process
         trunk_rest = nb_steps % nb_process
         j = 0
         for i in range(nb_process):

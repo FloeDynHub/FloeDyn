@@ -21,19 +21,19 @@ def timeit(func):
         ts = time.time()
         result = func(*args, **kw)
         te = time.time()
-        print colored('%r %2.2f s' % (func.__name__, te-ts), "OKGREEN")
+        print(colored('%r %2.2f s' % (func.__name__, te-ts), "OKGREEN"))
         return result
 
     return timed
 
 
 def filename_without_extension(path):
-        return os.path.splitext(os.path.basename(path))[0]
+    return os.path.splitext(os.path.basename(path))[0]
 
 def get_unused_path(path):
     base, ext = os.path.splitext(path)
     i = 1
     while os.path.exists(path):
-        path = u"{}_{}{}".format(base, i, ext)
+        path = "{}_{}{}".format(base, i, ext)
         i+=1
     return path
