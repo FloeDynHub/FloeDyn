@@ -42,7 +42,9 @@ public:
     using process_list_type = typename TProblem::proximity_detector_type::process_list_type;
 
     //! Default constructor
-    MPIMasterProblem(value_type epsilon, int OBL_status) : base_class(epsilon, OBL_status), msg_pk{0} {}
+    MPIMasterProblem(value_type epsilon, int OBL_status) : base_class(epsilon, OBL_status), msg_pk{0} {
+        // this->m_out_manager.restrain_floe_ids({1, 2, 3});
+    }
 
     //! Solver of the problem (main method)
     virtual void solve(value_type end_time, value_type dt_default, value_type out_step = 0, bool reset = true) override;
@@ -73,8 +75,8 @@ private:
 template<typename TProblem>
 void MPIMasterProblem<TProblem>::solve(value_type end_time, value_type dt_default, value_type out_step, bool reset) {
     if (reset) this->create_optim_vars();
-    this->m_domain.set_out_step(out_step);
     this->m_domain.set_default_time_step(dt_default);
+    this->m_out_manager.set_out_step(out_step, this->m_domain.time());
     this->output_datas(); // Initial state out
     while (this->m_domain.time() < end_time)
     {   
@@ -172,12 +174,12 @@ void MPIMasterProblem<TProblem>::test_perf(){
 template<typename TProblem>
 int MPIMasterProblem<TProblem>::manage_collisions(){
     // TODO something more explicit !!
-    int OK_SET = 0;
+    int OK_SET = 0; // first loop needs to consult all workers
     bool still_collision;
     int loop_count{0};
     auto keys = this->m_proximity_detector.collision_process_partition_keys();
     int i = 0;
-    while (OK_SET < keys.size() and loop_count < 20 * keys.size()) {
+    while (OK_SET < keys.size() and loop_count++ < 20 * keys.size()) {
         std::cout << "LCP (" << keys[i] << ") : " << std::flush;
         auto msg_ids = request_jobs(floe::io::collision_job, this->m_proximity_detector.process_partition().at(keys[i]));
         still_collision = handle_responses(msg_ids, floe::io::collision_job);
@@ -200,6 +202,7 @@ void MPIMasterProblem<TProblem>::compute_time_step(){
         auto resp = receive_response();
         msg_ids.erase(resp.id());
         delta_t = std::min(resp.time_step(), delta_t);
+        // if (resp.time_step() < 5) std::cout << "#" << resp.mpi_source() << " " << resp.time_step() << std::endl;
     }
     this->m_domain.set_time_step(delta_t);
     // std::cout << "MC : " << this->m_floe_group.mass_center() << std::endl;

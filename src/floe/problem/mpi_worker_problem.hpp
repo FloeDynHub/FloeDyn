@@ -41,28 +41,27 @@ public:
     using message_type = floe::io::InterProcessMessage<value_type>;
 
     //! Default constructor
-    MPIWorkerProblem(value_type epsilon, int OBL_status) : base_class(epsilon, OBL_status) {}
+    MPIWorkerProblem(value_type epsilon, int OBL_status) : base_class(epsilon, OBL_status), m_terminate{false} {}
 
     //! Solver of the problem (main method)
     virtual void solve(value_type end_time, value_type dt_default, value_type out_step = 0, bool reset = true) override;
 
 private:
+    bool m_terminate;
     //! Move one time step forward
     virtual void step_solve() override;
     message_type receive_request();
     void send_response(message_type&, message_type&);
     bool worker_move_floe_group();
-
 };
 
 
 template<typename TProblem>
 void MPIWorkerProblem<TProblem>::solve(value_type end_time, value_type dt_default, value_type out_step, bool reset) {
     if (reset) this->create_optim_vars();
-    while (true)
+    while (!m_terminate)
     {
         step_solve();
-        if (*this->QUIT) break; // exit normally after SIGINT
     }
 }
 
@@ -81,6 +80,7 @@ void MPIWorkerProblem<TProblem>::step_solve(){
         // this->detect_proximity();
         if (!this->m_proximity_detector.update()) std::cout << "DIRECT INTER #" << this->mpi().process_rank() << std::endl;
         int n = this->manage_collisions();
+        // if (n) std::cout << "#" << this->mpi().process_rank() << " : " << n << " lcp" << std::endl;
         response.nb_LCP_solved(n);
     } else if (request.tag()==floe::io::time_step_job) {
         this->compute_time_step();
@@ -95,6 +95,9 @@ void MPIWorkerProblem<TProblem>::step_solve(){
         // response.interpenetration(worker_move_floe_group());
     } else if (request.tag()==floe::io::interpene_job){
         response.interpenetration(!this->m_proximity_detector.check_interpenetration());
+    } else if (request.tag()==floe::io::termination_signal){
+        m_terminate = true;
+        return;
     }
     this->m_step_nb++;
     // auto t_2 = std::chrono::high_resolution_clock::now();

@@ -69,6 +69,8 @@ public:
 
     //! make input file from floe_group
     void make_input_file(const dynamics_mgr_type& dynamics_manager);
+    //! Calls save_step() if this time needs to be saved
+    void save_step_if_needed(value_type time, const dynamics_mgr_type&);
     //! Save the current simulation state for output
     void save_step(value_type time, const dynamics_mgr_type&);
     //! Flush temporarily saved data
@@ -78,9 +80,22 @@ public:
                           dynamics_mgr_type&, bool keep_as_outfile);
     void set_floe_group(floe_group_type const& floe_group) {
         m_floe_group = &floe_group; 
-        m_data_chunk_states.resize(boost::extents[m_flush_max_step][floe_group.get_floes().size()][9]);
+        m_data_chunk_states.resize(boost::extents[m_flush_max_step][this->nb_considered_floes()][9]);
     };
-    inline std::string const& out_file_name(){ return m_out_file_name; }
+    //! Do not consider all floes in floe group, /!\ only do this at the begining (resizes out states dataset)
+    void restrain_floe_ids(std::vector<std::size_t> id_list) {
+        m_floe_ids = id_list; 
+        m_data_chunk_states.resize(boost::extents[m_flush_max_step][m_floe_ids.size()][9]);
+    };
+    inline bool is_restrained() const { return m_floe_ids.size(); }
+    inline std::string const& out_file_name() const { return m_out_file_name; }
+    inline void set_out_file_name(std::string file_name) { m_out_file_name = file_name; }
+    inline void set_out_step(value_type out_step, value_type time) {
+        m_out_step = out_step;
+        if (time > 0) m_next_out_limit = (std::floor(time / m_out_step) + 1) * m_out_step;
+    }
+    inline void auto_step_count(value_type time){ this->m_step_count = (int)time/this->m_out_step; }
+
 
 
 private:
@@ -88,9 +103,10 @@ private:
     std::string m_out_file_name; //!< output file name
     H5File* m_out_file; //!< output file
     hsize_t m_step_count; //!< Total nb of outputted simulation states
-    hsize_t m_chunk_step_count; //! Nb of temporarily saved steps (to flush in out file)
-    const hsize_t m_flush_max_step; //! Max nb of temporarily saved steps (chunk size)
-    floe_group_type const* m_floe_group;
+    hsize_t m_chunk_step_count; //!< Nb of temporarily saved steps (to flush in out file)
+    const hsize_t m_flush_max_step; //!< Max nb of temporarily saved steps (chunk size)
+    floe_group_type const* m_floe_group; //!< floe group pointer
+    std::vector<std::size_t> m_floe_ids; //!< Restrained id list to consider for output
 
     vector<vector<vector<vector<value_type>>>> m_data_chunk_boundaries; //!< Temp saved floe boundaries
     boost::multi_array<value_type, 3> m_data_chunk_states; //!< Temp saved floe states

@@ -197,9 +197,11 @@ int LCPManager<T>::solve_contacts(TContactGraph& contact_graph)
     // }
     m_nb_lcp += LCP_count;
     m_nb_lcp_success += nb_success;
-    // if (LCP_count)
-    //     std::cout << " #LCP solve: "<< nb_success << " / " << LCP_count << std::endl;
-    return LCP_count;
+    #ifndef MPIRUN
+    if (LCP_count)
+        std::cout << " #LCP solve: "<< nb_success << " / " << LCP_count << std::endl;
+    #endif
+    return nb_success;
 }
 
 

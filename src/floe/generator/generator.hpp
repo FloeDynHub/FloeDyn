@@ -21,6 +21,8 @@
 #include <ctime>
 #include <algorithm>
 #include <random>
+#include "floe/utils/random.hpp"
+
 
 // TEST
 #include "floe/integration/gauss_legendre.hpp"
@@ -83,9 +85,11 @@ Generator<TProblem>::random_floe_group(std::size_t n, value_type max_size)
     // auto sizes = random_size_repartition(n, max_size);
     auto sizes = exp_size_repartition(n, max_size);
     auto centers = spiral_distribution(sizes, max_size);
-    std::default_random_engine generator;
-    generator.seed(std::time(0)); // seed for not having pseudorandom
+    auto generator = floe::random::get_uniquely_seeded_generator();
     std::uniform_int_distribution<int> distribution(0, m_biblio_size - 1);
+    // unused pick to avoid first choice often being the same
+    // (for quasi-simultaneous execs, even with different seeds)
+    distribution(generator);
     list_floes.resize(n);
 
     for (std::size_t i = 0; i < n; i++)
@@ -132,7 +136,7 @@ Generator<TProblem>::random_size_repartition(std::size_t n, value_type R_max)
     std::vector<value_type> v;
     std::default_random_engine generator;
     std::exponential_distribution<double> distribution(5);
-    value_type R_min = R_max * 1e-2;
+    value_type R_min = 0;
     for (std::size_t i = 0; i < n; i++)
     {
         value_type R = R_min + std::min(distribution(generator), 1.) * (R_max - R_min);
@@ -147,18 +151,18 @@ Generator<TProblem>::exp_size_repartition(std::size_t n, value_type R_max)
 {
     std::vector<value_type> v;
     value_type alpha = 1.5;
-    value_type R_min = R_max * 5*1e-3;
+    value_type R_min = 0; // no min (resize if min floe too small)
     int nb_floes_per_size = 2;
     for (std::size_t i = 1; i <= n/nb_floes_per_size; i++)
     {
         // value_type R =  exp( (- 1 /  alpha) * log(i) + log(R_max));
-        value_type R =  R_max * exp( (- 1 /  alpha) * log(i) ) + R_min;
+        value_type R =  std::max(R_max * exp( (- 1 /  alpha) * log(i) ), R_min);
         for (int j=0; j<nb_floes_per_size; ++j){
             v.push_back(R);
         }
     }
     std::srand ( unsigned ( std::time(0) ) ); // seed for not having pseudorandom
-    std::random_shuffle ( v.begin() + 1, v.end() );
+    std::random_shuffle ( v.begin() + 1, v.end() ); // first floe(biggest) stays first (-> initially at center)
     return v;
 }
 

@@ -1,5 +1,5 @@
 /*!
- * \file floes/hdf5_manager.h
+ * \file floes/hdf5_manager.hpp
  * \brief HDF5 manager for io
  * \author Quentin Jouet
  */
@@ -8,6 +8,7 @@
 #define FLOE_IO_HDF5_MANAGER_DEF_HPP
 
 #include "floe/io/hdf5_manager.h"
+#include "floe/utils/random.hpp"
 
 namespace floe { namespace io
 {
@@ -20,7 +21,8 @@ std::string gen_random(const int len) {
         
     std::string s;
 
-    std::srand(std::time(0));
+    auto seed = floe::random::get_unique_seed();
+    std::srand(seed);
 
     for (int i = 0; i < len; ++i) {
         s += alphanum[rand() % (sizeof(alphanum) - 1)];
@@ -38,7 +40,8 @@ HDF5Manager<TFloeGroup, TDynamicsMgr>::HDF5Manager(floe_group_type const& floe_g
     m_data_chunk_states(boost::extents[0][0][0]),
     m_data_chunk_time{new value_type[m_flush_max_step]},
     m_data_chunk_mass_center(boost::extents[m_flush_max_step][2]),
-    m_data_chunk_OBL_speed(boost::extents[m_flush_max_step][2])
+    m_data_chunk_OBL_speed(boost::extents[m_flush_max_step][2]),
+    m_out_step{0}, m_next_out_limit{0}
     {}
 
 
@@ -49,12 +52,22 @@ HDF5Manager<TFloeGroup, TDynamicsMgr>::~HDF5Manager()
     if (m_step_count) std::cout << "OUT FILE : " << m_out_file_name << std::endl;
 }
 
+template <typename TFloeGroup, typename TDynamicsMgr>
+void HDF5Manager<TFloeGroup, TDynamicsMgr>::save_step_if_needed(value_type time, const dynamics_mgr_type& dynamics_manager)
+{
+    if (this->need_step_output(time))
+    {
+        this->save_step(time, dynamics_manager);
+        this->update_next_out_limit();
+    }
+}
+
 
 template <typename TFloeGroup, typename TDynamicsMgr>
 void HDF5Manager<TFloeGroup, TDynamicsMgr>::save_step(value_type time, const dynamics_mgr_type& dynamics_manager)
 {
     floe_group_type const& floe_group = *m_floe_group;
-    auto const& floe_list = floe_group.get_floes();
+    // auto const& floe_list = floe_group.get_floes();
     /*
     if (m_data_chunk_boundaries.size() == 0)
     {   
@@ -62,7 +75,7 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::save_step(value_type time, const dyn
     }
     */
     // save boundaries
-    std::size_t floe_id = 0;
+    // std::size_t floe_id = 0;
     /*
     for (auto const& floe : floe_list)
     {
@@ -74,9 +87,10 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::save_step(value_type time, const dyn
     }
     */
     // save states
-    if (m_data_chunk_states.size() == 0) m_data_chunk_states.resize(boost::extents[m_flush_max_step][floe_list.size()][9]);
-    for(auto const& floe : floe_list)
+    if (m_data_chunk_states.size() == 0) m_data_chunk_states.resize(boost::extents[m_flush_max_step][this->nb_considered_floes()][9]);
+    for(std::size_t id = 0; id < this->nb_considered_floes(); id++)
     {
+        auto const& floe = this->get_floe(id);
         int k{0};
         for (auto& val: {
             floe.state().real_position().x,
@@ -89,9 +103,8 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::save_step(value_type time, const dyn
             floe.state().pos.x,
             floe.state().pos.y
         }){
-            m_data_chunk_states[m_chunk_step_count][floe_id][k++] = val;
+            m_data_chunk_states[m_chunk_step_count][id][k++] = val;
         }
-        floe_id++;
     }
 
     // save time
@@ -503,8 +516,7 @@ double HDF5Manager<TFloeGroup, TDynamicsMgr>::recover_states(
 
     }
 
-    // if (i + 1 == dims_out[0]){
-    if (keep_as_outfile){
+    if (keep_as_outfile and i + 1 == dims_out[0]){
         // We keep recover file as output file
         m_step_count = i + 1;
         m_out_file_name = filename;
@@ -536,9 +548,9 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::write_shapes() {
         datatype.setOrder( H5T_ORDER_LE );
         hsize_t     dimsf[2];              // dataset dimensions
         dimsf[1] = SPACE_DIM;
-        for (std::size_t i=0; i!=m_floe_group->get_floes().size(); ++i)
+        for (std::size_t i=0; i!=this->nb_considered_floes(); ++i)
         {
-            auto& boundary = m_floe_group->get_floes()[i].get_static_floe().geometry().outer();
+            auto& boundary = this->get_floe(i).get_static_floe().geometry().outer();
             dimsf[0] = boundary.size();
             DataSpace dataspace( RANK, dimsf );
             /*
@@ -597,7 +609,7 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::make_input_file(const dynamics_mgr_t
         Exception::dontPrint();
 
         // Temporarily change out_file name
-        int nb_floe = m_floe_group->get_floes().size();
+        int nb_floe = this->nb_considered_floes();
         int conc = round(m_floe_group->initial_concentration() * 100);
         m_out_file_name = "io/inputs/in_" + std::to_string(nb_floe)
             + "f_" + std::to_string(conc) + "p_" + gen_random(5) + ".h5";

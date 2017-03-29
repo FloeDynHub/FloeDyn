@@ -9,6 +9,7 @@
 
 #include "floe/io/hdf5_manager.h"
 // #include "floe/io/false_hdf5_manager.hpp"
+#include "floe/io/multi_out_manager.hpp"
 
  #include "floe/domain/time_scale_manager.hpp"
 
@@ -43,7 +44,8 @@ class Problem
 {
 
 public:
-    using out_manager_type = io::HDF5Manager<TFloeGroup, TDynamicsManager>;
+    // using out_manager_type = io::HDF5Manager<TFloeGroup, TDynamicsManager>;
+    using out_manager_type = io::MultiOutManager<io::HDF5Manager<TFloeGroup, TDynamicsManager>>;
     using value_type = typename TFloeGroup::value_type;
     using floe_group_type = TFloeGroup; // generator accessor
     using time_scale_manager_type = domain::TimeScaleManager<typename TProxymityDetector::proximity_data_type>;
@@ -69,11 +71,13 @@ public:
     inline TFloeGroup& get_floe_group() { return m_floe_group; }
     //! Dynamics mgr accessor for config generator
     inline TDynamicsManager& get_dynamics_manager(){ return m_dynamics_manager; }
-
     //! Floe Concentration
     virtual value_type floe_concentration() { return m_floe_group.floe_concentration(); }
-
     void make_input_file();
+    //! Access detector
+    inline proximity_detector_type& proximity_detector() { return m_proximity_detector; }
+    //! Initializing proximity detector with floe set
+    void create_optim_vars();
 
     const std::atomic<bool>* QUIT; //!< Exit signal
 
@@ -98,8 +102,6 @@ protected:
     virtual void load_matlab_config(std::string const& filename);
     //! Load floes set and initial states from hdf5 file
     virtual void load_h5_config(std::string const& filename);
-    //! Initializing proximity detector with floe set
-    void create_optim_vars();
     //! Move one time step forward
     virtual void step_solve();
     //! Proximity detection (inter-floe distance and eventual collisions)
@@ -169,6 +171,7 @@ void PROBLEM::load_h5_config(std::string const& filename) {
 TEMPLATE_PB
 void PROBLEM::recover_states_from_file(std::string const& filename, value_type t, bool keep_as_outfile){
     value_type saved_time = m_out_manager.recover_states(filename, t, m_floe_group, m_dynamics_manager, keep_as_outfile);
+    std::cout << "RECOVER : " << saved_time << std::endl;
     m_domain.set_time(saved_time);
 }
 
@@ -192,20 +195,20 @@ void PROBLEM::create_optim_vars() {
 
 TEMPLATE_PB
 void PROBLEM::solve(value_type end_time, value_type dt_default, value_type out_step, bool reset){
-    if (reset) create_optim_vars();
-    m_domain.set_out_step(out_step);
-    m_domain.set_default_time_step(dt_default);
-    output_datas(); // Initial state out
-    detect_proximity(); // First proximity detection
-    while (m_domain.time() < end_time)
+    if (reset) this->create_optim_vars();
+    this->m_domain.set_default_time_step(dt_default);
+    this->m_out_manager.set_out_step(out_step, this->m_domain.time());
+    this->output_datas(); // Initial state out
+    this->detect_proximity(); // First proximity detection
+    while (this->m_domain.time() < end_time)
     {   
         // auto t_start = std::chrono::high_resolution_clock::now();
-        step_solve();
+        this->step_solve();
         // auto t_end = std::chrono::high_resolution_clock::now();
         // std::cout << "Chrono STEP : " << std::chrono::duration<double, std::milli>(t_end-t_start).count() << " ms" << std::endl;
-        if (*QUIT) break; // exit normally after SIGINT
+        if (*this->QUIT) break; // exit normally after SIGINT
     }
-    std::cout << " NB STEPS : " << m_step_nb << std::endl;
+    std::cout << " NB STEPS : " << this->m_step_nb << std::endl;
 }
 
 
@@ -252,16 +255,11 @@ void PROBLEM::safe_move_floe_group(){
 TEMPLATE_PB
 void PROBLEM::output_datas(){
     std::cout << "----" << std::endl;
-    std::cout << " Time : " << m_domain.time();
-    std::cout << " | delta_t : " << m_domain.time_step();
-    std::cout << " | Kinetic energy : " << m_floe_group.kinetic_energy() << std::endl;
-    
+    std::cout << " Time : " << this->m_domain.time();
+    std::cout << " | delta_t : " << this->m_domain.time_step();
+    std::cout << " | Kinetic energy : " << this->m_floe_group.kinetic_energy() << std::endl;
     // ouput data
-    if (m_domain.need_step_output())
-    {
-        m_out_manager.save_step(m_domain.time(), m_dynamics_manager);
-        m_domain.update_next_out_limit();
-    }
+    m_out_manager.save_step_if_needed(this->m_domain.time(), this->m_dynamics_manager);
 }
 
 

@@ -79,7 +79,7 @@ public:
     //! Geometry accessors
     inline  void                    attach_geometry_ptr( Uptr_geometry_type geometry )  { m_geometry = std::move(geometry); }
     inline  geometry_type const&    geometry()                              const   { return *m_geometry; }
-    inline  geometry_type &         geometry()                                      { return *m_geometry; }
+    inline  geometry_type &         geometry()                                      { this->reset_area(); return *m_geometry; }
     inline  bool                    has_geometry()                          const   { return m_geometry != nullptr; }
     inline  geometry_type const&    get_geometry()                          const   { return *m_geometry; }
     inline  void                    set_geometry( geometry_type const& geometry )
@@ -114,7 +114,7 @@ public:
     inline void set_C_w(value_type v){ m_C_w = v; }
 
     //! Area
-    inline value_type area() const { return calc_area(); }
+    inline value_type area() const { return (m_area >= 0) ? m_area : calc_area(); }
 
     //! Mass
     inline density_type mass() const { return m_density * m_thickness * area(); }
@@ -145,8 +145,9 @@ private:
     inline
     value_type calc_area() const
     {
-        return (m_area >= 0) ? m_area : ( has_geometry() ? ( m_area = geometry::area(*m_geometry) ) : m_area );
+        return ( has_geometry() ? ( m_area = geometry::area(*m_geometry) ) : m_area );
     }
+    inline void reset_area() { m_area = -1; }
 
     //! Calculate momentum constant, if not already done.
     inline
