@@ -19,12 +19,12 @@ class MPIProblem : public TProblem
 {
 public:
     using base_class = TProblem;
-    using value_type = typename TProblem::value_type;
-    using message_type = floe::io::InterProcessMessage<value_type>;
+    using real_type = typename TProblem::real_type;
+    using message_type = floe::io::InterProcessMessage<real_type>;
     using mpi_terminal_type = floe::io::MPIWrapper;
 
     //! Default constructor
-    MPIProblem(value_type epsilon, int OBL_status, int buffer_size=1e6) :
+    MPIProblem(real_type epsilon, int OBL_status, int buffer_size=1e6) :
         base_class(epsilon, OBL_status), m_mpi_term{buffer_size} {}
 
     void load_config(std::string const& filename) override {
@@ -36,7 +36,7 @@ public:
     }
 
     //! Solver of the problem (main method)
-    virtual void solve(value_type end_time, value_type dt_default, value_type out_step = 0, bool reset = true) override = 0;
+    virtual void solve(real_type end_time, real_type dt_default, real_type out_step = 0, bool reset = true) override = 0;
     virtual mpi_terminal_type& mpi() { return m_mpi_term; }
 
 private:

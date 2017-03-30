@@ -50,7 +50,7 @@ class StaticFloe
 public:
 
     // Type traits
-    typedef T           value_type;
+    typedef T           real_type;
     typedef TPoint      point_type;
     typedef TGeometry   geometry_type;
     typedef TMesh       mesh_type;
@@ -101,31 +101,31 @@ public:
     }
 
     //! Mu accessors
-    inline value_type const&    mu_static() const   { return m_mu_static; }
-    inline value_type &         mu_static()         { return m_mu_static; }
-    inline void set_mu_static(value_type mu_static) { m_mu_static = mu_static; }
+    inline real_type const&    mu_static() const   { return m_mu_static; }
+    inline real_type &         mu_static()         { return m_mu_static; }
+    inline void set_mu_static(real_type mu_static) { m_mu_static = mu_static; }
 
     //! Thickness accessors
-    inline value_type thickness() const { return m_thickness; }
-    inline void set_thickness(value_type v){ m_thickness = v; }
+    inline real_type thickness() const { return m_thickness; }
+    inline void set_thickness(real_type v){ m_thickness = v; }
 
     //! Oceanic skin drag accessors
-    inline value_type C_w() const { return m_C_w; }
-    inline void set_C_w(value_type v){ m_C_w = v; }
+    inline real_type C_w() const { return m_C_w; }
+    inline void set_C_w(real_type v){ m_C_w = v; }
 
     //! Area
-    inline value_type area() const { return (m_area >= 0) ? m_area : calc_area(); }
+    inline real_type area() const { return (m_area >= 0) ? m_area : calc_area(); }
 
     //! Mass
     inline density_type mass() const { return m_density * m_thickness * area(); }
 
     //! Momentum constant
-    inline value_type moment_cst() const { return calc_moment_cst(); }
+    inline real_type moment_cst() const { return calc_moment_cst(); }
 
     //! Density accessors
-    inline value_type   get_density()   const   { return m_density; }
-    inline void         set_density( value_type const& density ) { m_density = density; m_moment_cst = -1; }
-    inline value_type const&    density()   const { return m_density; }
+    inline real_type   get_density()   const   { return m_density; }
+    inline void         set_density( real_type const& density ) { m_density = density; m_moment_cst = -1; }
+    inline real_type const&    density()   const { return m_density; }
 
 private:
 
@@ -133,17 +133,17 @@ private:
     Uptr_geometry_type m_geometry;  //!< Geometry (border)
     mesh_type* m_mesh;          //!< Mesh
     density_type m_density;     //!< Density
-    value_type m_mu_static;     //!< Static friction coefficient
-    value_type m_thickness;     //!< Vertical thickness (constant over floe surface)
-    value_type m_C_w;     //!< Oceanic skin drag coeff
+    real_type m_mu_static;     //!< Static friction coefficient
+    real_type m_thickness;     //!< Vertical thickness (constant over floe surface)
+    real_type m_C_w;     //!< Oceanic skin drag coeff
 
-    mutable value_type m_area;  //!< Area (cached)
+    mutable real_type m_area;  //!< Area (cached)
     // mutable density_type m_mass; //!< Mass (cached)
-    mutable value_type m_moment_cst; //!< Momentum constant (cached)
+    mutable real_type m_moment_cst; //!< Momentum constant (cached)
 
     //! Calculate area, if not already done.
     inline
-    value_type calc_area() const
+    real_type calc_area() const
     {
         return ( has_geometry() ? ( m_area = geometry::area(*m_geometry) ) : m_area );
     }
@@ -151,7 +151,7 @@ private:
 
     //! Calculate momentum constant, if not already done.
     inline
-    value_type calc_moment_cst() const
+    real_type calc_moment_cst() const
     {
         if ( m_moment_cst >= 0 || ! has_mesh() ) {
             return m_moment_cst;
@@ -159,12 +159,12 @@ private:
         else 
         {
             //! \warning To compare results with Matlab code, choose Gauss-Legendre quadrature with 1 point instead of 3 points here.
-            const auto strategy = integration::RefGaussLegendre<value_type, 2, 1>(); // Same as the Matlab code.
-            //const auto strategy = integration::RefGaussLegendre<value_type, 2, 2>(); // Greater precision.
+            const auto strategy = integration::RefGaussLegendre<real_type, 2, 1>(); // Same as the Matlab code.
+            //const auto strategy = integration::RefGaussLegendre<real_type, 2, 2>(); // Greater precision.
             const density_type& density = m_density;
 
             m_moment_cst = integration::integrate(
-                    [&density] ( value_type x, value_type y )
+                    [&density] ( real_type x, real_type y )
                     {
                         return density * ( x*x + y*y );
                     },

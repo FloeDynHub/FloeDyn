@@ -43,7 +43,7 @@ template <
 void
 MatlabDetector<TFloe, TData, TContact>::detection_mode()
 {   
-    value_type min_dsecu { std::numeric_limits<value_type>::max() };
+    real_type min_dsecu { std::numeric_limits<real_type>::max() };
     for (std::size_t i = 0; i!= m_prox_data.size1(); ++i)
     {
         for ( std::size_t j = i+ 1; j != m_prox_data.size2(); ++j )
@@ -185,7 +185,7 @@ MatlabDetector<TFloe, TData, TContact>::detect_step2( std::size_t n1, std::size_
     auto const& opt2 = get_optim_itf(n2);
 
     m_prox_data.set_indic(n1, n2, 1);
-    const value_type dzone = -( m_prox_data.get_dist_secu(n1, n2) - opt1.tau() - opt2.tau() );
+    const real_type dzone = -( m_prox_data.get_dist_secu(n1, n2) - opt1.tau() - opt2.tau() );
 
     // Local disks of obj1 that intersects global disk of obj2
     std::vector<std::size_t> ldisks1;
@@ -254,8 +254,8 @@ MatlabDetector<TFloe, TData, TContact>::detect_step3(
     std::size_t cnt = 0;
 
     // Security and optimal distance
-    value_type dist_s = std::numeric_limits<value_type>::max();
-    value_type dist_o = dist_s;
+    real_type dist_s = std::numeric_limits<real_type>::max();
+    real_type dist_o = dist_s;
 
 
     // Intersection finding
@@ -265,7 +265,7 @@ MatlabDetector<TFloe, TData, TContact>::detect_step3(
         for ( std::size_t j = 0; j < ldisks2.size(); ++j )
         {
             const circle_type d2 = opt2.local_disks()[ldisks2[j]];
-            const value_type dist = distance_circle_circle( d1, d2 );
+            const real_type dist = distance_circle_circle( d1, d2 );
             dist_o = std::min( dist_o, dist + d1.radius + d2.radius ); // unused
 
             if ( dist < 0 )
@@ -301,7 +301,7 @@ template <
     typename TContact
 >
 template <typename TAdjacency>
-typename MatlabDetector<TFloe, TData, TContact>::value_type
+typename MatlabDetector<TFloe, TData, TContact>::real_type
 MatlabDetector<TFloe, TData, TContact>::
 detect_step4( 
     std::size_t n1, std::size_t n2, 
@@ -317,7 +317,7 @@ detect_step4(
     // Contact list
     contact_list_type contact_list;
 
-    value_type global_min_dist = std::numeric_limits<value_type>::max(); // Minimum distance from any points of obj1 to obj2
+    real_type global_min_dist = std::numeric_limits<real_type>::max(); // Minimum distance from any points of obj1 to obj2
 
     // Loop over disks of obj1
     for ( auto it1 = adjacency.begin1(); it1 != adjacency.end1(); ++it1 )
@@ -330,7 +330,7 @@ detect_step4(
             const point_type point1 = point_from_id(n1, ipt1);
 
             // Best contact
-            value_type min_dist = std::numeric_limits<value_type>::max(); // Minimum distance from this point to the other floe 
+            real_type min_dist = std::numeric_limits<real_type>::max(); // Minimum distance from this point to the other floe 
             contact_type min_contact;
 
             bool dangling_point = false;    // Indicate a point that is mayby in the sub-derivative of the other floe
@@ -357,7 +357,7 @@ detect_step4(
                         const segment_type segment = segment_from_id1(n2, ipt2);
                         
                         // Position of the projection of the point of obj1 on the segment of obj2
-                        const value_type pos = segment_pos(segment, point1);
+                        const real_type pos = segment_pos(segment, point1);
  
                         if (pos <= 0) // Backward position, handle only if the point is dangling
                         {
@@ -365,7 +365,7 @@ detect_step4(
                             {
                                 // Contact point-point (check sub-derivative)
                                 const point_type point2 = point_from_id(n2, ipt2);
-                                const value_type dist = distance(point1, point2);
+                                const real_type dist = distance(point1, point2);
                                 if (
                                         dist < min_dist
                                     &&  segment_pos( segment_from_id2(n1, ipt1), point2 ) >= 1
@@ -383,7 +383,7 @@ detect_step4(
                         {
                             // Contact point-segment
                             const point_type point2 = point_from_pos(segment, pos);
-                            const value_type dist = distance(point1, point2);
+                            const real_type dist = distance(point1, point2);
                             if ( dist < min_dist )
                             {
                                 min_contact = create_contact(n1, n2, point1, point2);
@@ -404,9 +404,9 @@ detect_step4(
                 else
                 {   
                     // Matlab version
-                    const value_type dist = (m_detection_mode == 1) ?
+                    const real_type dist = (m_detection_mode == 1) ?
                         std::max( opt1.cdist(), opt2.cdist() ) : std::min( opt1.cdist(), opt2.cdist() );;
-                    // const value_type dist = distance_point_circle(point1, opt2.local_disks()[id2]) + opt2.cdist(); // TEST
+                    // const real_type dist = distance_point_circle(point1, opt2.local_disks()[id2]) + opt2.cdist(); // TEST
                     min_dist = std::min(min_dist, dist);
                     dangling_point = false; // Discontinuity in the disk list
                 }
@@ -420,7 +420,7 @@ detect_step4(
                 {
                     // Contact point-point (check sub-derivative)
                     const point_type point2 = point_from_id(n2, dangling_id);
-                    const value_type dist = distance(point1, point2);
+                    const real_type dist = distance(point1, point2);
                     if (
                             dist < min_dist
                             &&  segment_pos( segment_from_id2(n1, ipt1), point2 ) >= 1
@@ -519,7 +519,7 @@ template <
     typename TData,
     typename TContact
 >
-typename MatlabDetector<TFloe, TData, TContact>::value_type
+typename MatlabDetector<TFloe, TData, TContact>::real_type
 MatlabDetector<TFloe, TData, TContact>::segment_pos( segment_type const& segment, point_type const& point ) const
 {
     const point_type u = segment.second - segment.first;
@@ -538,7 +538,7 @@ template <
     typename TData,
     typename TContact
 >
-typename MatlabDetector<TFloe, TData, TContact>::value_type
+typename MatlabDetector<TFloe, TData, TContact>::real_type
 MatlabDetector<TFloe, TData, TContact>::segment_dist( segment_type const& segment, point_type const& point ) const
 {
     const point_type u = segment.second - segment.first;
@@ -625,7 +625,7 @@ template <
 >
 inline
 typename MatlabDetector<TFloe, TData, TContact>::point_type
-MatlabDetector<TFloe, TData, TContact>::point_from_pos( segment_type const& segment, value_type pos ) const
+MatlabDetector<TFloe, TData, TContact>::point_from_pos( segment_type const& segment, real_type pos ) const
 {
     return (1.-pos) * segment.first + pos * segment.second;
 }

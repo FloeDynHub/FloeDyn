@@ -35,11 +35,11 @@ class LCPManager
 
 public:
     using solver_type = TSolver;
-    using value_type = typename solver_type::value_type;
-    using value_vector = boost::numeric::ublas::vector<value_type>;
+    using real_type = typename solver_type::real_type;
+    using value_vector = boost::numeric::ublas::vector<real_type>;
 
     //! Constructor
-    LCPManager(value_type epsilon) : m_solver{epsilon}, m_nb_lcp{0}, m_nb_lcp_success{0} {}
+    LCPManager(real_type epsilon) : m_solver{epsilon}, m_nb_lcp{0}, m_nb_lcp_success{0} {}
 
     //! Destructor
     ~LCPManager(){ 

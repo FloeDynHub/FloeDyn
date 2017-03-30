@@ -73,7 +73,7 @@ public:
     using floe_type = typename floe_group_type::floe_type;
     using optim_type = typename TProximityData::optim_type;
     using point_type = typename floe_type::point_type;
-    using value_type = typename floe_type::value_type;
+    using real_type = typename floe_type::real_type;
     using floe_interface_type = typename floe_type::floe_interface_type;
     using optim_interface_type = typename optim_type::optim_interface_type;
     using circle_type = typename optim_type::circle_type;
@@ -151,12 +151,12 @@ protected:
     //! Talking about segments
     //! \todo put that somewhere else !
     typedef std::pair<point_type,point_type> segment_type;
-    value_type segment_pos( segment_type const& segment, point_type const& point ) const;
-    value_type segment_dist( segment_type const& segment, point_type const& point ) const; 
+    real_type segment_pos( segment_type const& segment, point_type const& point ) const;
+    real_type segment_dist( segment_type const& segment, point_type const& point ) const; 
     segment_type segment_from_id1( std::size_t n, std::size_t id1 ) const;
     segment_type segment_from_id2( std::size_t n, std::size_t id2 ) const;
     point_type point_from_id( std::size_t n, std::size_t id ) const;
-    inline point_type point_from_pos( segment_type const& segment, value_type pos ) const;
+    inline point_type point_from_pos( segment_type const& segment, real_type pos ) const;
 
     void detection_mode(); // detection mode (min or max collision distance)
     virtual void prepare_detection(); // preparation
@@ -169,7 +169,7 @@ protected:
     void detect_step3( std::size_t n1, std::size_t n2, std::vector<std::size_t> const& ldisks1, std::vector<std::size_t> const& ldisks2 );
     
     template <typename TAdjacency>
-    value_type detect_step4( std::size_t n1, std::size_t n2, std::vector<std::size_t> const& ldisks1, std::vector<std::size_t> const& ldisks2, TAdjacency const& adjacency);
+    real_type detect_step4( std::size_t n1, std::size_t n2, std::vector<std::size_t> const& ldisks1, std::vector<std::size_t> const& ldisks2, TAdjacency const& adjacency);
 
     inline virtual contact_type create_contact(std::size_t n1, std::size_t n2, point_type point1, point_type point2) const {
         return { &m_prox_data.get_floe(n1), &m_prox_data.get_floe(n2), point1, point2 }; }

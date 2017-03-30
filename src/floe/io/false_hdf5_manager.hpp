@@ -31,14 +31,14 @@ class HDF5Manager
 
 public:
     using floe_group_type = TFloeGroup;
-    using value_type = typename TFloeGroup::value_type;
+    using real_type = typename TFloeGroup::real_type;
     using dynamics_mgr_type = TDynamicsMgr;
 
     HDF5Manager(floe_group_type const& floe_group) {}
 
-    void save_step(value_type time, const dynamics_mgr_type&){}
+    void save_step(real_type time, const dynamics_mgr_type&){}
     void flush(){}
-    double recover_states(std::string filename, value_type time, floe_group_type&, dynamics_mgr_type&){ return 0; }
+    double recover_states(std::string filename, real_type time, floe_group_type&, dynamics_mgr_type&){ return 0; }
     inline void set_floe_group(floe_group_type const& floe_group) { }
     std::string const& out_file_name(){}
     void make_input_file(const dynamics_mgr_type& dynamics_manager){}

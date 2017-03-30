@@ -37,10 +37,10 @@ struct ContactPoint
     typedef TPoint      point_type;
     typedef TFrame      frame_type;
     typedef TFloe       floe_type;
-    using value_type = typename floe_type::value_type;
+    using real_type = typename floe_type::real_type;
 
     //! Default constructor
-    ContactPoint() : floe1{nullptr}, floe2{nullptr}, frame{}, dist{std::numeric_limits<value_type>::max()} {}
+    ContactPoint() : floe1{nullptr}, floe2{nullptr}, frame{}, dist{std::numeric_limits<real_type>::max()} {}
 
     /*! Constructor given the contact frame
      * 
@@ -49,7 +49,7 @@ struct ContactPoint
      * \param frame contact frame.
      * \param dist   optional distance between floes at this point
      */
-    ContactPoint( TFloe const* floe1, TFloe const* floe2, frame_type const& frame, value_type distance = 0 ) 
+    ContactPoint( TFloe const* floe1, TFloe const* floe2, frame_type const& frame, real_type distance = 0 ) 
         : floe1{floe1}, floe2{floe2}, frame{frame}, dist{distance}
     {}
 
@@ -76,7 +76,7 @@ struct ContactPoint
     inline explicit
     operator frame_type() const { return frame; }
 
-    value_type relative_speed() const
+    real_type relative_speed() const
     {
         if (*floe_states_changed) { calc_relative_speed(); *floe_states_changed = false; }
         return *m_relative_speed;
@@ -116,8 +116,8 @@ struct ContactPoint
     TFloe const* floe1; //!< First floe in contact
     TFloe const* floe2; //!< Second floe in contact
     TFrame       frame; //!< Frame of contact
-    value_type dist; //!< Distance between floes at this point
-    mutable std::shared_ptr<value_type> m_relative_speed{std::make_shared<value_type>(-1)}; //!< Relative speed cash (for performances)
+    real_type dist; //!< Distance between floes at this point
+    mutable std::shared_ptr<real_type> m_relative_speed{std::make_shared<real_type>(-1)}; //!< Relative speed cash (for performances)
     //! Floe states changed (Need new relative speed calculation), shared pointer to be shared with subgraphs.
     mutable std::shared_ptr<bool> floe_states_changed{std::make_shared<bool> (true)};
 };

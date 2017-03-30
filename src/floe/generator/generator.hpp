@@ -46,7 +46,7 @@ using scale_transformer = boost::geometry::strategy::transform::scale_transforme
 
 template<typename TProblem>
 void
-Generator<TProblem>::generate_floe_set(std::size_t nb_floes, value_type concentration, value_type max_size)
+Generator<TProblem>::generate_floe_set(std::size_t nb_floes, real_type concentration, real_type max_size)
 {   
     std::cout << "Generate " << nb_floes << " floes..." << std::endl;
     load_biblio_floe("io/inputs/Biblio_Floes.mat");
@@ -55,7 +55,7 @@ Generator<TProblem>::generate_floe_set(std::size_t nb_floes, value_type concentr
     random_floe_group(nb_floes, max_size);
     m_problem.get_floe_group().set_mu_static(0);
 
-    value_type win_width = sqrt(m_problem.get_floe_group().total_area() / concentration);
+    real_type win_width = sqrt(m_problem.get_floe_group().total_area() / concentration);
     std::cout << "WIDTH WINDOW : " << win_width << std::endl;
     m_window = {{-win_width / 2, win_width / 2, -win_width / 2, win_width / 2}};
     m_problem.get_floe_group().set_initial_window(m_window);
@@ -65,7 +65,7 @@ Generator<TProblem>::generate_floe_set(std::size_t nb_floes, value_type concentr
     for (auto& floe : m_problem.get_floe_group().get_floes()){
         floe.static_floe().set_thickness(floe.static_floe().thickness() * max_size / 250);
     }
-    value_type end_time = 2000;
+    real_type end_time = 2000;
     bool init = true;
     do {
         m_problem.solve(end_time, 10, 10, init);
@@ -79,7 +79,7 @@ Generator<TProblem>::generate_floe_set(std::size_t nb_floes, value_type concentr
 
 template<typename TProblem>
 void
-Generator<TProblem>::random_floe_group(std::size_t n, value_type max_size)
+Generator<TProblem>::random_floe_group(std::size_t n, real_type max_size)
 {
     auto& list_floes = m_problem.get_floe_group().get_floes();
     // auto sizes = random_size_repartition(n, max_size);
@@ -98,8 +98,8 @@ Generator<TProblem>::random_floe_group(std::size_t n, value_type max_size)
         auto& base_shape = m_biblio_floe_h[idx];
         auto mesh = m_biblio_floe_h_meshes[idx];
         polygon_type shape;
-        geometry::transform( base_shape, shape, scale_transformer<value_type>{ sizes[i] } );
-        geometry::transform( mesh, mesh, scale_transformer<value_type>{ sizes[i] } );
+        geometry::transform( base_shape, shape, scale_transformer<real_type>{ sizes[i] } );
+        geometry::transform( mesh, mesh, scale_transformer<real_type>{ sizes[i] } );
 
         // Create Kinematic floe
         auto& floe = list_floes[i];
@@ -130,33 +130,33 @@ Generator<TProblem>::random_floe_group(std::size_t n, value_type max_size)
 
 
 template<typename TProblem>
-std::vector<typename Generator<TProblem>::value_type>
-Generator<TProblem>::random_size_repartition(std::size_t n, value_type R_max)
+std::vector<typename Generator<TProblem>::real_type>
+Generator<TProblem>::random_size_repartition(std::size_t n, real_type R_max)
 {
-    std::vector<value_type> v;
+    std::vector<real_type> v;
     std::default_random_engine generator;
     std::exponential_distribution<double> distribution(5);
-    value_type R_min = 0;
+    real_type R_min = 0;
     for (std::size_t i = 0; i < n; i++)
     {
-        value_type R = R_min + std::min(distribution(generator), 1.) * (R_max - R_min);
+        real_type R = R_min + std::min(distribution(generator), 1.) * (R_max - R_min);
         v.push_back(R);
     }
     return v;
 }
 
 template<typename TProblem>
-std::vector<typename Generator<TProblem>::value_type>
-Generator<TProblem>::exp_size_repartition(std::size_t n, value_type R_max)
+std::vector<typename Generator<TProblem>::real_type>
+Generator<TProblem>::exp_size_repartition(std::size_t n, real_type R_max)
 {
-    std::vector<value_type> v;
-    value_type alpha = 1.5;
-    value_type R_min = 0; // no min (resize if min floe too small)
+    std::vector<real_type> v;
+    real_type alpha = 1.5;
+    real_type R_min = 0; // no min (resize if min floe too small)
     int nb_floes_per_size = 2;
     for (std::size_t i = 1; i <= n/nb_floes_per_size; i++)
     {
-        // value_type R =  exp( (- 1 /  alpha) * log(i) + log(R_max));
-        value_type R =  std::max(R_max * exp( (- 1 /  alpha) * log(i) ), R_min);
+        // real_type R =  exp( (- 1 /  alpha) * log(i) + log(R_max));
+        real_type R =  std::max(R_max * exp( (- 1 /  alpha) * log(i) ), R_min);
         for (int j=0; j<nb_floes_per_size; ++j){
             v.push_back(R);
         }
@@ -168,17 +168,17 @@ Generator<TProblem>::exp_size_repartition(std::size_t n, value_type R_max)
 
 template<typename TProblem>
 std::vector<typename Generator<TProblem>::point_type>
-Generator<TProblem>::spiral_distribution(std::vector<value_type> const& size_distribution, value_type Rmax)
+Generator<TProblem>::spiral_distribution(std::vector<real_type> const& size_distribution, real_type Rmax)
 {
     std::vector<point_type> v;
-    value_type R = 0, theta = 0, R_max = *std::max_element(size_distribution.begin(), size_distribution.end());
+    real_type R = 0, theta = 0, R_max = *std::max_element(size_distribution.begin(), size_distribution.end());
 
     std::default_random_engine random_gen;
-    std::uniform_real_distribution<value_type> uniform_distrib;
-    // for (value_type r : size_distribution)
+    std::uniform_real_distribution<real_type> uniform_distrib;
+    // for (real_type r : size_distribution)
     for (auto it = size_distribution.begin(); it != size_distribution.end(); ++it)
     {
-        value_type d_theta, d_R, r = *it;
+        real_type d_theta, d_R, r = *it;
         if (R < R_max)
             d_theta = r * 1.2 / R_max, d_R = r * 1.2;
         else
@@ -190,7 +190,7 @@ Generator<TProblem>::spiral_distribution(std::vector<value_type> const& size_dis
             R += d_R;
         } else {
             theta += d_theta; R += d_R;
-            value_type Rf = R + uniform_distrib(random_gen) * (R_max - r) * 0.8;
+            real_type Rf = R + uniform_distrib(random_gen) * (R_max - r) * 0.8;
             v.push_back(point_type{Rf * cos(theta), Rf * sin(theta)});
             theta += d_theta; R += d_R;
         }
@@ -238,14 +238,14 @@ void Generator<TProblem>::load_biblio_floe(std::string filename)
         multi_point_type shape;
         for (std::size_t j = 0; j < cell->dims[0]; j++)
         {
-            shape.push_back(point_type{static_cast<value_type*>(cell->data)[j], static_cast<value_type*>(cell->data)[cell->dims[0] + j]});
+            shape.push_back(point_type{static_cast<real_type*>(cell->data)[j], static_cast<real_type*>(cell->data)[cell->dims[0] + j]});
         }
 
         // Center and normalize geometry
-        value_type radius{static_cast<value_type*>(Rmin->data)[i]};
-        point_type center{static_cast<value_type*>(Cmin->data)[i], static_cast<value_type*>(Cmin->data)[m_biblio_size + i]};
+        real_type radius{static_cast<real_type*>(Rmin->data)[i]};
+        point_type center{static_cast<real_type*>(Cmin->data)[i], static_cast<real_type*>(Cmin->data)[m_biblio_size + i]};
         // geometry::transform( shape, shape, geometry::frame::transformer( typename floe_type::frame_type{-center, 0} )); // done when creating mesh
-        geometry::transform( shape, shape, scale_transformer<value_type>{ 1 / radius } );
+        geometry::transform( shape, shape, scale_transformer<real_type>{ 1 / radius } );
 
         // Save geometry
         m_biblio_floe.push_back(shape);
@@ -280,12 +280,12 @@ void Generator<TProblem>::generate_meshes()
     {
         auto mesh = generate_mesh_for_shape<polygon_type, mesh_type>(shape);
         // Center mesh and shape on floe's center of mass
-        using integration_strategy = floe::integration::RefGaussLegendre<value_type,2,2>;
+        using integration_strategy = floe::integration::RefGaussLegendre<real_type,2,2>;
         auto mass_center = floe::integration::integrate(
-            [] (value_type x, value_type y) { return point_type{x, y}; },
+            [] (real_type x, real_type y) { return point_type{x, y}; },
             mesh, integration_strategy()
         ) / floe::integration::integrate(
-            [] (value_type x, value_type y) { return 1.; },
+            [] (real_type x, real_type y) { return 1.; },
             mesh,integration_strategy()
         );
         // std::cout << "MC : " << mass_center << std::endl;

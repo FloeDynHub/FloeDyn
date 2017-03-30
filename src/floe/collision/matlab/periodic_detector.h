@@ -33,7 +33,7 @@ public:
 
     using floe_group_type = TFloeGroup;
     using floe_type = typename floe_group_type::floe_type;
-    using value_type = typename floe_type::value_type;
+    using real_type = typename floe_type::real_type;
     using point_type = typename floe_type::point_type;
     using topology_type = TSpaceTopology;
 

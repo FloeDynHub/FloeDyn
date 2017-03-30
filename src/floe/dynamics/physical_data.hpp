@@ -31,11 +31,11 @@ class PhysicalData
 public:
 
     using point_type = TPoint;
-    using value_type = decltype(TPoint::x);
+    using real_type = decltype(TPoint::x);
     using point_vector = std::vector<point_type>;
 
     //! Constructor
-    PhysicalData(value_type const& time_ref) :
+    PhysicalData(real_type const& time_ref) :
         m_ocean_data_hours{}, m_air_data_hours{},
         m_ocean_data_minutes{}, m_air_data_minutes{},
         m_time_ref{time_ref}, m_water_speed{0,0},
@@ -58,7 +58,7 @@ private:
     point_vector m_air_data_hours; //!< Geostrophic datas
     point_vector m_ocean_data_minutes; //!< Geostrophic datas
     point_vector m_air_data_minutes; //!< Geostrophic datas
-    value_type const& m_time_ref; //!< reference to time variable
+    real_type const& m_time_ref; //!< reference to time variable
 
     point_type m_water_speed; //!< Corrected water speed
     point_type m_geo_relative_water_speed; //!< Water speed correction compared to geostrophic data
@@ -68,7 +68,7 @@ private:
     //! Interpolate individual hour datas to minute datas
     void interpolate_hour_to_minute(point_vector const&, point_vector&);
     //! Get value in minute datas from time
-    point_type minute_value(value_type t, point_vector const&);
+    point_type minute_value(real_type t, point_vector const&);
     //! Get geostrophic water speed
     point_type geostrophic_water_speed(point_type = {0,0});
 
@@ -101,14 +101,14 @@ PhysicalData<TPoint>::interpolate_hour_to_minute(point_vector const& data_hours,
     point_type p0, p1, P0, P1, pm, Pm;
 
     // init phase
-    const value_type init_hours = 12;
+    const real_type init_hours = 12;
     p0 = {0,0};
     P0 = {norm2(p0), atan2(p0.y, p0.x)}; // polar coordinates of P0.
     p1 = data_hours[0];
     P1 = {norm2(p1), atan2(p1.y, p1.x)};
     for (std::size_t j = 0; j!= 60 * init_hours; ++j)
     {
-        value_type h_frac = (value_type)j/ (60 * init_hours);
+        real_type h_frac = (real_type)j/ (60 * init_hours);
         if (std::abs(P1[1] - P0[1]) > M_PI) // to avoid doing more than a U turn
             P0[1] += copysign(2 * M_PI, P1[1] - P0[1]);
         Pm = (1. - h_frac) * P0 + h_frac * P1;
@@ -124,7 +124,7 @@ PhysicalData<TPoint>::interpolate_hour_to_minute(point_vector const& data_hours,
         P1 = {norm2(p1), atan2(p1.y, p1.x)};
         for (std::size_t j = 0; j!=60; ++j)
         {
-            value_type h_frac = (value_type)j/60;
+            real_type h_frac = (real_type)j/60;
             if (std::abs(P1[1] - P0[1]) > M_PI) // to avoid doing more than a U turn
                 P0[1] += copysign(2 * M_PI, P1[1] - P0[1]);
             Pm = (1. - h_frac) * P0 + h_frac * P1;
@@ -159,7 +159,7 @@ PhysicalData<TPoint>::air_speed(point_type p){
 
 template <typename TPoint>
 TPoint
-PhysicalData<TPoint>::minute_value(value_type t, point_vector const& data_minutes){
+PhysicalData<TPoint>::minute_value(real_type t, point_vector const& data_minutes){
     std::size_t minutes = t / 60;
     if (minutes < data_minutes.size())
         return data_minutes[minutes];

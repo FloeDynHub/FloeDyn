@@ -33,14 +33,14 @@ class ExplicitPhysicalData
 public:
 
     using point_type = TPoint;
-    using value_type = decltype(TPoint::x);
+    using real_type = decltype(TPoint::x);
     using point_vector = std::vector<point_type>;
 
     //! Constructor
-    ExplicitPhysicalData(value_type const& time_ref) : m_time_ref{time_ref},
+    ExplicitPhysicalData(real_type const& time_ref) : m_time_ref{time_ref},
         m_window_width{1}, m_window_height{1},
         m_vortex_radius{0}, m_vortex_origin{0,0}, m_vortex_speed{0,0}, m_vortex_max_norm{0},
-        m_water_mode{0}, m_air_mode{4} {}
+        m_water_mode{0}, m_air_mode{0} {}
 
     point_type water_speed(point_type pt = {0,0}) {
         return get_speed(pt, m_water_mode);
@@ -57,7 +57,7 @@ public:
     //! Load ocean and wind data from a topaz file
     void load_matlab_topaz_data(std::string const& filename) {}
 
-    void set_window_size(value_type width, value_type height) {
+    void set_window_size(real_type width, real_type height) {
         m_window_width = width;
         m_window_height = height;
     }
@@ -74,9 +74,9 @@ public:
     }
 
     void init_random_vortex(){
-        value_type avg_Rc{300000}, delta_Rc{110000};
-        value_type avg_V{8}, delta_V{4};
-        value_type min_Umax{15}, max_Umax{30};
+        real_type avg_Rc{300000}, delta_Rc{110000};
+        real_type avg_V{8}, delta_V{4};
+        real_type min_Umax{15}, max_Umax{30};
         auto dist_Rc = std::uniform_real_distribution<double>{
             avg_Rc - delta_Rc, avg_Rc + delta_Rc};
         auto dist_V = std::uniform_real_distribution<double>{
@@ -86,26 +86,32 @@ public:
         auto dist_angle = std::uniform_real_distribution<double>{
             0, 2 * M_PI};
         auto gen = std::default_random_engine{};
-        gen.seed(std::time(0));
+        std::cout << "RANDOM SEED " << std::time(0);
+        // gen.seed(std::time(0));
+        gen.seed(0);
         m_vortex_radius = dist_Rc(gen);
         m_vortex_max_norm = dist_Umax(gen);
-        value_type theta = dist_angle(gen);
-        // 500km from {0,0} todo : less rigid choice !
-        m_vortex_origin = 500000 * point_type{cos(theta), sin(theta)};
+        real_type theta = dist_angle(gen);
+        m_vortex_origin = 1e6 * point_type{cos(theta), sin(theta)}; // Vortex starts at 1000km from origin
         m_vortex_speed = - dist_V(gen) * point_type{cos(theta), sin(theta)};
+        std::cout << "WIND VORTEX : "
+        << "radius = " << m_vortex_radius
+        << ", speed =  " << m_vortex_speed
+        << ", origin = " << m_vortex_origin
+        << ", max norm = " << m_vortex_max_norm << std::endl;
     }
 
 private:
 
-    value_type const& m_time_ref; //!< reference to time variable
+    real_type const& m_time_ref; //!< reference to time variable
     // window dimension (for generator)
-    value_type m_window_width;
-    value_type m_window_height;
+    real_type m_window_width;
+    real_type m_window_height;
     // vortex attributes
-    value_type m_vortex_radius;
+    real_type m_vortex_radius;
     point_type m_vortex_origin;
     point_type m_vortex_speed;
-    value_type m_vortex_max_norm;
+    real_type m_vortex_max_norm;
     // modes
     int m_water_mode;
     int m_air_mode;
@@ -128,19 +134,19 @@ private:
     }
 
     //! center convergent current (negative coeff will give divergent field)
-    point_type centered_convergent_field(point_type pt = {0,0}, value_type coeff = 1) { return - coeff * pt / norm2(pt); }
+    point_type centered_convergent_field(point_type pt = {0,0}, real_type coeff = 1) { return - coeff * pt / norm2(pt); }
 
     //! convergent current outside null rectangle window
-    point_type convergent_outside_window_field(point_type pt = {0,0}, value_type speed = 30) {
-        value_type x{0}, y{0};
+    point_type convergent_outside_window_field(point_type pt = {0,0}, real_type speed=0.1) {
+        real_type x{0}, y{0};
         if (std::abs(pt.x) > m_window_width / 2) x = - speed * pt.x / std::abs(pt.x);
         if (std::abs(pt.y) > m_window_height / 2) y = - speed * pt.y / std::abs(pt.y);
         return {x,y};
     }
 
     //! convergent current outside null rectangle window
-    point_type circular_inside_window_field(point_type pt = {0,0}, value_type in_speed=10) {
-        value_type x{0}, y{0};
+    point_type circular_inside_window_field(point_type pt = {0,0}, real_type in_speed=1) {
+        real_type x{0}, y{0};
         if (std::abs(pt.x) <= m_window_width / 2 and std::abs(pt.y) <= m_window_height / 2){
             if (std::abs(pt.x) < std::abs(pt.y)) x = - 10 * pt.y / std::abs(pt.y);
             if (std::abs(pt.x) >= std::abs(pt.y)) y = 10 * pt.x / std::abs(pt.x);
@@ -150,14 +156,14 @@ private:
 
     //! convergent current outside null rectangle window
     point_type convergent_outside_window_circular_inside_field(
-        point_type pt = {0,0}, value_type out_speed=30, value_type in_speed=10
+        point_type pt = {0,0}, real_type out_speed=30, real_type in_speed=10
     ){
         return convergent_outside_window_field(pt, out_speed)
             + circular_inside_window_field(pt, in_speed);
     }
 
     //! x axis convergent wind, then constant
-    point_type x_convergent_then_constant(point_type pt = {0,0}, value_type coeff = 10, point_type constant = {10,0}) {
+    point_type x_convergent_then_constant(point_type pt = {0,0}, real_type coeff = 10, point_type constant = {10,0}) {
         if (m_time_ref < 1500)
             return {0, - coeff * (pt.y / (100 + std::abs(pt.y)))};
         else
@@ -171,7 +177,7 @@ private:
     //! x axis convergent wind, then constant
     point_type vortex(point_type pt) {
         point_type vortex_center_to_pt = pt - vortex_center();
-        value_type distance_to_center = norm2(vortex_center_to_pt);
+        real_type distance_to_center = norm2(vortex_center_to_pt);
         if (distance_to_center < m_vortex_radius){
             return (m_vortex_max_norm / m_vortex_radius) *
                 floe::geometry::direct_orthogonal(vortex_center_to_pt);

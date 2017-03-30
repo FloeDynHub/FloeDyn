@@ -29,7 +29,7 @@ class PeriodicProximityData : public ProximityData<TFloeGroup, TOptim>
 public:
 
     using base_class = ProximityData<TFloeGroup, TOptim>;
-    using value_type = typename base_class::value_type;
+    using real_type = typename base_class::real_type;
     using floe_type = typename base_class::floe_type;
     using point_type = typename floe_type::point_type;
     using optim_type = TOptim;
@@ -55,13 +55,13 @@ public:
 
     inline std::size_t nb_ghosts() const { return m_ghost_floes.size(); }
 
-    inline virtual void set_dist_secu(std::size_t n1, std::size_t n2, value_type val) override {
+    inline virtual void set_dist_secu(std::size_t n1, std::size_t n2, real_type val) override {
         (n2 >= this->nb_floes()) ? this->m_dist_secu(n1, n2) = val : this->m_dist_secu(n1, n2) = this->m_dist_secu(n2, n1) = val;
     }
     inline virtual void set_indic(std::size_t n1, std::size_t n2, short val) override {
         (n2 >= this->nb_floes()) ? this->m_indic(n1, n2) = val : this->m_indic(n1, n2) = this->m_indic(n2, n1) = val;
     }
-    virtual void set_dist_opt(std::size_t n1, std::size_t n2, value_type val) override;
+    virtual void set_dist_opt(std::size_t n1, std::size_t n2, real_type val) override;
 
     virtual floe_interface_type const& get_floe_itf(std::size_t n) const override;
     virtual optim_interface_type const& get_optim_itf(std::size_t n) const override;
@@ -121,7 +121,7 @@ template <
 void
 PeriodicProximityData<TFloeGroup, TOptim>
 ::set_dist_opt(
-    std::size_t n1, std::size_t n2, value_type val)
+    std::size_t n1, std::size_t n2, real_type val)
 {
     const std::size_t N { this->nb_floes() };
     if (n2 >= N){

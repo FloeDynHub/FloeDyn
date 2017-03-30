@@ -37,21 +37,21 @@ class GeneratorLCPSolver : public LCPSolver<T>
 
 public:
     using base_class = LCPSolver<T>;
-    using value_type = T;
+    using real_type = T;
 
-    GeneratorLCPSolver(value_type epsilon) : base_class(epsilon) {}
+    GeneratorLCPSolver(real_type epsilon) : base_class(epsilon) {}
 
 private:
 
 
     //! Test LCP solution validity
-    bool LCPtest(int compt, value_type EC, value_type born_EC, value_type Err, bool VRelNtest ) override;
+    bool LCPtest(int compt, real_type EC, real_type born_EC, real_type Err, bool VRelNtest ) override;
 
 };
 
 
 template<typename T>
-bool GeneratorLCPSolver<T>::LCPtest(int compt, value_type EC, value_type born_EC, value_type Err, bool VRelNtest ) {
+bool GeneratorLCPSolver<T>::LCPtest(int compt, real_type EC, real_type born_EC, real_type Err, bool VRelNtest ) {
     return !(EC > born_EC*(1+1e-2) || VRelNtest == 0);
 }
 

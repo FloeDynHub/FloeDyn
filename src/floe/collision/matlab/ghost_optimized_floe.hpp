@@ -50,8 +50,8 @@ public:
     using circle_type = typename optim_type::circle_type;
     using multi_circle_type = typename optim_type::multi_circle_type;
     using local_points_type = typename optim_type::local_points_type;
-    using value_type = typename optim_type::value_type;
-    using translate_strategy_type = boost::geometry::strategy::transform::translate_transformer<value_type, 2,2>;
+    using real_type = typename optim_type::real_type;
+    using translate_strategy_type = boost::geometry::strategy::transform::translate_transformer<real_type, 2,2>;
 
 
     /*! Constructor
@@ -74,8 +74,8 @@ public:
     //! Local points accessor
     inline local_points_type const& local_points() const { return m_optim->local_points(); }
 
-    value_type const&         cdist() const { return m_optim->cdist(); }
-    value_type const&         tau() const { return m_optim->tau(); }
+    real_type const&         cdist() const { return m_optim->cdist(); }
+    real_type const&         tau() const { return m_optim->tau(); }
 
     const std::size_t m_original_id; //!< Original object id in group
 

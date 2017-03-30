@@ -29,12 +29,12 @@ public:
 
     using floe_type = TFloe;
     using point_type = typename floe_type::point_type;
-    using value_type = typename floe_type::value_type;
+    using real_type = typename floe_type::real_type;
     using frame_type = typename floe_type::frame_type;
     using geometry_type = typename floe_type::geometry_type;
     using state_type = typename floe_type::state_type;
     using floe_interface_type = FloeInterface<typename TFloe::static_floe_type, typename TFloe::state_type>;
-    using translate_strategy_type = boost::geometry::strategy::transform::translate_transformer<value_type, 2,2>;
+    using translate_strategy_type = boost::geometry::strategy::transform::translate_transformer<real_type, 2,2>;
 
     //! Default constructor
     GhostFloe() = delete;

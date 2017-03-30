@@ -26,7 +26,7 @@ template<typename TProblem>
 class Generator
 {
 public:
-    using value_type = typename TProblem::value_type;
+    using real_type = typename TProblem::real_type;
     using floe_type = typename TProblem::floe_group_type::floe_type;
     using point_type = typename floe_type::point_type;
     using multi_point_type = floe::geometry::MultiPoint<point_type>;
@@ -37,22 +37,22 @@ public:
     Generator() : m_problem{0.0, 0} {}
 
     //! Generate floe set with given number of floe and concentration
-    void generate_floe_set(std::size_t number, value_type concentration, value_type max_size);
+    void generate_floe_set(std::size_t number, real_type concentration, real_type max_size);
     typename TProblem::floe_group_type& get_floe_group() { return m_problem.get_floe_group(); }
-    // std::array<value_type, 4> get_window() const { return m_window; }
-    // value_type window_area() const { return (m_window[1] - m_window[0]) * (m_window[3] - m_window[2]); }
+    // std::array<real_type, 4> get_window() const { return m_window; }
+    // real_type window_area() const { return (m_window[1] - m_window[0]) * (m_window[3] - m_window[2]); }
     void set_exit_signal(std::atomic<bool>* QUIT){ m_problem.QUIT = QUIT; }
 
 private:
     TProblem m_problem;
-    std::array<value_type, 4> m_window;
+    std::array<real_type, 4> m_window;
     //! Floe size repartition (exponential)
-    std::vector<value_type> random_size_repartition(std::size_t n, value_type R_max);
-    std::vector<value_type> exp_size_repartition(std::size_t n, value_type R_max);
+    std::vector<real_type> random_size_repartition(std::size_t n, real_type R_max);
+    std::vector<real_type> exp_size_repartition(std::size_t n, real_type R_max);
     //! Random floe group
-    void random_floe_group(std::size_t n, value_type max_size);
+    void random_floe_group(std::size_t n, real_type max_size);
     //! Spiral dispatcher
-    std::vector<point_type> spiral_distribution(std::vector<value_type> const& size_distribution, value_type Rmax);
+    std::vector<point_type> spiral_distribution(std::vector<real_type> const& size_distribution, real_type Rmax);
 
     void load_biblio_floe(std::string filename);
     void discretize_biblio_floe(std::size_t n);

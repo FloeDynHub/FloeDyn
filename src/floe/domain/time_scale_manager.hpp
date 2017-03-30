@@ -35,7 +35,7 @@ class TimeScaleManager
 
 public:
     using proximity_data_type = TProxData;
-    using value_type = typename proximity_data_type::value_type;
+    using real_type = typename proximity_data_type::real_type;
     using floe_type = typename proximity_data_type::floe_type;
     using point_type = typename floe_type::point_type;
     using optim_type = typename proximity_data_type::optim_type;
@@ -50,7 +50,7 @@ public:
      * Returns time step taking all floes into account, base on detector informations
      */
     template <typename TDomain>
-    value_type delta_t_secu(TDomain* domain);
+    real_type delta_t_secu(TDomain* domain);
 
     inline void set_prox_data_ptr(proximity_data_type const* ptr) { m_prox_data = ptr; }
 
@@ -62,23 +62,23 @@ private:
      * Returns maximal delta_t for 2 floes beeing close
      * Corresponds to gestion_temps() in Matlab code
      */
-    value_type delta_t_secu(
-        value_type dist_secu,
-        value_type dist_opt,
+    real_type delta_t_secu(
+        real_type dist_secu,
+        real_type dist_opt,
         const floe_type& floe1,
         const floe_interface_type& floe2,
         const optim_type& optim1,
         const optim_interface_type& optim2,
         short I,
-        value_type dt_default
+        real_type dt_default
     );
 
     /*!
      * Returns maximal delta_t for 2 floes not beeing close
      * Corresponds to gestion_temps_fast() in Matlab code
      */
-    value_type delta_t_secu_fast(
-        value_type dist_secu,
+    real_type delta_t_secu_fast(
+        real_type dist_secu,
         const floe_type& floe1,
         const floe_interface_type& floe2,
         const optim_type& optim1,
@@ -89,10 +89,10 @@ private:
 
 template <typename TDetector>
 template <typename TDomain>
-typename TimeScaleManager<TDetector>::value_type
+typename TimeScaleManager<TDetector>::real_type
 TimeScaleManager<TDetector>::delta_t_secu(TDomain* domain)
 {
-    value_type dt_default = domain->default_time_step();
+    real_type dt_default = domain->default_time_step();
     
     if (m_prox_data->interpenetration())
     {
@@ -100,14 +100,14 @@ TimeScaleManager<TDetector>::delta_t_secu(TDomain* domain)
         return domain->time_step();
     }
 
-    value_type global_min_dt = dt_default;
+    real_type global_min_dt = dt_default;
     
     #pragma omp parallel for
     for (std::size_t i = 0; i < m_prox_data->size1(); ++i)
     {
         for ( std::size_t j = i+ 1; j != m_prox_data->size2(); ++j )
         {
-            value_type delta_t;
+            real_type delta_t;
             if (m_prox_data->get_indic(i,j) == 0)
             {   
                 delta_t = delta_t_secu_fast(
@@ -135,27 +135,27 @@ TimeScaleManager<TDetector>::delta_t_secu(TDomain* domain)
 }
 
 template <typename TDetector>
-typename TimeScaleManager<TDetector>::value_type
+typename TimeScaleManager<TDetector>::real_type
 TimeScaleManager<TDetector>::delta_t_secu(
-    value_type dist_secu,
-    value_type dist_opt,
+    real_type dist_secu,
+    real_type dist_opt,
     const floe_type& floe1,
     const floe_interface_type& floe2,
     const optim_type& optim1,
     const optim_interface_type& optim2,
     short I,
-    value_type dt_default
+    real_type dt_default
 ){
     const point_type& Vg1 = floe1.state().speed, Vg2 = floe2.state().speed;
-    const value_type& Vt1 = floe1.state().rot, Vt2 = floe2.state().rot;
+    const real_type& Vt1 = floe1.state().rot, Vt2 = floe2.state().rot;
     const point_type& C1 = optim1.global_disk().center, C2 = optim2.global_disk().center;
-    const value_type& R1 = optim1.global_disk().radius, R2 = optim2.global_disk().radius;
+    const real_type& R1 = optim1.global_disk().radius, R2 = optim2.global_disk().radius;
     const point_type& G1 = floe1.state().pos, G2 = floe2.state().pos;
-    const value_type& tau1 = optim1.tau(), tau2 = optim2.tau();
-    const value_type& dc1 = optim1.cdist(), dc2 = optim2.cdist();
-    value_type lambda = std::min(dc1, dc2) / 20;
+    const real_type& tau1 = optim1.tau(), tau2 = optim2.tau();
+    const real_type& dc1 = optim1.cdist(), dc2 = optim2.cdist();
+    real_type lambda = std::min(dc1, dc2) / 20;
 
-    value_type d = std::max(dist_opt, dist_secu);
+    real_type d = std::max(dist_opt, dist_secu);
     lambda = std::min(lambda, d / 20);
 
     // Calcul du deplacement d un point par rapport aux reperes en t+dt.
@@ -185,7 +185,7 @@ TimeScaleManager<TDetector>::delta_t_secu(
     geometry::transform( Belt_P1_af, Belt_P1_af, transformer( mark1, mark2 ));
     geometry::transform( Belt_P2_af, Belt_P2_af, transformer( mark2, mark1 ));
 
-    value_type dist1 = 0, dist2 = 0;
+    real_type dist1 = 0, dist2 = 0;
     for (std::size_t i = 0; i != Belt_P1.size(); ++i)
         dist1 = std::max(dist1, distance(Belt_P1[i] + C1, Belt_P1_af[i] + G2));
     for (std::size_t i = 0; i != Belt_P2.size(); ++i)
@@ -199,7 +199,7 @@ TimeScaleManager<TDetector>::delta_t_secu(
     geometry::transform( Belt_P1, Belt_P1_af, transformer( mark1 ));
     geometry::transform( Belt_P2, Belt_P2_af, transformer( mark2 ));
     
-    value_type dist1 = 0, dist2 = 0;
+    real_type dist1 = 0, dist2 = 0;
     for (std::size_t i = 0; i != Belt_P1.size(); ++i)
         dist1 = std::max(dist1, distance(Belt_P1_be[i], Belt_P1_af[i]));
     for (std::size_t i = 0; i != Belt_P2.size(); ++i)
@@ -208,12 +208,12 @@ TimeScaleManager<TDetector>::delta_t_secu(
     
 
     // %%%%%%%%%% Cas obj1 %%%%%%%%%%
-    value_type calc;
+    real_type calc;
     if (dist1 < 1e-12)
         calc = dt_default;
     else
         calc = ((d - lambda) / 2) * (dt_default / dist1);
-    value_type dt12 = std::min(dt_default, calc);
+    real_type dt12 = std::min(dt_default, calc);
     // %%%%%%%%%% Fin %%%%%%%%%%
     
     // %%%%%%%%%% Cas obj2 %%%%%%%%%%
@@ -221,7 +221,7 @@ TimeScaleManager<TDetector>::delta_t_secu(
         calc = dt_default;
     else
         calc = ((d - lambda) / 2) * (dt_default / dist2);
-    value_type dt21 = std::min(dt_default, calc);
+    real_type dt21 = std::min(dt_default, calc);
     // %%%%%%%%%% Fin %%%%%%%%%%
 
     assert( std::min(dt12, dt21) > 0 );
@@ -230,9 +230,9 @@ TimeScaleManager<TDetector>::delta_t_secu(
 }
 
 template <typename TDetector>
-typename TimeScaleManager<TDetector>::value_type
+typename TimeScaleManager<TDetector>::real_type
 TimeScaleManager<TDetector>::delta_t_secu_fast(
-        value_type dist_secu,
+        real_type dist_secu,
         const floe_type& floe1,
         const floe_interface_type& floe2,
         const optim_type& optim1,
@@ -241,19 +241,19 @@ TimeScaleManager<TDetector>::delta_t_secu_fast(
 
     point_type Vg1 = floe1.state().speed, Vg2 = floe2.state().speed;
     point_type C1 = optim1.global_disk().center, C2 = optim2.global_disk().center;
-    value_type dc1 = optim1.cdist(), dc2 = optim2.cdist();
+    real_type dc1 = optim1.cdist(), dc2 = optim2.cdist();
 
     // Calcul de la marge lambda
-    value_type lambda = std::min(dc1, dc2) / 20;
+    real_type lambda = std::min(dc1, dc2) / 20;
     
     // Axe reliant chaque couple de floe
     point_type Axe = (C2 - C1) / distance(C1, C2);
 
     // Vitesse relative projetÃ©e sur l'axe
-    value_type VRel = geometry::dot_product(Vg2 - Vg1, Axe);
+    real_type VRel = geometry::dot_product(Vg2 - Vg1, Axe);
 
     // Calcul du dt max
-    value_type delta_t;
+    real_type delta_t;
     
     if (VRel < 0)
     {
@@ -262,7 +262,7 @@ TimeScaleManager<TDetector>::delta_t_secu_fast(
     } else
     {
         // Collision impossible
-        delta_t = std::numeric_limits<value_type>::max();
+        delta_t = std::numeric_limits<real_type>::max();
     }
 
     return delta_t;

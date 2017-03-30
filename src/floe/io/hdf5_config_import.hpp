@@ -24,14 +24,14 @@ namespace floe { namespace io
 template <typename TFloeGroup>
 void import_floes_from_hdf5(H5std_string filename, TFloeGroup& floe_group)
 {
-    // using floe_type = typename TFloeList::value_type;
+    // using floe_type = typename TFloeList::real_type;
     using floe_type = typename TFloeGroup::floe_type;
     using geometry_type = typename floe_type::geometry_type;
     using mesh_type = typename floe_type::mesh_type;
     using point_type = typename floe_type::point_type;
-    using value_type = typename floe_type::value_type;
+    using real_type = typename floe_type::real_type;
     using static_floe_type = typename floe_type::static_floe_type;
-    using array_2d_type = boost::multi_array<value_type, 2>;
+    using array_2d_type = boost::multi_array<real_type, 2>;
 
     auto& floe_list = floe_group.get_floes();
     /*
@@ -99,7 +99,7 @@ void import_floes_from_hdf5(H5std_string filename, TFloeGroup& floe_group)
             hsize_t dims_out[rank];
             dataspace.getSimpleExtentDims( dims_out, NULL);
             DataSpace memspace( 2, dims_out );
-            // value_type data_out[dims_out[0]][dims_out[1]];
+            // real_type data_out[dims_out[0]][dims_out[1]];
             array_2d_type data_out(boost::extents[dims_out[0]][dims_out[1]]);
             dataset.read( data_out.data(), PredType::NATIVE_DOUBLE, memspace, dataspace );
 
@@ -140,7 +140,7 @@ void import_floes_from_hdf5(H5std_string filename, TFloeGroup& floe_group)
 
     // Import states
     DataSet window_dataset = file.openDataSet( "window" );
-    value_type win_data[4];
+    real_type win_data[4];
     window_dataset.read( win_data, PredType::NATIVE_DOUBLE );
     floe_group.set_initial_window({{win_data[0], win_data[1], win_data[2], win_data[3]}});
 

@@ -27,7 +27,7 @@ class MPIMatlabDetector : public MatlabDetector<TFloeGroup>
 public:
     using base_class = MatlabDetector<TFloeGroup>;
     using floe_group_type = TFloeGroup;
-    using value_type = typename base_class::value_type;
+    using real_type = typename base_class::real_type;
     using point_type = typename base_class::point_type;
     using optim_type = typename base_class::optim_type;
     using floe_interface_type = typename base_class::floe_interface_type;
@@ -139,7 +139,7 @@ public:
     }
 
     void set_max_floe_radius(){
-        value_type max_radius = 0.;
+        real_type max_radius = 0.;
         for (auto const* optim : this->data().get_optims()){
             max_radius = std::max(max_radius, optim->global_disk().radius);
         }
@@ -160,10 +160,10 @@ private:
     floe_distrib_type m_floe_process_distrib;
     process_partition_type m_process_partition;
     // floe_multi_partition_type m_floe_process_distributions;
-    std::array<value_type, 4> m_window;
+    std::array<real_type, 4> m_window;
     std::array<int, 2> m_dim_grid;
     int m_nb_workers;
-    value_type m_max_floe_radius;
+    real_type m_max_floe_radius;
 
     inline int grid_dim_x() const { return m_dim_grid[0]; }
     inline int grid_dim_y() const { return m_dim_grid[1]; }
@@ -205,10 +205,10 @@ private:
         // Update floe optimizers (but not their local disks)
         for ( auto optim_ptr : this->m_prox_data.get_optims() ) optim_ptr->update(false);
         // compute minimal rectangle ocean area
-        value_type mg = 1e-8; // margin
-        value_type min_x, min_y, max_x, max_y;
-        min_x = min_y = std::numeric_limits<value_type>::max();
-        max_x = max_y = - std::numeric_limits<value_type>::max();
+        real_type mg = 1e-8; // margin
+        real_type min_x, min_y, max_x, max_y;
+        min_x = min_y = std::numeric_limits<real_type>::max();
+        max_x = max_y = - std::numeric_limits<real_type>::max();
         for (auto const* optim : this->data().get_optims()){
             max_x = std::max(optim->global_disk().center.x, max_x);
             min_x = std::min(optim->global_disk().center.x, min_x);
@@ -220,8 +220,8 @@ private:
 
 void distribute(optim_type const& optim, std::size_t floe_id){
         // Calc ocean 2D parcel dimension
-        value_type parcel_width = (m_window[1] - m_window[0]) / this->grid_dim_x();
-        value_type parcel_height = (m_window[3] - m_window[2]) / this->grid_dim_y();
+        real_type parcel_width = (m_window[1] - m_window[0]) / this->grid_dim_x();
+        real_type parcel_height = (m_window[3] - m_window[2]) / this->grid_dim_y();
         // Coordinates relative to grid
         auto X_grid = (optim.global_disk().center.x - m_window[0]) / parcel_width;
         auto Y_grid = (optim.global_disk().center.y - m_window[2]) / parcel_height;

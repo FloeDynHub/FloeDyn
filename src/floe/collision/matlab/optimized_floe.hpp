@@ -55,7 +55,7 @@ public:
     using circle_type = typename optim_interface_type::circle_type;
     using multi_circle_type = typename optim_interface_type::multi_circle_type;
     using local_points_type = typename optim_interface_type::local_points_type;
-    using value_type = typename optim_interface_type::value_type;
+    using real_type = typename optim_interface_type::real_type;
 
     /*! Constructor
      *
@@ -93,10 +93,10 @@ public:
     inline local_points_type const& local_points()  const   { return m_local_points; }
     inline local_points_type &      local_points()          { return m_local_points; }
 
-    value_type const&         cdist() const { return m_cdist; }
-    value_type const&         tau() const { return m_tau; }
-    value_type          m_cdist;        //!< Collision distance
-    value_type          m_tau;          //!< Distance between surrounding disk and the floe border.
+    real_type const&         cdist() const { return m_cdist; }
+    real_type const&         tau() const { return m_tau; }
+    real_type          m_cdist;        //!< Collision distance
+    real_type          m_tau;          //!< Distance between surrounding disk and the floe border.
 
 private:
     floe_type const&    m_floe; //!< Floe
@@ -124,24 +124,24 @@ TCircle circle_envelope ( TMultiPoint const& points )
 {
     using namespace floe::geometry;
     typedef typename point_type<TMultiPoint>::type point_type;
-    typedef typename coordinate_type<TCircle>::type value_type;
+    typedef typename coordinate_type<TCircle>::type real_type;
     
     // Circle center
     const auto center = return_centroid<point_type>(points);
 
     // Circle radius
     point_type max_p;
-    value_type max_d = 0;
+    real_type max_d = 0;
     for ( const auto& pt : points )
     {
-        const value_type d = comparable_distance(pt, center);
+        const real_type d = comparable_distance(pt, center);
         if (d >= max_d)
         {
             max_d = d;
             max_p = pt;
         }
     }
-    const value_type radius = distance(max_p, center);
+    const real_type radius = distance(max_p, center);
 
     return {center, radius};
 }
@@ -198,7 +198,7 @@ OptimizedFloe<TFloe>::init()
 
     //// Surrounding disk ////
     points.resize(0);
-    value_type max_radius = 0.;
+    real_type max_radius = 0.;
     for (auto const& disk : m_local_disks)
     {
         //points.push_back( disk.center );

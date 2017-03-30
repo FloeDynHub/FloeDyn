@@ -46,16 +46,16 @@ class Problem
 public:
     // using out_manager_type = io::HDF5Manager<TFloeGroup, TDynamicsManager>;
     using out_manager_type = io::MultiOutManager<io::HDF5Manager<TFloeGroup, TDynamicsManager>>;
-    using value_type = typename TFloeGroup::value_type;
+    using real_type = typename TFloeGroup::real_type;
     using floe_group_type = TFloeGroup; // generator accessor
     using time_scale_manager_type = domain::TimeScaleManager<typename TProxymityDetector::proximity_data_type>;
     using proximity_detector_type = TProxymityDetector;
 
     //! Default constructor.
-    Problem(value_type epsilon=0.4, int OBL_status=0);
+    Problem(real_type epsilon=0.4, int OBL_status=0);
 
     //! Solver of the problem (main method)
-    virtual void solve(value_type end_time, value_type dt_default, value_type out_step = 0, bool reset = true);
+    virtual void solve(real_type end_time, real_type dt_default, real_type out_step = 0, bool reset = true);
 
     virtual void load_config(std::string const& filename);
     //! Load ocean and wind data from a topaz file
@@ -63,7 +63,7 @@ public:
         m_dynamics_manager.load_matlab_topaz_data(filename);
     }
     //! Recover simulation state from previous ouput file, at any recorded time t
-    virtual void recover_states_from_file(std::string const& filename, value_type t, bool keep_as_outfile=true);
+    virtual void recover_states_from_file(std::string const& filename, real_type t, bool keep_as_outfile=true);
 
     //! set existing floe_group (from generator for example)
     virtual void set_floe_group(floe_group_type& floe_group);
@@ -72,7 +72,7 @@ public:
     //! Dynamics mgr accessor for config generator
     inline TDynamicsManager& get_dynamics_manager(){ return m_dynamics_manager; }
     //! Floe Concentration
-    virtual value_type floe_concentration() { return m_floe_group.floe_concentration(); }
+    virtual real_type floe_concentration() { return m_floe_group.floe_concentration(); }
     void make_input_file();
     //! Access detector
     inline proximity_detector_type& proximity_detector() { return m_proximity_detector; }
@@ -131,7 +131,7 @@ protected:
 
 
 TEMPLATE_PB
-PROBLEM::Problem(value_type epsilon, int OBL_status) :
+PROBLEM::Problem(real_type epsilon, int OBL_status) :
         QUIT{nullptr},
         m_domain{},
         m_proximity_detector{},
@@ -169,8 +169,8 @@ void PROBLEM::load_h5_config(std::string const& filename) {
 
 
 TEMPLATE_PB
-void PROBLEM::recover_states_from_file(std::string const& filename, value_type t, bool keep_as_outfile){
-    value_type saved_time = m_out_manager.recover_states(filename, t, m_floe_group, m_dynamics_manager, keep_as_outfile);
+void PROBLEM::recover_states_from_file(std::string const& filename, real_type t, bool keep_as_outfile){
+    real_type saved_time = m_out_manager.recover_states(filename, t, m_floe_group, m_dynamics_manager, keep_as_outfile);
     std::cout << "RECOVER : " << saved_time << std::endl;
     m_domain.set_time(saved_time);
 }
@@ -187,14 +187,12 @@ void PROBLEM::set_floe_group(floe_group_type& floe_group) {
 TEMPLATE_PB
 void PROBLEM::create_optim_vars() {
     m_proximity_detector.reset();
-    // for (auto& floe : m_floe_group.get_floes())
-    //     m_proximity_detector.push_back(&floe);
     m_proximity_detector.set_floe_group(m_floe_group);
 }
 
 
 TEMPLATE_PB
-void PROBLEM::solve(value_type end_time, value_type dt_default, value_type out_step, bool reset){
+void PROBLEM::solve(real_type end_time, real_type dt_default, real_type out_step, bool reset){
     if (reset) this->create_optim_vars();
     this->m_domain.set_default_time_step(dt_default);
     this->m_out_manager.set_out_step(out_step, this->m_domain.time());

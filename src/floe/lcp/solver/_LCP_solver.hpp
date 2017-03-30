@@ -28,11 +28,11 @@ bool LCPSolver<T>::solve( lcp_type& lcp ) {
 
 template<typename T>
 template<typename TContactGraph>
-std::array<vector<typename LCPSolver<T>::value_type>, 2>
+std::array<vector<typename LCPSolver<T>::real_type>, 2>
 LCPSolver<T>::solve( TContactGraph& graph, bool& success ) {
     using namespace floe::lcp::solver;
 
-    floe::lcp::builder::GraphLCP<value_type, decltype(graph)> graph_lcp( graph );
+    floe::lcp::builder::GraphLCP<real_type, decltype(graph)> graph_lcp( graph );
     auto lcp_orig = graph_lcp.getLCP();
     auto lcp = lcp_orig;
 
@@ -51,10 +51,10 @@ LCPSolver<T>::solve( TContactGraph& graph, bool& success ) {
 
     unsigned int comptchgt{0};
     bool solved{0};
-    vector<value_type> Solc(3 * graph_lcp.nb_floes), floe_impulses(graph_lcp.nb_floes, 0);
+    vector<real_type> Solc(3 * graph_lcp.nb_floes), floe_impulses(graph_lcp.nb_floes, 0);
 
     decltype(lcp.z) best_z;
-    value_type best_Err = std::numeric_limits<value_type>::max();
+    real_type best_Err = std::numeric_limits<real_type>::max();
 
     while (!solved)
     {
@@ -99,7 +99,7 @@ LCPSolver<T>::solve( TContactGraph& graph, bool& success ) {
 
          // As-t-on une meilleure solution ?
         auto Err = LCP_error(lcp_orig);
-        if (Err < best_Err || best_Err == std::numeric_limits<value_type>::max())
+        if (Err < best_Err || best_Err == std::numeric_limits<real_type>::max())
         {
             best_z = lcp.z;
             best_Err = Err;
@@ -130,7 +130,7 @@ LCPSolver<T>::solve( TContactGraph& graph, bool& success ) {
         //     << subrange(z, 0, m) << "\n" << subrange(z, m, 3*m) << "\n";
         //     for (std::size_t i=0; i<m; ++i){
         //         if (z(i) > 1e-3){
-        //             value_type coeff = (z(m+2*i) + z(m+2*i+1)) / z(i);
+        //             real_type coeff = (z(m+2*i) + z(m+2*i+1)) / z(i);
         //             std::cout << " " << coeff;
         //             if (coeff > 0.71) std::cout << " COULOMB! ";
         //             if (z(m+2*i) * z(m+2*i+1) > 1e-3) std::cout << " BETA>0! ";
@@ -144,16 +144,16 @@ LCPSolver<T>::solve( TContactGraph& graph, bool& success ) {
     // %%%%%%%%%%%%%%%%%%%%%%%%%%
     // % phase de decompression %
     // %%%%%%%%%%%%%%%%%%%%%%%%%%
-    vector<value_type> Sold(3 * graph_lcp.nb_floes);
+    vector<real_type> Sold(3 * graph_lcp.nb_floes);
     if ( epsilon != 0 )
     {
         lcp_type lcp_d_orig = lcp = graph_lcp.getLCP_d(lcp_orig, Solc, epsilon);
-        value_type born_sup = graph_lcp.born_sup_d(lcp_orig, epsilon);
+        real_type born_sup = graph_lcp.born_sup_d(lcp_orig, epsilon);
         // if (born_sup > 1) std::cout << "*****BORN SUP***** " << born_sup << " ";
 
         comptchgt = 0;
         solved = 0;
-        best_Err = std::numeric_limits<value_type>::max();
+        best_Err = std::numeric_limits<real_type>::max();
 
         while (!solved)
         {
@@ -194,7 +194,7 @@ LCPSolver<T>::solve( TContactGraph& graph, bool& success ) {
 
              // As-t-on une meilleure solution ?
             auto Err = LCP_error(lcp_d_orig);
-            if (Err < best_Err || best_Err == std::numeric_limits<value_type>::max())
+            if (Err < best_Err || best_Err == std::numeric_limits<real_type>::max())
             {
                 best_z = lcp.z;
                 best_Err = Err;
@@ -243,7 +243,7 @@ LCPSolver<T>::solve( TContactGraph& graph, bool& success ) {
 
 
 template<typename T>
-bool LCPSolver<T>::LCPtest(int compt, value_type EC, value_type born_EC, value_type Err, bool VRelNtest ){
+bool LCPSolver<T>::LCPtest(int compt, real_type EC, real_type born_EC, real_type Err, bool VRelNtest ){
     bool resp = 1;
     if (compt == 1)
     {
@@ -266,7 +266,7 @@ bool LCPSolver<T>::LCPtest(int compt, value_type EC, value_type born_EC, value_t
 
 template<typename T>
 template<typename Tmat, typename Tvect>
-typename LCPSolver<T>::value_type 
+typename LCPSolver<T>::real_type 
 LCPSolver<T>::calcEc(const Tvect& S, const Tmat& M, const Tvect& w){
     return inner_prod(prod(S, M), S) / inner_prod(prod(w, M), w);
 }
@@ -274,7 +274,7 @@ LCPSolver<T>::calcEc(const Tvect& S, const Tmat& M, const Tvect& w){
 
 template<typename T>
 template<typename TGraphLCP>
-vector<typename LCPSolver<T>::value_type>
+vector<typename LCPSolver<T>::real_type>
 LCPSolver<T>::calcSolc(TGraphLCP& graph_lcp, LCPSolver<T>::lcp_type& lcp)
 {   
     const std::size_t m = graph_lcp.nb_contacts;
@@ -286,11 +286,11 @@ LCPSolver<T>::calcSolc(TGraphLCP& graph_lcp, LCPSolver<T>::lcp_type& lcp)
 
 template<typename T>
 template<typename TGraphLCP>
-vector<typename LCPSolver<T>::value_type>
-LCPSolver<T>::calcSold(TGraphLCP& graph_lcp, lcp_type& lcp_c, lcp_type& lcp_d, vector<value_type> Solc )
+vector<typename LCPSolver<T>::real_type>
+LCPSolver<T>::calcSold(TGraphLCP& graph_lcp, lcp_type& lcp_c, lcp_type& lcp_d, vector<real_type> Solc )
 {   
     const std::size_t m = graph_lcp.nb_contacts;
-    vector<value_type> ezc = epsilon * subrange(lcp_c.z, 0, m);
+    vector<real_type> ezc = epsilon * subrange(lcp_c.z, 0, m);
     return Solc + prod(
         graph_lcp.invM,
         prod(graph_lcp.J, subrange(lcp_d.z, 0, m) + ezc) + prod(graph_lcp.D, subrange(lcp_d.z, m, 3*m))
@@ -300,7 +300,7 @@ LCPSolver<T>::calcSold(TGraphLCP& graph_lcp, lcp_type& lcp_c, lcp_type& lcp_d, v
 
 template<typename T>
 typename LCPSolver<T>::lcp_type
-LCPSolver<T>::random_perturbation(lcp_type& lcp, value_type max){
+LCPSolver<T>::random_perturbation(lcp_type& lcp, real_type max){
     // version randomly modifying all non-zeros values
     for (auto it1 = lcp.A.begin1(); it1 != lcp.A.end1(); ++it1) {
         for (auto it2 = it1.begin(); it2 != it1.end(); ++it2) {
@@ -320,7 +320,7 @@ LCPSolver<T>::random_perturbation(lcp_type& lcp, value_type max){
 
 template<typename T>
 template<typename TContactGraph>
-bool LCPSolver<T>::VRelNtest(const vector<value_type>& V, const TContactGraph& graph){
+bool LCPSolver<T>::VRelNtest(const vector<real_type>& V, const TContactGraph& graph){
     size_t contact_id = 0;
     for ( auto const& edge : make_iterator_range( boost::edges( graph ) ) )
     {
@@ -329,7 +329,7 @@ bool LCPSolver<T>::VRelNtest(const vector<value_type>& V, const TContactGraph& g
         {
             if (V[contact_id] < 0)
             {
-                value_type delta = V[contact_id] * 10; // 10 = DT_DEFAULT // get dt_defaut ?
+                real_type delta = V[contact_id] * 10; // 10 = DT_DEFAULT // get dt_defaut ?
                 if (delta > contact.dist / 50)
                     return 0;
             }

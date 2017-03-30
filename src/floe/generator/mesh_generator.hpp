@@ -33,7 +33,7 @@ template<typename TShape, typename TMesh>
 TMesh generate_mesh_for_shape(TShape const& shape)
 {
     using point_type = typename TShape::point_type;
-    using value_type = typename point_type::value_type;
+    using real_type = typename point_type::value_type;
     CDT cdt;
     std::vector<Vertex_handle> v;
     for (point_type pt : shape.outer())
@@ -54,7 +54,7 @@ TMesh generate_mesh_for_shape(TShape const& shape)
     list_of_seeds.push_back(out_of_domain_point);
 
     const int nb_cells = 20;
-    const value_type cell_size{ sqrt(2 * floe::geometry::area(shape) / nb_cells) };
+    const real_type cell_size{ sqrt(2 * floe::geometry::area(shape) / nb_cells) };
     // CGAL::refine_Delaunay_mesh_2(cdt, Criteria(0.125, cell_size));
 
     CGAL::refine_Delaunay_mesh_2(cdt, list_of_seeds.begin(), list_of_seeds.end(), Criteria(0.125, cell_size));

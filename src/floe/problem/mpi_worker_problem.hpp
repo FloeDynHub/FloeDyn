@@ -36,15 +36,15 @@ class MPIWorkerProblem : public MPIProblem<TProblem>
 {
 public:
     using base_class = MPIProblem<TProblem>;
-    using value_type = typename TProblem::floe_group_type::floe_type::value_type;
+    using real_type = typename TProblem::floe_group_type::floe_type::real_type;
     using point_type = typename TProblem::floe_group_type::floe_type::point_type;
-    using message_type = floe::io::InterProcessMessage<value_type>;
+    using message_type = floe::io::InterProcessMessage<real_type>;
 
     //! Default constructor
-    MPIWorkerProblem(value_type epsilon, int OBL_status) : base_class(epsilon, OBL_status), m_terminate{false} {}
+    MPIWorkerProblem(real_type epsilon, int OBL_status) : base_class(epsilon, OBL_status), m_terminate{false} {}
 
     //! Solver of the problem (main method)
-    virtual void solve(value_type end_time, value_type dt_default, value_type out_step = 0, bool reset = true) override;
+    virtual void solve(real_type end_time, real_type dt_default, real_type out_step = 0, bool reset = true) override;
 
 private:
     bool m_terminate;
@@ -57,7 +57,7 @@ private:
 
 
 template<typename TProblem>
-void MPIWorkerProblem<TProblem>::solve(value_type end_time, value_type dt_default, value_type out_step, bool reset) {
+void MPIWorkerProblem<TProblem>::solve(real_type end_time, real_type dt_default, real_type out_step, bool reset) {
     if (reset) this->create_optim_vars();
     while (!m_terminate)
     {

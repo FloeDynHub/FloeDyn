@@ -36,49 +36,49 @@ class LCPSolver
 
 public:
     using lcp_type = floe::lcp::LCP<T>;
-    using value_type = T;
+    using real_type = T;
 
     LCPSolver() : epsilon{0.4}, m_random_generator{}, m_uniform_distribution{-1, 1} {} // todo : should epsilon be runtime parameter ?
 
     //! Solve LCP
     bool solve( lcp_type& lcp );
     template<typename TContactGraph>
-    std::array<vector<value_type>, 2> solve( TContactGraph& graph, bool& success  );
+    std::array<vector<real_type>, 2> solve( TContactGraph& graph, bool& success  );
 
 protected:
 
-    value_type epsilon; //!< energy restitution coeff
+    real_type epsilon; //!< energy restitution coeff
     std::default_random_engine m_random_generator;
-    std::uniform_real_distribution<value_type> m_uniform_distribution;
+    std::uniform_real_distribution<real_type> m_uniform_distribution;
 
      // Siconos solver benchmark
     SiconosBench sic_bench;
     // Siconos solver benchmark
 
     //! Random small perturbation of LCP
-    lcp_type random_perturbation(lcp_type& lcp, value_type max);
-    value_type random_real(value_type max);
+    lcp_type random_perturbation(lcp_type& lcp, real_type max);
+    real_type random_real(real_type max);
 
     //! Test LCP solution validity
-    virtual bool LCPtest(int compt, value_type EC, value_type born_EC, value_type Err, bool VRelNtest );
+    virtual bool LCPtest(int compt, real_type EC, real_type born_EC, real_type Err, bool VRelNtest );
 
     //! Compute normalized Kinetic Energy
     template<typename Tmat, typename Tvect>
-    value_type calcEc(const Tvect& S, const Tmat& M, const Tvect& w);
+    real_type calcEc(const Tvect& S, const Tmat& M, const Tvect& w);
 
     //! Compute solution of compression phase
     template<typename TGraphLCP>
-    vector<value_type>
+    vector<real_type>
     calcSolc(TGraphLCP& graph_lcp, lcp_type& lcp);
 
     //! Compute solution of decompression phase
     template<typename TGraphLCP>
-    vector<value_type>
-    calcSold(TGraphLCP& graph_lcp, lcp_type& lcp_c, lcp_type& lcp_d, vector<value_type> Solc);
+    vector<real_type>
+    calcSold(TGraphLCP& graph_lcp, lcp_type& lcp_c, lcp_type& lcp_d, vector<real_type> Solc);
 
     //! Normal relative speed test
     template<typename TContactGraph>
-    bool VRelNtest(const vector<value_type>& V, const TContactGraph& graph);
+    bool VRelNtest(const vector<real_type>& V, const TContactGraph& graph);
 
 };
 

@@ -31,8 +31,8 @@ class PartialFloeGroup : public FloeGroup<TFloe, TFloeList>
 public:
     using base_class = FloeGroup<TFloe, TFloeList>;
     using floe_type = TFloe;
-    using value_type = typename floe_type::value_type;
-    using message_type = io::InterProcessMessage<value_type>;
+    using real_type = typename floe_type::real_type;
+    using message_type = io::InterProcessMessage<real_type>;
 
     void update_partial_list(std::vector<std::size_t> floe_id_list){
         base_class::get_floes().update_ids(floe_id_list);

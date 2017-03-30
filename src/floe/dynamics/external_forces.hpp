@@ -31,16 +31,16 @@ class ExternalForces
 public:
     using floe_type = TFloe;
     using point_type = typename floe_type::point_type;
-    using value_type = typename floe_type::value_type;
+    using real_type = typename floe_type::real_type;
     using physical_data_type = TPhysicalData;
     // using physical_data_type = PhysicalData<point_type>;
 
-    ExternalForces(value_type const& time_ref) : m_physical_data{time_ref} {}
+    ExternalForces(real_type const& time_ref) : m_physical_data{time_ref} {}
 
     //! Sum of different drag effects on a floe
-    std::function<point_type (value_type, value_type)> total_drag(floe_type& floe);
+    std::function<point_type (real_type, real_type)> total_drag(floe_type& floe);
     //! Sum of different rotational drag effects on a floe
-    std::function<value_type (value_type, value_type)> total_rot_drag(floe_type& floe);
+    std::function<real_type (real_type, real_type)> total_rot_drag(floe_type& floe);
     //! Coriolis effect on a floe
     point_type coriolis_effect(floe_type& floe);
 
@@ -50,7 +50,7 @@ public:
     }
 
     //! Surface mass of Oceaninc Boundary Layer
-    inline value_type OBL_surface_mass() const { return h_w * rho_w; }
+    inline real_type OBL_surface_mass() const { return h_w * rho_w; }
     //! Update water speed
     inline void update_water_speed( point_type diff_speed ) { m_physical_data.update_water_speed( diff_speed ); }
     //! OBL speed accessor for output
@@ -58,7 +58,7 @@ public:
 
     // FLOES
     //! Signature Variation of ocean_drag
-    std::function<point_type (value_type, value_type)> ocean_drag_2(floe_type& floe);
+    std::function<point_type (real_type, real_type)> ocean_drag_2(floe_type& floe);
 
     // OCEAN
     //! Air drag on ocean
@@ -75,21 +75,21 @@ private:
 
     physical_data_type m_physical_data;
 
-    const value_type rho_w = 1024.071; //!< Water density
-    const value_type C_w = 5 * 1e-3; //!< Oceanic skin drag average coeff
-    const value_type rho_a = 1.341; //!< Air density
-    const value_type C_a = 1.7 * 1e-3; //!< Atmospheric skin drag average coeff
+    const real_type rho_w = 1024.071; //!< Water density
+    const real_type C_w = 5 * 1e-3; //!< Oceanic skin drag average coeff
+    const real_type rho_a = 1.341; //!< Air density
+    const real_type C_a = 1.7 * 1e-3; //!< Atmospheric skin drag average coeff
 
-    const value_type R_earth = 6371 * 1e3; //!< earth radius
-    const value_type V_earth = 7.292 * 1e-5; //!< Earth angular velocity
+    const real_type R_earth = 6371 * 1e3; //!< earth radius
+    const real_type V_earth = 7.292 * 1e-5; //!< Earth angular velocity
 
-    const value_type O_latitude = 80.207; //!< Origin latitude
+    const real_type O_latitude = 80.207; //!< Origin latitude
 
-    const value_type gamma = 1e-5; //!< m/s friction velocity within the OBL
-    const value_type h_w = 15; //!< OBL height
+    const real_type gamma = 1e-5; //!< m/s friction velocity within the OBL
+    const real_type h_w = 15; //!< OBL height
 
     //! Coriolis coefficient at a point
-    value_type coriolis_coeff(point_type p);
+    real_type coriolis_coeff(point_type p);
 
     //! Water speed accessor
     inline point_type water_speed(point_type p){ return m_physical_data.water_speed(p); }
@@ -105,7 +105,7 @@ private:
 
 
 template<typename TFloe>
-using value = typename TFloe::value_type;
+using value = typename TFloe::real_type;
 
 
 template <typename TFloe, typename TPhysicalData>
@@ -128,7 +128,7 @@ std::function<typename TFloe::point_type (
     value<TFloe>, value<TFloe>)>
 ExternalForces<TFloe, TPhysicalData>::ocean_drag_2(floe_type& floe)
 {   
-    return [&](value_type x, value_type y)
+    return [&](real_type x, real_type y)
     {
         point_type p{x,y};
         return ocean_drag(floe)(p);
@@ -170,7 +170,7 @@ std::function<typename TFloe::point_type (
     value<TFloe>, value<TFloe>)>
 ExternalForces<TFloe, TPhysicalData>::total_drag(floe_type& floe)
 {
-    return [&](value_type x, value_type y)
+    return [&](real_type x, real_type y)
     {
         point_type p{x,y};
         return ocean_drag(floe)(p) + air_drag()(p);
@@ -183,7 +183,7 @@ std::function<value<TFloe> (
     value<TFloe>, value<TFloe>)>
 ExternalForces<TFloe, TPhysicalData>::total_rot_drag(floe_type& floe)
 {
-    return [&](value_type x, value_type y)
+    return [&](real_type x, real_type y)
     {
         point_type p{x,y};
         return fg::cross_product_value(p - floe.state().pos, total_drag(floe)(x, y));

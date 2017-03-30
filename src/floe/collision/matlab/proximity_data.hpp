@@ -33,9 +33,9 @@ public:
 
     using floe_group_type = TFloeGroup;
     using floe_type = typename floe_group_type::floe_type;
-    using value_type = typename floe_type::value_type;
+    using real_type = typename floe_type::real_type;
     using optim_type = TOptim;
-    using dist_matrix_type = ublas::matrix<value_type>; //!< Type of distance matrix
+    using dist_matrix_type = ublas::matrix<real_type>; //!< Type of distance matrix
     using indic_matrix_type = ublas::matrix<short>; //!< Type of indicator matrix
     using floe_interface_type = typename floe_type::floe_interface_type;
     using optim_interface_type = typename optim_type::optim_interface_type;
@@ -48,8 +48,8 @@ public:
 
     inline void resize(std::size_t N1, std::size_t N2) { 
         m_indic.resize(N1, N2);
-        m_dist_opt = ublas::scalar_matrix<value_type>(N1, N2, 0);
-        m_dist_secu = ublas::scalar_matrix<value_type>(N1, N2, 0);
+        m_dist_opt = ublas::scalar_matrix<real_type>(N1, N2, 0);
+        m_dist_secu = ublas::scalar_matrix<real_type>(N1, N2, 0);
     }
 
     // virtual void push_back( floe_type * floe_ptr )
@@ -68,13 +68,13 @@ public:
     inline std::size_t size2() const { return m_indic.size2(); }
     inline std::size_t nb_floes() const { return get_floes().size(); }
 
-    inline value_type get_dist_secu(std::size_t n1, std::size_t n2) const { return m_dist_secu(n1, n2); }
+    inline real_type get_dist_secu(std::size_t n1, std::size_t n2) const { return m_dist_secu(n1, n2); }
     inline short get_indic(std::size_t n1, std::size_t n2) const { return m_indic(n1, n2); }
-    inline value_type get_dist_opt(std::size_t n1, std::size_t n2) const { return m_dist_opt(n1, n2); }
+    inline real_type get_dist_opt(std::size_t n1, std::size_t n2) const { return m_dist_opt(n1, n2); }
 
-    inline virtual void set_dist_secu(std::size_t n1, std::size_t n2, value_type val) { m_dist_secu(n1, n2) = m_dist_secu(n2, n1) = val; }
+    inline virtual void set_dist_secu(std::size_t n1, std::size_t n2, real_type val) { m_dist_secu(n1, n2) = m_dist_secu(n2, n1) = val; }
     inline virtual void set_indic(std::size_t n1, std::size_t n2, short val) { m_indic(n1, n2) = m_indic(n2, n1) = val; }
-    inline virtual void set_dist_opt(std::size_t n1, std::size_t n2, value_type val) { m_dist_opt(n1, n2) = m_dist_opt(n2, n1) = val; }
+    inline virtual void set_dist_opt(std::size_t n1, std::size_t n2, real_type val) { m_dist_opt(n1, n2) = m_dist_opt(n2, n1) = val; }
 
     //! Container accessors
     // inline std::vector<floe_type const*> const& get_floes() const { return m_floes; }

@@ -58,9 +58,9 @@ public:
     using vector = std::vector<T>;
     using floe_group_type = TFloeGroup;
     using dynamics_mgr_type = TDynamicsMgr;
-    using value_type = typename TFloeGroup::value_type;
+    using real_type = typename TFloeGroup::real_type;
     using point_type = typename TFloeGroup::point_type; 
-    using saved_state_type = std::array<value_type, 9>;
+    using saved_state_type = std::array<real_type, 9>;
 
     //! Default constructor.
     HDF5Manager(floe_group_type const& floe_group);
@@ -70,13 +70,13 @@ public:
     //! make input file from floe_group
     void make_input_file(const dynamics_mgr_type& dynamics_manager);
     //! Calls save_step() if this time needs to be saved
-    void save_step_if_needed(value_type time, const dynamics_mgr_type&);
+    void save_step_if_needed(real_type time, const dynamics_mgr_type&);
     //! Save the current simulation state for output
-    void save_step(value_type time, const dynamics_mgr_type&);
+    void save_step(real_type time, const dynamics_mgr_type&);
     //! Flush temporarily saved data
     void flush();
     //! Recover simulation state from file
-    double recover_states(H5std_string filename, value_type time, floe_group_type&,
+    double recover_states(H5std_string filename, real_type time, floe_group_type&,
                           dynamics_mgr_type&, bool keep_as_outfile);
     void set_floe_group(floe_group_type const& floe_group) {
         m_floe_group = &floe_group; 
@@ -90,11 +90,11 @@ public:
     inline bool is_restrained() const { return m_floe_ids.size(); }
     inline std::string const& out_file_name() const { return m_out_file_name; }
     inline void set_out_file_name(std::string file_name) { m_out_file_name = file_name; }
-    inline void set_out_step(value_type out_step, value_type time) {
+    inline void set_out_step(real_type out_step, real_type time) {
         m_out_step = out_step;
         if (time > 0) m_next_out_limit = (std::floor(time / m_out_step) + 1) * m_out_step;
     }
-    inline void auto_step_count(value_type time){ this->m_step_count = (int)time/this->m_out_step; }
+    inline void auto_step_count(real_type time){ this->m_step_count = (int)time/this->m_out_step; }
 
 
 
@@ -108,15 +108,15 @@ private:
     floe_group_type const* m_floe_group; //!< floe group pointer
     std::vector<std::size_t> m_floe_ids; //!< Restrained id list to consider for output
 
-    vector<vector<vector<vector<value_type>>>> m_data_chunk_boundaries; //!< Temp saved floe boundaries
-    boost::multi_array<value_type, 3> m_data_chunk_states; //!< Temp saved floe states
-    value_type* m_data_chunk_time; //!< Temp saved times
-    boost::multi_array<value_type, 2> m_data_chunk_mass_center; //!< Temp saved floe group mass centers
-    boost::multi_array<value_type, 2> m_data_chunk_OBL_speed; //!< Temp saved ocean datas
+    vector<vector<vector<vector<real_type>>>> m_data_chunk_boundaries; //!< Temp saved floe boundaries
+    boost::multi_array<real_type, 3> m_data_chunk_states; //!< Temp saved floe states
+    real_type* m_data_chunk_time; //!< Temp saved times
+    boost::multi_array<real_type, 2> m_data_chunk_mass_center; //!< Temp saved floe group mass centers
+    boost::multi_array<real_type, 2> m_data_chunk_OBL_speed; //!< Temp saved ocean datas
 
     // output
-    value_type m_out_step; //!< Time step between simulation state outputs
-    value_type m_next_out_limit; //!< Next time limit for state ouput
+    real_type m_out_step; //!< Time step between simulation state outputs
+    real_type m_next_out_limit; //!< Next time limit for state ouput
 
     //! out floe shapes (boundary in relative frame)
     void write_shapes();
@@ -134,7 +134,7 @@ private:
     }
 
     inline void update_next_out_limit() { m_next_out_limit += m_out_step; }
-    inline bool need_step_output(value_type time) { return (m_out_step && time >= m_next_out_limit); }
+    inline bool need_step_output(real_type time) { return (m_out_step && time >= m_next_out_limit); }
 
 };
 

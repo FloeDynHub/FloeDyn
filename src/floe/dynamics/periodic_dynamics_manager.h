@@ -28,11 +28,11 @@ public:
     using base_class = DynamicsManager<TExternalForces, TFloeGroup>;
     using floe_type = typename base_class::floe_type;
     using point_type = typename base_class::point_type;
-    using value_type = typename base_class::value_type;
+    using real_type = typename base_class::real_type;
     using topology_type = TSpaceTopology;
     // using integration_strategy = typename base_class::integration_strategy;
 
-    PeriodicDynamicsManager(value_type const& time_ref, int OBL_status) :
+    PeriodicDynamicsManager(real_type const& time_ref, int OBL_status) :
         base_class(time_ref, OBL_status), m_topology{nullptr} {}
 
     //! Set topology
@@ -40,10 +40,10 @@ public:
 
 private:
     topology_type const* m_topology; //!< Space topology
-    virtual void move_floe(floe_type& floe, value_type delta_t) override;
+    virtual void move_floe(floe_type& floe, real_type delta_t) override;
     //! Translate floe if needed according to periodic boundary conditions (topology)
     bool replace_floe(floe_type& floe);
-    virtual value_type ocean_window_area() override { return m_topology->area(); }
+    virtual real_type ocean_window_area() override { return m_topology->area(); }
 };
 
 

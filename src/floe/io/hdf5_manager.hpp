@@ -38,7 +38,7 @@ HDF5Manager<TFloeGroup, TDynamicsMgr>::HDF5Manager(floe_group_type const& floe_g
     m_out_file{nullptr}, m_step_count{0}, m_chunk_step_count{0}, m_flush_max_step{2},
     m_floe_group{&floe_group},
     m_data_chunk_states(boost::extents[0][0][0]),
-    m_data_chunk_time{new value_type[m_flush_max_step]},
+    m_data_chunk_time{new real_type[m_flush_max_step]},
     m_data_chunk_mass_center(boost::extents[m_flush_max_step][2]),
     m_data_chunk_OBL_speed(boost::extents[m_flush_max_step][2]),
     m_out_step{0}, m_next_out_limit{0}
@@ -53,7 +53,7 @@ HDF5Manager<TFloeGroup, TDynamicsMgr>::~HDF5Manager()
 }
 
 template <typename TFloeGroup, typename TDynamicsMgr>
-void HDF5Manager<TFloeGroup, TDynamicsMgr>::save_step_if_needed(value_type time, const dynamics_mgr_type& dynamics_manager)
+void HDF5Manager<TFloeGroup, TDynamicsMgr>::save_step_if_needed(real_type time, const dynamics_mgr_type& dynamics_manager)
 {
     if (this->need_step_output(time))
     {
@@ -64,7 +64,7 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::save_step_if_needed(value_type time,
 
 
 template <typename TFloeGroup, typename TDynamicsMgr>
-void HDF5Manager<TFloeGroup, TDynamicsMgr>::save_step(value_type time, const dynamics_mgr_type& dynamics_manager)
+void HDF5Manager<TFloeGroup, TDynamicsMgr>::save_step(real_type time, const dynamics_mgr_type& dynamics_manager)
 {
     floe_group_type const& floe_group = *m_floe_group;
     // auto const& floe_list = floe_group.get_floes();
@@ -79,7 +79,7 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::save_step(value_type time, const dyn
     /*
     for (auto const& floe : floe_list)
     {
-        vector<vector<value_type>> floe_step_data;
+        vector<vector<real_type>> floe_step_data;
         for (auto const& pt : floe.geometry().outer())
             floe_step_data.push_back({pt.x + floe.state().trans.x, pt.y + floe.state().trans.y});
         m_data_chunk_boundaries[floe_id].push_back(floe_step_data);
@@ -245,7 +245,7 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::write_boundaries() {
         // Define memory space.
         DataSpace memspace{RANK, chunk_dims, NULL};
 
-        boost::multi_array<value_type, 3> data(boost::extents[m_chunk_step_count][dimsf[1]][dimsf[2]]);
+        boost::multi_array<real_type, 3> data(boost::extents[m_chunk_step_count][dimsf[1]][dimsf[2]]);
         for (std::size_t j = 0; j != floe_chunk.size(); ++j)
         {
             for (std::size_t k = 0; k != floe_chunk[j].size(); ++k)
@@ -410,7 +410,7 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::write_OBL_speed() {
 
 template <typename TFloeGroup, typename TDynamicsMgr>
 double HDF5Manager<TFloeGroup, TDynamicsMgr>::recover_states(
-        H5std_string filename, value_type time, floe_group_type& floe_group,
+        H5std_string filename, real_type time, floe_group_type& floe_group,
         dynamics_mgr_type& dynamics_manager, bool keep_as_outfile)
 {
     
@@ -430,7 +430,7 @@ double HDF5Manager<TFloeGroup, TDynamicsMgr>::recover_states(
     */
     hsize_t dims_out[1];
     time_dataspace.getSimpleExtentDims( dims_out, NULL);
-    std::vector<value_type> data_time(dims_out[0]);
+    std::vector<real_type> data_time(dims_out[0]);
     for (std::size_t j = 0; j!= dims_out[0]; ++j)
         data_time[j] = 0;
      /*
@@ -480,7 +480,7 @@ double HDF5Manager<TFloeGroup, TDynamicsMgr>::recover_states(
     * Read data from hyperslab in the file into the hyperslab in
     * memory and display the data.
     */
-    boost::multi_array<value_type, 2> data_out(boost::extents[dims_out[1]][dims_out[2]]);
+    boost::multi_array<real_type, 2> data_out(boost::extents[dims_out[1]][dims_out[2]]);
     dataset.read( data_out.data(), PredType::NATIVE_DOUBLE, memspace, dataspace );
 
     std::size_t floe_id = 0;
@@ -507,7 +507,7 @@ double HDF5Manager<TFloeGroup, TDynamicsMgr>::recover_states(
     dataspace.selectHyperslab( H5S_SELECT_SET, count, offset );
     hsize_t     dimsm[1] {dims_out[1]};              /* memory space dimensions */
     DataSpace memspace( 1, dimsm );
-    std::vector<value_type> data_out(dims_out[1]);
+    std::vector<real_type> data_out(dims_out[1]);
     dataset.read( data_out.data(), PredType::NATIVE_DOUBLE, memspace, dataspace );
     point_type OBL_speed{data_out[0], data_out[1]};
     dynamics_manager.set_OBL_speed(OBL_speed);
@@ -558,8 +558,8 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::write_shapes() {
              * datatype and default dataset creation properties.
              */
             DataSet dataset = floe_shape_group.createDataSet(H5std_string{std::to_string(i)},datatype, dataspace);
-            // auto data = new value_type[dimsf[0] * dimsf[1]];
-            boost::multi_array<value_type, 2> data(boost::extents[dimsf[0]][dimsf[1]]);
+            // auto data = new real_type[dimsf[0] * dimsf[1]];
+            boost::multi_array<real_type, 2> data(boost::extents[dimsf[0]][dimsf[1]]);
             for (std::size_t j = 0; j!= dimsf[0]; ++j)
             {
                 data[j][0] = boundary[j].x;
@@ -590,7 +590,7 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::write_window(){
     DataSpace dataspace( RANK, dims, dims );
     DataSet dataset = file.createDataSet("window", datatype, dataspace);
     auto const& win = m_floe_group->get_initial_window();
-    value_type data[4] = {win[0], win[1], win[2], win[3]};
+    real_type data[4] = {win[0], win[1], win[2], win[3]};
     dataset.write( data, PredType::NATIVE_DOUBLE );
 };
 

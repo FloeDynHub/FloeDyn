@@ -35,20 +35,20 @@ class MPIMasterProblem : public MPIProblem<TProblem>
 {
 public:
     using base_class = MPIProblem<TProblem>;
-    using value_type = typename TProblem::floe_group_type::floe_type::value_type;
+    using real_type = typename TProblem::floe_group_type::floe_type::real_type;
     using point_type = typename TProblem::floe_group_type::floe_type::point_type;
     using message_type = typename base_class::message_type;
     using floe_distrib_type = typename TProblem::proximity_detector_type::floe_distrib_type;
     using process_list_type = typename TProblem::proximity_detector_type::process_list_type;
 
     //! Default constructor
-    MPIMasterProblem(value_type epsilon, int OBL_status) : base_class(epsilon, OBL_status), msg_pk{0} {
+    MPIMasterProblem(real_type epsilon, int OBL_status) : base_class(epsilon, OBL_status), msg_pk{0} {
         // this->m_out_manager.restrain_floe_ids({1, 2, 3});
     }
 
     //! Solver of the problem (main method)
-    virtual void solve(value_type end_time, value_type dt_default, value_type out_step = 0, bool reset = true) override;
-    virtual void recover_states_from_file(std::string const& filename, value_type t, bool keep_as_outfile=true) override;
+    virtual void solve(real_type end_time, real_type dt_default, real_type out_step = 0, bool reset = true) override;
+    virtual void recover_states_from_file(std::string const& filename, real_type t, bool keep_as_outfile=true) override;
 
 private:
     //! last message id (increment for unicity)
@@ -73,7 +73,7 @@ private:
 
 
 template<typename TProblem>
-void MPIMasterProblem<TProblem>::solve(value_type end_time, value_type dt_default, value_type out_step, bool reset) {
+void MPIMasterProblem<TProblem>::solve(real_type end_time, real_type dt_default, real_type out_step, bool reset) {
     if (reset) this->create_optim_vars();
     this->m_domain.set_default_time_step(dt_default);
     this->m_out_manager.set_out_step(out_step, this->m_domain.time());
@@ -197,7 +197,7 @@ void MPIMasterProblem<TProblem>::compute_time_step(){
     // msg_ids.insert(msg_ids_2.cbegin(), msg_ids_2.cend());
     // msg_ids.insert(msg_ids_3.cbegin(), msg_ids_3.cend());
     auto msg_ids = request_jobs(floe::io::time_step_job, this->m_proximity_detector.all_worker_processes());
-    value_type delta_t = std::numeric_limits<value_type>::max();
+    real_type delta_t = std::numeric_limits<real_type>::max();
     while (msg_ids.size()){
         auto resp = receive_response();
         msg_ids.erase(resp.id());
@@ -313,7 +313,7 @@ typename MPIMasterProblem<TProblem>::message_type MPIMasterProblem<TProblem>::re
 }
 
 template<typename TProblem>
-void MPIMasterProblem<TProblem>::recover_states_from_file(std::string const& filename, value_type t, bool keep_as_outfile){
+void MPIMasterProblem<TProblem>::recover_states_from_file(std::string const& filename, real_type t, bool keep_as_outfile){
     base_class::recover_states_from_file(filename, t);
     this->get_floe_group().post_load_floe(); // erase erroneous states origin
 }

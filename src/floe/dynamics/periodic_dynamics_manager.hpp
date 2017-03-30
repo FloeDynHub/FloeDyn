@@ -16,7 +16,7 @@ namespace floe { namespace dynamics
 
 template <typename TExternalForces, typename TFloeGroup, typename TSpaceTopology>
 void
-PeriodicDynamicsManager<TExternalForces, TFloeGroup, TSpaceTopology>::move_floe(floe_type& floe, value_type delta_t)
+PeriodicDynamicsManager<TExternalForces, TFloeGroup, TSpaceTopology>::move_floe(floe_type& floe, real_type delta_t)
 {
     base_class::move_floe(floe, delta_t);
     auto replaced = replace_floe(floe);

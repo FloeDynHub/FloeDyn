@@ -28,7 +28,7 @@ using integration_strategy = floe::integration::RefGaussLegendre<T,2,2>;
 
 template <typename TExternalForces, typename TFloeGroup>
 void
-DynamicsManager<TExternalForces, TFloeGroup>::move_floes(floe_group_type& floe_group, value_type delta_t)
+DynamicsManager<TExternalForces, TFloeGroup>::move_floes(floe_group_type& floe_group, real_type delta_t)
 {   
     // OpenMP doesn't like this syntax
     // for (auto& floe : floe_group.get_floes())
@@ -43,7 +43,7 @@ DynamicsManager<TExternalForces, TFloeGroup>::move_floes(floe_group_type& floe_g
 
 template <typename TExternalForces, typename TFloeGroup>
 void
-DynamicsManager<TExternalForces, TFloeGroup>::move_floe(floe_type& floe, value_type delta_t)
+DynamicsManager<TExternalForces, TFloeGroup>::move_floe(floe_type& floe, real_type delta_t)
 {
     if (floe.is_obstacle()) return; // Obstacles don't move
 
@@ -53,7 +53,7 @@ DynamicsManager<TExternalForces, TFloeGroup>::move_floe(floe_type& floe, value_t
     auto drag_force = floe::integration::integrate(
         m_external_forces.total_drag(floe),
         floe.mesh(),
-        integration_strategy<value_type>()
+        integration_strategy<real_type>()
     );
     new_state.pos += delta_t * floe.state().speed;
     new_state.speed += ( delta_t / floe.mass() ) * drag_force
@@ -63,16 +63,16 @@ DynamicsManager<TExternalForces, TFloeGroup>::move_floe(floe_type& floe, value_t
     auto rot_drag_force = floe::integration::integrate(
         m_external_forces.total_rot_drag(floe),
         floe.mesh(),
-        integration_strategy<value_type>()
+        integration_strategy<real_type>()
     );
     new_state.theta += delta_t * floe.state().rot;
     new_state.rot += ( delta_t / floe.moment_cst() ) * rot_drag_force;
 
     /* Adding random perturbation to speed and rot
        (improve collision computing, physically justifiable) */
-    value_type rand_norm = 1e-6 * delta_t;
-    auto dist_rot = std::uniform_real_distribution<value_type>{-rand_norm, rand_norm};
-    auto dist_angle = std::uniform_real_distribution<value_type>{0, 2 * M_PI};
+    real_type rand_norm = std::min(1e-7, 1e-6 * delta_t);
+    auto dist_rot = std::uniform_real_distribution<real_type>{-rand_norm, rand_norm};
+    auto dist_angle = std::uniform_real_distribution<real_type>{0, 2 * M_PI};
     auto rand_theta = dist_angle(this->m_random_generator);
     auto rand_rot = dist_rot(this->m_random_generator);
     auto rand_speed = rand_norm * point_type{cos(rand_theta), sin(rand_theta)};
@@ -86,17 +86,17 @@ DynamicsManager<TExternalForces, TFloeGroup>::move_floe(floe_type& floe, value_t
 
 template <typename TExternalForces, typename TFloeGroup>
 void
-DynamicsManager<TExternalForces, TFloeGroup>::update_ocean(floe_group_type& floe_group, value_type delta_t)
+DynamicsManager<TExternalForces, TFloeGroup>::update_ocean(floe_group_type& floe_group, real_type delta_t)
 {   
     point_type diff_speed{0,0};
     if (m_OBL_status)
     {
-        value_type floes_area = floe_group.total_area();
-        value_type win_area = ocean_window_area();
-        value_type water_area = win_area - floes_area;
+        real_type floes_area = floe_group.total_area();
+        real_type win_area = ocean_window_area();
+        real_type water_area = win_area - floes_area;
         point_type floe_group_mass_center = floe_group.mass_center();
-        value_type OBL_mass = win_area * m_external_forces.OBL_surface_mass();
-        auto strategy = integration_strategy<value_type>();
+        real_type OBL_mass = win_area * m_external_forces.OBL_surface_mass();
+        auto strategy = integration_strategy<real_type>();
         // calculate floes action on ocean
         point_type floes_force = {0, 0};
         for (auto& floe : floe_group.get_floes())

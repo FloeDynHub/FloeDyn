@@ -44,7 +44,7 @@ public:
     using circle_type = floe::geometry::Circle<point_type>;
     using multi_circle_type = floe::geometry::MultiCircle<circle_type>;
     using local_points_type = std::vector<std::size_t>;
-    using value_type = typename floe_type::value_type;
+    using real_type = typename floe_type::real_type;
 
     //! Global disk accessor
     virtual circle_type const& global_disk() const = 0;
@@ -54,9 +54,9 @@ public:
     virtual local_points_type const& local_points() const = 0;
 
     //! Contact distance accessor
-    virtual value_type const&         cdist() const = 0;
+    virtual real_type const&         cdist() const = 0;
     //! Accessor for distance between surrounding disk and the floe border.
-    virtual value_type const&         tau() const = 0;
+    virtual real_type const&         tau() const = 0;
 
 };
 

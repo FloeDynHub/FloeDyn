@@ -363,24 +363,24 @@ template < typename TGraph >
 std::vector<TGraph>
 quad_cut( TGraph const& graph )
 {
-    using value_type = double;
+    using real_type = double;
     // Calc window
-    value_type mg = 1e-8; // margin
-    value_type min_x, min_y, max_x, max_y;
-    min_x = min_y = std::numeric_limits<value_type>::max();
-    max_x = max_y = - std::numeric_limits<value_type>::max();
+    real_type mg = 1e-8; // margin
+    real_type min_x, min_y, max_x, max_y;
+    min_x = min_y = std::numeric_limits<real_type>::max();
+    max_x = max_y = - std::numeric_limits<real_type>::max();
     for ( auto const v : make_iterator_range( vertices(graph) ) ){
         max_x = std::max(graph[v].floe->state().pos.x, max_x);
         min_x = std::min(graph[v].floe->state().pos.x, min_x);
         max_y = std::max(graph[v].floe->state().pos.y, max_y);
         min_y = std::min(graph[v].floe->state().pos.y, min_y);
     }
-    std::array<value_type, 4> win = {{ min_x - mg, max_x + mg, min_y - mg, max_y + mg }};
+    std::array<real_type, 4> win = {{ min_x - mg, max_x + mg, min_y - mg, max_y + mg }};
     // make ids vectors
     int side_len = 2;
     std::vector<std::vector<std::size_t>> idss(side_len * side_len);
-    value_type parcel_width = (win[1] - win[0]) / side_len;
-    value_type parcel_height = (win[3] - win[2]) / side_len;
+    real_type parcel_width = (win[1] - win[0]) / side_len;
+    real_type parcel_height = (win[3] - win[2]) / side_len;
     for ( auto const v : make_iterator_range( vertices(graph) ) ){
         auto XX = (graph[v].floe->state().pos.x - win[0]) / parcel_width;
         auto YY = (graph[v].floe->state().pos.y - win[2]) / parcel_height;

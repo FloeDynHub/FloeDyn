@@ -35,7 +35,7 @@ namespace floe { namespace floes
  */
 template <
     typename TStaticFloe,
-    typename TState = state::SpaceTimeState< typename TStaticFloe::point_type, typename TStaticFloe::value_type > 
+    typename TState = state::SpaceTimeState< typename TStaticFloe::point_type, typename TStaticFloe::real_type > 
 >
 class KinematicFloe : public FloeInterface<
     TStaticFloe,
@@ -46,7 +46,7 @@ class KinematicFloe : public FloeInterface<
 public:
     
     // Type traits
-    typedef typename TStaticFloe::value_type    value_type;
+    typedef typename TStaticFloe::real_type     real_type;
     typedef typename TStaticFloe::point_type    point_type;
     typedef typename TStaticFloe::geometry_type geometry_type;
     typedef typename TStaticFloe::mesh_type     mesh_type;
@@ -106,10 +106,10 @@ public:
     // inline bool                 has_mesh()      const   { return m_mesh != nullptr; }
 
     //! Area
-    inline value_type area() const { return has_static_floe() ? ( m_floe->area() ) : -1; }
+    inline real_type area() const { return has_static_floe() ? ( m_floe->area() ) : -1; }
 
     //! Mass
-    inline value_type mass() const { return has_static_floe() ? ( m_floe->mass() ) : -1; }
+    inline real_type mass() const { return has_static_floe() ? ( m_floe->mass() ) : -1; }
 
     //! State accessors
     inline state_type const&    get_state()     const   { return m_state; }
@@ -122,27 +122,27 @@ public:
     inline bool &       is_obstacle()           { return m_obstacle; }
 
     //! Momentum constant
-    inline value_type moment_cst()  const { return has_static_floe() ? ( m_floe->moment_cst() ) : -1; } // Better throw an exception ...
+    inline real_type moment_cst()  const { return has_static_floe() ? ( m_floe->moment_cst() ) : -1; } // Better throw an exception ...
 
     //! Density accessors
-    inline value_type   get_density() const { return has_static_floe() ? (m_floe->get_density()) : -1; } // Throw an exception !!!
+    inline real_type   get_density() const { return has_static_floe() ? (m_floe->get_density()) : -1; } // Throw an exception !!!
 
     //! Mu accessors
-    inline value_type    mu_static() const   { return has_static_floe() ? m_floe->mu_static() : -1; }
-    inline void set_mu_static(value_type mu_static) { if (has_static_floe()) m_floe->set_mu_static(mu_static); }
+    inline real_type    mu_static() const   { return has_static_floe() ? m_floe->mu_static() : -1; }
+    inline void set_mu_static(real_type mu_static) { if (has_static_floe()) m_floe->set_mu_static(mu_static); }
 
     //! Floe_h accessor
     inline floe_h_type& get_floe_h() { return m_floe_h; }
 
     //! Kinetic energy
-    value_type kinetic_energy() const;
+    real_type kinetic_energy() const;
 
     //! Get total received impulse
-    value_type total_received_impulse() const { return m_total_impulse_received; }
+    real_type total_received_impulse() const { return m_total_impulse_received; }
     //! Add received impulse
-    void add_impulse(value_type impulse) const { m_total_impulse_received += impulse; }
+    void add_impulse(real_type impulse) const { m_total_impulse_received += impulse; }
     //! Reset received impulse
-    void reset_impulse(value_type new_impulse = 0) const { m_total_impulse_received = new_impulse; }
+    void reset_impulse(real_type new_impulse = 0) const { m_total_impulse_received = new_impulse; }
 
 private:
 
@@ -153,7 +153,7 @@ private:
     bool m_obstacle;            //!< true if this floe is an obstacle
 
     floe_h_type m_floe_h; //!< Discretisation of the Floe
-    mutable value_type m_total_impulse_received; //!< Sum all collision impulses this floe received
+    mutable real_type m_total_impulse_received; //!< Sum all collision impulses this floe received
 
 };
 
@@ -186,7 +186,7 @@ KinematicFloe<TStaticFloe,TState>::update()
 }
 
 template < typename TStaticFloe, typename TState >
-typename KinematicFloe<TStaticFloe,TState>::value_type
+typename KinematicFloe<TStaticFloe,TState>::real_type
 KinematicFloe<TStaticFloe,TState>::kinetic_energy() const
 {
     return 0.5 * ( mass() * geometry::dot_product( m_state.speed, m_state.speed ) + moment_cst() * m_state.rot * m_state.rot );

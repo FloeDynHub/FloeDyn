@@ -36,7 +36,7 @@ class InterProcessMessage
 public:
 
     // Type traits
-    using value_type = T;
+    using real_type = T;
     using id_list_type = std::vector<std::size_t>;
 
     //! Default constructor.
@@ -48,16 +48,16 @@ public:
         m_id{request.id()}, m_tag{request.tag()} {}
 
     //! Accessors
-    inline std::map<int, std::array<value_type, 7>> const&  states() const { return m_states; }
+    inline std::map<int, std::array<real_type, 7>> const&  states() const { return m_states; }
     inline id_list_type const&  floe_ids() const { return m_floe_ids; }
     inline void set_floe_ids(id_list_type const& floe_ids) { m_floe_ids = floe_ids; }
     inline JobTag tag() const { return m_tag; }
     inline void set_tag(JobTag tag) { m_tag = tag; }
     inline int id() const { return m_id; }
-    inline void store_time_step(value_type delta_t) { m_delta_t = delta_t; }
-    inline value_type time_step() const { return m_delta_t; }
-    inline void store_time(value_type t) { m_time = t; }
-    inline value_type time() const { return m_time; }
+    inline void store_time_step(real_type delta_t) { m_delta_t = delta_t; }
+    inline real_type time_step() const { return m_delta_t; }
+    inline void store_time(real_type t) { m_time = t; }
+    inline real_type time() const { return m_time; }
     inline int nb_LCP_solved() const { return m_nb_LCP_solved; }
     inline void nb_LCP_solved(int n) { m_nb_LCP_solved = n; }
     inline bool interpenetration() const { return m_interpenetration; }
@@ -108,9 +108,9 @@ private:
     int m_id;
     JobTag m_tag;
     id_list_type m_floe_ids;
-    std::map<int, std::array<value_type, 7>> m_states;
-    value_type m_delta_t = 0;
-    value_type m_time;
+    std::map<int, std::array<real_type, 7>> m_states;
+    real_type m_delta_t = 0;
+    real_type m_time;
     int m_nb_LCP_solved = 0;
     bool m_interpenetration = false;
     int m_mpi_source = -1;

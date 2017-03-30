@@ -47,7 +47,6 @@ list_so_to_floes( TMatlabListSolid const& list_so, std::vector<TKinematicFloe>& 
 
     // Typedefs
     using TStaticFloe = typename TKinematicFloe::static_floe_type;
-    // using real        = typename TKinematicFloe::value_type;
     using TGeometry   = typename TKinematicFloe::geometry_type;
     using TMesh       = typename TKinematicFloe::mesh_type;
     using TState      = typename TKinematicFloe::state_type;

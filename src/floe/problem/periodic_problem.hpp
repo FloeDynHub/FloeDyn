@@ -40,11 +40,11 @@ class PeriodicProblem : public Problem<TFloeGroup, TProxymityDetector, TCollisio
 {
 public:
     using base_class = Problem<TFloeGroup, TProxymityDetector, TCollisionManager, TDynamicsManager, TDomain>;
-    using value_type = typename TFloeGroup::floe_type::value_type;
+    using real_type = typename TFloeGroup::floe_type::real_type;
     using point_type = typename TFloeGroup::floe_type::point_type;
 
     //! Default constructor
-    PeriodicProblem(value_type epsilon, int OBL_status) : base_class(epsilon, OBL_status) {}
+    PeriodicProblem(real_type epsilon, int OBL_status) : base_class(epsilon, OBL_status) {}
     //! Constructor from topology
     PeriodicProblem(TSpaceTopology& topology) : base_class(), m_space_topology{topology} {}
 
@@ -62,7 +62,7 @@ public:
     //! Sets topology calculating space borders adapted to floes limit positions
     void auto_topology();
     //! Floe Concentration override (takes topology window area as reference)
-    virtual value_type floe_concentration() override { return base_class::m_floe_group.total_area() / m_space_topology.area(); }
+    virtual real_type floe_concentration() override { return base_class::m_floe_group.total_area() / m_space_topology.area(); }
 
 private:
     TSpaceTopology m_space_topology;
