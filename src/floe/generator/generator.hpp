@@ -61,7 +61,7 @@ Generator<TProblem>::generate_floe_set(std::size_t nb_floes, real_type concentra
     m_problem.get_floe_group().set_initial_window(m_window);
     auto& physical_data = m_problem.get_dynamics_manager().get_external_forces().get_physical_data();
     physical_data.set_window_size(win_width * 0.99, win_width * 0.99);
-    physical_data.set_modes(2,0);
+    physical_data.set_modes(2,-1);
     for (auto& floe : m_problem.get_floe_group().get_floes()){
         floe.static_floe().set_thickness(floe.static_floe().thickness() * max_size / 250);
     }
@@ -152,7 +152,7 @@ Generator<TProblem>::exp_size_repartition(std::size_t n, real_type R_max)
     std::vector<real_type> v;
     real_type alpha = 1.5;
     real_type R_min = 0; // no min (resize if min floe too small)
-    int nb_floes_per_size = 2;
+    int nb_floes_per_size = 1;
     for (std::size_t i = 1; i <= n/nb_floes_per_size; i++)
     {
         // real_type R =  exp( (- 1 /  alpha) * log(i) + log(R_max));

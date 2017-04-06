@@ -44,8 +44,8 @@ class Problem
 {
 
 public:
-    // using out_manager_type = io::HDF5Manager<TFloeGroup, TDynamicsManager>;
-    using out_manager_type = io::MultiOutManager<io::HDF5Manager<TFloeGroup, TDynamicsManager>>;
+    using out_manager_type = io::HDF5Manager<TFloeGroup, TDynamicsManager>;
+    // using out_manager_type = io::MultiOutManager<io::HDF5Manager<TFloeGroup, TDynamicsManager>>;
     using real_type = typename TFloeGroup::real_type;
     using floe_group_type = TFloeGroup; // generator accessor
     using time_scale_manager_type = domain::TimeScaleManager<typename TProxymityDetector::proximity_data_type>;

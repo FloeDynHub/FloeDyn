@@ -2,8 +2,6 @@
 #include "floe/dynamics/dynamics_manager.hpp"
 #include <type_traits>
 
-template<int> struct dummy { };
-
 
 template class floe::dynamics::DynamicsManager<types::external_forces_type, types::floe_group_type>;
 #ifndef SAME_PHYSICAL_DATA_FOR_GENERATOR
