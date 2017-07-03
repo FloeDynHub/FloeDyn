@@ -47,7 +47,7 @@ public:
     T& operator[](std::size_t n) { std::size_t id = m_filter ? m_ids[n] : n; return base_class::operator[](id); }
     T& operator()(std::size_t n) { return base_class::operator[](n); }
     T const& operator()(std::size_t n) const { return base_class::operator[](n); }
-    void update_ids(std::vector<std::size_t> ids){ m_filter = true; m_ids = ids; }
+    void update_ids(std::vector<std::size_t> ids){ this->filter_on(); m_ids = ids; }
     std::size_t absolute_id(std::size_t n) const { return m_filter ? m_ids[n] : n; }
     const_iterator_type begin() const { return const_iterator_type(*this, 0); }
     const_iterator_type end() const { return const_iterator_type(*this, size()); }
@@ -56,6 +56,8 @@ public:
     std::size_t size() const {
         return m_filter ? m_ids.size() : base_class::size();
     }
+    void filter_off() { m_filter = false; }
+    void filter_on() { m_filter = true; }
 private:
     bool m_filter;
     std::vector<std::size_t> m_ids;

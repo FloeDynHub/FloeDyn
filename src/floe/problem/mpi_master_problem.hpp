@@ -235,7 +235,7 @@ void MPIMasterProblem<TProblem>::safe_move_floe_group(){
             // msg_ids_2.insert(msg_ids_3.cbegin(), msg_ids_3.cend());
             auto msg_ids_2 = request_jobs(floe::io::interpene_job, this->m_proximity_detector.borders_processes());
             // border workers don't move any floe, they only check for interpenetration
-            interpene = handle_responses(msg_ids_2, floe::io::move_job);
+            interpene = handle_responses(msg_ids_2, floe::io::interpene_job);
         }
         this->m_domain.update_time();
     } while (interpene);
@@ -270,6 +270,7 @@ std::set<int> MPIMasterProblem<TProblem>::request_jobs(floe::io::JobTag tag, pro
         msg_id_set.insert(msg_pk);
         request.set_tag(tag);
         request.store_time(this->m_domain.time());
+        request.store_OBL_contribution(this->get_dynamics_manager().OBL_speed());
         request.set_floe_ids(this->m_proximity_detector.floe_process_distribution().at(p_id));
         request.store_states_light(this->get_floe_group(), request.floe_ids(), p_id);
         request.interpenetration(interpene);
@@ -285,6 +286,7 @@ template<typename TProblem>
 bool MPIMasterProblem<TProblem>::handle_responses(std::set<int>& msg_id_set, floe::io::JobTag tag){
     bool ret{false};
     int lcp_tot = 0;
+    point_type OBL_floes_force{0,0};
     while (msg_id_set.size()){
         auto resp = receive_response();
         msg_id_set.erase(resp.id());
@@ -295,9 +297,13 @@ bool MPIMasterProblem<TProblem>::handle_responses(std::set<int>& msg_id_set, flo
             lcp_tot += nb_lcp;
             if (nb_lcp) std::cout << nb_lcp << ((msg_id_set.size()!=0) ? " + " : "") << std::flush;
             if (msg_id_set.size() == 0) std::cout << " = " << lcp_tot << std::endl;
-        } else if (tag==floe::io::move_job) {
+        } else if (tag==floe::io::move_job or tag==floe::io::interpene_job) {
+            OBL_floes_force += resp.template get_OBL_speed<point_type>();
             ret = ret || resp.interpenetration();
         }
+    }
+    if (tag==floe::io::move_job){
+        this->get_dynamics_manager().update_ocean(this->get_floe_group(), this->m_domain.time_step(), OBL_floes_force);
     }
     return ret;
 }

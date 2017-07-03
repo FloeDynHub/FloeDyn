@@ -40,10 +40,10 @@ public:
     //! Constructor
     DynamicsManager(real_type const& time_ref, int OBL_status) : m_external_forces{time_ref}, m_ocean_window_area{0}, m_OBL_status{OBL_status} {}
 
-    //! Floes state update
-    void move_floes(floe_group_type& floe_group, real_type delta_t);
-    //! Ocean state update
-    void update_ocean(floe_group_type& floe_group, real_type delta_t);
+    //! Floes state update (+ update_ocean call, returns update_ocean's return value)
+    point_type move_floes(floe_group_type& floe_group, real_type delta_t);
+    //! Ocean state update, returns difference speed applied
+    point_type update_ocean(floe_group_type& floe_group, real_type delta_t, point_type floes_force = {0,0});
 
     //! Load ocean and wind data from a topaz file
     inline void load_matlab_topaz_data(std::string const& filename) {
@@ -55,7 +55,8 @@ public:
 
     //! for output
     inline point_type OBL_speed() const { return m_external_forces.OBL_speed(); }
-    inline void set_OBL_speed(point_type OBL_speed) { return m_external_forces.update_water_speed(OBL_speed); }
+    inline void set_OBL_speed(point_type OBL_speed) { 
+        return this->m_external_forces.get_physical_data().set_OBL_speed(OBL_speed); }
     inline void set_OBL_status(int status) { m_OBL_status = status; }
     //! Ocean window area setter
     inline void set_ocean_window_area(real_type area) { m_ocean_window_area = area; }

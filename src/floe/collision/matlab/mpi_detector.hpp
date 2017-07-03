@@ -40,6 +40,10 @@ public:
     MPIMatlabDetector() : base_class() {
         this->init_grid_dimension();
         this->partition_processes();
+        for (auto key : this->collision_process_partition_keys()){
+            // init keys
+            this->m_process_partition[key];
+        }
     }
 
     //! Deleted copy constructor

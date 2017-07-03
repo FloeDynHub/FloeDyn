@@ -156,9 +156,11 @@ def get_option_dict(debug=True):
                  # "-march=native", # g++ fails with this
                  "-mtune=native",
                  "-Wall", "-Wextra", #"-Wshadow",
-                 "-Wno-unused-parameter",
+                 "-Wno-unused-parameter", "-Wno-unused-local-typedef",
                  "-Wno-gnu-anonymous-struct", "-Wno-nested-anon-types", # floe/geometry/geometries/point.hpp
-                 "-pedantic"
+                 "-Wno-redeclared-class-member",
+                 "-isystem /usr/local/include/boost/",
+                 # "-pedantic"
              ],
             "defines": ["NDEBUG"]
         })

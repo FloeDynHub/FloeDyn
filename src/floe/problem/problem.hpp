@@ -44,9 +44,10 @@ class Problem
 {
 
 public:
-    using out_manager_type = io::HDF5Manager<TFloeGroup, TDynamicsManager>;
-    // using out_manager_type = io::MultiOutManager<io::HDF5Manager<TFloeGroup, TDynamicsManager>>;
+    // using out_manager_type = io::HDF5Manager<TFloeGroup, TDynamicsManager>;
+    using out_manager_type = io::MultiOutManager<io::HDF5Manager<TFloeGroup, TDynamicsManager>>;
     using real_type = typename TFloeGroup::real_type;
+    using point_type = typename TFloeGroup::point_type;
     using floe_group_type = TFloeGroup; // generator accessor
     using time_scale_manager_type = domain::TimeScaleManager<typename TProxymityDetector::proximity_data_type>;
     using proximity_detector_type = TProxymityDetector;
@@ -113,7 +114,7 @@ protected:
     //! Apply smooth dynamics to floes and verify interpenetration
     virtual void safe_move_floe_group();
     //! Apply smooth dynamics to floes
-    void move_floe_group();
+    point_type move_floe_group();
     //! Handle output_datas (console + out file)
     void output_datas();
 };
@@ -290,9 +291,10 @@ void PROBLEM::compute_time_step(){
 
 
 TEMPLATE_PB
-void PROBLEM::move_floe_group(){
-    m_dynamics_manager.move_floes(m_floe_group, m_domain.time_step());
+typename TFloeGroup::point_type PROBLEM::move_floe_group(){
+    point_type resp = m_dynamics_manager.move_floes(m_floe_group, m_domain.time_step());
     m_domain.update_time();
+    return resp;
 }
 
 TEMPLATE_PB

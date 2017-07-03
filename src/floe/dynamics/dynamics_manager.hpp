@@ -27,7 +27,7 @@ template<typename T>
 using integration_strategy = floe::integration::RefGaussLegendre<T,2,2>;
 
 template <typename TExternalForces, typename TFloeGroup>
-void
+typename TFloeGroup::floe_type::point_type
 DynamicsManager<TExternalForces, TFloeGroup>::move_floes(floe_group_type& floe_group, real_type delta_t)
 {   
     // OpenMP doesn't like this syntax
@@ -35,9 +35,9 @@ DynamicsManager<TExternalForces, TFloeGroup>::move_floes(floe_group_type& floe_g
     //     move_floe(floe, delta_t);
     #pragma omp parallel for
     for (std::size_t i=0; i < floe_group.get_floes().size(); ++i){
-        move_floe(floe_group.get_floes()[i], delta_t);
+        this->move_floe(floe_group.get_floes()[i], delta_t);
     }
-    update_ocean(floe_group, delta_t);
+    return this->update_ocean(floe_group, delta_t);
 }
 
 
@@ -85,9 +85,12 @@ DynamicsManager<TExternalForces, TFloeGroup>::move_floe(floe_type& floe, real_ty
 
 
 template <typename TExternalForces, typename TFloeGroup>
-void
-DynamicsManager<TExternalForces, TFloeGroup>::update_ocean(floe_group_type& floe_group, real_type delta_t)
-{   
+typename TFloeGroup::floe_type::point_type
+DynamicsManager<TExternalForces, TFloeGroup>::update_ocean(
+    floe_group_type& floe_group,
+    real_type delta_t,
+    point_type floes_force
+){
     point_type diff_speed{0,0};
     if (m_OBL_status)
     {
@@ -98,10 +101,13 @@ DynamicsManager<TExternalForces, TFloeGroup>::update_ocean(floe_group_type& floe
         real_type OBL_mass = win_area * m_external_forces.OBL_surface_mass();
         auto strategy = integration_strategy<real_type>();
         // calculate floes action on ocean
-        point_type floes_force = {0, 0};
-        for (auto& floe : floe_group.get_floes())
-            floes_force += floe::integration::integrate(m_external_forces.ocean_drag_2(floe), floe.mesh(), strategy);
+        // point_type floes_force = {0, 0};
+        if (floes_force == point_type{0,0}){
+            for (auto& floe : floe_group.get_floes())
+                floes_force += floe::integration::integrate(m_external_forces.ocean_drag_2(floe), floe.mesh(), strategy);
+        }
         // calculate water speed delta
+        // TODO for MPI Worker : do not calculate or update speed
         diff_speed = delta_t * ( 
             ( 1 / OBL_mass ) * ( - floes_force + water_area * m_external_forces.air_drag_ocean() )
             + m_external_forces.ocean_coriolis(floe_group_mass_center)
@@ -110,6 +116,7 @@ DynamicsManager<TExternalForces, TFloeGroup>::update_ocean(floe_group_type& floe
     }
     // update water speed
     m_external_forces.update_water_speed( diff_speed );
+    return floes_force;
 }
 
 template <typename TExternalForces, typename TFloeGroup>

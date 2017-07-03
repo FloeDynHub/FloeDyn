@@ -73,6 +73,10 @@ private:
         std::cout << "read TOPAZ" << std::endl;
         P.load_matlab_topaz_data(this->vm["fext"].as<string>());
         P.get_dynamics_manager().get_external_forces().get_physical_data().set_storm_mode();
+        // To get same forcing as generator :
+        // P.get_dynamics_manager().get_external_forces().get_physical_data().set_modes(2,0);
+        // auto w = P.get_floe_group().get_initial_window();
+        // P.get_dynamics_manager().get_external_forces().get_physical_data().set_window_size(w[1] - w[0], w[3] - w[2]);
 
         if (this->vm.count("rectime"))
         {

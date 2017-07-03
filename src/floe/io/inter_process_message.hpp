@@ -64,6 +64,10 @@ public:
     inline void interpenetration(bool b) { m_interpenetration = b; }
     inline int mpi_source() const { return m_mpi_source; }
     inline void mpi_source(int n) { m_mpi_source = n; }
+    template<typename TPoint>
+    inline void store_OBL_contribution(TPoint speed){ m_OBL_speed = {speed.x, speed.y}; }
+    template<typename TPoint>
+    inline TPoint get_OBL_speed() const { return TPoint{this->m_OBL_speed[0], this->m_OBL_speed[1]}; }
 
     //! Setter
     template<typename TFloeGroup, typename IdsIterable>
@@ -97,11 +101,13 @@ public:
     }
 
     // This method lets cereal know which data members to serialize
+    // Don't forget to add members you want to pass thew MPI !
     template<class Archive>
     void serialize(Archive & archive)
     {
     archive( m_id, m_tag, m_floe_ids, m_states, m_delta_t,
-        m_time, m_nb_LCP_solved, m_interpenetration ); // serialize things by passing them to the archive
+        m_time, m_nb_LCP_solved, m_interpenetration,
+        m_mpi_source, m_OBL_speed ); // serialize things by passing them to the archive
     }
 
 private:
@@ -114,6 +120,8 @@ private:
     int m_nb_LCP_solved = 0;
     bool m_interpenetration = false;
     int m_mpi_source = -1;
+    //! OBL speed, worker sends speed difference, master returns absolute speed
+    std::array<real_type, 2> m_OBL_speed;
 };
 
 }} // namespace floe::io

@@ -193,7 +193,7 @@ class FloePlotter(object):
             ax_mgr.get_collection("floes").set_array(data.get("impulses")[indic])
             if opt_ghosts:
                 ax_mgr.get_collection("floe_ghosts").set_array(np.tile(data.get("impulses")[indic], 8))
-        # ax.set_title("t = {}".format(str(datetime.timedelta(seconds=int(data.get("time")[indic])))))
+        ax.set_title("t = {}".format(str(datetime.timedelta(seconds=int(data.get("time")[indic])))))
         if not data.get("static_axes"):
             # ax.axis('equal')
             ax.relim()
@@ -402,7 +402,7 @@ class FloePlotter(object):
         p = Pool(nb_process)
         partial_video_maker = self.make_partial_floe_video_helper if not dual else make_partial_floe_video_dual_plot_helper
         p.map(partial_video_maker, L)
-        p.close()
+        # p.close()
         p.join()
         # Concat all partial video
         out_filename = self.get_final_video_path(self.OPTIONS.filename)

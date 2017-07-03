@@ -77,7 +77,7 @@ int main( int argc, char* argv[] )
     // First parameter describes option name/short name
     // The second is parameter to option
     // The third is description
-    ("help,h", "print usage message")
+    ("help,h", "print usage message") 
     ("input,i", po::value(&input_file_name)->required(), "input file path")
     ("topaz", po::value(&matlab_topaz_filename)->default_value(matlab_topaz_filename), "wind/ocean data")
     ("tend,t", po::value(&endtime)->required(), "simulation duration (seconds)")

@@ -13,3 +13,5 @@ externalLibraries/
 sftp-config.json
 *.sh
 TODO-quentin
+*.pyc
+FloeDyn/

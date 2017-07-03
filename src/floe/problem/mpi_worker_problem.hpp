@@ -38,7 +38,7 @@ public:
     using base_class = MPIProblem<TProblem>;
     using real_type = typename TProblem::floe_group_type::floe_type::real_type;
     using point_type = typename TProblem::floe_group_type::floe_type::point_type;
-    using message_type = floe::io::InterProcessMessage<real_type>;
+    using message_type = typename base_class::message_type;
 
     //! Default constructor
     MPIWorkerProblem(real_type epsilon, int OBL_status) : base_class(epsilon, OBL_status), m_terminate{false} {}
@@ -52,7 +52,6 @@ private:
     virtual void step_solve() override;
     message_type receive_request();
     void send_response(message_type&, message_type&);
-    bool worker_move_floe_group();
 };
 
 
@@ -87,12 +86,12 @@ void MPIWorkerProblem<TProblem>::step_solve(){
         response.store_time_step(this->m_domain.time_step());
     } else if (request.tag()==floe::io::move_job) {
         this->m_domain.set_time_step(request.time_step());
-        // if (request.interpenetration()) { std::cout << "RECOVER" ;this->m_floe_group.recover_previous_step_states() << st::endl;}
-        // else this->m_floe_group.backup_step_states();
-        bool resp = worker_move_floe_group();
+        this->get_dynamics_manager().set_OBL_speed(request.template get_OBL_speed<point_type>());
+        point_type diff_speed = this->move_floe_group();
+        bool interpene = !this->m_proximity_detector.check_interpenetration();
         // if (request.interpenetration()) { std::cout << "RECOVER" << this->m_domain.time_step() << " " << resp << " #" << this->mpi().process_rank() << std::endl; }
-        response.interpenetration(resp);
-        // response.interpenetration(worker_move_floe_group());
+        response.interpenetration(interpene);
+        response.store_OBL_contribution(diff_speed);
     } else if (request.tag()==floe::io::interpene_job){
         response.interpenetration(!this->m_proximity_detector.check_interpenetration());
     } else if (request.tag()==floe::io::termination_signal){
@@ -109,12 +108,6 @@ void MPIWorkerProblem<TProblem>::step_solve(){
         // << std::chrono::duration<double, std::milli>(t_end-t_2).count() << " = "
         // << std::chrono::duration<double, std::milli>(t_end-t_1).count() << " ms"
         // << std::endl;
-}
-
-template<typename TProblem>
-bool MPIWorkerProblem<TProblem>::worker_move_floe_group(){
-    this->move_floe_group();
-    return !this->m_proximity_detector.check_interpenetration();
 }
 
 template<typename TProblem>

@@ -52,6 +52,7 @@ public:
     void update_water_speed(point_type diff_speed);
     //! OBL speed accessor for output
     inline point_type OBL_speed() const { return m_geo_relative_water_speed; }
+    void set_OBL_speed(point_type speed) { m_geo_relative_water_speed = speed; }
     //! Load ocean and wind data from a topaz file
     void load_matlab_topaz_data(std::string const& filename);
     //! For modes depending on an artificial ocean window (generator)
@@ -161,7 +162,7 @@ private:
 
 template <typename TPoint>
 TPoint
-PhysicalData<TPoint>::water_speed(point_type pt = {0,0}) {
+PhysicalData<TPoint>::water_speed(point_type pt) {
     point_type resp;
     if (m_water_mode == 0){
         resp = geostrophic_water_speed();
@@ -173,7 +174,7 @@ PhysicalData<TPoint>::water_speed(point_type pt = {0,0}) {
 
 template <typename TPoint>
 TPoint
-PhysicalData<TPoint>::air_speed(point_type pt = {0,0}) {
+PhysicalData<TPoint>::air_speed(point_type pt) {
     if (m_air_mode == 0){
         return topaz_air_speed(pt);
     } else {
@@ -306,7 +307,7 @@ PhysicalData<TPoint>::init_random_vortex(){
 
 template <typename TPoint>
 TPoint
-PhysicalData<TPoint>::get_speed(point_type pt = {0,0}, int mode=0){
+PhysicalData<TPoint>::get_speed(point_type pt, int mode){
     point_type resp;
     switch(mode){
         case 1:
