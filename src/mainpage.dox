@@ -6,7 +6,12 @@
  *
  * \section dev_todo À faire dans le code.
  *
+ * - Tout traduire en Anglais !!!
+ * - Générer une page de d'aide à l'installation et au lancement du code
  * - Générateur de configurations initiales de floes
+ * - Compléter la documentation
+ * - Créer des tests références pour vérifier que tout fonctionne bien
+ * - Corriger bugs pour passer sur version ulterieure de <b> BOOST </b>
  *
  *
  * \subsection dev_optim Optimisation
@@ -15,17 +20,103 @@
  * - voir la méthode de réduction de dimension de Lloyd 2005 (O(n^3) -> O(n))
  * - rendre plus propre la résolution des LCP par le développements des outils de base nécessaires : recherche de la variable bloquante, pivot, etc ...
  * - ensuite, permettre de modifier le comportement de ces outils, pour par exemple utiliser l'algo d'expansion du LCP de Lloyd 2005.
+ * - voir Acary 2011 : A formulation of the linear discrete Coulomb friction problem via convex optimization. The novelty of their approach is to capture and treat directly the friction model as a parametric quadratic optimization problem with second-order cone constraints coupled with a fixed point equation.
  *
  * \subsubsection dev_multithread Parallélisation
  * - on peut facilement paralléliser la détection de contact,
  * - de même pour la résolution des contacts : à une étape donnée (groupes de contacts actifs), tous les LCPs peuvent se résoudre indépendamment les uns des autres ;
- * - à plus grande échelle, il faudrait pouvoir gérer l'ensemble des floes par groupes. On peut déjà avoir un détecteur de collision indépendant par groupe, il faut alors un autre détecteur sur les groupes eux-mêmes. Il faut également pouvoir détecter les "influences" entre groupes. 
+ * - à plus grande échelle, il faudrait pouvoir gérer l'ensemble des floes par groupes. On peut déjà avoir un détecteur de collision indépendant par groupe, il faut alors un autre détecteur sur les groupes eux-mêmes. Il faut également pouvoir détecter les "influences" entre groupes.
+ * - Voir Drumwright 2010 (chapitre précédent), pour une optimisation sur GPU.
+ * - Voir Mazhar 2015 pour une gestion des contacts avec méthodes facilement parallèlisable (accelerated projected gradient descent (APGD) method relies on an approach by Nesterov in which a quadratic optimization problem with conic constraints is solved at each simulation time step to recover the normal and friction forces present in the system).
  *
- * \section Compilation
+ * \section Installation
+ *
+ * \subsection Prerequisite
+ * If you clone the GIT repository, you need at least the following to build the executable:
+ * - Boost (version 1.57, Important, some routines need this version to compile).
+ * 		+ Use for geometry, graphs, linear algebra, etc.
+ * - Matio (version no matter) 
+ *		+ Use for importing/exporting Matlab format files.
+ * - Eigen (version no matter)
+ * 		+ Use for linear algebra for linear complementarity problem.
+ * - CGAL (version no matter)
+ * 		+ Use for construction of mesh during the generation of floe assemblies.
+ * - HDF5 (version no matter, addind <a href="https://support.hdfgroup.org/products/java/release/download.html">HDFView </a> for visualing files .h5)
+ * 		+ Use for outputs.
+ * - ffmpeg (version no matter)
+ *		+ Use for generation of videos.
+ * - python (version 2.7) (addind h5py, numpy and matplotlib)
+ * 		+ Use for visualisation and generation of videos from outputs.
+ * - doxygen (version no matter)
+ * 		+ Use for generating documentation.
+ * - graphviz (version no matter)
+ * 		+ Use for generating graphics during the documentation generation.
+ *
+ * Every library could be installed with home brew. However you should be careful about: 
+ * - when one install boost_1_57 with brew, one should check the folders <i> /usr/local/lib/ </i> and <i> /usr/local/include/ </i> contain the boost libraries and include (or link). It is required to compile.
+ * Otherwise, one should install boost_1_57 without brew (see: <a href="http://www.boost.org/doc/libs/1_65_1/more/getting_started/unix-variants.html">the boost user manual for unix-variants</a>). 
+ * - when one install CGAL with brew, CGAL needing boost, it may be that brew install the lastest version of boost. In this case, please install CGAL without brew 
+ * (see: <a href="https://doc.cgal.org/latest/Manual/installation.html">CGAL user manual </a>).
+ *
+ *
+ * \subsection get_start Getting Started
+ *
+ * Once libraries have been installed, please check with the command:
+ *
+ * \code
+ * $ cd /path/to/FloeCpp
+ * $ ./waf configure
+ * \endcode
+ *
+ * You should obtain something like this:
+ * \image html waf_config.png width=800
+ *
+ * \subsection Compilation
+ *
+ * \code
+ * $ ./waf --target FLOE
+ * \endcode
+ *
+ * or 
+ * \code
+ * $ ./waf --target FLOE_PBC
+ * \endcode
+ *
+ * or, all <i> .cpp </i> files contained in <i> product </i> folder. The executable are in the <i> build </i> folder.
+ *
+ * \subsection \first_run First Running
+ *
+ * Run:
+ * \code
+ * $ ./build/FLOE -h
+ * \endcode
+ * allow to know which options are availables
+ *
+ * Before running any simulations, please build floe configurations:
+ * \code
+ * $ ./build/FLOE -i generator -n 1000 -c 0.6 
+ * \endcode
+ * generation of 1000 floes with a concentration equal to 60 percent.
+ * 
+ * First example:
+ * \code
+ * $ ./build/FLOE -i io/inputs/in_700f_60p_#1.h5 -t 10000
+ * \endcode
+ * running the floe configuration called <i> in_700f_60p_#1.h5 </i> (for 700 floes with a ice concentration equal to 60 percent) during 10000 secondes.
+ * 
+ * The output files (in .h5) are in the <i> io/outputs </i> folder. To generate a video, please type:
+ * \code
+ * $ python3 plot anim -f io/outputs/outputs.h5
+ * \endcode
+ * replacing <i> outputs.h5 </i> by the name of the outputs files in the <i> io/outputs </i> folder.
+ * Be careful, <i> plot </i> is a folder containing <b> python </b> files in order to create a video in <i> videos </i> folder. One have to build the <i> io/videos </i> folder before.
+ * 
+ * \section Debug
+ * with <b> X-Code </b>
  *
  * \section example Un exemple expliqué (Roland)
  *
- * Nous ici détailler le fonction d'un exemple, le fichier floe/collision/matlab/TEST_detector_from_mat.cpp .
+ * Nous ici détailler le fonctionnement d'un exemple, le fichier floe/collision/matlab/TEST_detector_from_mat.cpp.
  * Cet exemple charge une configuration de floes depuis un fichier Matlab et en détecte les points de collisions. 
  * Il construit ensuite les différents LCP associés au composantes connexes des contacts actifs, et en tente la résolution par la méthode de Lemke.
  *

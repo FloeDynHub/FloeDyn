@@ -1,17 +1,54 @@
+### all files '.o', 'a.out' and '.swp' in all directories ### 
 **/*.o
 **/a.out
 **/*.swp
-doc
-bin
-.DS_Store
+
+### folders ###
 build/
+doxygen-1.8.13/
+External_Libraries/
 FloeCpp.xcodeproj/
+io/
+
+### macOS ###
+*.DS_Store
+
+### OAR ###
+oar_out_save/
+oar_scripts/
+OAR.*
+
+### python file ###
+*.pyc
+
+### waf files ###
+.lock-waf_linux2_build
 .lock-waf_darwin_build
 .waf*
-io/*
-externalLibraries/
-sftp-config.json
-*.sh
+
+### files related to FROGGY install ###
+CIMENT.txt
+#env.bash
+env2.bash
+NODE_FILE_TEST
+#froggy.py
+
+### doxygen ###
+doxygen_original.cfg
+doc_elements/
+html/
+latex/
+
+### Quentin's files ###
 TODO-quentin
-*.pyc
-FloeDyn/
+
+### Matthias's files ###
+MR_comments.txt
+
+### other files ###
+data_simu.txt
+nohup.out
+
+#----------------#
+#sftp-config.json
+#*.sh
