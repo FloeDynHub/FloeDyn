@@ -9,7 +9,7 @@
 
 #include "floe/io/hdf5_manager.h"
 // #include "floe/io/false_hdf5_manager.hpp"
-#include "floe/io/multi_out_manager.hpp"
+// #include "floe/io/multi_out_manager.hpp"
 
  #include "floe/domain/time_scale_manager.hpp"
 
@@ -44,8 +44,8 @@ class Problem
 {
 
 public:
-    // using out_manager_type = io::HDF5Manager<TFloeGroup, TDynamicsManager>;
-    using out_manager_type = io::MultiOutManager<io::HDF5Manager<TFloeGroup, TDynamicsManager>>;
+    using out_manager_type = io::HDF5Manager<TFloeGroup, TDynamicsManager>;
+    // using out_manager_type = io::MultiOutManager<io::HDF5Manager<TFloeGroup, TDynamicsManager>>;
     using real_type = typename TFloeGroup::real_type;
     using point_type = typename TFloeGroup::point_type;
     using floe_group_type = TFloeGroup; // generator accessor
