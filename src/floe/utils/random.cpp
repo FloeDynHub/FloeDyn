@@ -4,8 +4,8 @@
  * \author Quentin Jouet
  */
 
-#ifndef FLOE_UTILS_RANDOM_CPP
-#define FLOE_UTILS_RANDOM_CPP
+// #ifndef FLOE_UTILS_RANDOM_CPP
+// #define FLOE_UTILS_RANDOM_CPP
 
 #include "floe/utils/random.hpp"
 #include <chrono>
@@ -37,4 +37,4 @@ std::default_random_engine get_uniquely_seeded_generator(){
 }} // namespace floe::random
 
 
-#endif // FLOE_UTILS_RANDOM_CPP
+// #endif // FLOE_UTILS_RANDOM_CPP
