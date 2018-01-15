@@ -44,7 +44,33 @@ public:
     //! Destructor
     ~LCPManager(){ 
         if (m_nb_lcp)
-            printf ("#TOTAL LCP solve : %ld / %ld (%f %%) \n", m_nb_lcp_success, m_nb_lcp, success_ratio() );
+            // double m_JW = (m_nb_lcp_failed_stats[4] == 0)? 0 : m_nb_lcp_failed_stats[5]/m_nb_lcp_failed_stats[4];
+            // real_type m_Ccoul = (m_nb_lcp_failed_stats[6] == 0)? 0 : m_nb_lcp_failed_stats[7]/m_nb_lcp_failed_stats[6];
+            std::cout << "#TOTAL LCP solve: " << m_nb_lcp_success << "/" << m_nb_lcp << "(" << success_ratio() << "%) \n"
+                << "LCP_failed compression phase: " << m_nb_lcp_failed_stats[0] << ", LCP_failed decompression phase:" << m_nb_lcp_failed_stats[1] << "\n"
+                << "Sol to keep EC+<=EC-: " << m_nb_lcp_failed_stats[2] << "\n"
+                << "#LCP with ECc>1: " << m_nb_lcp_failed_stats[3] << "\n"
+                << "#LCP with J^TW<0: " << m_nb_lcp_failed_stats[4] << "\n";
+            if (m_nb_lcp_failed_stats[4]!=0){std::cout << "mean of J^TW<0: " << m_nb_lcp_failed_stats[5]/m_nb_lcp_failed_stats[4] << "\n";}    
+                std::cout << "#LCP with Cond Coul<0: " << m_nb_lcp_failed_stats[6] << "\n";
+            if (m_nb_lcp_failed_stats[6]!=0){std::cout << "mean of Ccoul<0: " << m_nb_lcp_failed_stats[7]/m_nb_lcp_failed_stats[6] << "\n";}
+            if (m_nb_lcp_failed_stats[0]!=0){std::cout << "mean of Err: " << m_nb_lcp_failed_stats[8]/m_nb_lcp_failed_stats[0] << "\n";}
+
+                // if (m_nb_lcp_success!=0){
+                //     std::cout << "Mean of Condition Number of Delassus matrix for LCP solved: " << m_nb_lcp_failed_stats[3]/(m_nb_lcp_success+m_nb_lcp_failed_stats[1]-m_nb_lcp_failed_stats[6]) << "\n"
+                //     << "critical case:" << m_nb_lcp_failed_stats[6] << "\n";
+                // }
+                // if (m_nb_lcp_failed_stats[0]!=0){
+                //     std::cout << "Mean of Condition Number of Delassus matrix for LCP failed during the compression phase: " << m_nb_lcp_failed_stats[4]/(m_nb_lcp_failed_stats[0]-m_nb_lcp_failed_stats[7]) << "\n"
+                //     << "critical case:" << m_nb_lcp_failed_stats[7] << "\n";
+                // }
+                // if (m_nb_lcp_failed_stats[1]!=0){
+                //     std::cout << "Mean of Condition Number of Delassus matrix for LCP failed during the decompression phase: " << m_nb_lcp_failed_stats[5]/(m_nb_lcp_failed_stats[1]-m_nb_lcp_failed_stats[8]) << "\n"
+                //     << "critical case:" << m_nb_lcp_failed_stats[8] << "\n";
+                // }  
+            // printf ("#TOTAL LCP solve : %ld / %ld (%f %%) \n", m_nb_lcp_success, m_nb_lcp, success_ratio());
+                // LCP_failed compression phase: %d, decompression phase: %d \n 
+                // Sol to keep EC+<=EC-: %d \n", m_nb_lcp_success, m_nb_lcp, success_ratio(), m_nb_lcp_failed_comp, m_nb_lcp_failed_decomp, m_nb_lcp_E_sup );
     }
 
     //! LCP solver accessor
@@ -61,6 +87,12 @@ private:
     solver_type m_solver; //!< LCP Solver
     long m_nb_lcp; //!< Total number of LCP managed
     long m_nb_lcp_success; //!< Total number of LCP solving success
+    //Matt
+    real_type m_nb_lcp_failed_stats[9]={0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0}; // LCP failed statistics: [nb LCP failed during compression phase,
+    // nb LCP failed during decompression phase, nb LCP using linear solution to keep EC+ <= EC-]
+    // long m_nb_lcp_failed_decomp{0}; // total number of LCP failed during the decompression phase
+    // long m_nb_lcp_E_sup{0}; // total number of LCP using linear solution to keep EC+ <= EC-
+    //EndMatt
 
     double chrono_active_subgraph{0.0}; // test perf
     double max_chrono_active_subgraph{0.0}; // test perf
@@ -77,6 +109,10 @@ int LCPManager<T>::solve_contacts(TContactGraph& contact_graph)
 {
     auto const subgraphs = collision_subgraphs( contact_graph );
     int LCP_count = 0, nb_success = 0;
+    double nb_lcp_failed_stats[9];
+    for (int i=0;i<9;++i){
+        nb_lcp_failed_stats[i] = 0;
+    }
     
     // m_solver.nb_solver_run = 0; // test perf
     // m_solver.chrono_solver = 0; // test perf
@@ -112,13 +148,13 @@ int LCPManager<T>::solve_contacts(TContactGraph& contact_graph)
                 if (num_contacts(graph) > 50){
                     std::cout << " Q4," << std::flush;
                     for ( auto const& igraph : quad_cut( graph ) ){
-                        auto Sol = m_solver.solve( igraph, success );
+                        auto Sol = m_solver.solve( igraph, success, nb_lcp_failed_stats );
                         mark_solved(igraph, success);
                         if (success) loop_nb_success++;
                         update_floes_state(igraph, Sol);
                     }
                 } else {
-                    auto Sol = m_solver.solve( graph, success );
+                    auto Sol = m_solver.solve( graph, success, nb_lcp_failed_stats );
                     mark_solved(graph, success);
                     if (success) loop_nb_success++;
                     update_floes_state(graph, Sol);
@@ -197,6 +233,10 @@ int LCPManager<T>::solve_contacts(TContactGraph& contact_graph)
     // }
     m_nb_lcp += LCP_count;
     m_nb_lcp_success += nb_success;
+    for (int i=0;i<9;++i){
+        m_nb_lcp_failed_stats[i] += nb_lcp_failed_stats[i];
+    }
+
     #ifndef MPIRUN
     if (LCP_count)
         std::cout << " #LCP solve: "<< nb_success << " / " << LCP_count << std::endl;

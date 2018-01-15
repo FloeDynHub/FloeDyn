@@ -29,6 +29,7 @@
 #include <cassert>
 #include <cstdio>
 #include <cstdlib>
+// #include <iostream>
 
 namespace floe { namespace lcp { namespace solver
 {
@@ -66,7 +67,9 @@ void lcp_lexicolemke(int dim, const double * M, const double * q, double *zlem ,
     int ITER;
     int nobasis;
     //int itermax = options->iparam[0];
-    int itermax = std::min(40*dim, 2000);
+    int itermax = std::min(40*dim, 2000); // original
+    // test: max iter = 2^n
+    // int itermax = std::min( std::pow( 2, dim ), 10000);
 
     i=0;
     int n = dim;

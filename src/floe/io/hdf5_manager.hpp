@@ -4,8 +4,8 @@
  * \author Quentin Jouet
  */
 
-#ifndef FLOE_IO_HDF5_MANAGER_DEF_HPP
-#define FLOE_IO_HDF5_MANAGER_DEF_HPP
+// #ifndef FLOE_IO_HDF5_MANAGER_DEF_HPP
+// #define FLOE_IO_HDF5_MANAGER_DEF_HPP
 
 #include "floe/io/hdf5_manager.h"
 #include "floe/utils/random.hpp"
@@ -657,4 +657,4 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::make_input_file(const dynamics_mgr_t
 }} // namespace floe::io
 
 
-#endif // FLOE_IO_HDF5_MANAGER_DEF_HPP
+// #endif // FLOE_IO_HDF5_MANAGER_DEF_HPP

@@ -84,6 +84,40 @@ T LCP_error( LCP<T> const& lcp, bool calc_w = true )
     return w_err + z_err + zw_err;
 }
 
+// Calc error new to highlight the coulomb failure:
+// ajout Matthias
+template < typename T>
+boost::numeric::ublas::vector<T> LCP_err_Coul( LCP<T> const& lcp)
+{
+    typedef typename LCP<T>::vector_type vector_type;
+
+    int m;
+    m = lcp.dim/4;
+    // std::cout << "m: " << m << ",\n";
+
+    using namespace boost::numeric::ublas;
+    compressed_matrix<T, column_major> E;
+    // Friction coupling matrix E
+    E.resize(2*m, m, false);
+    for (int j = 0; j < m; ++j ) {
+        E(2*j+1, j) = E(2*j, j) = 1;
+    }
+    E = trans(E);
+
+    vector_type cond_Coulomb(m);
+    for (int i=0; i<m; ++i) {
+        int j=2*i; int k=2*i+1;
+        // std::cout   << "i= " << i << ",\n z(i): "
+        //             << lcp.z(i) << ",\n E(i,j): "
+        //             << E(i,j) << ", E(i,k): " << E(i,k) << ",\n z(j+m): "
+        //             << lcp.z(j+m) << ", z(k+m): " << lcp.z(k+m) << ",\n" << std::endl;
+        cond_Coulomb(i) = 0.7*lcp.z(i)-E(i,j)*lcp.z(j+m)-E(i,k)*lcp.z(k+m);
+    }
+
+    return cond_Coulomb;
+}
+//endmatt
+
 }} // namespace floe::lcp
 
 #endif // FLOE_LCP_LCP_HPP

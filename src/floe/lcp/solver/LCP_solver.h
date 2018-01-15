@@ -15,6 +15,7 @@
 #include <tuple>
 
 #include <iostream> // debug
+#include <Eigen/SVD> // saving matrix
 
 
 namespace floe { namespace lcp { namespace solver
@@ -54,7 +55,7 @@ public:
     //! Solve LCP
     bool solve( lcp_type& lcp );
     template<typename TContactGraph>
-    std::array<vector<real_type>, 2> solve( TContactGraph& graph, bool& success  );
+    std::array<vector<real_type>, 2> solve( TContactGraph& graph, bool& success, double lcp_failed_stats[] );
 
     int nb_solver_run{0}; // test (nb call run_solver() in step)
     double chrono_solver{0.0}; // test perf
@@ -96,6 +97,9 @@ protected:
     //! Normal relative speed test
     template<typename TContactGraph>
     bool VRelNtest(const vector<real_type>& V, const TContactGraph& graph);
+
+    //! Saving the Delassus matrix of unsolved LCP for further analysis
+    void saving_matrix_unsolved_LCP(lcp_type& lcp);
 
 };
 

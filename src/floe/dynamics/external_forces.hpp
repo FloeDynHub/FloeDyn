@@ -76,9 +76,9 @@ private:
     physical_data_type m_physical_data;
 
     const real_type rho_w = 1024.071; //!< Water density
-    const real_type C_w = 5 * 1e-3; //!< Oceanic skin drag average coeff
+    const real_type C_w = 5 * 1e-3; //!< Oceanic skin drag average coeff (10.8124936*10.8124936)*
     const real_type rho_a = 1.341; //!< Air density
-    const real_type C_a = 1.7 * 1e-3; //!< Atmospheric skin drag average coeff
+    const real_type C_a = 1.7 * 1e-3; //!< Atmospheric skin drag average coeff (10.8124936*10.8124936)*
 
     const real_type R_earth = 6371 * 1e3; //!< earth radius
     const real_type V_earth = 7.292 * 1e-5; //!< Earth angular velocity
