@@ -146,7 +146,7 @@ int LCPManager<T>::solve_contacts(TContactGraph& contact_graph)
             {
                 bool success;
                 if (num_contacts(graph) > 50){
-                    std::cout << " Q4," << std::flush;
+                    std::cout << " Q4,";
                     for ( auto const& igraph : quad_cut( graph ) ){
                         auto Sol = m_solver.solve( igraph, success, nb_lcp_failed_stats );
                         mark_solved(igraph, success);

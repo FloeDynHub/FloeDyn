@@ -67,9 +67,11 @@ void lcp_lexicolemke(int dim, const double * M, const double * q, double *zlem ,
     int ITER;
     int nobasis;
     //int itermax = options->iparam[0];
-    int itermax = std::min(40*dim, 2000); // original
+    // int itermax = std::min(40*dim, 2000); // original
     // test: max iter = 2^n
-    // int itermax = std::min( std::pow( 2, dim ), 10000);
+    // int power = std::pow( 2, dim );
+    // int itermax = std::min( power , 10000);
+    int itermax = 10000;
 
     i=0;
     int n = dim;

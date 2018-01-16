@@ -1,11 +1,11 @@
 #include <iostream>
-#include <Eigen/SVD>
+// #include <Eigen/SVD>
 #include <limits>
 #include <boost/numeric/ublas/vector_proxy.hpp>
 #include <boost/numeric/ublas/blas.hpp>
 #include <boost/multi_array.hpp>
 
-using namespace Eigen;
+// using namespace Eigen;
 
 // #include <string>
 // #include <H5Cpp.h>
@@ -27,195 +27,201 @@ using namespace H5;
 
 int main (void)
 {
-    const H5std_string FILE_NAME( "Select.h5" );
-    const H5std_string GROUP_NAME1( "Delassus Matrix of unsolved LCP" );
-    const H5std_string GROUP_NAME2( "Corresponding relative velocities" );
-	const int   MSPACE1_RANK = 1;   // Rank of the first dataset in memory
-	const int   MSPACE1_DIM = 50;   // Dataset size in memory
-	const int   MSPACE2_RANK = 1;   // Rank of the second dataset in memory
-	const int   MSPACE2_DIM = 4;    // Dataset size in memory
-	const int   FSPACE_RANK = 2;    // Dataset rank as it is stored in the file
-	const int   FSPACE_DIM1 = 8;    // Dimension sizes of the dataset as it is
-	const int   FSPACE_DIM2 = 12;   //  stored in the file
-	const int   MSPACE_RANK = 2;    // Rank of the first dataset in memory
-	const int   MSPACE_DIM1 = 8;    // We will read dataset back from the file
-	const int   MSPACE_DIM2 = 9;    //  to the dataset in memory with these
-	                //  dataspace parameters
-	const int   NPOINTS = 4;    // Number of points that will be selected
-	                //  and overwritten
 
-	bool a = (0==0)? 1:0;
+	int power = std::pow( 2, 20 );
+	int itermax = std::min(power , 10000);
+	std::cout << itermax << "\n";
 
-	int size_delassus = 12;
-	MatrixXd BMB(size_delassus,size_delassus);
-	BMB << 0.00152306,0.00167011,0.00159376,-0.00026744,0.00026744,-0.000166789,0.000166789,-0.000162222,0.000162222,0,0,0,
-	0.00167011,0.00241552,0.00202767,-0.00113476,0.00113476,-0.00102235,0.00102235,-0.000999151,0.000999151,0,0,0,
-	0.00159376,0.00202767,0.00180468,-0.000754591,0.000754591,-0.000648139,0.000648139,-0.0006348,0.0006348,0,0,0,
-	-0.00026744,-0.00113476,-0.000754591,0.00314846,-0.00314846,0.00312383,-0.00312383,0.00310109,-0.00310109,1,0,0,
-	0.00026744,0.00113476,0.000754591,-0.00314846,0.00314846,-0.00312383,0.00312383,-0.00310109,0.00310109,1,0,0,
-	-0.000166789,-0.00102235,-0.000648139,0.00312383,-0.00312383,0.00310586,-0.00310586,0.00308348,-0.00308348,0,1,0,
-	0.000166789,0.00102235,0.000648139,-0.00312383,0.00312383,-0.00310586,0.00310586,-0.00308348,0.00308348,0,1,0,
-	-0.000162222,-0.000999151,-0.0006348,0.00310109,-0.00310109,0.00308348,-0.00308348,0.00306168,-0.00306168,0,0,1,
-	0.000162222,0.000999151,0.0006348,-0.00310109,0.00310109,-0.00308348,0.00308348,-0.00306168,0.00306168,0,0,1,
-	0.7,0,0,-1,-1,0,0,0,0,0,0,0,
-	0,0.7,0,0,0,-1,-1,0,0,0,0,0,
-	0,0,0.7,0,0,0,0,-1,-1,0,0,0;
 
-	MatrixXd BB(9,9);
-	BB << 0.00152306,0.00167011,0.00159376,-0.00026744,0.00026744,-0.000166789,0.000166789,-0.000162222,0.000162222,
-	0.00167011,0.00241552,0.00202767,-0.00113476,0.00113476,-0.00102235,0.00102235,-0.000999151,0.000999151,
-	0.00159376,0.00202767,0.00180468,-0.000754591,0.000754591,-0.000648139,0.000648139,-0.0006348,0.0006348,
-	-0.00026744,-0.00113476,-0.000754591,0.00314846,-0.00314846,0.00312383,-0.00312383,0.00310109,-0.00310109,
-	0.00026744,0.00113476,0.000754591,-0.00314846,0.00314846,-0.00312383,0.00312383,-0.00310109,0.00310109,
-	-0.000166789,-0.00102235,-0.000648139,0.00312383,-0.00312383,0.00310586,-0.00310586,0.00308348,-0.00308348,
-	0.000166789,0.00102235,0.000648139,-0.00312383,0.00312383,-0.00310586,0.00310586,-0.00308348,0.00308348,
-	-0.000162222,-0.000999151,-0.0006348,0.00310109,-0.00310109,0.00308348,-0.00308348,0.00306168,-0.00306168,
-	0.000162222,0.000999151,0.0006348,-0.00310109,0.00310109,-0.00308348,0.00308348,-0.00306168,0.00306168;
+ //    const H5std_string FILE_NAME( "Select.h5" );
+ //    const H5std_string GROUP_NAME1( "Delassus Matrix of unsolved LCP" );
+ //    const H5std_string GROUP_NAME2( "Corresponding relative velocities" );
+	// const int   MSPACE1_RANK = 1;   // Rank of the first dataset in memory
+	// const int   MSPACE1_DIM = 50;   // Dataset size in memory
+	// const int   MSPACE2_RANK = 1;   // Rank of the second dataset in memory
+	// const int   MSPACE2_DIM = 4;    // Dataset size in memory
+	// const int   FSPACE_RANK = 2;    // Dataset rank as it is stored in the file
+	// const int   FSPACE_DIM1 = 8;    // Dimension sizes of the dataset as it is
+	// const int   FSPACE_DIM2 = 12;   //  stored in the file
+	// const int   MSPACE_RANK = 2;    // Rank of the first dataset in memory
+	// const int   MSPACE_DIM1 = 8;    // We will read dataset back from the file
+	// const int   MSPACE_DIM2 = 9;    //  to the dataset in memory with these
+	//                 //  dataspace parameters
+	// const int   NPOINTS = 4;    // Number of points that will be selected
+	//                 //  and overwritten
 
-	try{
-        /*
-         * Turn off the auto-printing when failure occurs so that we can
-         * handle the errors appropriately
-         */
-        Exception::dontPrint();
-        /*
-         * Create or Open a file.
-         */
-        H5File* file;
-        try {
-            file = new H5File( FILE_NAME, H5F_ACC_RDWR );
-        } catch (...) {
-            file = new H5File( FILE_NAME, H5F_ACC_TRUNC );
-        }
+	// bool a = (0==0)? 1:0;
+
+	// int size_delassus = 12;
+	// MatrixXd BMB(size_delassus,size_delassus);
+	// BMB << 0.00152306,0.00167011,0.00159376,-0.00026744,0.00026744,-0.000166789,0.000166789,-0.000162222,0.000162222,0,0,0,
+	// 0.00167011,0.00241552,0.00202767,-0.00113476,0.00113476,-0.00102235,0.00102235,-0.000999151,0.000999151,0,0,0,
+	// 0.00159376,0.00202767,0.00180468,-0.000754591,0.000754591,-0.000648139,0.000648139,-0.0006348,0.0006348,0,0,0,
+	// -0.00026744,-0.00113476,-0.000754591,0.00314846,-0.00314846,0.00312383,-0.00312383,0.00310109,-0.00310109,1,0,0,
+	// 0.00026744,0.00113476,0.000754591,-0.00314846,0.00314846,-0.00312383,0.00312383,-0.00310109,0.00310109,1,0,0,
+	// -0.000166789,-0.00102235,-0.000648139,0.00312383,-0.00312383,0.00310586,-0.00310586,0.00308348,-0.00308348,0,1,0,
+	// 0.000166789,0.00102235,0.000648139,-0.00312383,0.00312383,-0.00310586,0.00310586,-0.00308348,0.00308348,0,1,0,
+	// -0.000162222,-0.000999151,-0.0006348,0.00310109,-0.00310109,0.00308348,-0.00308348,0.00306168,-0.00306168,0,0,1,
+	// 0.000162222,0.000999151,0.0006348,-0.00310109,0.00310109,-0.00308348,0.00308348,-0.00306168,0.00306168,0,0,1,
+	// 0.7,0,0,-1,-1,0,0,0,0,0,0,0,
+	// 0,0.7,0,0,0,-1,-1,0,0,0,0,0,
+	// 0,0,0.7,0,0,0,0,-1,-1,0,0,0;
+
+	// MatrixXd BB(9,9);
+	// BB << 0.00152306,0.00167011,0.00159376,-0.00026744,0.00026744,-0.000166789,0.000166789,-0.000162222,0.000162222,
+	// 0.00167011,0.00241552,0.00202767,-0.00113476,0.00113476,-0.00102235,0.00102235,-0.000999151,0.000999151,
+	// 0.00159376,0.00202767,0.00180468,-0.000754591,0.000754591,-0.000648139,0.000648139,-0.0006348,0.0006348,
+	// -0.00026744,-0.00113476,-0.000754591,0.00314846,-0.00314846,0.00312383,-0.00312383,0.00310109,-0.00310109,
+	// 0.00026744,0.00113476,0.000754591,-0.00314846,0.00314846,-0.00312383,0.00312383,-0.00310109,0.00310109,
+	// -0.000166789,-0.00102235,-0.000648139,0.00312383,-0.00312383,0.00310586,-0.00310586,0.00308348,-0.00308348,
+	// 0.000166789,0.00102235,0.000648139,-0.00312383,0.00312383,-0.00310586,0.00310586,-0.00308348,0.00308348,
+	// -0.000162222,-0.000999151,-0.0006348,0.00310109,-0.00310109,0.00308348,-0.00308348,0.00306168,-0.00306168,
+	// 0.000162222,0.000999151,0.0006348,-0.00310109,0.00310109,-0.00308348,0.00308348,-0.00306168,0.00306168;
+
+	// try{
+ //        /*
+ //         * Turn off the auto-printing when failure occurs so that we can
+ //         * handle the errors appropriately
+ //         */
+ //        Exception::dontPrint();
+ //        /*
+ //         * Create or Open a file.
+ //         */
+ //        H5File* file;
+ //        try {
+ //            file = new H5File( FILE_NAME, H5F_ACC_RDWR );
+ //        } catch (...) {
+ //            file = new H5File( FILE_NAME, H5F_ACC_TRUNC );
+ //        }
         
-        /*
-         * Create or Open the groups
-         */
-        Group* Matrix_G;
-        Group* Vector_G;
-        bool G_exist;
-        try {
-            Matrix_G = new Group(file->openGroup(GROUP_NAME1));
-            Vector_G = new Group(file->openGroup(GROUP_NAME2));
-            G_exist = 1;
-        } catch (...) {
-            /* Create group for floe shapes */
-            Matrix_G = new Group(file->createGroup(GROUP_NAME1));
-            Vector_G = new Group(file->createGroup(GROUP_NAME2));
-            G_exist = 0;
-        }
+ //        /*
+ //         * Create or Open the groups
+ //         */
+ //        Group* Matrix_G;
+ //        Group* Vector_G;
+ //        bool G_exist;
+ //        try {
+ //            Matrix_G = new Group(file->openGroup(GROUP_NAME1));
+ //            Vector_G = new Group(file->openGroup(GROUP_NAME2));
+ //            G_exist = 1;
+ //        } catch (...) {
+ //            /* Create group for floe shapes */
+ //            Matrix_G = new Group(file->createGroup(GROUP_NAME1));
+ //            Vector_G = new Group(file->createGroup(GROUP_NAME2));
+ //            G_exist = 0;
+ //        }
 
-        hsize_t Group_size = Matrix_G->getNumObjs();
-        const H5std_string name_matrix = std::to_string(Group_size+1);
+ //        hsize_t Group_size = Matrix_G->getNumObjs();
+ //        const H5std_string name_matrix = std::to_string(Group_size+1);
 
-	    const int dim_M = size_delassus;
-        /*
-         * Conversion Eigen -> DOUBLE
-         */
-        double Delassus[dim_M][dim_M];
-        for (int i=0; i<dim_M; ++i){
-            for (int j=0; j<dim_M; ++j){
-                Delassus[i][j] = BMB(i,j);
-            }
-        }
+	//     const int dim_M = size_delassus;
+ //        /*
+ //         * Conversion Eigen -> DOUBLE
+ //         */
+ //        double Delassus[dim_M][dim_M];
+ //        for (int i=0; i<dim_M; ++i){
+ //            for (int j=0; j<dim_M; ++j){
+ //                Delassus[i][j] = BMB(i,j);
+ //            }
+ //        }
 
-        if (G_exist) {
-        	const H5std_string name_data_pre = std::to_string(Group_size);
-        	DataSet* dataset_pre = new DataSet(Matrix_G->openDataSet( name_data_pre , PredType::NATIVE_DOUBLE ));
+ //        if (G_exist) {
+ //        	const H5std_string name_data_pre = std::to_string(Group_size);
+ //        	DataSet* dataset_pre = new DataSet(Matrix_G->openDataSet( name_data_pre , PredType::NATIVE_DOUBLE ));
 
-			int dim_out[2] = dataset_pre->getInMemDataSize();
-        	double data_out[dim_out[0]][dim_out[1]];
+	// 		int dim_out[2] = dataset_pre->getInMemDataSize();
+ //        	double data_out[dim_out[0]][dim_out[1]];
 
-        	dataset_pre->read( data_out, PredType::NATIVE_DOUBLE );
+ //        	dataset_pre->read( data_out, PredType::NATIVE_DOUBLE );
 
-        	/*
-        	 * Check if matrix already exists? (A large number of attempt to solve LCP)
-        	 */
-        	MatrixXd Diff( dim_M , dim_M );
-        	for (int i=0; i<dim_M; ++i){
-        		for (int j=0; j<dim_M; ++j){
-        			const double val_rel = std::min( std::abs(Delassus[i][j]) , std::abs(data_out[i][j]) );
-        			const double val_rel_a = (Delassus[i][j] - data_out[i][j])/val_rel;
+ //        	/*
+ //        	 * Check if matrix already exists? (A large number of attempt to solve LCP)
+ //        	 */
+ //        	MatrixXd Diff( dim_M , dim_M );
+ //        	for (int i=0; i<dim_M; ++i){
+ //        		for (int j=0; j<dim_M; ++j){
+ //        			const double val_rel = std::min( std::abs(Delassus[i][j]) , std::abs(data_out[i][j]) );
+ //        			const double val_rel_a = (Delassus[i][j] - data_out[i][j])/val_rel;
 
-        			Diff(i,j) = std::max( std::abs( val_rel_a ) , 0);
-        		}
-        	}
-        	bool is_same_LCP = Diff.norm() < 1e-7;
-        }
+ //        			Diff(i,j) = std::max( std::abs( val_rel_a ) , 0);
+ //        		}
+ //        	}
+ //        	bool is_same_LCP = Diff.norm() < 1e-7;
+ //        }
 
-        /*
-         * Create dataspace for the dataset in the file.
-         */
-        if (!is_same_LCP) {
-	        hsize_t dim_space_M[2];
-	        dim_space_M[0] = dim_M;
-	        dim_space_M[1] = dim_M;
-	        DataSpace fspace_M( 2, dim_space_M );
-	        /*
-	         * Create dataset and write it into the file.
-	         */
-	        DataSet* dataset_M = new DataSet(Matrix_G->createDataSet(name_matrix
-	            , PredType::NATIVE_DOUBLE, fspace_M));
+ //        /*
+ //         * Create dataspace for the dataset in the file.
+ //         */
+ //        if (!is_same_LCP) {
+	//         hsize_t dim_space_M[2];
+	//         dim_space_M[0] = dim_M;
+	//         dim_space_M[1] = dim_M;
+	//         DataSpace fspace_M( 2, dim_space_M );
+	//         /*
+	//          * Create dataset and write it into the file.
+	//          */
+	//         DataSet* dataset_M = new DataSet(Matrix_G->createDataSet(name_matrix
+	//             , PredType::NATIVE_DOUBLE, fspace_M));
 
-	        dataset_M->write(Delassus, PredType::NATIVE_DOUBLE);
+	//         dataset_M->write(Delassus, PredType::NATIVE_DOUBLE);
 
-	        /*
-	         * Close the dataset and the file.
-	         */        
-	        delete dataset_M;
+	//         /*
+	//          * Close the dataset and the file.
+	//          */        
+	//         delete dataset_M;
 
-	        /*-----------------------------------------------------------------------------------------
-	         * new dataset for relative velocities
-	         *---------------------------------------------------------------------------------------*/
-	        const H5std_string name_vector = std::to_string(Group_size+1);
-	        /*
-	         * Create dataspace for the dataset in the file.
-	         */
+	//         /*-----------------------------------------------------------------------------------------
+	//          * new dataset for relative velocities
+	//          *---------------------------------------------------------------------------------------*/
+	//         const H5std_string name_vector = std::to_string(Group_size+1);
+	//         /*
+	//          * Create dataspace for the dataset in the file.
+	//          */
 
-	        hsize_t dim_space_V[1];
-	        dim_space_V[0] = dim_M;
+	//         hsize_t dim_space_V[1];
+	//         dim_space_V[0] = dim_M;
 
-	        DataSpace fspace_V( 1, dim_space_V );
-	        /*
-	         * Create dataset and write it into the file.
-	         */
+	//         DataSpace fspace_V( 1, dim_space_V );
+	//         /*
+	//          * Create dataset and write it into the file.
+	//          */
 
-	        DataSet* dataset_V = new DataSet(Vector_G->createDataSet(name_vector
-	            , PredType::NATIVE_DOUBLE, fspace_V));
+	//         DataSet* dataset_V = new DataSet(Vector_G->createDataSet(name_vector
+	//             , PredType::NATIVE_DOUBLE, fspace_V));
 
-	        /*
-	         * Conversion Eigen -> DOUBLE
-	         */
-	        double rel_vel[dim_M];
-	        for (int i=0; i<dim_M; ++i){
-	            rel_vel[i] = BMB(i,1);
-	        }
+	//         /*
+	//          * Conversion Eigen -> DOUBLE
+	//          */
+	//         double rel_vel[dim_M];
+	//         for (int i=0; i<dim_M; ++i){
+	//             rel_vel[i] = BMB(i,1);
+	//         }
 
-	        dataset_V->write(rel_vel, PredType::NATIVE_DOUBLE);
+	//         dataset_V->write(rel_vel, PredType::NATIVE_DOUBLE);
 
-	        /*
-	         * Close the dataset and the file.
-	         */        
-	        delete dataset_V;
-    	}
+	//         /*
+	//          * Close the dataset and the file.
+	//          */        
+	//         delete dataset_V;
+ //    	}
 
-        delete file;
-   }  // end of try block
-   // catch failure caused by the H5File operations
-   catch( FileIException error )
-   {
-    error.printError();
-   }
-   // catch failure caused by the DataSet operations
-   catch( DataSetIException error )
-   {
-    error.printError();
-   }
-   // catch failure caused by the DataSpace operations
-   catch( DataSpaceIException error )
-   {
-    error.printError();
-   }
+ //        delete file;
+ //   }  // end of try block
+ //   // catch failure caused by the H5File operations
+ //   catch( FileIException error )
+ //   {
+ //    error.printError();
+ //   }
+ //   // catch failure caused by the DataSet operations
+ //   catch( DataSetIException error )
+ //   {
+ //    error.printError();
+ //   }
+ //   // catch failure caused by the DataSpace operations
+ //   catch( DataSpaceIException error )
+ //   {
+ //    error.printError();
+ //   }
 
    return 0;
 

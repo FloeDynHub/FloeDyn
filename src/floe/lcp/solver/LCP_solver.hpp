@@ -177,7 +177,7 @@ LCPSolver<T>::solve( TContactGraph& graph, bool& success, double lcp_failed_stat
     
     if (!solved) {
         //Matt
-        // saving_matrix_unsolved_LCP(lcp_orig);
+        saving_matrix_unsolved_LCP(lcp_orig);
 
         lcp_failed_stats[0] += 1;
 
