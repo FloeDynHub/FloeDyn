@@ -23,7 +23,7 @@
 #include <algorithm>
 // #include <siconos/lcp_cst.h>
 #include <chrono>
-#include <Eigen/SVD>
+// #include <Eigen/SVD>
 // #include <JacobiSVD.h>
 
 // saving matrix when lcp solver failed for further analysing
@@ -44,15 +44,20 @@ bool LCPSolver<T>::solve( lcp_type& lcp ) {
 template<typename T>
 template<typename TContactGraph>
 std::array<vector<typename LCPSolver<T>::real_type>, 2>
-LCPSolver<T>::solve( TContactGraph& graph, bool& success, double lcp_failed_stats[] ) {
+LCPSolver<T>::solve( TContactGraph& graph, bool& success, int lcp_failed_stats[] ) {
     using namespace floe::lcp::solver;
 
     floe::lcp::builder::GraphLCP<real_type, decltype(graph)> graph_lcp( graph );
     auto lcp_orig = graph_lcp.getLCP();
     auto lcp = lcp_orig;
-    std::vector<int> lcp_test_list{1, 2, 3};
+    std::vector<int> lcp_test_list{1,2,3,3,3,4,4,4}; //lcp_test_list{4,4,4}; // best config: lcp_test_list{1,2,3,3,3,4,4,4};
 
-    int solver_used;
+    int solver_used, test_used{0};
+    static bool is_full_storage = false;
+    real_type Err;
+    real_type ECc;
+    bool vitrelnormtest; 
+    int w_fail;
 
     // %%%%%%%%%%%%%%%%%%%%%%%%
     // % phase de compression %
@@ -70,13 +75,16 @@ LCPSolver<T>::solve( TContactGraph& graph, bool& success, double lcp_failed_stat
     // int nb_solvers{5};
     for (auto test_idx : lcp_test_list)
     {
+        ++test_used;
+
         for (int i = 0; i < m_nb_solvers; ++i)
         {
             // int mpi_rk;
             // MPI_Comm_rank( MPI_COMM_WORLD, &mpi_rk );
             
-            solver_used = i;
-
+            solver_used = i+1;
+ 
+            if (test_used<=5 && i==1) {break;}// for best config: do not take into account lemke before case 4.
             solver_success = run_solver(lcp, i);
 
             // if (!solver_success)
@@ -88,7 +96,8 @@ LCPSolver<T>::solve( TContactGraph& graph, bool& success, double lcp_failed_stat
             lcp_orig.z = lcp.z;
 
              // As-t-on une meilleure solution ?
-            auto Err = LCP_error(lcp_orig);
+            Err = LCP_error(lcp_orig);
+
             if (Err < best_Err || best_Err == std::numeric_limits<real_type>::max())
             {
                 best_z = lcp.z;
@@ -98,7 +107,7 @@ LCPSolver<T>::solve( TContactGraph& graph, bool& success, double lcp_failed_stat
              // the best solution is always tested
             lcp_orig.z = best_z;
             Err = best_Err;
-            
+
              // Solution correspondante
             Solc = calcSolc(graph_lcp, lcp_orig);
 
@@ -106,54 +115,23 @@ LCPSolver<T>::solve( TContactGraph& graph, bool& success, double lcp_failed_stat
                 continue;
 
              // Energie cinetique, Erreur LCP & Vit rel Normale :
-            auto ECc = calcEc(Solc, graph_lcp.M, graph_lcp.W);
-            // Err = LCP_error(lcp_orig);
-            auto vitrelnormtest = VRelNtest(prod(trans(graph_lcp.J), Solc), graph);
-            solved = LCPtest(test_idx,ECc,1,Err,vitrelnormtest);
+            ECc = calcEc(Solc, graph_lcp.M, graph_lcp.W);
 
-            // if (lcp_orig.dim < 9){
-            //     auto JW = prod(trans(graph_lcp.J), Solc);
-            //     real_type minJW = std::numeric_limits<real_type>::max();
-            //     for (int j=0; j<graph_lcp.nb_contacts; ++j){
-            //         if (JW(j) < minJW){minJW = JW(i);}
-            //     }
-            //     std::cout << "before random: \n" 
-            //         << "A: " << lcp_orig.A << ", \n"
-            //         << "q: " << lcp_orig.q << ", \n"
-            //         << "z: " << lcp_orig.z << ", \n"
-            //         << "min of J^TW: " << minJW <<", \n"
-            //         << "VN: " << vitrelnormtest  <<", \n"
-            //         << "ECc: " << ECc <<", \n"
-            //         << "Err: " << Err <<", \n"
-            //         << "test_idx: " << test_idx <<", \n"
-            //         << "solver_used: " << solver_used <<", \n"
-            //         << "solved: " << solved <<", \n"
-            //         << "------------------------------------------ \n";
-            // }
+            vitrelnormtest = VRelNtest(prod(trans(graph_lcp.J), Solc), graph);
+
+            solved = LCPtest(test_idx,ECc,1,Err,vitrelnormtest);
 
             // if (lcp.dim > 200){ std::cout << "lcp-rk-" << mpi_rk << "-dim-" << lcp.dim << "-tidx-" << test_idx << "-success-" << solved << ", " << std::flush; }
             if (solved) {
-                m_solver_stats(test_idx-1, i) += 1; // test
+                // m_solver_stats(test_idx-1, i) += 1; // test
                 // if (!solver_success) std::cout << "SOLVER_LIE(" << i << ")"; // test
                 break; }
         }
         if (solved) {
-            // int size_delassus = 3*lcp_orig.dim/4;
-            // Eigen::MatrixXd BMB(size_delassus,size_delassus);
-            // for (int i=0;i<size_delassus;++i){
-            //     for (int j=0;j<size_delassus;++j){
-            //         BMB(i,j) = lcp_orig.A(i,j);
-            //     }
-            // }
-            // Eigen::JacobiSVD<Eigen::MatrixXd> svd(BMB);
-            // double cond = svd.singularValues()(0) / svd.singularValues()(svd.singularValues().size()-1);
-            // if (cond<1e28){
-            //     lcp_failed_stats[3] += cond;
-            // }
-            // else{
-            //     lcp_failed_stats[6] += 1;
-            // }
-            // lcp_failed_stats[3] += min(prod(trans(graph_lcp.J), Solc));
+            if (!is_full_storage){
+                w_fail = which_failure(Err,ECc,vitrelnormtest,lcp_test_list[test_used-1]);
+                is_full_storage = saving_LCP_in_hdf5(lcp_orig, solved, test_used, solver_used, Err, w_fail );
+            }
 
             break;
         }
@@ -163,100 +141,23 @@ LCPSolver<T>::solve( TContactGraph& graph, bool& success, double lcp_failed_stat
         // auto vitrelnormtest = VRelNtest(prod(trans(graph_lcp.J), Solc), graph);
         // auto ECc = calcEc(Solc, graph_lcp.M, graph_lcp.W);
 
-        random_perturbation2(lcp, 5*1e-11);
-
-        // if (lcp_orig.dim < 11){
-        //     std::cout << "after random: \n" 
-        //             << "A: " << lcp.A << ", \n"
-        //             << "q: " << lcp.q << ", \n"
-        //             << "z: " << lcp.z << ", \n"
-        //             << "J^TW: " << prod(trans(graph_lcp.J), Solc) <<", \n"
-        //             << "------------------------------------------ \n";
+        // if (test_idx==4){
+        //     random_perturbation2(lcp, 5*1e-11); //// influence of the perturbations
         // }
+        random_perturbation2(lcp, 5*1e-11); //// influence of the perturbations
+
     }
     
     if (!solved) {
         //Matt
-        saving_matrix_unsolved_LCP(lcp_orig);
+        if (!is_full_storage){
+            w_fail = which_failure(Err,ECc,vitrelnormtest,lcp_test_list[test_used-1]);
+            is_full_storage = saving_LCP_in_hdf5(lcp_orig, solved, test_used, solver_used, Err, w_fail );
+        }
 
         lcp_failed_stats[0] += 1;
+        // EndMatt
 
-        auto Err = LCP_error(lcp_orig);
-
-        auto Err_Coul = LCP_err_Coul(lcp_orig);
-
-        auto ECc = calcEc(Solc, graph_lcp.M, graph_lcp.W);
-
-        auto JW = prod(trans(graph_lcp.J), Solc);
-        real_type minJW = std::numeric_limits<real_type>::max();
-        for (int j=0; j<graph_lcp.nb_contacts; ++j){
-            if (JW(j) < minJW){minJW = JW(j);}
-        }
-
-        real_type minECoul = std::numeric_limits<real_type>::max();
-        for (int j=0; j<graph_lcp.nb_contacts; ++j){
-            if (Err_Coul(j) < minECoul){minECoul = Err_Coul(j);}
-        }
-
-        if (ECc>1 && Err <= 1e-2){lcp_failed_stats[3] += 1;
-            std::cout << "ECc = " << ECc << ",\n"
-                << "Err = " << Err << ", \n";
-        }
-        if (minJW<0){
-            lcp_failed_stats[4] += 1;
-            lcp_failed_stats[5] += minJW;
-        }
-        if (minECoul<0){
-            lcp_failed_stats[6] += 1;
-            lcp_failed_stats[7] += minECoul;
-        }
-
-        lcp_failed_stats[8] += Err;
-
-        // if (lcp_orig.dim < 9 && Err > 10) {
-        //     int size_delassus = 3*lcp_orig.dim/4;
-        //     Eigen::MatrixXd BMB(size_delassus,size_delassus);
-        //     for (int i=0;i<size_delassus;++i){
-        //         for (int j=0;j<size_delassus;++j){
-        //             BMB(i,j) = lcp_orig.A(i,j);
-        //         }
-        //     }
-
-        //     std::cout << "A: " << lcp_orig.A << ", \n"
-        //         << "q: " << lcp_orig.q << ", \n"
-        //         << "z: " << lcp_orig.z << ", \n"
-        //         << "min of J^TW: " << minJW <<", \n"
-        //         << "ECc: " << ECc <<", \n"
-        //         << "Err: " << Err <<", \n"
-        //         << "minECoul: " << minECoul <<", \n"
-        //         << "------------------------------------------ \n";
-        // }
-        // int size_delassus = 3*lcp_orig.dim/4;
-        // Eigen::MatrixXd BMB(size_delassus,size_delassus);
-        // for (int i=0;i<size_delassus;++i){
-        //     for (int j=0;j<size_delassus;++j){
-        //         BMB(i,j) = lcp_orig.A(i,j);
-        //     }
-        // }
-        // Eigen::JacobiSVD<Eigen::MatrixXd> svd(BMB);
-        // double cond = svd.singularValues()(0) / svd.singularValues()(svd.singularValues().size()-1);
-        // if (cond<1e28){
-        //     lcp_failed_stats[4] += cond;
-        // }
-        // else{
-        //     lcp_failed_stats[7] += 1;
-        // }
-
-        // if (Err>1 && lcp.dim < 11){
-        //     std::cout << "phase compression: \n" 
-        //             << "A: " << lcp_orig.A << ", \n"
-        //             << "Cond A: " << cond << ", \n"
-        //             << "q: " << lcp_orig.q << ", \n"
-        //             << "z: " << lcp_orig.z << ", \n"
-        //             << "Err:" << Err << ", \n"
-        //             << "------------------------------------------ \n";
-        // }
-        //EndMatt
         success = 0;
         return {{graph_lcp.W, floe_impulses}};
     }
@@ -289,7 +190,8 @@ LCPSolver<T>::solve( TContactGraph& graph, bool& success, double lcp_failed_stat
                 lcp_d_orig.z = lcp.z;
 
                  // As-t-on une meilleure solution ?
-                auto Err = LCP_error(lcp_d_orig);
+                // auto Err = LCP_error(lcp_d_orig);
+                Err = LCP_error(lcp_d_orig);
                 if (Err < best_Err || best_Err == std::numeric_limits<real_type>::max())
                 {
                     best_z = lcp.z;
@@ -309,7 +211,8 @@ LCPSolver<T>::solve( TContactGraph& graph, bool& success, double lcp_failed_stat
                  // Energie cinetique, Erreur LCP & Vit rel Normale :
                 auto ECd = calcEc(Sold, graph_lcp.M, graph_lcp.W);
                 // Err = LCP_error(lcp_d_orig);
-                auto vitrelnormtest = VRelNtest(prod(trans(graph_lcp.J), Sold), graph);
+                // auto vitrelnormtest = VRelNtest(prod(trans(graph_lcp.J), Sold), graph);
+                vitrelnormtest = VRelNtest(prod(trans(graph_lcp.J), Sold), graph);
                 solved = LCPtest(test_idx, ECd, 1 + born_sup, Err, vitrelnormtest);
 
                 //solution alternative pour la conservation de l'EC
@@ -318,7 +221,6 @@ LCPSolver<T>::solve( TContactGraph& graph, bool& success, double lcp_failed_stat
                     if (ECd > 1)
                     {
                         lcp_failed_stats[2] += 1;
-                        std::cout << "ECD>1 => " << ECd << " ";
                         Sold = (1 + epsilon) * Solc - epsilon * graph_lcp.W; // return this instead of Sold
                         floe_impulses = graph_lcp.impulse_vector(lcp_orig, epsilon);
                     } else {
@@ -335,34 +237,7 @@ LCPSolver<T>::solve( TContactGraph& graph, bool& success, double lcp_failed_stat
         if (!solved)
         {
             //Matt
-            // auto Err = LCP_error(lcp_d_orig);
             lcp_failed_stats[1] += 1;
-
-            // int size_delassus = 3*lcp_d_orig.dim/4;
-            // Eigen::MatrixXd BMB(size_delassus,size_delassus);
-            // for (int i=0;i<size_delassus;++i){
-            //     for (int j=0;j<size_delassus;++j){
-            //         BMB(i,j) = lcp_d_orig.A(i,j);
-            //     }
-            // }
-            // Eigen::JacobiSVD<Eigen::MatrixXd> svd(BMB);
-            // double cond = svd.singularValues()(0) / svd.singularValues()(svd.singularValues().size()-1);
-            // if (cond<1e28){
-            //     lcp_failed_stats[5] += cond;
-            // }
-            // else{
-            //     lcp_failed_stats[8] += 1;
-            // }
-
-            // if (Err>1 && lcp.dim < 11){
-            //     std::cout << "phase decompression: \n" 
-            //             << "A: " << lcp_d_orig.A << ", \n"
-            //             << "Cond A: " << cond << ", \n"
-            //             << "q: " << lcp_d_orig.q << ", \n"
-            //             << "z: " << lcp_d_orig.z << ", \n"
-            //             << "Err:" << Err << ", \n"
-            //             << "------------------------------------------ \n";
-            // }
             //EndMatt
             success = 0;
             floe_impulses = graph_lcp.impulse_vector(lcp_orig, epsilon);
@@ -542,7 +417,6 @@ void LCPSolver<T>::random_perturbation2(lcp_type& lcp, real_type max){
     */
 }
 
-
 template<typename T>
 template<typename TContactGraph>
 bool LCPSolver<T>::VRelNtest(const vector<real_type>& V, const TContactGraph& graph){
@@ -573,10 +447,35 @@ T LCPSolver<T>::random_real(T max)
 
 
 template<typename T>
-void LCPSolver<T>::saving_matrix_unsolved_LCP(lcp_type& lcp){
-    const H5std_string FILE_NAME( "/Users/matthiasrabatel/Travail/outputs_mycode/matrix.h5" );
-    const H5std_string GROUP_NAME1( "Delassus Matrix of unsolved LCP" );
-    const H5std_string GROUP_NAME2( "Corresponding relative velocities" );
+bool LCPSolver<T>::saving_LCP_in_hdf5(lcp_type& lcp, bool solved, int test_idx, int solver_used, real_type lcp_err, int w_fail){
+
+    const H5std_string FILE_NAME("/Users/matthiasrabatel/Travail/outputs_mycode/matrix.h5");
+    const H5std_string GROUP_NAME_I( "solved" ); // root group
+    const H5std_string GROUP_NAME_II( "unsolved" ); // root group
+    const H5std_string GROUP_NAME1( "M" ); 
+    const H5std_string GROUP_NAME2( "q" );
+    const H5std_string GROUP_NAME3( "z" );
+    const H5std_string LCP_error( "LCP error" );
+    const H5std_string Last_Memb( "Last LCP" ); // to prevent similar LCP
+    const H5std_string Contact_Graph_Info( "Contact Graph Info" ); // to store information on the contact graph and the "while loop"
+    const H5std_string Idx_solver( "Which solver" ); // Information on which solver, 
+    // how many random perturbations are used before to compute solution, the index in the h5 file and
+    // the source of the LCP error (see which_failure)
+    const hsize_t Max_storage_sol = 15000;
+    const hsize_t Max_storage_unsol = 15000;
+
+
+    H5std_string GROUP_TEMP;
+    hsize_t Max_storage_temp;
+
+    if (solved){
+        GROUP_TEMP = "solved";
+        Max_storage_temp = Max_storage_sol;
+    }
+    else {
+        GROUP_TEMP = "unsolved";
+        Max_storage_temp = Max_storage_unsol;
+    }
 
     /*
      * Try block to detect exceptions raised by any of the calls inside it
@@ -595,88 +494,294 @@ void LCPSolver<T>::saving_matrix_unsolved_LCP(lcp_type& lcp){
             file = new H5File( FILE_NAME, H5F_ACC_RDWR );
         } catch (...) {
             file = new H5File( FILE_NAME, H5F_ACC_TRUNC );
+
+            Group* M_solved = new Group(file->createGroup(GROUP_NAME_I));
+            Group(M_solved->createGroup(GROUP_NAME1));
+            Group(M_solved->createGroup(GROUP_NAME2));
+            Group(M_solved->createGroup(GROUP_NAME3));
+
+            Group* M_unsolved = new Group(file->createGroup(GROUP_NAME_II));
+            Group(M_unsolved->createGroup(GROUP_NAME1));
+            Group(M_unsolved->createGroup(GROUP_NAME2));
+            Group(M_unsolved->createGroup(GROUP_NAME3));
+
+            hsize_t dim_LM[1] = {1};
+            DataSpace space_LM( 1, dim_LM );
+            DataSet(M_solved->createDataSet( Last_Memb, PredType::NATIVE_INT, space_LM ));
+            DataSet(M_unsolved->createDataSet( Last_Memb, PredType::NATIVE_INT, space_LM ));
+
+            hsize_t dim_idx_solver[2] = {1, 4};
+            hsize_t maxdims[2] = {H5S_UNLIMITED, 4}; // unlimited dataspace
+            DataSpace space_solver( 2, dim_idx_solver, maxdims );
+            DSetCreatPropList prop; // Modify dataset creation property to enable chunking
+            hsize_t chunk_dims[2] = {1, 4}; // with extendible dataset we cannot use contiguous but chunked dataset
+            prop.setChunk(2, chunk_dims);
+            DataSet(M_solved->createDataSet( Idx_solver, PredType::NATIVE_INT, space_solver, prop ));
+            DataSet(M_unsolved->createDataSet( Idx_solver, PredType::NATIVE_INT, space_solver, prop ));
+
+            hsize_t maxdims_le[1] = {H5S_UNLIMITED};
+            DataSpace space_LE( 1, dim_LM, maxdims_le );
+            DSetCreatPropList prop_le; // Modify dataset creation property to enable chunking
+            hsize_t chunk_dims_le[1] = {1}; // with extendible dataset we cannot use contiguous but chunked dataset
+            prop_le.setChunk(1, chunk_dims_le);
+            DataSet(M_solved->createDataSet( LCP_error, PredType::NATIVE_DOUBLE, space_LE, prop_le ));
+            DataSet(M_unsolved->createDataSet( LCP_error, PredType::NATIVE_DOUBLE, space_LE, prop_le ));
+
+            delete M_unsolved;
+            delete M_solved;
         }
         
         /*
-         * Create or Open the groups
+         * Recovering the number of LCP
          */
-        Group* Matrix_G;
-        Group* Vector_G;
-        try {
-            Matrix_G = new Group(file->openGroup(GROUP_NAME1));
-            Vector_G = new Group(file->openGroup(GROUP_NAME2));
-        } catch (...) {
-            /* Create group for floe shapes */
-            Matrix_G = new Group(file->createGroup(GROUP_NAME1));
-            Vector_G = new Group(file->createGroup(GROUP_NAME2));
+        Group *Matrix_G, *Vector_G, *Z_G, *Root;
+
+        Group* M_solved = new Group(file->openGroup(GROUP_NAME_I));
+        Group* MS = new Group(M_solved->openGroup(GROUP_NAME1));
+        hsize_t nb_lcp_sol = MS->getNumObjs();
+
+        Group* M_unsolved = new Group(file->openGroup(GROUP_NAME_II));
+        Group* MU = new Group(M_unsolved->openGroup(GROUP_NAME1));
+        hsize_t nb_lcp_unsol = MU->getNumObjs();
+
+        hsize_t nb_lcp = nb_lcp_sol + nb_lcp_unsol;
+
+        delete M_unsolved;
+        delete M_solved;
+        delete MS;
+        delete MU;
+
+        /*
+         * Checking if the total capacity of storage is reached
+         */
+        if (nb_lcp_sol > Max_storage_sol && nb_lcp_unsol > Max_storage_unsol){
+            std::cout << "the maximum storage (" << Max_storage_sol+Max_storage_unsol << ") is reached.\n";
+            delete file;
+            return true;
         }
 
-        hsize_t Group_size = Matrix_G->getNumObjs();
-        const H5std_string name_matrix = std::to_string(Group_size+1);
+        Root = new Group(file->openGroup(GROUP_TEMP));
+        Matrix_G = new Group(Root->openGroup(GROUP_NAME1));
+        Vector_G = new Group(Root->openGroup(GROUP_NAME2));
+        Z_G = new Group(Root->openGroup(GROUP_NAME3));
+
+        hsize_t nb_lcp_temp = Matrix_G->getNumObjs();
+
+        if (nb_lcp_temp > Max_storage_temp){
+            delete Matrix_G;
+            delete Vector_G;
+            delete Z_G;
+            delete Root;
+            delete file;
+            return false;
+        }
+
+        bool G_exist = 1;
+        if (nb_lcp_temp==0) {
+            G_exist=0;
+            // Initialisation: we fulfill the first line before to extend the dataset
+            DataSet* dataset_solver = new DataSet(Root->openDataSet( Idx_solver ));
+            int idx_solv[4] = { test_idx , solver_used,  static_cast<int>(nb_lcp+1), w_fail };
+            dataset_solver->write(idx_solv, PredType::NATIVE_INT);
+
+            DataSet* dataset_LE = new DataSet(Root->openDataSet( LCP_error ));
+            dataset_LE->write(&lcp_err, PredType::NATIVE_DOUBLE);
+        }
+
+        /*
+         * Comparison to the previous LCP failure (to prevent similar LCP)
+         */
+        bool isnt_same_LCP = 1;
+
+        if (G_exist) {
+            int last_lcp[1];
+            DataSet* dataset_LM = new DataSet(Root->openDataSet( Last_Memb ));
+            dataset_LM->read( last_lcp, PredType::NATIVE_INT );
+
+            const H5std_string name_data_pre = std::to_string(last_lcp[0]);
+
+            DataSet* dataset_pre = new DataSet(Matrix_G->openDataSet( name_data_pre ));
+
+            DataSpace fspace1 = dataset_pre->getSpace();
+            std::size_t dim_out = std::sqrt( fspace1.getSelectNpoints() );
+   
+            if (dim_out==lcp.dim){
+                double data_out[dim_out][dim_out];
+
+                dataset_pre->read( data_out, PredType::NATIVE_DOUBLE );
+
+                /*
+                 * Check if matrix already exists? (A large number of attempt to solve LCP)
+                 */
+                const int dim_D = 3*lcp.dim/4; // size of the Delassus matrix
+                Eigen::MatrixXd Diff( dim_D , dim_D );
+                for (int i=0; i<dim_D; ++i){
+                    for (int j=0; j<dim_D; ++j){
+                        const double val_rel = std::min( std::abs(lcp.A(i,j)) , std::abs(data_out[i][j]) );
+                        double div = val_rel;
+                        if (val_rel==0) {div = 1.0;}
+                        const double val_rel_a = (lcp.A(i,j) - data_out[i][j])/div;
+
+                        Diff(i,j) = std::max( std::abs( val_rel_a ) , 0.0);
+                    }
+                }
+                isnt_same_LCP = Diff.norm() > 1e-7;
+            } 
+        }
+
         /*
          * Create dataspace for the dataset in the file.
          */
-        const int dim_M = lcp.dim;
-        hsize_t dim_space_M[2];
-        dim_space_M[0] = dim_M;
-        dim_space_M[1] = dim_M;
-        DataSpace fspace_M( 2, dim_space_M );
-        /*
-         * Create dataset and write it into the file.
-         */
-        DataSet* dataset_M = new DataSet(Matrix_G->createDataSet(name_matrix
-            , PredType::NATIVE_DOUBLE, fspace_M));
+        const H5std_string name_matrix = std::to_string(nb_lcp+1);
+    
+        if (isnt_same_LCP) {
+            int dim_M = lcp.dim;
+            hsize_t dim_space_M[2];
+            dim_space_M[0] = dim_space_M[1] = dim_M;
+            DataSpace fspace_M( 2, dim_space_M );
+            
+            /*
+             * Create dataset and write it into the file.
+             */
+            DataSet* dataset_M = new DataSet(Matrix_G->createDataSet(name_matrix
+                , PredType::NATIVE_DOUBLE, fspace_M));
 
-        /*
-         * Conversion Eigen -> DOUBLE
-         */
-        double Delassus[dim_M][dim_M];
-        for (int i=0; i<dim_M; ++i){
-            for (int j=0; j<dim_M; ++j){
-                Delassus[i][j] = lcp.A(i,j);
+            /*
+             * Conversion Eigen -> DOUBLE
+             */
+            double lcp_M[dim_M][dim_M];
+            for (int i=0; i<dim_M; ++i){
+                for (int j=0; j<dim_M; ++j){
+                    lcp_M[i][j] = lcp.A(i,j);
+                }
             }
+
+            dataset_M->write(lcp_M, PredType::NATIVE_DOUBLE);
+
+            /*
+             * Close the dataset
+             */        
+            delete dataset_M;
+
+            /*
+             * Save the name of the last written matrix 
+             */
+            DataSet* dataset_LM = new DataSet(Root->openDataSet( Last_Memb ));
+            const int nb_LM[1] = {static_cast<int>(nb_lcp+1)};
+            dataset_LM->write(nb_LM, PredType::NATIVE_INT);
+            delete dataset_LM;
+
+            /*
+             * fulfill extendible dataset
+             */
+            if (G_exist){
+                /*
+                 * Save information on solvers with extendible dataset
+                 */
+                DataSet* dataset_solver = new DataSet(Root->openDataSet( Idx_solver ));
+                DataSpace space_solver = dataset_solver->getSpace();
+                hsize_t dim_curr_s[2]; // dimension of the dataset
+                space_solver.getSimpleExtentDims( dim_curr_s, NULL); // retrieves the current dimensions 
+                hsize_t ext_size_s[2] = { dim_curr_s[0]+1, dim_curr_s[1]}; 
+                dataset_solver->extend( ext_size_s ); // extension with one new line 
+      
+                DataSpace fspace_s = dataset_solver->getSpace();
+                hsize_t dim_s[2] = {1,4}; 
+                hsize_t offset_s[2] = {dim_curr_s[0], 0};
+                fspace_s.selectHyperslab( H5S_SELECT_SET, dim_s, offset_s); // selection of the hyperslab
+                DataSpace mspace_s( 2, dim_s );
+                int idx_solv[4] = { test_idx , solver_used, static_cast<int>(nb_lcp+1), w_fail };
+                dataset_solver->write(idx_solv, PredType::NATIVE_INT, mspace_s, fspace_s); // write in the hyperslab
+                
+                delete dataset_solver;
+
+                /*
+                 * Save information on LCP error with extendible dataset
+                 */                
+                DataSet* dataset_LE = new DataSet(Root->openDataSet( LCP_error ));
+                DataSpace space_LE = dataset_LE->getSpace();
+                hsize_t dim_curr_le[1]; // dimension of the dataset
+                space_LE.getSimpleExtentDims( dim_curr_le, NULL); // retrieves the current dimensions 
+                hsize_t ext_size_le[1] = { dim_curr_le[0]+1}; 
+                dataset_LE->extend( ext_size_le ); // extension with one new line 
+      
+                DataSpace fspace_le = dataset_LE->getSpace();
+                hsize_t dim_le[1] = {1}; 
+                hsize_t offset_le[1] = {dim_curr_le[0]};
+                fspace_le.selectHyperslab( H5S_SELECT_SET, dim_le, offset_le); // selection of the hyperslab
+                DataSpace mspace_le( 1, dim_le );
+                dataset_LE->write(&lcp_err, PredType::NATIVE_DOUBLE, mspace_le, fspace_le); // write in the hyperslab
+
+                delete dataset_LE;
+            }
+            /*-----------------------------------------------------------------------------------------
+             * new dataset for relative velocities
+             *---------------------------------------------------------------------------------------*/
+            const H5std_string name_vector = name_matrix;
+            /*
+             * Create dataspace for the dataset in the file.
+             */
+
+            hsize_t dim_space_q[1];
+            dim_space_q[0] = dim_M;
+            DataSpace fspace_q( 1, dim_space_q );
+            /*
+             * Create dataset and write it into the file.
+             */
+            DataSet* dataset_q = new DataSet(Vector_G->createDataSet(name_vector
+                , PredType::NATIVE_DOUBLE, fspace_q));
+
+            /*
+             * Conversion Eigen -> DOUBLE
+             */
+            double lcp_q[dim_M];
+            for (int i=0; i<dim_M; ++i){
+                lcp_q[i] = lcp.q(i);
+            }
+
+            dataset_q->write(lcp_q, PredType::NATIVE_DOUBLE);
+
+            /*
+             * Close the dataset and the file.
+             */        
+            delete dataset_q;
+
+            /*-----------------------------------------------------------------------------------------
+             * new dataset for z solution of LCP(q,M)
+             *---------------------------------------------------------------------------------------*/
+            const H5std_string name_z = name_matrix;
+            /*
+             * Create dataspace for the dataset in the file.
+             */
+
+            hsize_t dim_z[1];
+            dim_z[0] = dim_M;
+            DataSpace fspace_z( 1, dim_z );
+            /*
+             * Create dataset and write it into the file.
+             */
+            DataSet* dataset_z = new DataSet(Z_G->createDataSet(name_z
+                , PredType::NATIVE_DOUBLE, fspace_z));
+
+            /*
+             * Conversion Eigen -> DOUBLE
+             */
+            double lcp_z[dim_M];
+            for (int i=0; i<dim_M; ++i){
+                lcp_z[i] = lcp.z(i);
+            }
+            dataset_z->write(lcp_z, PredType::NATIVE_DOUBLE);
+
+            /*
+             * Close the dataset and the file.
+             */        
+            delete dataset_z;
+
         }
-
-        dataset_M->write(Delassus, PredType::NATIVE_DOUBLE);
-
-        /*
-         * Close the dataset and the file.
-         */        
-        delete dataset_M;
-
-        /*-----------------------------------------------------------------------------------------
-         * new dataset for relative velocities
-         *---------------------------------------------------------------------------------------*/
-        const H5std_string name_vector = std::to_string(Group_size+1);
-        /*
-         * Create dataspace for the dataset in the file.
-         */
-
-        hsize_t dim_space_V[1];
-        dim_space_V[0] = dim_M;
-
-        DataSpace fspace_V( 1, dim_space_V );
-        /*
-         * Create dataset and write it into the file.
-         */
-
-        DataSet* dataset_V = new DataSet(Vector_G->createDataSet(name_vector
-            , PredType::NATIVE_DOUBLE, fspace_V));
-
-        /*
-         * Conversion Eigen -> DOUBLE
-         */
-        double rel_vel[dim_M];
-        for (int i=0; i<dim_M; ++i){
-            rel_vel[i] = lcp.q(i);
-        }
-
-        dataset_V->write(rel_vel, PredType::NATIVE_DOUBLE);
-
-        /*
-         * Close the dataset and the file.
-         */        
-        delete dataset_V;
+        delete Matrix_G;
+        delete Vector_G;
+        delete Z_G;
+        delete Root;
         delete file;
    }  // end of try block
    // catch failure caused by the H5File operations
@@ -694,8 +799,26 @@ void LCPSolver<T>::saving_matrix_unsolved_LCP(lcp_type& lcp){
    {
     error.printError();
    }
+   return false;
 }
 
+
+template<typename T>
+int LCPSolver<T>::which_failure(real_type Err, real_type EC, bool rel_n_vel, int compt){
+
+    int source=0;
+    real_type err_limit{0}, ec_limit{0};
+    if (compt==1) {err_limit=5*1e-11; ec_limit=1+1e-4;}
+    else if (compt==2) {err_limit=1e-8; ec_limit=1+1e-4;}
+    else if (compt==3) {err_limit=1e-2; ec_limit=1+1e-2;}
+    else if (compt==4) {err_limit=std::numeric_limits<real_type>::max(); ec_limit=1+1e-2;}
+
+    if (Err>err_limit){source += 100;}
+    if (EC>ec_limit) {source += 20;}
+    if (!rel_n_vel){source += 3;}
+
+    return source;
+}
 
 }}} // namespace floe::lcp::solver
 

@@ -70,7 +70,7 @@ void lcp_lexicolemke(int dim, const double * M, const double * q, double *zlem ,
     // int itermax = std::min(40*dim, 2000); // original
     // test: max iter = 2^n
     // int power = std::pow( 2, dim );
-    // int itermax = std::min( power , 10000);
+    // int itermax = std::min( power , 10000); // very bad choice
     int itermax = 10000;
 
     i=0;

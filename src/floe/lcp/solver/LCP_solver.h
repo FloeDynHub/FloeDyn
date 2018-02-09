@@ -15,6 +15,7 @@
 #include <tuple>
 
 #include <iostream> // debug
+#include <assert.h>
 #include <Eigen/SVD> // saving matrix
 
 
@@ -38,7 +39,7 @@ public:
     using real_type = T;
 
     LCPSolver(real_type epsilon) : epsilon{epsilon}, m_random_generator{}, m_uniform_distribution{-1, 1},
-        m_nb_solvers{1}, m_solver_stats(3, m_nb_solvers, 0) {}
+        m_nb_solvers{2} {}//, m_solver_stats(3, m_nb_solvers, 0) {}
 
     // ~LCPSolver(){
         // std::cout << "LCP solver stats : " << std::endl;
@@ -55,7 +56,7 @@ public:
     //! Solve LCP
     bool solve( lcp_type& lcp );
     template<typename TContactGraph>
-    std::array<vector<real_type>, 2> solve( TContactGraph& graph, bool& success, double lcp_failed_stats[] );
+    std::array<vector<real_type>, 2> solve( TContactGraph& graph, bool& success, int lcp_failed_stats[] );
 
     int nb_solver_run{0}; // test (nb call run_solver() in step)
     double chrono_solver{0.0}; // test perf
@@ -68,7 +69,7 @@ protected:
     std::uniform_real_distribution<real_type> m_uniform_distribution;
     int m_nb_solvers;
     
-    matrix<int> m_solver_stats; // test solver stats
+    // matrix<int> m_solver_stats; // test solver stats
 
     //! Random small perturbation of LCP
     lcp_type random_perturbation(lcp_type& lcp, real_type max);
@@ -98,8 +99,13 @@ protected:
     template<typename TContactGraph>
     bool VRelNtest(const vector<real_type>& V, const TContactGraph& graph);
 
-    //! Saving the Delassus matrix of unsolved LCP for further analysis
-    void saving_matrix_unsolved_LCP(lcp_type& lcp);
+    //! Saving M and q from dealt with LCP(M,q) (solved and unsolved) for further analysis
+    //! Return a boolean to prevent the maximum capacity to store (ex: 50 000 LCP ~ 250 Mo)
+    bool saving_LCP_in_hdf5(lcp_type& lcp, bool solved, int test_idx, int solver_idx, real_type Err, int w_fail);
+    
+    //! Saving information about the source of the error: 100 for LCP error, 20 for increase of Kinetic Energy,
+    //! 3 for relative normale velocity that may cause an interpenetration. Ex: 123 correspond to all of sources.
+    int which_failure(real_type Err, real_type Sol, bool rel_n_vel, int compt);
 
 };
 
