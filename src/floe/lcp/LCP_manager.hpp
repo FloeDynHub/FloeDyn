@@ -14,6 +14,7 @@
 #include <array>
 #include <algorithm>
 #include <chrono> // test perf
+#include <vector>
 
 #ifdef _OPENMP
 #include <omp.h>
@@ -64,12 +65,10 @@ private:
     solver_type m_solver; //!< LCP Solver
     long m_nb_lcp; //!< Total number of LCP managed
     long m_nb_lcp_success; //!< Total number of LCP solving success
-    //Matt
     long m_nb_lcp_failed_stats[3]={0,0,0}; // LCP failed statistics: [nb LCP failed during compression phase,
     // nb LCP failed during decompression phase, nb LCP solved maintaining the kinetic energy in decompression phase].
     // Other LCP statistics are found in the matlab routine (see folder: outputs_mycode).
-    //EndMatt
-
+    
     double chrono_active_subgraph{0.0}; // test perf
     double max_chrono_active_subgraph{0.0}; // test perf
 
@@ -92,7 +91,8 @@ private:
 
         \warning Do not be confused with contact graph, sub-graph and active sub-graph (see LCPManager::solve_contacts). 
     */
-    bool saving_contact_graph_in_hdf5(int lcp_count, std::size_t loop_count, std::size_t size_asubgraph, bool all_solved );
+    bool saving_contact_graph_in_hdf5(int lcp_count, std::size_t loop_count, std::size_t size_asubgraph, 
+        bool all_solved, int contact_loop_stats[] );
 };
 
 
@@ -103,6 +103,8 @@ int LCPManager<T>::solve_contacts(TContactGraph& contact_graph)
     auto const subgraphs = collision_subgraphs( contact_graph );
     int LCP_count = 0, nb_success = 0;
     int nb_lcp_failed_stats[3]={0,0,0}; 
+    int contact_loop_stats[2]={0,0}; // number of contact points, indicator for be out of loop due to all success (1) or no success (0) 
+    // or no enough iteration (2)
     static bool end_recording = false;
 
     // m_solver.nb_solver_run = 0; // test perf
@@ -128,14 +130,17 @@ int LCPManager<T>::solve_contacts(TContactGraph& contact_graph)
         std::size_t loop_cnt = 0;
         int loop_nb_success = -1;
         std::size_t size_a_sub_graph = asubgraphs.size();
+        contact_loop_stats[0] = static_cast<int>(num_contacts(subgraph));
+        contact_loop_stats[1] = 1;
         bool all_solved = true;
         while (asubgraphs.size() != 0
                && loop_cnt < std::min( 60 * num_contacts(subgraph), std::size_t{1000})
                && loop_nb_success !=0 )
         {
-            int loop_nb_success = 0; // if no succes after one total path of contact graph, no use (nothing change)
+            loop_nb_success = 0; // if no succes after one total path of contact graph, no use (nothing change)
             // to browse again the while loop. Thus we add "loop_nb_succes !=0".
             LCP_count += asubgraphs.size();
+
             for ( auto const& graph : asubgraphs ) // loop over the total number of active contact group
             {
                 bool success;
@@ -144,13 +149,13 @@ int LCPManager<T>::solve_contacts(TContactGraph& contact_graph)
                     for ( auto const& igraph : quad_cut( graph ) ){
                         auto Sol = m_solver.solve( igraph, success, nb_lcp_failed_stats );
                         mark_solved(igraph, success);
-                        if (success) loop_nb_success++;
+                        if (success) {++loop_nb_success;}
                         update_floes_state(igraph, Sol);
                     }
                 } else {
                     auto Sol = m_solver.solve( graph, success, nb_lcp_failed_stats );
                     mark_solved(graph, success);
-                    if (success) loop_nb_success++;
+                    if (success) {++loop_nb_success;}
                     update_floes_state(graph, Sol); // updates the velocity of floes
                 }
                 mark_changed_parent(graph, subgraph); // indicates which floes have been modified
@@ -162,19 +167,17 @@ int LCPManager<T>::solve_contacts(TContactGraph& contact_graph)
             // chrono_active_subgraph += call_time; // test perf
             // max_chrono_active_subgraph = std::max(max_chrono_active_subgraph, call_time); // test perf
             nb_success += loop_nb_success;
-            loop_cnt++;
+            ++loop_cnt;
 
-            /*
-             * IF THERE ARE STILL A ACTIVE SUBGRAPH NOT SOLVED AND LOOP_CNT < ... THEN WE BROWSE THE WHILE LOOP
-             * UNTIL LOOP_CNT = ... (often 1000) EXPECTING "some random_perturbation2()" ALLOW TO SOLVED THIS LCP!!!!
-             * WE NEED TO CHANGE THAT, AT LEAST TO PREVENT STAY TOO LONG EXPECTING A RESOLUTION!!!!
-             */
+            if (loop_nb_success==0) {contact_loop_stats[1] = 0;}
         }
         if (asubgraphs.size() != 0)
         {
             all_solved = false;
+            if (loop_nb_success!=0) {contact_loop_stats[1] = 2;}
             std::cout << "End of the while loop without resolution of all contacts!!\n";
-            LCP_count += asubgraphs.size();
+            // LCP_count += asubgraphs.size();
+
             for ( auto const& graph : asubgraphs ) mark_solved(graph, false);
         }
 
@@ -184,7 +187,7 @@ int LCPManager<T>::solve_contacts(TContactGraph& contact_graph)
          * Recovery of contact data (LCP_count, etc). Save in h5 file:
          */
         if (!end_recording && size_a_sub_graph!=0) {
-            end_recording = saving_contact_graph_in_hdf5( LCP_count, loop_cnt, size_a_sub_graph, all_solved );
+            end_recording = saving_contact_graph_in_hdf5( LCP_count, loop_cnt, size_a_sub_graph, all_solved, contact_loop_stats );
         } 
         // EndMat
 
@@ -270,17 +273,17 @@ void LCPManager<T>::update_floes_state(TContactGraph& graph, const std::array<va
 }
 
 template<typename T>
-bool LCPManager<T>::saving_contact_graph_in_hdf5(int LCP_count, std::size_t loop_count, std::size_t size_a_sub_graph, bool all_solved ){
+bool LCPManager<T>::saving_contact_graph_in_hdf5(int LCP_count, std::size_t loop_count, std::size_t size_a_sub_graph,
+ bool all_solved, int contact_loop_stats[] ){
 
     const H5std_string FILE_NAME("/Users/matthiasrabatel/Travail/outputs_mycode/matrix.h5");
     const H5std_string GROUP_NAME_I( "solved" ); // root group
     const H5std_string GROUP_NAME_II( "unsolved" ); // root group
-    const H5std_string GROUP_NAME1( "M" ); 
     const H5std_string Last_Memb( "Last LCP" ); // to prevent similar LCP
     const H5std_string Contact_Graph_Info( "Contact Graph Info" );
-    const hsize_t Max_storage_sol = 15000;
-    const hsize_t Max_storage_unsol = 15000;
-    const hsize_t Max_storage_line = 15000;
+    const hsize_t Max_storage_line = 50000;
+
+    const int dim_stats = 8; // number of saved data on the contact loop.
 
     /*
      * Try block to detect exceptions raised by any of the calls inside it
@@ -301,27 +304,8 @@ bool LCPManager<T>::saving_contact_graph_in_hdf5(int LCP_count, std::size_t loop
             return false;
         }
 
-        /*
-         * Checking if the total capacity of storage is reached
-         */
         Group* M_solved = new Group(file->openGroup(GROUP_NAME_I));
         Group* M_unsolved = new Group(file->openGroup(GROUP_NAME_II));
-
-        Group* MS = new Group(M_solved->openGroup(GROUP_NAME1));
-        hsize_t nb_lcp_sol = MS->getNumObjs();
-
-        Group* MU = new Group(M_unsolved->openGroup(GROUP_NAME1));
-        hsize_t nb_lcp_unsol = MU->getNumObjs();
-
-        delete MS;
-        delete MU;
-
-        if (nb_lcp_sol > Max_storage_sol && nb_lcp_unsol > Max_storage_unsol){
-            delete M_unsolved;
-            delete M_solved;
-            delete file;
-            return true;
-        }
 
         int last_lcp_uns[1];
         DataSet* dataset_LM_uns = new DataSet(M_unsolved->openDataSet( Last_Memb ));
@@ -358,51 +342,52 @@ bool LCPManager<T>::saving_contact_graph_in_hdf5(int LCP_count, std::size_t loop
                     return true; 
                 }
 
-                int ind_lcp[2];
-                hsize_t dim_ind[2]={1,2};
-                int dim_curr_ind = static_cast<int>(dim_curr_cgi[0]-1);
-                hsize_t offset_ind[2];
-                offset_ind[0] = dim_curr_ind; offset_ind[1] = 0;
-                DataSpace mspace_ind( 2, dim_ind );
-                fpsace_ind.selectHyperslab(H5S_SELECT_SET, dim_ind, offset_ind);
-                CGI->read( ind_lcp, PredType::NATIVE_INT, mspace_ind, fpsace_ind );
+                // int ind_lcp[2];
+                // hsize_t dim_ind[2]={1,2};
+                // int dim_curr_ind = static_cast<int>(dim_curr_cgi[0]-1);
+                // hsize_t offset_ind[2];
+                // offset_ind[0] = dim_curr_ind; offset_ind[1] = 0;
+                // DataSpace mspace_ind( 2, dim_ind );
+                // fpsace_ind.selectHyperslab(H5S_SELECT_SET, dim_ind, offset_ind);
+                // CGI->read( ind_lcp, PredType::NATIVE_INT, mspace_ind, fpsace_ind );
 
-                if (ind_lcp[0]==last_lcp_uns[0] && ind_lcp[1]==last_lcp[0]) {
-                    delete M_unsolved;
-                    delete M_solved;
-                    delete CGI;
-                    delete file; 
-                    return false;
-                }
-                    
+                // if (ind_lcp[0]==last_lcp_uns[0] && ind_lcp[1]==last_lcp[0]) {
+                //     delete M_unsolved;
+                //     delete M_solved;
+                //     delete CGI;
+                //     delete file; 
+                //     return false;
+                // }
  
                 hsize_t ext_size[2] = { dim_curr_cgi[0]+1, dim_curr_cgi[1]};
                 CGI->extend( ext_size ); // extension with one new line 
 
-
             }
             catch (...) {
                 // Creation of dataset to store information on contact graph and the "while loop":
-                hsize_t dim_cg[2] = {1, 6};
-                hsize_t maxdims_cg[2] = {H5S_UNLIMITED, 6}; // unlimited dataspace
+                hsize_t dim_cg[2] = {1, dim_stats};
+                hsize_t maxdims_cg[2] = {H5S_UNLIMITED, dim_stats}; // unlimited dataspace
                 DataSpace space_cg( 2, dim_cg, maxdims_cg );
                 DSetCreatPropList prop_cg; // Modify dataset creation property to enable chunking
-                hsize_t chunk_dims_cg[2] = {1, 6}; // with extendible dataset we cannot use contiguous but chunked dataset
+                hsize_t chunk_dims_cg[2] = {1, dim_stats}; // with extendible dataset we cannot use contiguous but chunked dataset
                 prop_cg.setChunk(2, chunk_dims_cg);
                 CGI = new DataSet(file->createDataSet( Contact_Graph_Info, PredType::NATIVE_INT, space_cg, prop_cg ));
             }
         }
 
-        int contact_stat[6];
+        int contact_stat[dim_stats];
         contact_stat[0] = last_lcp_uns[0];
         contact_stat[1] = last_lcp[0];
         contact_stat[2] = LCP_count;
-        contact_stat[3] = loop_count;
+        contact_stat[3] = static_cast<int>(loop_count);
         contact_stat[4] = static_cast<int>(size_a_sub_graph);
         contact_stat[5] =  (all_solved == true)? 1:0;
+        contact_stat[6] = contact_loop_stats[0]; // number of contact points
+        contact_stat[7] = contact_loop_stats[1]; // indicator for be out of loop due to all success (1) or no success (0) 
+        // or no enough iteration (2)
 
         DataSpace fspace_cgi = CGI->getSpace();
-        hsize_t dim_cgi[2] = {1,6}; 
+        hsize_t dim_cgi[2] = {1,dim_stats}; 
         hsize_t offset_cgi[2] = {dim_curr_cgi[0], 0};
         fspace_cgi.selectHyperslab( H5S_SELECT_SET, dim_cgi, offset_cgi); // selection of the hyperslab
         DataSpace mspace_cgi( 2, dim_cgi );

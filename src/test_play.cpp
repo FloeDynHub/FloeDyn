@@ -4,8 +4,14 @@
 #include <boost/numeric/ublas/vector_proxy.hpp>
 #include <boost/numeric/ublas/blas.hpp>
 #include <boost/multi_array.hpp>
-
+#include <boost/numeric/ublas/matrix.hpp>
+#include <boost/numeric/ublas/vector.hpp>
+// #include <boost/numeric/ublas/io.hpp>
+#include <vector>
 // using namespace Eigen;
+#include <algorithm>
+
+using namespace boost::numeric::ublas;
 
 // #include <string>
 // #include <H5Cpp.h>
@@ -13,29 +19,93 @@
 
 // const H5std_string file1( "matrix.h5" );
 
-using std::cout;
-using std::endl;
+// using namespace std;
 
 #include <string>
-#include "H5Cpp.h"
-using namespace H5;
+// #include "H5Cpp.h"
+// using namespace H5;
 
 
 // int main( int argc, char* argv[] )
 // {
 
+void blabla(int result);
 
 int main (void)
 {
+	std::vector<int> v(6,0);
+	// std::vector<int>::iterator it=v.begin();
+	for (std::size_t i=0; i<v.size(); ++i) {
+		if (i==2 || i==4){ v[i] = 1;}
+		else {v[i]=3;}
+	}
+ 
+    std::vector<int>::iterator result = std::min_element(std::begin(v), std::end(v));
+    std::cout << "min element:" << *result << ", at: " << (result-v.begin()) << "\n";
 
-	int power = std::pow( 2, 20 );
-	int itermax = std::min(power , 10000);
-	std::cout << itermax << "\n";
+    blabla(*result);
 
+	// int ll = -1;
+	// int dd = 10;
+	// int count = 0;
+	// int bb = -1;
 
- //    const H5std_string FILE_NAME( "Select.h5" );
- //    const H5std_string GROUP_NAME1( "Delassus Matrix of unsolved LCP" );
- //    const H5std_string GROUP_NAME2( "Corresponding relative velocities" );
+	// matrix< double > v(dd,dd);
+
+	// std::vector<int> v(dd,0);
+
+	// std::size_t dim=v.size();
+
+	// for (int i=0; i<dim; ++i) {
+ //        if (i == 3) {
+ //            v[i] = 2;
+ //        }
+ //    }
+
+	// std::vector<int>::iterator it;
+	// it = std::find(v.begin(), v.end(), 2);
+	// std::cout << "v(4) = " << v[4] << "\n";
+	// std::cout << "element: " << *it << " find in: " << (it-v.begin()) << " find in related to the end: " << (it-v.end()) << "\n";
+
+	// int index = (it-v.begin());
+	// if (index==0) {std::cout << "sdfg\n";}
+
+	// int i;
+	// while (ll!=0 && dd==1 && bb!=0 && i<10){
+	// 	int bb = 0;
+	// 	std::cout << "je suis dans While depuis:" << count << "tour\n";
+
+	// 	++i;
+
+	// 	if (count>5){
+	// 		dd = 1;
+	// 		bb = 1;
+	// 		++count;
+	// 		continue;
+	// 	}
+	// 	if (count>11){
+	// 		bb = 6;
+	// 		ll = 0;
+	// 	}
+	// 	if (count>7){
+	// 		bb = 0;
+	// 	}
+	// 	++count;
+	// }
+
+	// std::cout << "je suis sortie de While apres:" << count << "tour\n";
+	// std::cout << "Mais non, je suis sortie de While apres:" << i << "tour\n";
+
+	// int power = std::pow( 2, 20 );
+	// int itermax = std::min(power , 10000);
+	// std::cout << itermax << "\n";
+
+	// double lcp_e = 1e-8;
+
+	// bool solved=1;
+	// const H5std_string FILE_NAME( "Select.h5" );
+ //    // const H5std_string GROUP_NAME1( "Delassus Matrix of unsolved LCP" );
+ //    // const H5std_string GROUP_NAME2( "Corresponding relative velocities" );
 	// const int   MSPACE1_RANK = 1;   // Rank of the first dataset in memory
 	// const int   MSPACE1_DIM = 50;   // Dataset size in memory
 	// const int   MSPACE2_RANK = 1;   // Rank of the second dataset in memory
@@ -52,12 +122,15 @@ int main (void)
 
 	// bool a = (0==0)? 1:0;
 
+	// const int test_idx = 2;
+	// const int solver_used = 3;
+
 	// int size_delassus = 12;
 	// MatrixXd BMB(size_delassus,size_delassus);
 	// BMB << 0.00152306,0.00167011,0.00159376,-0.00026744,0.00026744,-0.000166789,0.000166789,-0.000162222,0.000162222,0,0,0,
 	// 0.00167011,0.00241552,0.00202767,-0.00113476,0.00113476,-0.00102235,0.00102235,-0.000999151,0.000999151,0,0,0,
 	// 0.00159376,0.00202767,0.00180468,-0.000754591,0.000754591,-0.000648139,0.000648139,-0.0006348,0.0006348,0,0,0,
-	// -0.00026744,-0.00113476,-0.000754591,0.00314846,-0.00314846,0.00312383,-0.00312383,0.00310109,-0.00310109,1,0,0,
+	// -0.00026744,-0.00113476,-0.000764591,0.00314846,-0.00314846,0.00312383,-0.00312383,0.00310109,-0.00310109,1,0,0,
 	// 0.00026744,0.00113476,0.000754591,-0.00314846,0.00314846,-0.00312383,0.00312383,-0.00310109,0.00310109,1,0,0,
 	// -0.000166789,-0.00102235,-0.000648139,0.00312383,-0.00312383,0.00310586,-0.00310586,0.00308348,-0.00308348,0,1,0,
 	// 0.000166789,0.00102235,0.000648139,-0.00312383,0.00312383,-0.00310586,0.00310586,-0.00308348,0.00308348,0,1,0,
@@ -66,6 +139,8 @@ int main (void)
 	// 0.7,0,0,-1,-1,0,0,0,0,0,0,0,
 	// 0,0.7,0,0,0,-1,-1,0,0,0,0,0,
 	// 0,0,0.7,0,0,0,0,-1,-1,0,0,0;
+
+	// BMB(0,2) = 12;
 
 	// MatrixXd BB(9,9);
 	// BB << 0.00152306,0.00167011,0.00159376,-0.00026744,0.00026744,-0.000166789,0.000166789,-0.000162222,0.000162222,
@@ -78,12 +153,33 @@ int main (void)
 	// -0.000162222,-0.000999151,-0.0006348,0.00310109,-0.00310109,0.00308348,-0.00308348,0.00306168,-0.00306168,
 	// 0.000162222,0.000999151,0.0006348,-0.00310109,0.00310109,-0.00308348,0.00308348,-0.00306168,0.00306168;
 
-	// try{
+	// // const H5std_string FILE_NAME("/Users/matthiasrabatel/Travail/outputs_mycode/matrix.h5");
+ //    const H5std_string GROUP_NAME_I( "solved" ); // root group
+ //    const H5std_string GROUP_NAME_II( "unsolved" ); // root group
+ //    const H5std_string GROUP_NAME1( "M" );
+ //    const H5std_string GROUP_NAME2( "q" );
+ //    const H5std_string GROUP_NAME3( "z" );
+ //    const H5std_string LCP_error( "LCP error" );
+ //    const H5std_string Last_Memb( "Last LCP" );
+ //    const H5std_string Idx_solver( "Which solver" ); // Information on which solver and 
+ //    H5std_string GROUP_TEMP;
+
+ //    if (solved){
+ //        GROUP_TEMP = "solved";
+ //    }
+ //    else {
+ //        GROUP_TEMP = "unsolved";
+ //    }
+
+ //    /*
+ //     * Try block to detect exceptions raised by any of the calls inside it
+ //     */
+ //    // try{
  //        /*
  //         * Turn off the auto-printing when failure occurs so that we can
  //         * handle the errors appropriately
  //         */
- //        Exception::dontPrint();
+ //        // Exception::dontPrint();
  //        /*
  //         * Create or Open a file.
  //         */
@@ -92,76 +188,158 @@ int main (void)
  //            file = new H5File( FILE_NAME, H5F_ACC_RDWR );
  //        } catch (...) {
  //            file = new H5File( FILE_NAME, H5F_ACC_TRUNC );
+ //            Group* M_solved = new Group(file->createGroup(GROUP_NAME_I));
+ //            Group(M_solved->createGroup(GROUP_NAME1));
+ //            Group(M_solved->createGroup(GROUP_NAME2));
+ //            Group(M_solved->createGroup(GROUP_NAME3));
+
+ //            Group* M_unsolved = new Group(file->createGroup(GROUP_NAME_II));
+ //            Group(M_unsolved->createGroup(GROUP_NAME1));
+ //            Group(M_unsolved->createGroup(GROUP_NAME2));
+ //            Group(M_unsolved->createGroup(GROUP_NAME3));
+
+ //            hsize_t dim_LM[1] = {1};
+ //            DataSpace space_LM( 1, dim_LM );
+ //            DataSet(M_solved->createDataSet( Last_Memb, PredType::NATIVE_INT, space_LM ));
+ //            DataSet(M_unsolved->createDataSet( Last_Memb, PredType::NATIVE_INT, space_LM ));
+            
+ //            hsize_t dim_idx_solver[2] = {1, 2};
+ //            hsize_t maxdims[2] = {H5S_UNLIMITED, H5S_UNLIMITED}; // unlimited dataspace
+ //            DataSpace space_solver( 2, dim_idx_solver, maxdims );
+            
+ //            DSetCreatPropList prop; // Modify dataset creation property to enable chunking
+ //            hsize_t chunk_dims[2] = {1, 2}; // with extendible dataset we cannot use contiguous but chunked dataset
+ //            prop.setChunk(2, chunk_dims);
+ //            std::cout << "je suis bien arrive ici: -1\n";
+ //            DataSet(M_solved->createDataSet( Idx_solver, PredType::NATIVE_INT, space_solver, prop ));
+ //            DataSet(M_unsolved->createDataSet( Idx_solver, PredType::NATIVE_INT, space_solver, prop ));
+
+ //            hsize_t maxdims_le[1] = {H5S_UNLIMITED};
+ //            DataSpace space_LE( 1, dim_LM, maxdims_le );
+ //            DSetCreatPropList prop_le; // Modify dataset creation property to enable chunking
+ //            hsize_t chunk_dims_le[1] = {1}; // with extendible dataset we cannot use contiguous but chunked dataset
+ //            prop_le.setChunk(1, chunk_dims_le);
+ //            DataSet(M_solved->createDataSet( LCP_error, PredType::NATIVE_DOUBLE, space_LE, prop_le ));
+ //            DataSet(M_unsolved->createDataSet( LCP_error, PredType::NATIVE_DOUBLE, space_LE, prop_le ));
+
+	// 		std::cout << "je suis bien arrive ici: 0\n";
+
+ //            delete M_unsolved;
+ //            delete M_solved;
  //        }
-        
- //        /*
- //         * Create or Open the groups
+	// 	/*
+ //         * Recovering the number of LCP
  //         */
- //        Group* Matrix_G;
- //        Group* Vector_G;
- //        bool G_exist;
- //        try {
- //            Matrix_G = new Group(file->openGroup(GROUP_NAME1));
- //            Vector_G = new Group(file->openGroup(GROUP_NAME2));
- //            G_exist = 1;
- //        } catch (...) {
- //            /* Create group for floe shapes */
- //            Matrix_G = new Group(file->createGroup(GROUP_NAME1));
- //            Vector_G = new Group(file->createGroup(GROUP_NAME2));
- //            G_exist = 0;
+ //        Group *Matrix_G, *Vector_G, *Z_G, *Root;
+
+ //        Group* M_solved = new Group(file->openGroup(GROUP_NAME_I));
+ //        Group* MS = new Group(M_solved->openGroup(GROUP_NAME1));
+ //        hsize_t nb_lcp_sol = MS->getNumObjs();
+
+ //        Group* M_unsolved = new Group(file->openGroup(GROUP_NAME_II));
+ //        Group* MU = new Group(M_unsolved->openGroup(GROUP_NAME1));
+ //        hsize_t nb_lcp_unsol = MU->getNumObjs();
+
+ //        hsize_t nb_lcp = nb_lcp_sol + nb_lcp_unsol;
+
+ //        delete M_unsolved;
+ //        delete M_solved;
+ //        delete MS;
+ //        delete MU;
+
+ //        Root = new Group(file->openGroup(GROUP_TEMP));
+ //        Matrix_G = new Group(Root->openGroup(GROUP_NAME1));
+ //        Vector_G = new Group(Root->openGroup(GROUP_NAME2));
+ //        Z_G = new Group(Root->openGroup(GROUP_NAME3));
+
+ //        hsize_t nb_lcp_temp = Matrix_G->getNumObjs();
+
+ //        bool G_exist = 1;
+ //        if (nb_lcp_temp==0) {
+ //        	G_exist=0;
+ //        	DataSet* dataset_solver = new DataSet(Root->openDataSet( Idx_solver ));
+ //        	int idx_solv[2] = { test_idx , solver_used };
+ //        	std::cout << "idx_solv: " << idx_solv[0] << idx_solv[1] << "\n";
+ //        	dataset_solver->write(idx_solv, PredType::NATIVE_INT);
+
+
+ //        	DataSet* dataset_LE = new DataSet(Root->openDataSet( LCP_error ));
+ //            // double lcp_e = lcp_err;
+ //            dataset_LE->write(&lcp_e, PredType::NATIVE_DOUBLE);
+ //            std::cout << "coucou: 1\n";
+
  //        }
 
- //        hsize_t Group_size = Matrix_G->getNumObjs();
- //        const H5std_string name_matrix = std::to_string(Group_size+1);
-
-	//     const int dim_M = size_delassus;
  //        /*
- //         * Conversion Eigen -> DOUBLE
+ //         * Comparison to the previous LCP failure (to prevent similar LCP)
  //         */
- //        double Delassus[dim_M][dim_M];
- //        for (int i=0; i<dim_M; ++i){
- //            for (int j=0; j<dim_M; ++j){
- //                Delassus[i][j] = BMB(i,j);
- //            }
- //        }
+ //        bool isnt_same_LCP = 1;
 
  //        if (G_exist) {
- //        	const H5std_string name_data_pre = std::to_string(Group_size);
- //        	DataSet* dataset_pre = new DataSet(Matrix_G->openDataSet( name_data_pre , PredType::NATIVE_DOUBLE ));
+ //            int last_lcp[1];
+ //            DataSet* dataset_LM = new DataSet(Root->openDataSet( Last_Memb ));
+ //            dataset_LM->read( last_lcp, PredType::NATIVE_INT );
 
-	// 		int dim_out[2] = dataset_pre->getInMemDataSize();
- //        	double data_out[dim_out[0]][dim_out[1]];
 
- //        	dataset_pre->read( data_out, PredType::NATIVE_DOUBLE );
+ //            const H5std_string name_data_pre = std::to_string(last_lcp[0]);
 
- //        	/*
- //        	 * Check if matrix already exists? (A large number of attempt to solve LCP)
- //        	 */
- //        	MatrixXd Diff( dim_M , dim_M );
- //        	for (int i=0; i<dim_M; ++i){
- //        		for (int j=0; j<dim_M; ++j){
- //        			const double val_rel = std::min( std::abs(Delassus[i][j]) , std::abs(data_out[i][j]) );
- //        			const double val_rel_a = (Delassus[i][j] - data_out[i][j])/val_rel;
+ //            DataSet* dataset_pre = new DataSet(Matrix_G->openDataSet( name_data_pre ));
 
- //        			Diff(i,j) = std::max( std::abs( val_rel_a ) , 0);
- //        		}
- //        	}
- //        	bool is_same_LCP = Diff.norm() < 1e-7;
+ //            DataSpace fspace1 = dataset_pre->getSpace();
+ //            std::size_t dim_out = std::sqrt( fspace1.getSelectNpoints() );
+
+   
+ //            if (dim_out==size_delassus){
+ //                double data_out[dim_out][dim_out];
+
+ //                dataset_pre->read( data_out, PredType::NATIVE_DOUBLE ); 
+
+	//          	/*
+	//          	 * Check if matrix already exists? (A large number of attempt to solve LCP)
+	//          	 */
+	//         	MatrixXd Diff( dim_out , dim_out );
+	//         	for (int i=0; i<dim_out; ++i){
+	//         		for (int j=0; j<dim_out; ++j){
+	//         			const double val_rel = std::min( std::abs(BMB(i,j)) , std::abs(data_out[i][j]) );
+	//         			double div = val_rel;
+	//         			if (val_rel==0) {div = 1.0;}
+	//         			const double val_rel_a = (BMB(i,j) - data_out[i][j])/div;
+
+	//         			Diff(i,j) = std::max( std::abs( val_rel_a ) , 0.0);
+	//         		}
+	//         	}
+	//         	isnt_same_LCP = Diff.norm() > 1e-7;
+
+	//         	std::cout << "it's ok, is_same:" << isnt_same_LCP << "\n";
+ //            } 
  //        }
 
  //        /*
  //         * Create dataspace for the dataset in the file.
  //         */
- //        if (!is_same_LCP) {
+ //        const H5std_string name_matrix = std::to_string(nb_lcp+1);
+
+ //        if (isnt_same_LCP) {
+ //        	std::cout << "loop is_same_LCP=0 \n";
 	//         hsize_t dim_space_M[2];
-	//         dim_space_M[0] = dim_M;
-	//         dim_space_M[1] = dim_M;
+	//         dim_space_M[0] = size_delassus;
+	//         dim_space_M[1] = size_delassus;
 	//         DataSpace fspace_M( 2, dim_space_M );
 	//         /*
 	//          * Create dataset and write it into the file.
 	//          */
 	//         DataSet* dataset_M = new DataSet(Matrix_G->createDataSet(name_matrix
 	//             , PredType::NATIVE_DOUBLE, fspace_M));
+
+	// 		/*
+	//     	 * Conversion Eigen -> DOUBLE
+	//     	 */
+	//     	double Delassus[size_delassus][size_delassus];
+	//     	for (int i=0; i<size_delassus; ++i){
+	//     		for (int j=0; j<size_delassus; ++j){
+	// 				Delassus[i][j] = BMB(i,j);
+	//     		}
+	//     	}
 
 	//         dataset_M->write(Delassus, PredType::NATIVE_DOUBLE);
 
@@ -170,16 +348,74 @@ int main (void)
 	//          */        
 	//         delete dataset_M;
 
+	//         DataSet* dataset_LM = new DataSet(Root->openDataSet( Last_Memb ));
+ //            const int nb_LM[1] = {static_cast<int>(nb_lcp+1)};
+ //            dataset_LM->write(nb_LM, PredType::NATIVE_INT);
+ //            delete dataset_LM;
+
+ //            /*
+ //             * Save information on solvers 
+ //             */
+ //            if (G_exist){
+ //            	std::cout << "je suis bien arrive ici: 1\n";
+	//             DataSet* dataset_solver = new DataSet(Root->openDataSet( Idx_solver ));
+	//             DataSpace space_solver = dataset_solver->getSpace();
+	//             hsize_t dim_curr[2]; // dimension of the dataset
+	//             space_solver.getSimpleExtentDims( dim_curr, NULL); // retrieves the current dimensions 
+	//             std::cout << "dim_curr: " << dim_curr[0] << dim_curr[1] << "\n";
+	//             hsize_t ext_size[2] = { dim_curr[0]+1, dim_curr[1]}; 
+	//             std::cout << "ext_size: " << ext_size[0] << ext_size[1] << "\n";
+	//             dataset_solver->extend( ext_size ); // extension with one new line 
+	  
+	//             std::cout << "je suis bien arrive ici: 2\n";
+	//             DataSpace fspace2 = dataset_solver->getSpace();
+	//             hsize_t dim2[2] = {1,2}; 
+	//             hsize_t offset2[2] = {dim_curr[0], 0};
+	//             fspace2.selectHyperslab( H5S_SELECT_SET, dim2, offset2); // selection of the hyperslab
+	//             DataSpace mspace2( 2, dim2 );
+	//             int idx_solv[2] = { test_idx , solver_used };
+	//             std::cout << "je suis bien arrive ici: 3\n";
+	//             std::cout << "idx_solv: " << idx_solv[0] << idx_solv[1] << "\n";
+	//             std::cout << "offset2: " << offset2[0] << offset2[1] << "\n";
+	//             std::cout << "dim2: " << dim2[0] << dim2[1] << "\n";
+	//             dataset_solver->write(idx_solv, PredType::NATIVE_INT, mspace2, fspace2); // write in the hyperslab
+	//             delete dataset_solver;
+	//             std::cout << "je suis bien arrive ici: 4\n";
+
+
+	//             /*
+ //                 * Save information on LCP error with extendible dataset
+ //                 */                
+ //                DataSet* dataset_LE = new DataSet(Root->openDataSet( LCP_error ));
+ //                DataSpace space_LE = dataset_LE->getSpace();
+ //                hsize_t dim_curr_le[1]; // dimension of the dataset
+ //                space_LE.getSimpleExtentDims( dim_curr_le, NULL); // retrieves the current dimensions 
+ //                hsize_t ext_size_le[1] = { dim_curr_le[0]+1}; 
+ //                dataset_LE->extend( ext_size_le ); // extension with one new line 
+      
+ //                DataSpace fspace_le = dataset_LE->getSpace();
+ //                hsize_t dim_le[1] = {1}; 
+ //                hsize_t offset_le[1] = {dim_curr_le[0]};
+ //                fspace_le.selectHyperslab( H5S_SELECT_SET, dim_le, offset_le); // selection of the hyperslab
+ //                DataSpace mspace_le( 1, dim_le );
+ //                // double lcp_e = lcp_err;
+ //                std::cout << "dim_le: " << dim_le[0] << "\n";
+ //                std::cout << "je suis bien arrive ici: 5\n";
+ //                dataset_LE->write(&lcp_e, PredType::NATIVE_DOUBLE, mspace_le, fspace_le); // write in the hyperslab
+
+ //                delete dataset_LE;
+ //            }
+            
 	//         /*-----------------------------------------------------------------------------------------
 	//          * new dataset for relative velocities
 	//          *---------------------------------------------------------------------------------------*/
-	//         const H5std_string name_vector = std::to_string(Group_size+1);
+	//         const H5std_string name_vector = std::to_string(nb_lcp+1);
 	//         /*
 	//          * Create dataspace for the dataset in the file.
 	//          */
 
 	//         hsize_t dim_space_V[1];
-	//         dim_space_V[0] = dim_M;
+	//         dim_space_V[0] = size_delassus;
 
 	//         DataSpace fspace_V( 1, dim_space_V );
 	//         /*
@@ -192,42 +428,56 @@ int main (void)
 	//         /*
 	//          * Conversion Eigen -> DOUBLE
 	//          */
-	//         double rel_vel[dim_M];
-	//         for (int i=0; i<dim_M; ++i){
+	//         double rel_vel[size_delassus];
+	//         for (int i=0; i<size_delassus; ++i){
 	//             rel_vel[i] = BMB(i,1);
 	//         }
 
 	//         dataset_V->write(rel_vel, PredType::NATIVE_DOUBLE);
 
-	//         /*
-	//          * Close the dataset and the file.
-	//          */        
+	//        /*
+	//         * Close the dataset and the file.
+	//         */        
 	//         delete dataset_V;
+
+	//         const H5std_string name_z = name_matrix;
+ //            /*
+ //             * Create dataspace for the dataset in the file.
+ //             */
+
+ //            hsize_t dim_z[1];
+ //            dim_z[0] = size_delassus;
+ //            DataSpace fspace_z( 1, dim_z );
+ //            /*
+ //             * Create dataset and write it into the file.
+ //             */
+ //            DataSet* dataset_z = new DataSet(Z_G->createDataSet(name_z
+ //                , PredType::NATIVE_DOUBLE, fspace_z));
+
+ //            /*
+ //             * Conversion Eigen -> DOUBLE
+ //             */
+ //            double lcp_z[size_delassus];
+ //            for (int i=0; i<size_delassus; ++i){
+ //                lcp_z[i] = BMB(i,1);
+ //            }
+ //            dataset_z->write(lcp_z, PredType::NATIVE_DOUBLE);
+
+ //            /*
+ //             * Close the dataset and the file.
+ //             */        
+ //            delete dataset_z;
+
  //    	}
 
  //        delete file;
- //   }  // end of try block
- //   // catch failure caused by the H5File operations
- //   catch( FileIException error )
- //   {
- //    error.printError();
- //   }
- //   // catch failure caused by the DataSet operations
- //   catch( DataSetIException error )
- //   {
- //    error.printError();
- //   }
- //   // catch failure caused by the DataSpace operations
- //   catch( DataSpaceIException error )
- //   {
- //    error.printError();
- //   }
 
-   return 0;
-
+        return 0;
 }
 
-
+void blabla(int result) {
+	std::cout << "I'm able to return: " << result << "\n";
+}
 
     // /*
     //  * Try block to detect exceptions raised by any of the calls inside it
@@ -250,6 +500,22 @@ int main (void)
 	   //  	file = new H5File( FILE_NAME, H5F_ACC_RDWR );
 	   //  	std::cout << "deja cree\n";
 	   //  }
+   // }  // end of try block
+   // // catch failure caused by the H5File operations
+   // catch( FileIException error )
+   // {
+   //  error.printError();
+   // }
+   // // catch failure caused by the DataSet operations
+   // catch( DataSetIException error )
+   // {
+   //  error.printError();
+   // }
+   // // catch failure caused by the DataSpace operations
+   // catch( DataSpaceIException error )
+   // {
+   //  error.printError();
+   // }
 
 
 /*/////////////////////////////////////////////////////////////////////////////////////////////////*/
