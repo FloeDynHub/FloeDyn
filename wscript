@@ -39,7 +39,7 @@ def timeit(func):
         ts = time.time()
         result = func(*args, **kw)
         te = time.time()
-        print '%r %2.2f s' % (func.__name__, te-ts)
+        print( '%r %2.2f s' % (func.__name__, te-ts) )
         return result
 
     return timed
@@ -188,7 +188,7 @@ def build(bld):
             opts["defines"].append('PBC')
         bld.program(**opts)
     elif "FLOE" in bld.options.target:
-        print "TARGET", bld.options.target
+        print( "TARGET", bld.options.target )
         opts["source"] = ["product/{}.cpp".format(bld.options.target)] + recursive_file_finder("src/floe", "*.cpp")
         opts["target"] = bld.options.target
         bld.program(**opts)
