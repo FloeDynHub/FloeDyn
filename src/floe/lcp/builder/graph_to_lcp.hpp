@@ -213,7 +213,7 @@ getLCP() const
     
     // LCP main matrix
     lcp::LCP<T> lcp(4*m);
-    auto & A = lcp.A;
+    auto & A = lcp.M;
 
     // Temporaries
     decltype(J) iMJ(3*n, m);        axpy_prod(invM, J, iMJ, true);

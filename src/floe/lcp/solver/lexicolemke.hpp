@@ -51,7 +51,7 @@ bool lexicolemke( floe::lcp::LCP<T>& lcp );
  * \param[out]  wlen    Pointer to w in which Mz+q will be stored.
  * \param[out]  info    Equals 0 if solver successed.
  */
-void lcp_lexicolemke(int dim, const double * M, const double * q, double *zlem , double *wlem , int *info);
+void lcp_lexicolemke(int dim, const double * M, const double * q, double *zlem , int *info);
 
 }}} // namespace floe::lcp::solver
 

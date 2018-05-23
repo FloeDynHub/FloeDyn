@@ -14,6 +14,8 @@
 #include "floe/lcp/solver/LCP_solver.h"
 
 #include "floe/lcp/solver/lexicolemke.hpp"
+#include "floe/lcp/solver/lexicolemke_MR.cpp"
+
  // #include "floe/lcp/solver/lexicolemke_eigen.hpp"
 #include "floe/lcp/solver/lemke_eigen.hpp"
 // #include "floe/lcp/solver/newton_min.hpp"
@@ -28,18 +30,13 @@
 
 // saving matrix when lcp solver failed for further analysing
 #include "H5Cpp.h"
+
 using namespace H5;
+using namespace boost::numeric::ublas;
+
 
 namespace floe { namespace lcp { namespace solver
 {
-
-
-template<typename T>
-bool LCPSolver<T>::solve( lcp_type& lcp ) {
-        using namespace floe::lcp::solver;
-        return (lemke(lcp) || lexicolemke(lcp));
-    }
-
 
 template<typename T>
 template<typename TContactGraph>
@@ -51,6 +48,13 @@ LCPSolver<T>::solve( TContactGraph& graph, bool& success, int lcp_failed_stats[]
     floe::lcp::builder::GraphLCP<real_type, decltype(graph)> graph_lcp( graph );
     auto lcp_orig = graph_lcp.getLCP();
     auto lcp = lcp_orig;
+    LCP<T> lcp_a(lcp.dim,lcp.M);
+    vector<real_type> d(lcp.dim,1);
+    LCP<T> lcp_a2(lcp.dim,lcp.M,d);
+
+     decltype(lcp_orig.M)    perturb_M       = lcp_orig.M;
+    // std::cout << lcp_a2.q << "\n";
+    // std::cout << lcp_a.M << "\n";
     // std::vector<int> lcp_test_list{1,2,3,3,3,4,4,4}; //lcp_test_list{4,4,4}; // best config: lcp_test_list{1,2,3,3,3,4,4,4};
 
     static bool is_full_storage = false;
@@ -65,8 +69,8 @@ LCPSolver<T>::solve( TContactGraph& graph, bool& success, int lcp_failed_stats[]
     std::size_t sd = 3*lcp.dim/4; // size of the Delassus Matrix
     for (std::size_t i=0; i<sd; ++i) {
         for (std::size_t j=0; j<sd; ++j) {
-            if (lcp.A(i,j)!=0 && std::abs(lcp.A(i,j))<min_lcp) {
-                min_lcp = lcp.A(i,j);
+            if (lcp.M(i,j)!=0 && std::abs(lcp.M(i,j))<min_lcp) {
+                min_lcp = lcp.M(i,j);
             }
         }
     }
@@ -145,8 +149,8 @@ LCPSolver<T>::solve( TContactGraph& graph, bool& success, int lcp_failed_stats[]
             // no useful ! to remove!!
 
             if (how_is_solved_temp==4) {
-                vector<real_type> Err = LCP_error_detailed(lcp_orig);
-                real_type Err_g = LCP_error_global(Err);
+                vector<real_type> Err = lcp_orig.LCP_error_detailed();
+                real_type Err_g = lcp_orig.LCP_error();
 
                 if (Err_g < best_Err_g ){
                     best_Err_g = Err_g; best_Err = Err; best_z = lcp.z; 
@@ -186,7 +190,13 @@ LCPSolver<T>::solve( TContactGraph& graph, bool& success, int lcp_failed_stats[]
 
             // no solution has been found. One try to perturb the LCP using addition of alpha Id:
             alpha = min_lcp * random_coef[count_perturb];
-            reduction_via_perturbation( lcp, alpha );
+
+            std::cout << "PR??\n";
+            lcp.reinit(lcp_orig);
+            reduction_via_perturbation( lcp.dim, perturb_M, alpha );
+            project(lcp.M,range(0,lcp.dim),range(0,lcp.dim)) = perturb_M;
+
+            // reduction_via_perturbation( lcp, alpha );
             ++count_perturb;
         }       
     }
@@ -197,7 +207,7 @@ LCPSolver<T>::solve( TContactGraph& graph, bool& success, int lcp_failed_stats[]
     // Saving data on LCP:
     if (!is_full_storage){
         vector<real_type> Err;
-        Err = LCP_error_detailed(lcp_orig);
+        Err = lcp_orig.LCP_error_detailed();
         if (!solved) {
             Err = best_Err;
             lcp_orig.z = best_z;
@@ -216,8 +226,9 @@ LCPSolver<T>::solve( TContactGraph& graph, bool& success, int lcp_failed_stats[]
         // std::cout << "\n";
         // std::cout << "new comput error: " << LCP_err << "\n";
 
+        const real_type lcp_Err = lcp_orig.LCP_error();
         std::vector<int>::iterator it_min = std::min_element( how_is_solved.begin(), how_is_solved.end() );
-        is_full_storage = saving_LCP_in_hdf5( lcp_orig, solved, test_used, solver_used, Err, 
+        is_full_storage = saving_LCP_in_hdf5( lcp_orig, solved, test_used, solver_used, lcp_Err, 
             w_fail, *it_min );
     }
 
@@ -236,6 +247,7 @@ LCPSolver<T>::solve( TContactGraph& graph, bool& success, int lcp_failed_stats[]
         lcp_type lcp_d_orig = lcp = graph_lcp.getLCP_d(lcp_orig, Solc, epsilon);
         real_type born_sup = graph_lcp.born_sup_d(lcp_orig, epsilon);
         EC = 1+born_sup;
+        perturb_M = lcp_d_orig.M;
 
         solved = false; count_perturb = 0;
         for (int i=0; i<max_solver; ++i){
@@ -311,7 +323,13 @@ LCPSolver<T>::solve( TContactGraph& graph, bool& success, int lcp_failed_stats[]
 
                 // no solution has been found. One try to perturb the LCP using addition of alpha Id:
                 alpha = min_lcp * random_coef[count_perturb];
-                reduction_via_perturbation( lcp, alpha );
+
+                std::cout << "PR??\n";
+                lcp.reinit(lcp_d_orig);
+                reduction_via_perturbation( lcp.dim, perturb_M, alpha );
+                project(lcp.M,range(0,lcp.dim),range(0,lcp.dim)) = perturb_M;
+
+                // reduction_via_perturbation( lcp, alpha );
                 ++count_perturb;
             }       
         }
@@ -415,21 +433,21 @@ LCPSolver<T>::solve( TContactGraph& graph, bool& success, int lcp_failed_stats[]
             break;
         }
 
-        std::cout << "before random diff LCP LCP_orig = " << lcp.A-lcp_orig.A << "\n";
-        std::cout << "before random adress memory: lcp: " << &lcp.A << "adress memory: lcp_orig: " << &lcp_orig.A << "\n";
+        std::cout << "before random diff LCP LCP_orig = " << lcp.M-lcp_orig.A << "\n";
+        std::cout << "before random adress memory: lcp: " << &lcp.M << "adress memory: lcp_orig: " << &lcp_orig.A << "\n";
 
         alpha = min_lcp*random_coef[test_used-1];
         std::cout << "min of lcp = " << min_lcp << "\n";
         std::cout << "I'm using random pertub with alpha=" << alpha << "\n";
-        auto before_lcp1 = lcp.A;
+        auto before_lcp1 = lcp.M;
         std::cout << "before matrix = " << before_lcp1 << "\n";
         reduction_via_perturbation(lcp,alpha);
-        std::cout << "after tmatrix = " << lcp.A << "\n";
-        std::cout << "the diff is: " << before_lcp1-lcp.A << "\n";
+        std::cout << "after tmatrix = " << lcp.M << "\n";
+        std::cout << "the diff is: " << before_lcp1-lcp.M << "\n";
         std::cout << "the diff is: " << before_lcp1-lcp_orig.A << "\n";
 
-        std::cout << "before random diff LCP LCP_orig = " << lcp.A-lcp_orig.A << "\n";
-        std::cout << "before random adress memory: lcp: " << &lcp.A << "adress memory: lcp_orig: " << &lcp_orig.A << "\n";
+        std::cout << "before random diff LCP LCP_orig = " << lcp.M-lcp_orig.A << "\n";
+        std::cout << "before random adress memory: lcp: " << &lcp.M << "adress memory: lcp_orig: " << &lcp_orig.A << "\n";
 
 
         // random_perturbation2(lcp, 5*1e-11); //// influence of the perturbations
@@ -568,6 +586,7 @@ void LCPSolver<T>::run_solver(lcp_type& lcp, int id){
         //     return lexicolemke(lcp);
 
         case 0:
+            // lexicolemke_MR(tolerance[0], lcp, 1000);
             lexicolemke(lcp);
             break;
             // return true;
@@ -641,7 +660,7 @@ int LCPSolver<T>::Is_solved(LCPSolver<T>::lcp_type& lcp, bool Is_pos_rel_norm_ve
 
     std::size_t dim = lcp.dim; // total dimension
     std::size_t nbc = dim/4; // number of contact
-    vector_type vec_Err = LCP_error_detailed(lcp);
+    vector_type vec_Err = lcp.LCP_error_detailed();
 
     T LCP_err(0), EC_err(0), JW_err(0);
     // global LCP error:
@@ -708,56 +727,57 @@ LCPSolver<T>::calcSold(TGraphLCP& graph_lcp, lcp_type& lcp_c, lcp_type& lcp_d, v
     );
 }
 
+///////////////////////////////
 
-template<typename T>
-typename LCPSolver<T>::lcp_type
-LCPSolver<T>::random_perturbation(lcp_type& lcp, real_type max){
-    // version randomly modifying all non-zeros values
-    for (auto it1 = lcp.A.begin1(); it1 != lcp.A.end1(); ++it1) {
-        for (auto it2 = it1.begin(); it2 != it1.end(); ++it2) {
-            if (*it2 != 0)
-                *it2 += random_real(max);
-        }
-    }
-    /* // Matlab version (divmat), modifying only one value in lcp.A and one in lcp.q (worse results)
-    auto m = lcp.dim / 4;
-    std::size_t n1 = std::rand() % (3 * m), n2 = std::rand() % (3 * m); // Iheart variable (=3*m) in Matlab code
-    lcp.A(n1,n2) *= (1 + random_real(max));
-    lcp.q(n1) *= (1 + random_real(max));
-    */
-    return lcp; 
-}
+// template<typename T>
+// typename LCPSolver<T>::lcp_type
+// LCPSolver<T>::random_perturbation(lcp_type& lcp, real_type max){
+//     // version randomly modifying all non-zeros values
+//     for (auto it1 = lcp.M.begin1(); it1 != lcp.M.end1(); ++it1) {
+//         for (auto it2 = it1.begin(); it2 != it1.end(); ++it2) {
+//             if (*it2 != 0)
+//                 *it2 += random_real(max);
+//         }
+//     }
+//     /* // Matlab version (divmat), modifying only one value in lcp.M and one in lcp.q (worse results)
+//     auto m = lcp.dim / 4;
+//     std::size_t n1 = std::rand() % (3 * m), n2 = std::rand() % (3 * m); // Iheart variable (=3*m) in Matlab code
+//     lcp.M(n1,n2) *= (1 + random_real(max));
+//     lcp.q(n1) *= (1 + random_real(max));
+//     */
+//     return lcp; 
+// }
 
-template<typename T>
-void LCPSolver<T>::random_perturbation2(lcp_type& lcp, real_type max){
-    // version randomly modifying all non-zeros values
-    for (auto it1 = lcp.A.begin1(); it1 != lcp.A.end1(); ++it1) {
-        for (auto it2 = it1.begin(); it2 != it1.end(); ++it2) {
-            if (*it2 != 0)
-                *it2 += random_real(max);
-                // if (lcp.dim<9){std::cout << "random term:" << random_real(max);}
-        }
-    }
-    /* // Matlab version (divmat), modifying only one value in lcp.A and one in lcp.q (worse results)
-    auto m = lcp.dim / 4;
-    std::size_t n1 = std::rand() % (3 * m), n2 = std::rand() % (3 * m); // Iheart variable (=3*m) in Matlab code
-    lcp.A(n1,n2) *= (1 + random_real(max));
-    lcp.q(n1) *= (1 + random_real(max));
-    */
-}
+// template<typename T>
+// void LCPSolver<T>::random_perturbation2(lcp_type& lcp, real_type max){
+//     // version randomly modifying all non-zeros values
+//     for (auto it1 = lcp.M.begin1(); it1 != lcp.M.end1(); ++it1) {
+//         for (auto it2 = it1.begin(); it2 != it1.end(); ++it2) {
+//             if (*it2 != 0)
+//                 *it2 += random_real(max);
+//                 // if (lcp.dim<9){std::cout << "random term:" << random_real(max);}
+//         }
+//     }
+//      // Matlab version (divmat), modifying only one value in lcp.M and one in lcp.q (worse results)
+//     auto m = lcp.dim / 4;
+//     std::size_t n1 = std::rand() % (3 * m), n2 = std::rand() % (3 * m); // Iheart variable (=3*m) in Matlab code
+//     lcp.M(n1,n2) *= (1 + random_real(max));
+//     lcp.q(n1) *= (1 + random_real(max));
+    
+// }
 
-template<typename T>
-void LCPSolver<T>::reduction_via_perturbation(lcp_type& lcp, double alpha){
-    std::size_t size_Delassus = 3*lcp.dim/4;
+// template<typename T>
+// void LCPSolver<T>::reduction_via_perturbation(lcp_type& lcp, double alpha){
+//     std::size_t size_Delassus = 3*lcp.dim/4;
 
-    for (std::size_t i=0; i<size_Delassus; ++i) {
-        for (std::size_t j = 0; j<size_Delassus; ++j) {
-            if (i == j) {
-                lcp.A(i,j) += alpha;
-            }
-        }
-    }
-}
+//     for (std::size_t i=0; i<size_Delassus; ++i) {
+//         for (std::size_t j = 0; j<size_Delassus; ++j) {
+//             if (i == j) {
+//                 lcp.M(i,j) += alpha;
+//             }
+//         }
+//     }
+// }
 
 template<typename T>
 template<typename TContactGraph>
@@ -781,16 +801,16 @@ bool LCPSolver<T>::Rel_Norm_Vel_test(const vector<real_type>& V, const TContactG
 }
 
 
-template<typename T>
-T LCPSolver<T>::random_real(T max)
-{
-    return m_uniform_distribution(m_random_generator) * max;
-}
+// template<typename T>
+// T LCPSolver<T>::random_real(const T max) const
+// {
+//     return m_uniform_distribution(m_random_generator) * max;
+// }
 
 
 template<typename T>
 bool LCPSolver<T>::saving_LCP_in_hdf5(lcp_type& lcp, bool solved, int test_idx, int solver_used, 
-    const vector<real_type>& lcp_err, int w_fail, int min_how_is_solved){
+    const real_type& lcp_err, int w_fail, int min_how_is_solved){
 
     const H5std_string FILE_NAME("/Users/matthiasrabatel/Travail/outputs_mycode/matrix.h5");
     const H5std_string GROUP_NAME_I( "solved" ); // root group
@@ -931,8 +951,8 @@ bool LCPSolver<T>::saving_LCP_in_hdf5(lcp_type& lcp, bool solved, int test_idx, 
 
             DataSet* dataset_LE = new DataSet(Root->openDataSet( LCP_error ));
             
-            real_type LCP_err = LCP_error_global(lcp_err);
-            dataset_LE->write( &LCP_err, PredType::NATIVE_DOUBLE );
+            // real_type LCP_err = lcp_err;
+            dataset_LE->write( &lcp_err, PredType::NATIVE_DOUBLE );
         }
 
         /*
@@ -964,10 +984,10 @@ bool LCPSolver<T>::saving_LCP_in_hdf5(lcp_type& lcp, bool solved, int test_idx, 
                 Eigen::MatrixXd Diff( dim_D , dim_D );
                 for (int i=0; i<dim_D; ++i){
                     for (int j=0; j<dim_D; ++j){
-                        const double val_rel = std::min( std::abs(lcp.A(i,j)) , std::abs(data_out[i][j]) );
+                        const double val_rel = std::min( std::abs(lcp.M(i,j)) , std::abs(data_out[i][j]) );
                         double div = val_rel;
                         if (val_rel==0) {div = 1.0;}
-                        const double val_rel_a = (lcp.A(i,j) - data_out[i][j])/div;
+                        const double val_rel_a = (lcp.M(i,j) - data_out[i][j])/div;
 
                         Diff(i,j) = std::max( std::abs( val_rel_a ) , 0.0);
                     }
@@ -999,7 +1019,7 @@ bool LCPSolver<T>::saving_LCP_in_hdf5(lcp_type& lcp, bool solved, int test_idx, 
             double lcp_M[dim_M][dim_M];
             for (int i=0; i<dim_M; ++i){
                 for (int j=0; j<dim_M; ++j){
-                    lcp_M[i][j] = lcp.A(i,j);
+                    lcp_M[i][j] = lcp.M(i,j);
                 }
             }
 
@@ -1059,8 +1079,8 @@ bool LCPSolver<T>::saving_LCP_in_hdf5(lcp_type& lcp, bool solved, int test_idx, 
                 fspace_le.selectHyperslab( H5S_SELECT_SET, dim_le, offset_le); // selection of the hyperslab
                 DataSpace mspace_le( 1, dim_le );
 
-                real_type LCP_err = LCP_error_global(lcp_err);
-                dataset_LE->write( &LCP_err, PredType::NATIVE_DOUBLE, mspace_le, fspace_le); // write in the hyperslab
+                // real_type LCP_err = LCP_error_global(lcp_err);
+                dataset_LE->write( &lcp_err, PredType::NATIVE_DOUBLE, mspace_le, fspace_le); // write in the hyperslab
 
                 delete dataset_LE;
             }

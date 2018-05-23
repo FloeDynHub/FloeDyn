@@ -41,16 +41,16 @@ bool lexicolemke<double>( floe::lcp::LCP<double>& lcp)
     int info;
     lcp_lexicolemke( 
         lcp.dim, 
-        lcp.A.data().begin(), 
+        lcp.M.data().begin(), 
         lcp.q.data().begin(), 
         lcp.z.data().begin(),
-        lcp.w.data().begin(), 
+        // lcp.w.data().begin(), 
         &info 
     );
     return info == 0;
 }
 
-void lcp_lexicolemke(int dim, const double * M, const double * q, double *zlem , double *wlem , int *info)
+void lcp_lexicolemke(int dim, const double * M, const double * q, double *zlem , int *info)
 {
     double tol = 0;
 
@@ -89,7 +89,7 @@ void lcp_lexicolemke(int dim, const double * M, const double * q, double *zlem ,
         for (int j = 0 ; j < n; j++)
         {
             zlem[j] = 0.0;
-            wlem[j] = q[j];
+            // wlem[j] = q[j];
         }
         *info = 0;
         //options->iparam[1] = 0;   /* Number of iterations done */
@@ -303,12 +303,12 @@ void lcp_lexicolemke(int dim, const double * M, const double * q, double *zlem ,
         if (drive < dim + 1)
         {
             zlem[drive - 1] = 0.0;
-            wlem[drive - 1] = A[ic][0];
+            // wlem[drive - 1] = A[ic][0];
         }
         else if (drive > dim + 1)
         {
             zlem[drive - dim - 2] = A[ic][0];
-            wlem[drive - dim - 2] = 0.0;
+            // wlem[drive - dim - 2] = 0.0;
         }
     }
 

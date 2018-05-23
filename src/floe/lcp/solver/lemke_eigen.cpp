@@ -47,7 +47,7 @@ bool lemke<double>( floe::lcp::LCP<double>& lcp)
 
     VectorXd z;
     int err = lcp_lemke(
-        Map<Matrix<double,Dynamic,Dynamic,RowMajor> >(lcp.A.data().begin(), lcp.dim, lcp.dim),
+        Map<Matrix<double,Dynamic,Dynamic,RowMajor> >(lcp.M.data().begin(), lcp.dim, lcp.dim),
         Map<Matrix<double,Dynamic,Dynamic,RowMajor> >(lcp.q.data().begin(), lcp.dim, 1),
         z
     );

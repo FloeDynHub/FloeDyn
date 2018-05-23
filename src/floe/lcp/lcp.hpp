@@ -1,65 +1,63 @@
-/*!
- * \file floe/lcp/lcp.hpp
- * \brief Definition and manipulation of a LCP 
- * \author Roland Denis
+/*! \brief Definition of Linear Complementarity Problem
+ *
+ * \author Matthias Rabatel
+ * \date April 2018
+ * \copyright ...
  */
 
-#ifndef FLOE_LCP_LCP_HPP
-#define FLOE_LCP_LCP_HPP
+#ifndef DEF_FLOE_LCP_HPP
+#define DEF_FLOE_LCP_HPP
 
-#include <cstddef>
+#include <cassert>
+#include <vector>
+#include <algorithm>
+
+#include "lcp.h"
+
 #include <boost/numeric/ublas/matrix.hpp>
 #include <boost/numeric/ublas/vector.hpp>
+#include <boost/numeric/ublas/matrix_proxy.hpp>
+#include <boost/numeric/ublas/vector_proxy.hpp>
+#include <boost/numeric/ublas/lu.hpp>
+
+using namespace boost::numeric::ublas;
 
 namespace floe { namespace lcp
 {
 
-/*! A LCP defined by A, q, w and z
- *
- * The problem is to find z that respect:
- * w = Az + q >= 0
- * z >= 0
- * w . z = 0
- *
- * \tparam T Fundamental type.
- */
-template <
-    typename T
->
-struct LCP
+////////////////////////////////////////////////////////////
+template < typename T >  
+LCP<T>::LCP( std::size_t n, array_type A ) : dim(n), M(n, n+1), q(n), z(n,0.0), driving{-1}, basis(2*n+1) 
 {
-    typedef boost::numeric::ublas::matrix<T> array_type;    //!< Type of array.
-    typedef boost::numeric::ublas::vector<T> vector_type;   //!< Type of vector.
+    for (std::size_t i=0; i<2*n+1; ++i){
+        basis[i] = i;
+    }
 
-    std::size_t dim;    //!< Dimension of the problem. (4 times the number of contacts)
-    array_type A;       //!< The matrix of the problem.
-    vector_type q;      //!< The vector of the problem.
-    vector_type w;      //!< The vector complementary to the LCP solution.
-    vector_type z;      //!< The solution of the LCP.
+    assert(A.size1()==n);
+    project(M,range(0,n),range(0,n)) = A;
+    vector_type d(n,1);
+    column(M,n) = d;
+}
 
-    //! Constructor given the dimension of the problem.
-    LCP( std::size_t n ) : dim(n), A(n, n), q(n), w(n), z(n,0.0) {}
-};
-
-/*! Return the solution error for a LCP
- *
- * \tparam T    Fundamental type (auto-deduced).
- * \param  lcp   The linear complementary problem.
- * \param  calc_w   True for recalculate w = Az + q
- * \return |w^-|_0 + |z^-|_0 + |w.z|
- */
-template < typename T>
-T LCP_error( LCP<T> const& lcp, bool calc_w = true )
+////////////////////////////////////////////////////////////
+template < typename T >  
+LCP<T>::LCP( std::size_t n, array_type A, vector_type d ) : dim(n), M(n, n+1), q(n), z(n,0.0), driving{-1}, basis(2*n+1)
 {
-    typedef typename LCP<T>::vector_type vector_type;
-    using namespace boost::numeric::ublas;
+    for (std::size_t i=0; i<2*n+1; ++i){
+        basis[i] = i;
+    }
 
-    // Calculating w = Az + q
-    vector_type w;
-    if ( calc_w )
-        w = prod(lcp.A, lcp.z) + lcp.q;
-    else
-        w = lcp.w;
+    assert(A.size1()==n);
+    project(M,range(0,n),range(0,n)) = A;
+    column(M,n) = d;
+}
+
+////////////////////////////////////////////////////////////
+template < typename T >
+T LCP<T>::LCP_error() const
+{
+    // Calculating w = Mz + q
+    auto w = prod(M, z) + q;
 
     // Error on w
     T w_err = 0;
@@ -67,96 +65,309 @@ T LCP_error( LCP<T> const& lcp, bool calc_w = true )
 
     // Error on z
     T z_err = 0;
-    for ( T value : lcp.z ) if (value < 0) z_err -= value;
+    for ( T value : z ) if (value < 0) z_err -= value;
 
     // Error on z.w
     T zw_err = 0;
-    auto itz = lcp.z.begin();
+    auto itz = z.begin();
     auto itw = w.begin();
-    for ( ; itz != lcp.z.end(); ++itz, ++itw )
+    for ( ; itz != z.end(); ++itz, ++itw )
     {
         if (*itz != 0 && *itw != 0) 
             zw_err += std::abs( (*itz) * (*itw) );
     }
 
-    return w_err + z_err + zw_err;
+    T err = w_err + z_err + zw_err;
+
+    std::cout << "lcp error: " << err << "\n";
+    return err;
 }
 
-template < typename T>
-boost::numeric::ublas::vector<T> LCP_error_detailed( LCP<T> const& lcp)
+////////////////////////////////////////////////////////////
+template < typename T >
+vector<T> LCP<T>::LCP_error_detailed() const
 {
-    typedef typename LCP<T>::vector_type vector_type;
-    using namespace boost::numeric::ublas;
-
-    std::size_t dim = lcp.dim;
     vector_type Vec_Err(3*dim,0);
 
     // Calculation: w = Az + q;
     vector_type w;
-    w = prod(lcp.A, lcp.z) + lcp.q;
+    w = prod(M, z) + q;
 
     // Calculation: zw = z^T w;
     vector_type zw(dim);
     for (std::size_t i=0; i<dim; ++i) {
-        zw(i) = lcp.z(i) * w(i);
+        zw(i) = z(i) * w(i);
     }
 
     for (std::size_t i=0; i<dim; ++i) {
         Vec_Err(i) = zw(i); // energy part 
-        if (lcp.z(i)<0) {Vec_Err(i+dim) = -lcp.z(i);} // impulse part
+        if (z(i)<0) {Vec_Err(i+dim) = -z(i);} // impulse part
         if (w(i)<0) {Vec_Err(i+2*dim) = -w(i);} // relative velocities after contact
     }
 
     return Vec_Err;
 }
 
-template < typename T>
-T LCP_error_global( boost::numeric::ublas::vector<T> const& Err )
+////////////////////////////////////////////////////////////
+template<typename T>
+void LCP<T>::pivoting(const int block, const int drive)
 {
-    T LCP_err(0);
-    // global LCP error:
-    for (std::size_t i=0; i<Err.size(); ++i) {
-        LCP_err += std::abs(Err(i));
+    // WARNING: preferring a/b instead of 1/b*a
+    // M is not necessarily a square matrix (augmented lcp case)
+    // typedef typename LCP<T>::vector_type vector_type;
+    assert(M(block,drive) !=0);
+    
+    std::size_t i, j;
+
+    T pivot = M( block, drive );
+    
+    // M:
+    vector_type d(dim,0.0);
+    for (i=0;i<dim;++i) {
+        d(i) = M(i,drive);
     }
 
-    return LCP_err;
+    // the driving column and the blocking row:
+    column( M, drive ) = column( M, drive ) / pivot;
+    row(    M, block ) = -row(   M, block ) / pivot;
+    M( block, drive )  = 1.0 / pivot;
+
+    // the remaining of the matrix:
+    for (i=0; i<dim; ++i) {
+        for (j=0; j<M.size2(); ++j) {           // in the case where LCP(q,M) is an augmented LCP
+                                                // (M contains the covering vector d)
+            if (int(i)!=block && int(j)!=drive) {
+                M(i,j) += d(i)*M(block,j);
+            }
+        }
+    }
+    
+    // q:
+    q(block) = - q(block) / pivot;
+    for (i=0; i<dim; ++i) {
+        if (int(i)!=block) {
+                q(i) += d(i)*q(block);
+            }
+    }
 }
 
-// Calc error new to highlight the coulomb failure:
-// ajout Matthias
-template < typename T>
-boost::numeric::ublas::vector<T> LCP_err_Coul( LCP<T> const& lcp)
+////////////////////////////////////////////////////////////
+template<typename T>
+void LCP<T>::multi_pivoting( LCP<T> &lcp_orig, matrix<T> invSubM, std::vector<int> idx_a )
 {
-    typedef typename LCP<T>::vector_type vector_type;
+    std::vector<int> idx_g;
+    std::vector<int>::iterator it;
+    std::size_t k, kc, kr;
 
-    int m;
-    m = lcp.dim/4;
-    // std::cout << "m: " << m << ",\n";
-
-    using namespace boost::numeric::ublas;
-    compressed_matrix<T, column_major> E;
-    // Friction coupling matrix E
-    E.resize(2*m, m, false);
-    for (int j = 0; j < m; ++j ) {
-        E(2*j+1, j) = E(2*j, j) = 1;
-    }
-    E = trans(E);
-
-    vector_type cond_Coulomb(m);
-    for (int i=0; i<m; ++i) {
-        int j=2*i; int k=2*i+1;
-        // std::cout   << "i= " << i << ",\n z(i): "
-        //             << lcp.z(i) << ",\n E(i,j): "
-        //             << E(i,j) << ", E(i,k): " << E(i,k) << ",\n z(j+m): "
-        //             << lcp.z(j+m) << ", z(k+m): " << lcp.z(k+m) << ",\n" << std::endl;
-        cond_Coulomb(i) = 0.7*lcp.z(i)-E(i,j)*lcp.z(j+m)-E(i,k)*lcp.z(k+m);
+    for (k=0; k<dim; ++k) {
+        it = std::find( idx_a.begin(), idx_a.end(), k );
+        if (it==idx_a.end()) {
+            idx_g.push_back(k);
+        }
     }
 
-    return cond_Coulomb;
+    array_type   M_gg, M_ag, M_ga, Mprime_gg, Mprime_ag, Mprime_ga;
+    vector_type  q_g, q_a, qprime_g, qprime_a;
+    // M_gg, q_g:
+    for (kr=0; kr<idx_g.size(); ++kr) {
+        q_g(kr) = lcp_orig.q(idx_g[kr]);
+        for (kc=0; kc<idx_g.size(); ++kc) {
+            M_gg(kr,kc) = lcp_orig.M(idx_g[kr],idx_g[kc]);
+        }
+    }
+    // M_ag, q_a:
+    for (kr=0; kr<idx_a.size(); ++kr) {
+        q_a(kr) = lcp_orig.q(idx_a[kr]);
+        for (kc=0; kc<idx_g.size(); ++kc) {
+            M_ag(kr,kc) = lcp_orig.M(idx_a[kr],idx_g[kc]);
+        }
+    }
+    // M_ga:
+    for (kr=0; kr<idx_g.size()+1; ++kr) {
+        for (kc=0; kc<idx_a.size(); ++kc) {
+            M_ga(kr,kc) = lcp_orig.M(idx_g[kr],idx_a[kc]);
+        }
+    }
+    // M'_gg, M'_ag, M'_ga:
+    /*
+     *  /Warning:   prod() no return a matrix or a vector, one need to transform to a matrix or a vector
+     *              before use again prod().
+     */
+    Mprime_gg = M_gg - prod( M_ga , matrix<T>(prod(invSubM , M_ag)) );
+    Mprime_ag = - prod( invSubM, M_ag );
+    Mprime_ga = prod( M_ga, invSubM );
+    qprime_a  = -prod( invSubM, q_a );
+    qprime_g  = q_g - prod( M_ga , vector<T>(prod(invSubM, q_a)) ); 
+
+    M.clear();
+    q.clear();
+    // M'_aa, q'_a:
+    for (kr=0; kr<idx_a.size(); ++kr) {
+        q(idx_a[kr]) = qprime_a(kr);
+        for (kc=0; kc<idx_a.size(); ++kc) {
+            M(idx_a[kr],idx_a[kc]) = invSubM(kr,kc);
+        }
+    }
+    // M'_gg, q'_b:
+    for (kr=0; kr<idx_g.size(); ++kr){
+        q(idx_g[kr]) = qprime_g(kr);
+        for (kc=0; kc<idx_g.size(); ++kc){
+            M(idx_g[kr],idx_g[kc]) = Mprime_gg(kr,kc);
+        }
+    }
+    // M_'ag
+    for (kr=0; kr<idx_a.size(); ++kr) {
+        for (kc=0; kc<idx_g.size(); ++kc) {
+            M(idx_a[kr],idx_g[kc]) = Mprime_ag(kr,kc);
+        }
+    }
+    // M_'ga
+    for (kr=0; kr<idx_g.size(); ++kr) {
+        for (kc=0; kc<idx_a.size(); ++kc) {
+            M(idx_g[kr],idx_a[kc]) = Mprime_ga(kr,kc);
+        }
+    } 
+    
+    vector_type d(dim,1);
+    column( M, dim ) = d;
 }
-//endmatt
+
+////////////////////////////////////////////////////////////
+template<typename T>
+void LCP<T>::reinit(LCP<T> &lcp_ori)
+{
+    // works even if lcp_orig is an augmented LCP:
+    project(M,range(0,dim),range(0,dim)) = project(lcp_ori.M, range(0,dim),range(0,dim));
+    // if lcp is an augmented LCP:
+    if (M.size1()+1==M.size2()) {
+        vector_type d(dim,1); column(M,dim)  = d;
+    }
+    q                                    = lcp_ori.q;
+    z                                    = lcp_ori.z; 
+    basis                                = lcp_ori.basis;
+    driving                              = lcp_ori.driving;
+}
+
+////////////////////////////////////////////////////////////
+template<typename T>
+bool LCP<T>::go_through_adj_cone(LCP<T> &lcp_orig, const int Z0, const double tolerance)
+{
+    std::vector<int>::iterator it;
+    std::size_t k, kc, kr;
+    int block, drive;
+    int n = dim; // definition of an integer equal to the dimension for comparison with an other integer.
+
+    //preliminaries:
+    it = std::find(basis.begin(), basis.begin()+dim-1, Z0);
+    assert(*it==Z0);
+    block = it-basis.begin();
+
+    it = std::find(basis.begin()+dim, basis.end(), driving);
+    assert(*it==driving);
+    drive = it-basis.begin();
+    
+    if (M(block,drive) != 0) {// first use pivoting operation
+        this->pivoting( block, drive );
+        // after pivoting, one conserves only q and M without the driving
+        // column (since that will be next d column):
+        decltype(M) M_temp(dim,dim+1);
+        if (drive!=n) {
+            project( M_temp, range(0,dim), range(0,drive-n) ) = 
+                subrange( M, 0,dim , 0,drive-n );
+        }
+        
+        for (k=drive;k<2*dim;++k) {
+            column( M_temp, k-dim) = column( M, k-dim+1 );
+            // updating basis and nonbasis
+            basis[k] = basis[k+1];   
+        }
+
+        vector_type d(dim,1);
+        column( M_temp, dim ) = d;
+        basis[block] = driving;
+        basis[2*dim] = Z0;
+
+        M = M_temp;
+    }    
+    else {// second use direct inversing operation
+        std::vector<int> idx_alpha_temp, idx_alpha, idx_beta, idx_rem;
+        for (k=0;k<dim;++k) {
+            if (z[k] > tolerance/n) {
+                idx_alpha_temp.push_back(k);
+            }
+        }
+        // equivalent to find z-basis.
+        // Indeed if z_i = 0 is a z-basis then one can send back to
+        // nonbasis.
+        // Due to (APS) formulation, subM must not contain a
+        // alpha-column alone (that means: (APS) formulation 
+        // contains zero-diagonal entries corresponding to the alpha
+        // coefficient of z the impact. If, after pivoting, there
+        // exists a alpha-index in the basis, and there is no
+        // beta-index associated with, then the submatrix will be
+        // singular!!
+        // Elimination of the alpha-index column.
+        const int nb_pt = dim/4;
+        assert(idx_alpha_temp.size()!=0);
+        for (k=0;k<idx_alpha_temp.size();++k) {
+            // removing "alpha" and "lambda" "-index": 
+            if ( (idx_alpha_temp[k] > nb_pt-1) && (idx_alpha_temp[k] < 3*nb_pt) ) { 
+                idx_beta.push_back( k-nb_pt );
+            }
+        }
+        for (k=0;k<idx_beta.size();++k) {
+            idx_rem.push_back(idx_beta[k]/2 + 3*nb_pt);
+        }
+        for (k=0;k<idx_alpha_temp.size();++k) {
+            it = std::find(idx_rem.begin(),idx_rem.end(),idx_alpha_temp[k]);
+            if (it!=idx_rem.end()) {
+                idx_alpha.push_back(idx_alpha_temp[k]);
+            }
+        }
+
+        decltype(M) subM(idx_alpha.size(),idx_alpha.size());
+        for (kr=0;kr<idx_alpha.size();++kr){
+            for (kc=0;kc<idx_alpha.size();++kc){
+                subM(kr,kc) = lcp_orig.M(idx_alpha[kr],idx_alpha[kc]);
+            }
+        }
+
+        // pivoting operation from a sub-matrix, only if the sub-matrix is nonsingular.
+        // computation of the inverse of the sub-matrix: using the LU decomposition:
+        // create a permutation matrix for the LU-factorization
+        permutation_matrix<std::size_t> pm(subM.size1());
+
+        // perform LU-factorization
+        int res = lu_factorize(subM,pm);
+        
+        if( res != 0 ) {
+            return false; // sub-matrix is singular, the method is not feasible!
+        }
+
+        // create identity matrix of "inverse"
+        array_type invSubM(2,2);
+        invSubM.assign(identity_matrix<T>(subM.size1()));
+
+        // backsubstitute to get the inverse
+        lu_substitute(subM, pm, invSubM);
+
+        this->multi_pivoting( lcp_orig, invSubM, idx_alpha);
+
+        // updating basis and nonbasis:
+        for (k=0; k<2*dim+1; ++k){
+            basis[k] = k;
+        }
+        for (k=0;k<idx_alpha.size();++k) {
+            basis[idx_alpha[k]]     = idx_alpha[k]+dim;
+            basis[idx_alpha[k]+dim] = idx_alpha[k];
+        }
+    }
+
+    // this method is possible, that means either the pivot M(block,drive) is non zero or
+    // the sub-matrix from the set of z-basis is non-singular.
+    return true;
+}
 
 }} // namespace floe::lcp
 
 #endif // FLOE_LCP_LCP_HPP
-
