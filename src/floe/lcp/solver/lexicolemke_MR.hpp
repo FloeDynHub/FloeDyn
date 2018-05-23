@@ -1,29 +1,17 @@
-/*! \fn void lexicolemke_MR(std::list<int> basis)
- * \brief Lemke algorithm with lexicographical ordering.
- * 
- * LCP solver based on an augmented LCP with a covering vector d = (1,...,1)^T.
- * Each pivoting iteration is performed with a single pivot < w_r, z_s >, where w_r is called
- * the blocking of the driving variable, denoted z_s.
- * The algorithm terminates with a secondary ray if the driving column contains only positive terms or with a solution
- * at hand if z_0 is the blocking variable.
- * 
- * \param[in] tolerance Represents the admissible tolerance for w negative. It is the same order as the
- * LCP error. 
- * 
- * \remark The tolerance is only used for increase the probability to take z_0 as pivot. Thus, in this case, after
- * the pivot operation, a solution is at hand satisfying: sum( |z_i^-| + |w_i^-| ) >= dim*tolerance, 
- * where dim is the dimension of the problem and the exponent v^- denote the negative coefficient of v.
- * If z_0 is not a part of possible pivots, then, the tolerance is not applied.
- *
- * More informations in \cite cottle1992 p265, 299, 352-357, Sect. 4.5, 4.9, 4.10.
+/*!
+ * \author Matthias Rabatel
+ * \date May 2018
+ * \copyright ...
  */
 #ifndef FLOE_LCP_SOLVER_LEXICOLEMKE_MR_HPP
 #define FLOE_LCP_SOLVER_LEXICOLEMKE_MR_HPP
 
 #include <cassert>
+#include <iostream>
 #include <vector>
 
 #include "floe/lcp/lcp.h"
+#include "floe/lcp/solver/lexicolemke_MR.h"
 
 #include <boost/numeric/ublas/matrix.hpp>
 #include <boost/numeric/ublas/vector.hpp>
@@ -33,88 +21,106 @@ namespace floe { namespace lcp { namespace solver
 
 using namespace boost::numeric::ublas;
 
+///////////////////////////////////////////////////////////////////////////////////////////////////
 template < typename T>
-void lexicolemke_MR(double tolerance, floe::lcp::LCP<T>& lcp, int itermax ){
-// std::vector<int> lexicolemke_MR(double tolerance, floe::lcp::LCP<T>& lcp, int itermax ){
+std::vector<int> lexicolemke_MR(double tolerance, LCP<T>& lcp, int itermax)
+{
+    const double tol = tolerance;
+    const int itmax = itermax;
+    const std::size_t dim = lcp.dim;
+    matrix<T> M = lcp.M;
+    vector<T> q = lcp.q;
+    vector<T> z = lcp.z;
+    std::vector<int> bas = lcp.basis;
+    int drive = lcp.driving;
 
+
+    std::vector<int> error_status = lcp_lexicolemke_MR( tol, itmax, dim, M, q, z, bas, drive );
+
+    lcp.M = M; lcp.q = q; lcp.z = z; lcp.basis = bas; lcp.driving = drive;
+
+    return error_status;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+template<typename T>
+std::vector<int> lcp_lexicolemke_MR( const double tolerance, const int itermax, const std::size_t dim, 
+        matrix<T> &M, vector<T> &q, vector<T> &z, std::vector<int> &basis, int &driving  )
+{
     // itermax, by default: 1000
     int err{-1}, iter;
     int use_lexico_order = 0;
-    // std::vector<int> res(2,0);
+    std::vector<int> res(2,0);
 
     std::size_t i, j;
     int block, drive, entering, leaving, Z0_priority;
-    double tol = tolerance/lcp.dim; // same order as the LCP error
+    double tol = tolerance/dim; // same order as the LCP error
 
     std::vector<int>::iterator it, drive_it, Z0_priority_it;
     typename std::vector<T>::iterator min_it;    
 
     // trivial solution:
     int num_negative{0};
-    for (i=0; i<lcp.dim; ++i) {
-        if (lcp.q[i]>=0) {++num_negative;}
+    for (i=0; i<dim; ++i) {
+        if (q[i]>=0) {++num_negative;}
     }
-    if ( num_negative == int(lcp.dim) ){
-        lcp.z = lcp.q;
-        // return err;
-        // res[0] = err; res[1] = use_lexico_order;
-        // return res;
+    if ( num_negative == int(dim) ){
+        z = q;
+        res[0] = err; res[1] = use_lexico_order;
+        return res;
     }   
 
-    int Z0  = 2*lcp.dim; // artificial variable associated with the covering vector
+    int Z0  = 2*dim; // artificial variable associated with the covering vector
     entering = Z0;
     
     // % w variables are in {0,...,dim-1}
     // % z variables are in {dim,...,2*dim-1}
     // % basis and nonbasis variables
     std::vector<int> bas, nonbas;
-    for (i=0; i<lcp.dim; ++i) {
-        bas.push_back(lcp.basis[i]); nonbas.push_back(lcp.basis[i+lcp.dim]);
+    for (i=0; i<dim; ++i) {
+        bas.push_back(basis[i]); nonbas.push_back(basis[i+dim]);
     }
     nonbas.push_back(Z0);
 
     // Q = Id, matrix with lexicographically positive row built like a vector of vector for using 
     // lexicographical comparison:
-    std::vector< std::vector<T> > Q(lcp.dim);
-    for (i=0; i<lcp.dim; ++i) {
-        std::vector<T> v(lcp.dim,0);
+    std::vector< std::vector<T> > Q(dim);
+    for (i=0; i<dim; ++i) {
+        std::vector<T> v(dim,0);
         v[i] = 1;
         Q[i] = v;
     }
     
     // Looking for zbar such as w = q + (d * zbar) >=0
-    std::vector<T> x(lcp.dim,0);
-    for (i=0; i<lcp.dim; ++i) {x[i] = lcp.q(i);}   
-    std::cout << "la\n";
+    std::vector<T> x(dim,0);
+    for (i=0; i<dim; ++i) {x[i] = q(i);}   
     min_it  = std::min_element( x.begin(), x.end() );
     block   = ( min_it - x.begin() );
-    drive   = lcp.dim;
-    std::cout << "block and drive: " << block << " and " << drive << "\n";
-    std::cout << "zbar: " << *min_it << "\n";
+    drive   = dim;
     
     leaving = bas[block];
-    std::cout << "leaving: " << leaving << "\n";
+
     // keeping M and q before pivoting operations for checking of numerical error:
-    decltype(lcp.M) M_orig = lcp.M;
-    decltype(lcp.q) q_orig = lcp.q;
+    decltype(M) M_orig = M;
+    decltype(q) q_orig = q;
 
     // Pivoting operation on M and Q:
-    T pivot = lcp.M( block, drive );
+    T pivot = M( block, drive );
     // Q:
     // the blocking row:
-    for (i=0; i<lcp.dim; ++i){
-        Q[block][i] = -Q[block][i]/pivot; 
+    for (j=0; j<dim; ++j){
+        Q[block][j] = -Q[block][j]/pivot; 
     }
     // the remaining of the matrix:
-    for (i=0; i<lcp.dim; ++i) {
-        for (j=0; j<lcp.dim+1; ++j) {             
+    for (i=0; i<dim; ++i) {
+        for (j=0; j<dim; ++j) {             
             if (int(i)!=block) {
-                Q[i][j] += lcp.M(i,drive)*Q[block][j];
+                Q[i][j] += M(i,drive)*Q[block][j];
             }
         }
     }
     // M:
-    lcp.pivoting(block, drive);
+    pivoting( M, q, block, drive );
 
     // updating of the nonbasis: 
     bas[block]      = entering;
@@ -122,33 +128,33 @@ void lexicolemke_MR(double tolerance, floe::lcp::LCP<T>& lcp, int itermax ){
 
     // variables used in the followinf loop:
     T val;                                  // minimul ratio test
-    std::vector<T> d(lcp.dim,0);            // covering vector
+    std::vector<T> d(dim,0);                // covering vector
     std::vector<int> E_block;               // index of negative values of d
     std::vector<T> r_t_tol, r_t;            // to compute the minimum ratio test
     std::vector<int> candidate_pivots_indx; // index of blocking variables satisfying the minimum
                                             // ratio test (MRT).
     std::vector<int> base_candidate;        // basis index for blocking satisfying the MRT
     std::size_t nb_candidate{0};            // length of candidate_pivots_indx
-    std::vector<T> Q_tmp(lcp.dim,0.0);      // temporary vector for lexicographic comparison
+    std::vector<T> Q_tmp(dim,0.0);          // temporary vector for lexicographic comparison
 
     for (iter=1; iter<=itermax; ++iter) {
 
         if (leaving==Z0) {break;}
-        else if ( leaving < int(lcp.dim) ) { // the blocking variable is a w
-            entering = lcp.dim+leaving; // the complementarity variable of w is a z variable
+        else if ( leaving < int(dim) ) { // the blocking variable is a w
+            entering = dim+leaving; // the complementarity variable of w is a z variable
         }
         else { // the blocking variable is a z
-            entering = leaving - lcp.dim; // the complementarity variable of z is a w variable
+            entering = leaving - dim; // the complementarity variable of z is a w variable
         } 
 
         // updating of the covering vector:
         drive_it    = std::find( nonbas.begin(), nonbas.end(), entering);
         drive       = ( drive_it - nonbas.begin() );
 
-        auto d = column( lcp.M, drive );
+        auto d = column( M, drive );
 
         // finding new blocking variable:
-        for (i=0;i<lcp.dim;++i){
+        for (i=0;i<dim;++i){
             if (d(i) < 0) {E_block.push_back(i);}
         }
         
@@ -165,8 +171,8 @@ void lexicolemke_MR(double tolerance, floe::lcp::LCP<T>& lcp, int itermax ){
         // solution contains at most n nonzero!
         r_t_tol.resize(E_block.size()); r_t.resize(E_block.size());
         for (i=0;i<E_block.size();++i) {
-            r_t_tol[i]  = - ( lcp.q(E_block[i]) + tol ) / d(E_block[i]);
-            r_t[i]      = -    lcp.q(E_block[i])        / d(E_block[i]);
+            r_t_tol[i]  = - ( q(E_block[i]) + tol ) / d(E_block[i]);
+            r_t[i]      = -    q(E_block[i])        / d(E_block[i]);
         }
 
         min_it  = std::min_element( r_t_tol.begin(), r_t_tol.end() );
@@ -207,7 +213,6 @@ void lexicolemke_MR(double tolerance, floe::lcp::LCP<T>& lcp, int itermax ){
                 ++use_lexico_order;
                 Q_tmp = Q[candidate_pivots_indx[0]];
                 block = candidate_pivots_indx[0];
-                std::cout << "using LEXICOOO\n";
                 for (i=1;i<nb_candidate;++i){
                     if (Q_tmp > Q[candidate_pivots_indx[i]]){
                         block = candidate_pivots_indx[i];
@@ -220,35 +225,33 @@ void lexicolemke_MR(double tolerance, floe::lcp::LCP<T>& lcp, int itermax ){
 
         leaving = bas[block];
 
-        std::cout << "iter: " << iter << entering << " and " << leaving << "\n";
-
         // updating of [Mtilde,Qtilde]:
         assert(d[block]<0);
         // Pivoting operation on M and Q:
-        T pivot = lcp.M( block, drive );
+        T pivot = M( block, drive );
         // Q:
         // the blocking row:
-        for (i=0; i<lcp.dim; ++i){
+        for (j=0; j<dim; ++j){
             Q[block][j] = -Q[block][j]/pivot; 
         }
         // the remaining of the matrix:
-        for (i=0; i<lcp.dim; ++i) {
-            for (j=0; j<lcp.dim; ++j) {             
+        for (i=0; i<dim; ++i) {
+            for (j=0; j<dim; ++j) {             
                 if (int(i)!=block) {
-                    Q[i][j] += lcp.M(i,drive)*Q[block][j];
+                    Q[i][j] += M(i,drive)*Q[block][j];
                 }
             }
         }
         // M, q:
-        lcp.pivoting(block, drive);
+        pivoting( M, q, block, drive );
+
         // setting to 0 each qi such as i satisfies the min ratio test and
         // < wi,zi > is not the pivot! (since numerical error may lead to
         // negative qi, this could be dramatic in the following!)
         if ( ( Z0_priority_it == base_candidate.end() ) && (nb_candidate > 1) ) {
-            std::cout << "using approx toZ000\n";
             for (i=0;i<candidate_pivots_indx.size();++i) {
                 if (candidate_pivots_indx[i]!=block) {
-                    lcp.q(candidate_pivots_indx[i]) = 0;
+                    q(candidate_pivots_indx[i]) = 0;
                 }
             }   
         }
@@ -263,46 +266,84 @@ void lexicolemke_MR(double tolerance, floe::lcp::LCP<T>& lcp, int itermax ){
 
     }
       
-    if (iter >= itermax && leaving != Z0){ err=1;}
+    if (iter >= itermax && leaving != Z0){err=1;}
 
-    decltype(lcp.z) w(lcp.dim,0.0);   
+    vector<T> w(dim,0.0);   
     // re-initialization of z:
-    for (i=0; i<lcp.dim; ++i) {
-        lcp.z[i] = 0.0;
+    for (i=0; i<dim; ++i) {
+        z[i] = 0.0;
     }
 
-    for (i=0;i<lcp.dim;++i) {
-        lcp.basis[i]                    = bas[i];
-        lcp.basis[i+lcp.dim]            = nonbas[i];
+    basis[Z0] = nonbas[dim];
+    for (i=0;i<dim;++i) {
+        basis[i]                = bas[i];
+        basis[i+dim]            = nonbas[i];
 
         if (bas[i]!=Z0) {
-            if ( bas[i]<int(lcp.dim) ) {
-                w[bas[i]]               = lcp.q[i];
+            if ( bas[i]<int(dim) ) {
+                w[bas[i]]       = q[i];
             }
             else {
-                lcp.z[bas[i]-lcp.dim]   = lcp.q[i];
+                z[bas[i]-dim]   = q[i];
             }    
         }  
     }
 
-    std::cout << lcp.z << "\n";
-    std::cout << "err: " << err << "\n";
     // numerical error test:
     if (err==-1) { // Lemke's algorithme ends with a solution
-        T N2 = norm_2( w - prod(subrange(M_orig,0,lcp.dim,0,lcp.dim), lcp.z) - q_orig );
-        std::cout << "pb??\n";
-        if (N2>tolerance) { err=0; std::cout << "err numerical pb: " << err << "\n"; }
+        T N2 = norm_2( w - vector<T>( prod( subrange(M_orig,0,dim,0,dim) , z ) ) - q_orig );
+        if (N2>tolerance) {err=0;}
     }
 
     // save the last driving variable in the case where Lemke's algorithm ends with a secondary ray:
-    lcp.driving = entering;
-    std::cout << "pb there??\n";
+    driving = entering;
 
-    // return err;
+    res[0] = err; res[1] = use_lexico_order;
+    return res;
+}
 
-    // res[0] = err; res[1] = use_lexico_order;
-    // std::cout << "res: " << res[0] << res[1] << "\n";
-    // return res;
+////////////////////////////////////////////////////////////
+template<typename T>
+void pivoting(matrix<T> &M, vector<T> &q, const int block, const int drive)
+{
+    // WARNING: preferring a/b instead of 1/b*a
+    // M is not necessarily a square matrix (augmented lcp case)
+    // typedef typename LCP<T>::vector_type vector_type;
+    assert(M(block,drive) !=0);
+    
+    std::size_t i, j;
+    std::size_t dim = M.size1();
+
+    T pivot = M( block, drive );
+    
+    // M:
+    vector<T> d(dim,0.0);
+    for (i=0;i<dim;++i) {
+        d(i) = M(i,drive);
+    }
+
+    // the driving column and the blocking row:
+    column( M, drive ) = column( M, drive ) / pivot;
+    row(    M, block ) = -row(   M, block ) / pivot;
+    M( block, drive )  = 1.0 / pivot;
+
+    // the remaining of the matrix:
+    for (i=0; i<dim; ++i) {
+        for (j=0; j<M.size2(); ++j) {           // in the case where LCP(q,M) is an augmented LCP
+                                                // (M contains the covering vector d)
+            if (int(i)!=block && int(j)!=drive) {
+                M(i,j) += d(i)*M(block,j);
+            }
+        }
+    }
+    
+    // q:
+    q(block) = - q(block) / pivot;
+    for (i=0; i<dim; ++i) {
+        if (int(i)!=block) {
+                q(i) += d(i)*q(block);
+            }
+    }
 }
 
 }}} // namespace floe::lcp::solver

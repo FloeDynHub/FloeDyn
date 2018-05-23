@@ -8,14 +8,14 @@
 #ifndef DEF_FLOE_LCP_HPP
 #define DEF_FLOE_LCP_HPP
 
-#include <cassert>
+#include <assert.h>
 #include <vector>
 #include <algorithm>
 
 #include "lcp.h"
 
-#include <boost/numeric/ublas/matrix.hpp>
-#include <boost/numeric/ublas/vector.hpp>
+// #include <boost/numeric/ublas/matrix.hpp>
+// #include <boost/numeric/ublas/vector.hpp>
 #include <boost/numeric/ublas/matrix_proxy.hpp>
 #include <boost/numeric/ublas/vector_proxy.hpp>
 #include <boost/numeric/ublas/lu.hpp>
@@ -79,7 +79,6 @@ T LCP<T>::LCP_error() const
 
     T err = w_err + z_err + zw_err;
 
-    std::cout << "lcp error: " << err << "\n";
     return err;
 }
 
@@ -157,6 +156,7 @@ void LCP<T>::multi_pivoting( LCP<T> &lcp_orig, matrix<T> invSubM, std::vector<in
 {
     std::vector<int> idx_g;
     std::vector<int>::iterator it;
+    // /Warning: favourised the declaration of the indexes k, kc, kr inside the loop (more easy to debug!!)
     std::size_t k, kc, kr;
 
     for (k=0; k<dim; ++k) {
@@ -166,8 +166,11 @@ void LCP<T>::multi_pivoting( LCP<T> &lcp_orig, matrix<T> invSubM, std::vector<in
         }
     }
 
-    array_type   M_gg, M_ag, M_ga, Mprime_gg, Mprime_ag, Mprime_ga;
-    vector_type  q_g, q_a, qprime_g, qprime_a;
+    array_type   M_gg(idx_g.size(),idx_g.size()), M_ag(idx_a.size(),idx_g.size()), M_ga(idx_g.size(),idx_a.size()), 
+        Mprime_gg(idx_g.size(),idx_g.size()), Mprime_ag(idx_a.size(),idx_g.size()), Mprime_ga(idx_g.size(),idx_a.size());
+
+    vector_type  q_g(idx_g.size()), q_a(idx_a.size()), qprime_g(idx_g.size()), qprime_a(idx_a.size());
+
     // M_gg, q_g:
     for (kr=0; kr<idx_g.size(); ++kr) {
         q_g(kr) = lcp_orig.q(idx_g[kr]);
@@ -175,6 +178,7 @@ void LCP<T>::multi_pivoting( LCP<T> &lcp_orig, matrix<T> invSubM, std::vector<in
             M_gg(kr,kc) = lcp_orig.M(idx_g[kr],idx_g[kc]);
         }
     }
+
     // M_ag, q_a:
     for (kr=0; kr<idx_a.size(); ++kr) {
         q_a(kr) = lcp_orig.q(idx_a[kr]);
@@ -182,15 +186,17 @@ void LCP<T>::multi_pivoting( LCP<T> &lcp_orig, matrix<T> invSubM, std::vector<in
             M_ag(kr,kc) = lcp_orig.M(idx_a[kr],idx_g[kc]);
         }
     }
+
     // M_ga:
-    for (kr=0; kr<idx_g.size()+1; ++kr) {
+    for (kr=0; kr<idx_g.size(); ++kr) {
         for (kc=0; kc<idx_a.size(); ++kc) {
             M_ga(kr,kc) = lcp_orig.M(idx_g[kr],idx_a[kc]);
         }
     }
+
     // M'_gg, M'_ag, M'_ga:
     /*
-     *  /Warning:   prod() no return a matrix or a vector, one need to transform to a matrix or a vector
+     *  \Warning:   prod() no return a matrix or a vector, one need to transform to a matrix or a vector
      *              before use again prod().
      */
     Mprime_gg = M_gg - prod( M_ga , matrix<T>(prod(invSubM , M_ag)) );
@@ -199,8 +205,10 @@ void LCP<T>::multi_pivoting( LCP<T> &lcp_orig, matrix<T> invSubM, std::vector<in
     qprime_a  = -prod( invSubM, q_a );
     qprime_g  = q_g - prod( M_ga , vector<T>(prod(invSubM, q_a)) ); 
 
-    M.clear();
-    q.clear();
+    // reset to zero-matrix and zero-vector:
+    M.resize(M.size1(),M.size2(),false);
+    q.resize(q.size(),false);
+
     // M'_aa, q'_a:
     for (kr=0; kr<idx_a.size(); ++kr) {
         q(idx_a[kr]) = qprime_a(kr);
@@ -250,9 +258,10 @@ void LCP<T>::reinit(LCP<T> &lcp_ori)
 
 ////////////////////////////////////////////////////////////
 template<typename T>
-bool LCP<T>::go_through_adj_cone(LCP<T> &lcp_orig, const int Z0, const double tolerance)
+bool LCP<T>::go_through_adj_cone( LCP<T> &lcp_orig, const int Z0, const double tolerance )
 {
     std::vector<int>::iterator it;
+    //! /warning favo
     std::size_t k, kc, kr;
     int block, drive;
     int n = dim; // definition of an integer equal to the dimension for comparison with an other integer.
@@ -264,9 +273,10 @@ bool LCP<T>::go_through_adj_cone(LCP<T> &lcp_orig, const int Z0, const double to
 
     it = std::find(basis.begin()+dim, basis.end(), driving);
     assert(*it==driving);
-    drive = it-basis.begin();
+    drive = it-basis.begin()-dim;
     
-    if (M(block,drive) != 0) {// first use pivoting operation
+    if (M(block,drive) > tolerance/n) {// first use pivoting operation
+        std::cout << "inside go_through_adj_cone function with single pivoting!\n";
         this->pivoting( block, drive );
         // after pivoting, one conserves only q and M without the driving
         // column (since that will be next d column):
@@ -290,12 +300,14 @@ bool LCP<T>::go_through_adj_cone(LCP<T> &lcp_orig, const int Z0, const double to
         M = M_temp;
     }    
     else {// second use direct inversing operation
+        std::cout << "inside go_through_adj_cone function with multi pivoting!\n";
         std::vector<int> idx_alpha_temp, idx_alpha, idx_beta, idx_rem;
         for (k=0;k<dim;++k) {
             if (z[k] > tolerance/n) {
                 idx_alpha_temp.push_back(k);
             }
         }
+
         // equivalent to find z-basis.
         // Indeed if z_i = 0 is a z-basis then one can send back to
         // nonbasis.
@@ -309,23 +321,33 @@ bool LCP<T>::go_through_adj_cone(LCP<T> &lcp_orig, const int Z0, const double to
         // Elimination of the alpha-index column.
         const int nb_pt = dim/4;
         assert(idx_alpha_temp.size()!=0);
+
         for (k=0;k<idx_alpha_temp.size();++k) {
             // removing "alpha" and "lambda" "-index": 
             if ( (idx_alpha_temp[k] > nb_pt-1) && (idx_alpha_temp[k] < 3*nb_pt) ) { 
-                idx_beta.push_back( k-nb_pt );
-            }
-        }
-        for (k=0;k<idx_beta.size();++k) {
-            idx_rem.push_back(idx_beta[k]/2 + 3*nb_pt);
-        }
-        for (k=0;k<idx_alpha_temp.size();++k) {
-            it = std::find(idx_rem.begin(),idx_rem.end(),idx_alpha_temp[k]);
-            if (it!=idx_rem.end()) {
-                idx_alpha.push_back(idx_alpha_temp[k]);
+                idx_beta.push_back( idx_alpha_temp[k]-nb_pt );
             }
         }
 
-        decltype(M) subM(idx_alpha.size(),idx_alpha.size());
+        for (k=0;k<idx_beta.size();++k) {
+            idx_rem.push_back(idx_beta[k]/2 + 3*nb_pt);
+        }
+
+        for (k=0;k<idx_alpha_temp.size();++k) {
+            if (idx_alpha_temp[k]<3*nb_pt) { // fullfilling with \lambda- and \beta-index:
+                idx_alpha.push_back(idx_alpha_temp[k]);
+            }
+            else { // fullfilling with \alpha-index associated with beta-index:
+                it = std::find(idx_rem.begin(),idx_rem.end(),idx_alpha_temp[k]);
+                if (it!=idx_rem.end()) {
+                    idx_alpha.push_back(idx_alpha_temp[k]);
+                }
+            }
+        }
+        
+        assert(idx_alpha.size()!=0);
+        matrix<T> subM(idx_alpha.size(),idx_alpha.size());
+        
         for (kr=0;kr<idx_alpha.size();++kr){
             for (kc=0;kc<idx_alpha.size();++kc){
                 subM(kr,kc) = lcp_orig.M(idx_alpha[kr],idx_alpha[kc]);
@@ -334,22 +356,28 @@ bool LCP<T>::go_through_adj_cone(LCP<T> &lcp_orig, const int Z0, const double to
 
         // pivoting operation from a sub-matrix, only if the sub-matrix is nonsingular.
         // computation of the inverse of the sub-matrix: using the LU decomposition:
+        // create a working copy of the subM:
+        matrix<T> A(subM);
         // create a permutation matrix for the LU-factorization
-        permutation_matrix<std::size_t> pm(subM.size1());
+        permutation_matrix<std::size_t> pm(A.size1());
 
         // perform LU-factorization
-        int res = lu_factorize(subM,pm);
+        int res = lu_factorize(A,pm);
         
         if( res != 0 ) {
             return false; // sub-matrix is singular, the method is not feasible!
         }
 
         // create identity matrix of "inverse"
-        array_type invSubM(2,2);
-        invSubM.assign(identity_matrix<T>(subM.size1()));
+        matrix<T> invSubM(A.size1(),A.size2());
+        invSubM.assign(identity_matrix<T>(A.size1()));
 
         // backsubstitute to get the inverse
-        lu_substitute(subM, pm, invSubM);
+        lu_substitute(A, pm, invSubM);
+
+        // checking the quality of the inverse:
+        // T N2 = norm_1( prod(subM, invSubM) - identity_matrix<T>(subM.size1()) );
+        // assert(N2<1e-9);
 
         this->multi_pivoting( lcp_orig, invSubM, idx_alpha);
 

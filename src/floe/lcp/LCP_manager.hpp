@@ -341,23 +341,6 @@ bool LCPManager<T>::saving_contact_graph_in_hdf5(int LCP_count, std::size_t loop
                     delete file; 
                     return true; 
                 }
-
-                // int ind_lcp[2];
-                // hsize_t dim_ind[2]={1,2};
-                // int dim_curr_ind = static_cast<int>(dim_curr_cgi[0]-1);
-                // hsize_t offset_ind[2];
-                // offset_ind[0] = dim_curr_ind; offset_ind[1] = 0;
-                // DataSpace mspace_ind( 2, dim_ind );
-                // fpsace_ind.selectHyperslab(H5S_SELECT_SET, dim_ind, offset_ind);
-                // CGI->read( ind_lcp, PredType::NATIVE_INT, mspace_ind, fpsace_ind );
-
-                // if (ind_lcp[0]==last_lcp_uns[0] && ind_lcp[1]==last_lcp[0]) {
-                //     delete M_unsolved;
-                //     delete M_solved;
-                //     delete CGI;
-                //     delete file; 
-                //     return false;
-                // }
  
                 hsize_t ext_size[2] = { dim_curr_cgi[0]+1, dim_curr_cgi[1]};
                 CGI->extend( ext_size ); // extension with one new line 

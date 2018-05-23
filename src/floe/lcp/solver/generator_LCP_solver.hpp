@@ -41,19 +41,18 @@ public:
 
     GeneratorLCPSolver(real_type epsilon) : base_class(epsilon) {}
 
-private:
+// private:
 
 
     //! Test LCP solution validity
-    bool LCPtest(int compt, real_type EC, real_type born_EC, real_type Err, bool VRelNtest ) override;
+    // bool LCPtest(int compt, real_type EC, real_type born_EC, real_type Err, bool VRelNtest ) override;
 
 };
 
 
-template<typename T>
-bool GeneratorLCPSolver<T>::LCPtest(int compt, real_type EC, real_type born_EC, real_type Err, bool VRelNtest ) {
-    return !(EC > born_EC*(1+1e-2) || VRelNtest == 0);
-}
+// template<typename T>
+// bool GeneratorLCPSolver<T>::LCPtest(int compt, real_type EC, real_type born_EC, real_type Err, bool VRelNtest ) {
+//     return !(EC > born_EC*(1+1e-2) || VRelNtest == 0);
 
 
 }}} // namespace floe::lcp::solver

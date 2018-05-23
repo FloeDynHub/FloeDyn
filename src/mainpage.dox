@@ -94,9 +94,9 @@
  *
  * Before running any simulations, please build floe configurations:
  * \code
- * $ ./build/FLOE -i generator -n 1000 -c 0.6 
+ * $ ./build/FLOE -i generator -n 1000 -c 0.6 -t 0
  * \endcode
- * generation of 1000 floes with a concentration equal to 60 percent.
+ * generation of 1000 floes with a concentration equal to 60 percent. At the end, the simulation, which the last is <i> t=0 </i>, starts.
  * 
  * First example:
  * \code
@@ -112,7 +112,28 @@
  * Be careful, <i> plot </i> is a folder containing <b> python </b> files in order to create a video in <i> videos </i> folder. One have to build the <i> io/videos </i> folder before.
  * 
  * \section Debug
- * with <b> X-Code </b>
+ * Two tools:
+ * - with <b> X-Code </b>.
+ * - with <b> valgrind </b>.
+ * 
+ * \subsection with valgrind:
+ *
+ * First, please compilling without <i> --debug </i>:
+ * \code 
+ * $ ./waf --target FLOE
+ * endcode
+ * Then, launching the simulation with the command: 
+ * \code 
+ * $ valgrind --leak-check=full ./build/FLOE -i io/inputs/in_700f_60p_#1.h5 -t 10000
+ * endcode
+ *
+ * \subsection with X-Code (or just with option --debug):
+ * 
+ * First, please compilling with <i> --debug </i>:
+ * \code 
+ * $ ./waf --target FLOE --debug
+ * endcode
+ * So, the different <i> assert() </i> function will be activated.
  *
  * \section example Un exemple expliqué (Roland)
  *
