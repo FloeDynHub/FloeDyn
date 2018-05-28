@@ -163,7 +163,6 @@ LCPSolver<T>::solve( TContactGraph& graph, bool& success, int lcp_failed_stats[]
 
             reduction_via_perturbation( lcp_a.dim, perturb_M, alpha );
             project(lcp_a.M,range(0,lcp_a.dim),range(0,lcp_a.dim)) = perturb_M;
-            std::cout << perturb_M << "\n\n";
             ++count_RP;
         }
 
@@ -356,10 +355,11 @@ int LCPSolver<T>::which_failure( vector<real_type> Err, bool Is_pos_rel_norm_vel
     std::size_t dim = Err.size()/3; // total dimension (3*4*nbc)
     std::size_t nbc = dim/4; // number of contact
 
-    real_type LCP_err(0), EC_err(0);
+    std::cout << "which failure: \n";
+    real_type EC_err(0), impulse_err(0);
     // global LCP error:
-    for (std::size_t i=0; i<3*dim; ++i) {
-        LCP_err += std::abs(Err(i));
+    for (std::size_t i=dim; i<2*dim; ++i) {
+        if (Err(i)<0) {impulse_err += std::abs(Err(i));}
     }
     // error on the kinetic energy
     for (std::size_t i=0; i<3*nbc; ++i) {
@@ -368,7 +368,7 @@ int LCPSolver<T>::which_failure( vector<real_type> Err, bool Is_pos_rel_norm_vel
 
     int source=0;
 
-    if (LCP_err>tolerance){source += 100;}
+    if (impulse_err>tolerance){source += 100;}
     if (EC_err>tolerance) {source += 20;}
     if (!Is_pos_rel_norm_vel){source += 3;}
 

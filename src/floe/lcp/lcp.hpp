@@ -248,7 +248,8 @@ void LCP<T>::reinit(LCP<T> &lcp_ori)
     project(M,range(0,dim),range(0,dim)) = project(lcp_ori.M, range(0,dim),range(0,dim));
     // if lcp is an augmented LCP:
     if (M.size1()+1==M.size2()) {
-        vector_type d(dim,1); column(M,dim)  = d;
+        vector_type d(dim,1); 
+        column(M,dim)  = d;
     }
     q                                    = lcp_ori.q;
     z                                    = lcp_ori.z; 
@@ -276,26 +277,34 @@ bool LCP<T>::go_through_adj_cone( LCP<T> &lcp_orig, const int Z0, const double t
     drive = it-basis.begin()-dim;
     
     if (M(block,drive) > tolerance/n) {// first use pivoting operation
-        std::cout << "inside go_through_adj_cone function with single pivoting!\n";
+        // std::cout << "inside go_through_adj_cone function with single pivoting!\n";
+        // std::cout << "pivot: " << M(block,drive) << "\n\n";
+        // std::cout << "block&drive: " << block << " | " << drive << "\n";
         this->pivoting( block, drive );
+        // std::cout << "after pivot: \n";
         // after pivoting, one conserves only q and M without the driving
         // column (since that will be next d column):
-        decltype(M) M_temp(dim,dim+1);
-        if (drive!=n) {
-            project( M_temp, range(0,dim), range(0,drive-n) ) = 
-                subrange( M, 0,dim , 0,drive-n );
-        }
+        array_type M_temp(dim,dim+1);
+        project( M_temp, range(0,dim), range(0,drive) ) = subrange( M, 0,dim , 0,drive );
         
-        for (k=drive;k<2*dim;++k) {
-            column( M_temp, k-dim) = column( M, k-dim+1 );
+        for (k=drive;k<dim;++k) {
+            // std::cout << "column: " << k << "\n";
+            column( M_temp, k) = column( M, k+1 );
             // updating basis and nonbasis
-            basis[k] = basis[k+1];   
+            basis[dim+k] = basis[dim+k+1];   
         }
+        // std::cout << "driving: " << driving << "\n";
+        basis[block] = driving;
+        basis[2*dim] = Z0;
 
         vector_type d(dim,1);
         column( M_temp, dim ) = d;
-        basis[block] = driving;
-        basis[2*dim] = Z0;
+
+        // std::cout << "basis: \n";
+        // for (k=0;k<basis.size();++k) {
+        //     std::cout << basis[k] << ", ";
+        // } 
+        // std::cout << "\n\n";
 
         M = M_temp;
     }    

@@ -90,7 +90,7 @@ std::vector<int> lcp_lexicolemke_MR( const double tolerance, const int itermax, 
         v[i] = 1;
         Q[i] = v;
     }
-    
+
     // Looking for zbar such as w = q + (d * zbar) >=0
     std::vector<T> x(dim,0);
     for (i=0; i<dim; ++i) {x[i] = q(i);}   
@@ -119,6 +119,7 @@ std::vector<int> lcp_lexicolemke_MR( const double tolerance, const int itermax, 
             }
         }
     }
+
     // M:
     pivoting( M, q, block, drive );
 
@@ -213,12 +214,34 @@ std::vector<int> lcp_lexicolemke_MR( const double tolerance, const int itermax, 
                 ++use_lexico_order;
                 Q_tmp = Q[candidate_pivots_indx[0]];
                 block = candidate_pivots_indx[0];
-                for (i=1;i<nb_candidate;++i){
+                // // debug:
+                // std::cout << "lexicographic ordering: \n";
+                // std::cout << "Q: \n";
+                // for (std::size_t iq=0;iq<nb_candidate; ++iq) {
+                //     std::cout << "[ ";
+                //     for (std::size_t jq=0;jq<dim;++jq) {
+                //         std::cout << Q[candidate_pivots_indx[iq]][jq] << ", ";
+                //     }
+                //     std::cout << " ]\n";
+                // }
+                // std::cout << "\n\n";
+                // // end of debug
+                for (i=1;i<nb_candidate;++i){ // lexicographic minimum ratio
                     if (Q_tmp > Q[candidate_pivots_indx[i]]){
                         block = candidate_pivots_indx[i];
                         Q_tmp = Q[candidate_pivots_indx[i]];
                     }
                 }
+                // // debug:
+                // std::cout << "Q_tmp: \n";
+                // for (std::size_t iq=0;iq<dim; ++iq) {
+                //     std::cout << Q_tmp[iq] << ", ";
+                // }
+                // std::cout << "\n\n";
+                // std::cout << "dim | iter | block | drive: " << dim << " | " << iter << " | " 
+                //     << block << " | " << drive << "\n";
+                // std::cout << "previous pivot:" << pivot << "\n\n"; 
+                // // end of debug
             }
             else { block = candidate_pivots_indx[0]; }
         }
