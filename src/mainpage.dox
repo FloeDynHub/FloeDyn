@@ -111,6 +111,11 @@
  * replacing <i> outputs.h5 </i> by the name of the outputs files in the <i> io/outputs </i> folder.
  * Be careful, <i> plot </i> is a folder containing <b> python </b> files in order to create a video in <i> videos </i> folder. One have to build the <i> io/videos </i> folder before.
  * 
+ * Informations on the floe assemblies:
+ * \code
+ * $ ./build/FLOE_INPUT_INFO io/inputs/in_2000f_60p_jKtIx.h5
+ * \endcode 
+ *
  * \section Debug
  * Two tools:
  * - with <b> X-Code </b>.

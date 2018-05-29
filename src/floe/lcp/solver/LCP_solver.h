@@ -147,7 +147,7 @@ bool saving_LCP_in_hdf5(floe::lcp::LCP<T> lcp, bool solved, int count_attempt, i
     // const H5std_string Idx_solver( "Which solver" ); // Information on which solver, 
     // how many random perturbations are used before to compute solution, the index in the h5 file and
     // the source of the LCP error (see which_failure)
-    const hsize_t Max_storage_sol = 60000;
+    const hsize_t Max_storage_sol = 15000;
     const hsize_t Max_storage_unsol = 15000;
 
     const hsize_t dim_solver(7);

@@ -182,14 +182,14 @@ int LCPManager<T>::solve_contacts(TContactGraph& contact_graph)
         }
 
 
-        // Mat
-        /*
-         * Recovery of contact data (LCP_count, etc). Save in h5 file:
-         */
-        if (!end_recording && size_a_sub_graph!=0) {
-            end_recording = saving_contact_graph_in_hdf5( LCP_count, loop_cnt, size_a_sub_graph, all_solved, contact_loop_stats );
-        } 
-        // EndMat
+        // // Mat
+        // /*
+        //  * Recovery of contact data (LCP_count, etc). Save in h5 file:
+        //  */
+        // if (!end_recording && size_a_sub_graph!=0) {
+        //     end_recording = saving_contact_graph_in_hdf5( LCP_count, loop_cnt, size_a_sub_graph, all_solved, contact_loop_stats );
+        // } 
+        // // EndMat
 
         // {
         //     // Big LCP solving
