@@ -96,7 +96,7 @@ public:
         std::cout << "read TOPAZ" << std::endl;
         P.load_matlab_topaz_data(matlab_topaz_filename);
         // P.get_dynamics_manager().get_external_forces().get_physical_data().set_storm_mode();
-        // P.get_dynamics_manager().get_external_forces().get_physical_data().set_modes(2,0);
+        P.get_dynamics_manager().get_external_forces().get_physical_data().set_modes(2,0);
 
         if (vm.count("rectime"))
         {

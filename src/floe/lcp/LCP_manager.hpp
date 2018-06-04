@@ -101,11 +101,14 @@ template<typename TContactGraph>
 int LCPManager<T>::solve_contacts(TContactGraph& contact_graph)
 {
     auto const subgraphs = collision_subgraphs( contact_graph );
-    int LCP_count = 0, nb_success = 0;
+    int LCP_count=0, nb_success=0;
     int nb_lcp_failed_stats[3]={0,0,0}; 
-    int contact_loop_stats[2]={0,0}; // number of contact points, indicator for be out of loop due to all success (1) or no success (0) 
-    // or no enough iteration (2)
-    static bool end_recording = false;
+
+    const std::size_t limit_sup_loop_cnt    = 5000; // from Quentin: 1000
+    const std::size_t limit_sup_nb_contact  =  500; // from Quentin:   50
+
+    // variables for contact informations:
+    // static bool end_recording = false;
 
     // m_solver.nb_solver_run = 0; // test perf
     // m_solver.chrono_solver = 0; // test perf
@@ -125,16 +128,23 @@ int LCPManager<T>::solve_contacts(TContactGraph& contact_graph)
         // update_floes_state(subgraph, Sol, subgraph);
         
 
-        // Active subhraph LCP strategy
+
+
+        // Active subgraph LCP strategy
         auto asubgraphs = active_subgraphs( subgraph );
         std::size_t loop_cnt = 0;
         int loop_nb_success = -1;
-        std::size_t size_a_sub_graph = asubgraphs.size();
-        contact_loop_stats[0] = static_cast<int>(num_contacts(subgraph));
-        contact_loop_stats[1] = 1;
-        bool all_solved = true;
+
+        // variables for contact informations:
+        // std::size_t size_a_sub_graph = asubgraphs.size();
+        // int contact_loop_stats[2]={0,0}; // number of contact points, indicator for be out of loop due to all success (1) or no success (0) 
+            // or no enough iteration (2)
+        // contact_loop_stats[0] = static_cast<int>(num_contacts(subgraph));
+        // contact_loop_stats[1] = 1;
+        // bool all_solved = true;
+
         while (asubgraphs.size() != 0
-               && loop_cnt < std::min( 60 * num_contacts(subgraph), std::size_t{1000})
+               && loop_cnt < std::min( 60 * num_contacts(subgraph), limit_sup_loop_cnt)
                && loop_nb_success !=0 )
         {
             loop_nb_success = 0; // if no succes after one total path of contact graph, no use (nothing change)
@@ -144,7 +154,7 @@ int LCPManager<T>::solve_contacts(TContactGraph& contact_graph)
             for ( auto const& graph : asubgraphs ) // loop over the total number of active contact group
             {
                 bool success;
-                if (num_contacts(graph) > 50){
+                if (num_contacts(graph) > limit_sup_nb_contact){
                     std::cout << " Q4,\n";
                     for ( auto const& igraph : quad_cut( graph ) ){
                         auto Sol = m_solver.solve( igraph, success, nb_lcp_failed_stats );
@@ -169,14 +179,14 @@ int LCPManager<T>::solve_contacts(TContactGraph& contact_graph)
             nb_success += loop_nb_success;
             ++loop_cnt;
 
-            if (loop_nb_success==0) {contact_loop_stats[1] = 0;}
+            // if (loop_nb_success==0) {contact_loop_stats[1] = 0;}
         }
         if (asubgraphs.size() != 0)
         {
-            all_solved = false;
-            if (loop_nb_success!=0) {contact_loop_stats[1] = 2;}
+            // all_solved = false;
+            // if (loop_nb_success!=0) {contact_loop_stats[1] = 2;}
             std::cout << "End of the while loop without resolution of all contacts!!\n";
-            // LCP_count += asubgraphs.size();
+            LCP_count += asubgraphs.size();
 
             for ( auto const& graph : asubgraphs ) mark_solved(graph, false);
         }

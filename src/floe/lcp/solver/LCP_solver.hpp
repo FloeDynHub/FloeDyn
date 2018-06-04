@@ -172,21 +172,24 @@ LCPSolver<T>::solve( TContactGraph& graph, bool& success, int lcp_failed_stats[]
         ++count_attempt;
     }
 
-    // // Saving data on LCP:
-    // if (!is_full_storage){
-    //     if (!solved) {
-    //         std::cout << "I will store an unsolved LCP!\n";
-    //         lcp_orig.z                  = best_z;
-    //         Solc                        = calcSolc(graph_lcp, lcp_orig);
-    //         bool Is_pos_rel_norm_vel    = Rel_Norm_Vel_test(prod(trans(graph_lcp.J), Solc), graph);
-    //         vector<real_type> err_det   = lcp_orig.LCP_error_detailed();
-    //         w_fail                      = which_failure( err_det, Is_pos_rel_norm_vel );            
-    //     }
+    // Saving data on LCP:
+    if (!is_full_storage){
+        if (!solved) {
+            std::cout << "An unsolved LCP is storing!\n";
+            lcp_orig.z                  = best_z;
+            Solc                        = calcSolc(graph_lcp, lcp_orig);
+            bool Is_pos_rel_norm_vel    = Rel_Norm_Vel_test(prod(trans(graph_lcp.J), Solc), graph);
+            vector<real_type> err_det   = lcp_orig.LCP_error_detailed();
+            w_fail                      = which_failure( err_det, Is_pos_rel_norm_vel );   
 
-    //     is_full_storage = saving_LCP_in_hdf5( lcp_orig, solved, count_attempt, count_RP, count_SR, count_SR_failed, 
-    //         use_lexico_ordering, best_err, w_fail );
-    // }
-    // // End saving data on LCP
+            is_full_storage = saving_LCP_in_hdf5( lcp_orig, solved, count_attempt, count_RP, count_SR, count_SR_failed, 
+            use_lexico_ordering, best_err, w_fail );         
+        }
+
+        // is_full_storage = saving_LCP_in_hdf5( lcp_orig, solved, count_attempt, count_RP, count_SR, count_SR_failed, 
+        //     use_lexico_ordering, best_err, w_fail );
+    }
+    // End saving data on LCP
 
     if (!solved) {
         lcp_failed_stats[0] += 1;

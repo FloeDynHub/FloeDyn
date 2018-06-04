@@ -65,7 +65,7 @@ Generator<TProblem>::generate_floe_set(std::size_t nb_floes, real_type concentra
     for (auto& floe : m_problem.get_floe_group().get_floes()){
         floe.static_floe().set_thickness(floe.static_floe().thickness() * max_size / 250);
     }
-    real_type end_time = 2000;
+    real_type end_time = 500;
     bool init = true;
     do {
         m_problem.solve(end_time, 10, 10, init);

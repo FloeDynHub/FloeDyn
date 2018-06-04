@@ -113,7 +113,7 @@ private:
         return - coeff * pt / norm2(pt);
     }
     //! convergent current outside null rectangle window
-    point_type convergent_outside_window_field(point_type pt = {0,0}, real_type speed=0.1) {
+    point_type convergent_outside_window_field(point_type pt = {0,0}, real_type speed=1) {
         real_type x{0}, y{0};
         if (std::abs(pt.x) > m_window_width / 2) x = - speed * pt.x / std::abs(pt.x);
         if (std::abs(pt.y) > m_window_height / 2) y = - speed * pt.y / std::abs(pt.y);

@@ -84,7 +84,7 @@
  *
  * or, all <i> .cpp </i> files contained in <i> product </i> folder. The executable are in the <i> build </i> folder.
  *
- * \subsection \first_run First Running
+ * \subsection first_run First Running
  *
  * Run:
  * \code
@@ -97,7 +97,14 @@
  * $ ./build/FLOE -i generator -n 1000 -c 0.6 -t 0
  * \endcode
  * generation of 1000 floes with a concentration equal to 60 percent. At the end, the simulation, which the last is <i> t=0 </i>, starts.
- * 
+ * One should keep the default size (250 m) during the generation phase since the external forces (specially winds) are suitable to ensure
+ * floes penetrate in the target zone in order to reach the required ice concentration as soon as possible.
+ * The floe size may be adjusted later on with the command: 
+ * \code
+ * $ ./build/FLOE_RESIZE_INPUT io/inputs/in_100f_20p_5kslF.h5 10000
+ * \endcode 
+ * 10000 is the size (in meters) of the target zone. The ice floes are resize to fit with the new target zone. 
+ *
  * First example:
  * \code
  * $ ./build/FLOE -i io/inputs/in_700f_60p_#1.h5 -t 10000
@@ -110,34 +117,41 @@
  * \endcode
  * replacing <i> outputs.h5 </i> by the name of the outputs files in the <i> io/outputs </i> folder.
  * Be careful, <i> plot </i> is a folder containing <b> python </b> files in order to create a video in <i> videos </i> folder. One have to build the <i> io/videos </i> folder before.
+ * The option <i> -s n </i> is the time step (1 image for each n second, n=1 by default).
  * 
  * Informations on the floe assemblies:
  * \code
  * $ ./build/FLOE_INPUT_INFO io/inputs/in_2000f_60p_jKtIx.h5
  * \endcode 
  *
+ * To generate the documentation, please use the doxygen:
+ * \code
+ * $ doxygen dox_file.cfg
+ * \endcode
+ * with <i> dox_file.cfg </i> the configuration file.
+ *
  * \section Debug
  * Two tools:
  * - with <b> X-Code </b>.
  * - with <b> valgrind </b>.
  * 
- * \subsection with valgrind:
+ * \subsection val with valgrind:
  *
  * First, please compilling without <i> --debug </i>:
  * \code 
  * $ ./waf --target FLOE
- * endcode
+ * \endcode
  * Then, launching the simulation with the command: 
  * \code 
  * $ valgrind --leak-check=full ./build/FLOE -i io/inputs/in_700f_60p_#1.h5 -t 10000
- * endcode
+ * \endcode
  *
- * \subsection with X-Code (or just with option --debug):
+ * \subsection xcode with X-Code (or just with option --debug):
  * 
  * First, please compilling with <i> --debug </i>:
  * \code 
  * $ ./waf --target FLOE --debug
- * endcode
+ * \endcode
  * So, the different <i> assert() </i> function will be activated.
  *
  * \section example Un exemple expliqué (Roland)
