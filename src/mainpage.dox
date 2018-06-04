@@ -247,13 +247,13 @@
  *
  * Ce LCP pourra être résolu par un des solveurs disponibles, par exemple la <a href="http://web.stanford.edu/class/msande316/slides/050204.pdf">méthode de Lemke</a> avec tri lexicographique :
  * \code
- * floe::lcp::solver::lexicolemke(lcp);
+ * error_status = floe::lcp::solver::lexicolemke_MR(tolerance, lcp, itermax);
  * \endcode
  * La solution du LCP est alors disponible dans le membre floe::lcp::LCP::z de la classe floe::lcp::LCP.
  *
  * On peut calculer l'erreur de la solution avec le code :
  * \code
- * const real error = floe::lcp::LCP_error(lcp);
+ * const T error = lcp.LCP_error();
  * \endcode
  *
  * Il ne faut pas oublier, à la fin, de libérer la mémoire allouée pour les floes :
