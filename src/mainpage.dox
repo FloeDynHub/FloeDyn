@@ -45,7 +45,7 @@
  * 		+ Use for outputs.
  * - ffmpeg (version no matter)
  *		+ Use for generation of videos.
- * - python (version 2.7) (addind h5py, numpy and matplotlib)
+ * - python (version no matter) (addind h5py, numpy and matplotlib)
  * 		+ Use for visualisation and generation of videos from outputs.
  * - doxygen (version no matter)
  * 		+ Use for generating documentation.
@@ -98,7 +98,7 @@
  * \endcode
  * generation of 1000 floes with a concentration equal to 60 percent. At the end, the simulation, which the last is <i> t=0 </i>, starts.
  * One should keep the default size (250 m) during the generation phase since the external forces (specially winds) are suitable to ensure
- * floes penetrate in the target zone in order to reach the required ice concentration as soon as possible.
+ * floes penetrate in the target zone in order to reach the required ice concentration as soon as possible. (the speed in convergent_outside_window_field should be constant equal to 1)
  * The floe size may be adjusted later on with the command: 
  * \code
  * $ ./build/FLOE_RESIZE_INPUT io/inputs/in_100f_20p_5kslF.h5 10000
@@ -124,7 +124,12 @@
  * $ ./build/FLOE_INPUT_INFO io/inputs/in_2000f_60p_jKtIx.h5
  * \endcode 
  *
- * To generate the documentation, please use the doxygen:
+ * To generate an image of the floe assembly:
+ * \code
+ * $ python3 plot img -f io/outputs/outputs.h5
+ * \endcode
+ * 
+ * To generate the documentation, please use doxygen:
  * \code
  * $ doxygen dox_file.cfg
  * \endcode

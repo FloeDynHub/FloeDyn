@@ -416,7 +416,7 @@ class FloePlotter(object):
         if not img:
             file_time_dependant_keys =["time", "floe_states", "mass_center"]
         else:
-            file_time_dependant_keys =["floe_states"] # allow input files to be plotted
+            file_time_dependant_keys =["time", "floe_states"] # allow input files to be plotted
         if single_step == "OFF":
             for key in file_time_dependant_keys:
                 d[key] = data_file.get(key)[::self.OPTIONS.step]

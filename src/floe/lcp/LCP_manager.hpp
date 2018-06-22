@@ -104,8 +104,8 @@ int LCPManager<T>::solve_contacts(TContactGraph& contact_graph)
     int LCP_count=0, nb_success=0;
     int nb_lcp_failed_stats[3]={0,0,0}; 
 
-    const std::size_t limit_sup_loop_cnt    = 5000; // from Quentin: 1000
-    const std::size_t limit_sup_nb_contact  =  500; // from Quentin:   50
+    const std::size_t limit_sup_loop_cnt    = 5000;//5000; // from Quentin: 1000
+    const std::size_t limit_sup_nb_contact  =  500;//500; // from Quentin:   50
 
     // variables for contact informations:
     // static bool end_recording = false;
@@ -134,6 +134,7 @@ int LCPManager<T>::solve_contacts(TContactGraph& contact_graph)
         auto asubgraphs = active_subgraphs( subgraph );
         std::size_t loop_cnt = 0;
         int loop_nb_success = -1;
+        bool active_quad_cut = 0;
 
         // variables for contact informations:
         // std::size_t size_a_sub_graph = asubgraphs.size();
@@ -144,7 +145,7 @@ int LCPManager<T>::solve_contacts(TContactGraph& contact_graph)
         // bool all_solved = true;
 
         while (asubgraphs.size() != 0
-               && loop_cnt < std::min( 60 * num_contacts(subgraph), limit_sup_loop_cnt)
+               && loop_cnt < std::min( 100 * num_contacts(subgraph), limit_sup_loop_cnt) // 60 * num_contacts(subgraph)
                && loop_nb_success !=0 )
         {
             loop_nb_success = 0; // if no succes after one total path of contact graph, no use (nothing change)
@@ -155,7 +156,10 @@ int LCPManager<T>::solve_contacts(TContactGraph& contact_graph)
             {
                 bool success;
                 if (num_contacts(graph) > limit_sup_nb_contact){
-                    std::cout << " Q4,\n";
+                    std::cout << "Q4, nb contact:" << num_contacts(graph) << " \n";
+                    auto qdct = quad_cut( graph );
+                    std::cout << "nb quad_cut: " << qdct.size() << " \n";
+                    active_quad_cut = 1;
                     for ( auto const& igraph : quad_cut( graph ) ){
                         auto Sol = m_solver.solve( igraph, success, nb_lcp_failed_stats );
                         mark_solved(igraph, success);
@@ -172,6 +176,10 @@ int LCPManager<T>::solve_contacts(TContactGraph& contact_graph)
             }
             // auto t_start2 = std::chrono::high_resolution_clock::now(); // test perf
             asubgraphs = active_subgraphs( subgraph ); // computes the new relative velocitoies from velocities of modified floes 
+            if (active_quad_cut){
+                std::cout << "nb acitve subgraph: " << asubgraphs.size() << "\n";
+                active_quad_cut = 0;
+            }
             // auto t_end2 = std::chrono::high_resolution_clock::now(); // test perf
             // auto call_time = std::chrono::duration<double, std::milli>(t_end2-t_start2).count(); // test perf
             // chrono_active_subgraph += call_time; // test perf
@@ -185,8 +193,8 @@ int LCPManager<T>::solve_contacts(TContactGraph& contact_graph)
         {
             // all_solved = false;
             // if (loop_nb_success!=0) {contact_loop_stats[1] = 2;}
-            std::cout << "End of the while loop without resolution of all contacts!!\n";
-            LCP_count += asubgraphs.size();
+            std::cout << "End of the while loop without resolution of all contacts!! nb contact: "<< 60 * num_contacts(subgraph) << "\n";
+            // LCP_count += asubgraphs.size();
 
             for ( auto const& graph : asubgraphs ) mark_solved(graph, false);
         }
@@ -352,7 +360,7 @@ bool LCPManager<T>::saving_contact_graph_in_hdf5(int LCP_count, std::size_t loop
                     return true; 
                 }
  
-                hsize_t ext_size[2] = { dim_curr_cgi[0]+1, dim_curr_cgi[1]};
+                hsize_t ext_size[2] = { dim_curr_cgi[0]+1, dim_curr_cgi[1] };
                 CGI->extend( ext_size ); // extension with one new line 
 
             }

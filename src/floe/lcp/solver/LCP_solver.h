@@ -39,6 +39,12 @@ public:
     using lcp_type = floe::lcp::LCP<T>;
     using real_type = T;
 
+    /** A constructor
+     *
+     *  the tolerance is equal to 1e-7 for simulations without obstacles and 1e-6 for simulations with obstacles (due to 
+     *  lighter weight and greater velocity).
+     * 
+     */
     LCPSolver(real_type epsilon) : epsilon{epsilon}, tolerance{1e-7}, coef_perturb{1e-9}, 
         ite_max_attempt{5} {}
 
@@ -52,7 +58,7 @@ protected:
     typedef boost::numeric::ublas::matrix<real_type> array_type;
     typedef boost::numeric::ublas::matrix<real_type> vector_type;
 
-    real_type epsilon;          //!< energy restitution coeff
+    real_type epsilon;          /*!< energy restitution coefficient*/
     real_type tolerance;        // tolerance consented for the LCP error
     real_type coef_perturb;     // multiplier coefficient for the size of the perturbations (1e-9 seems to be an optimal value). 
                                 // One could be taking from 1e-7 to 1e-10.
@@ -82,11 +88,6 @@ protected:
 
 };
 
-////////////////////////////////////////////////////////////
-//! Random small perturbation of LCP: see #5 and matlab file to change the random perturbation routines. 
-// Keeping only the case 2/ and 3/ (=reduction_via_perturbation) to only use on IterLemke and Lexico 
-// with a coef setted to 1e-8.
-////////////////////////////////////////////////////////////
 /*  \fn void reduction_via_perturbation(lcp_type& lcp, real_type max)
  *  \brief Create a perturbed LCP in the forms of the reductible LCP (see issue 17)
  *
@@ -114,26 +115,27 @@ void reduction_via_perturbation(std::size_t dim , matrix<T> &M, T alpha){
 }
 
 /*  \fn saving_LCP_in_hdf5(lcp_type lcp, bool solved, int count_attempt, int count_RP, 
- *      int count_SR, int count_SR_failed, const int perturb_used, bool use_lexico_ordering, 
+ *      int count_SR, int count_SR_failed, int last_status, int perturb_used, bool use_lexico_ordering, 
  *      real_type lcp_err, int w_fail)
  *  
  *  \brief  Saving M and q from dealt with LCP(M,q) (solved and unsolved) for further analysis
  *          Return a boolean to prevent the maximum capacity to store (ex: 50 000 LCP ~ 250 Mo).
  *
  *  \remark The storage used hdf5 file formulation and consists in the following kind of table:
- *          |     1     |     2      |     3      |   4   |          5         |   6    |      8      |
- *          |:---------:|:----------:|:----------:|:-----:|:------------------:|:------:|:-----------:|
- *          | LCP error | nb attempt | nb perturb | nb SR | nb adj cone failed | lexico | idx failure |
+ *          |     1     |     2      |     3      |   4   |          5         |   6    |      8      |        9       |
+ *          |:---------:|:----------:|:----------:|:-----:|:------------------:|:------:|:-----------:|:--------------:|
+ *          | LCP error | nb attempt | nb perturb | nb SR | nb adj cone failed | lexico | idx failure | last technique |
  *
  *          with: \e nb for number, \e SR for secondary ray, \e adj \e cone \e failed for the failure of the 
  *          method consisting in going through an adjacent cone, \e lexico is true if the lexicographic 
  *          ordering is used during at least one Lemke's algorithm, \e idx \e perturb for the index of the
- *          matrix perturbation (see LCPSolver::matrix_perturbation(const std::size_t dim , matrix &M, const double alpha, const int Idx_perturb))
- *          and \e idx \e failure for the source of the LCP error (see LCPSolver::which_failure( vector<real_type> Err, bool Is_pos_rel_norm_vel )).
+ *          matrix perturbation (see LCPSolver::matrix_perturbation(const std::size_t dim , matrix &M, const double alpha, const int Idx_perturb)),
+ *          \e idx \e failure for the source of the LCP error (see LCPSolver::which_failure( vector<real_type> Err, bool Is_pos_rel_norm_vel ))
+ *          and \e last \e technique for the last SR or perturbation used before solving or last attempt done. 
  */
 template<typename T>
 bool saving_LCP_in_hdf5(floe::lcp::LCP<T> lcp, bool solved, int count_attempt, int count_RP, 
-    int count_SR, int count_SR_failed, bool use_lexico_ordering, T lcp_err, int w_fail) 
+    int count_SR, int count_SR_failed, int last_status, bool use_lexico_ordering, T lcp_err, int w_fail) 
 {
     const H5std_string FILE_NAME("/Users/matthiasrabatel/Travail/outputs_mycode/matrix.h5");
     const H5std_string GROUP_NAME_I( "solved" ); // root group
@@ -150,7 +152,7 @@ bool saving_LCP_in_hdf5(floe::lcp::LCP<T> lcp, bool solved, int count_attempt, i
     const hsize_t Max_storage_sol = 15000;
     const hsize_t Max_storage_unsol = 15000;
 
-    const hsize_t dim_solver(7);
+    const hsize_t dim_solver(8);
 
     H5std_string GROUP_TEMP;
     hsize_t Max_storage_temp;
@@ -270,7 +272,7 @@ bool saving_LCP_in_hdf5(floe::lcp::LCP<T> lcp, bool solved, int count_attempt, i
             DataSet* dataset_solver = new DataSet(Root->openDataSet( LCP_error ));
             double idx_solv[dim_solver] = { lcp_err, double(count_attempt), double(count_RP), 
                 double(count_SR), double(count_SR_failed), double(use_lexico_ordering), 
-                double(w_fail) };
+                double(w_fail), double(last_status) };
             dataset_solver->write(idx_solv, PredType::NATIVE_DOUBLE);
 
             // DataSet* dataset_LE = new DataSet(Root->openDataSet( LCP_error ));
@@ -385,7 +387,7 @@ bool saving_LCP_in_hdf5(floe::lcp::LCP<T> lcp, bool solved, int count_attempt, i
                 DataSpace mspace_s( 2, dim_s );
                 double idx_solv[dim_solver] = { lcp_err, double(count_attempt), double(count_RP), 
                     double(count_SR), double(count_SR_failed), double(use_lexico_ordering), 
-                    double(w_fail) };
+                    double(w_fail), double(last_status) };
                 // int idx_solv[dim_solver] = { test_idx , solver_used, perturb_used, static_cast<int>(nb_lcp+1), w_fail, 
                 //     min_how_is_solved };
                 dataset_solver->write(idx_solv, PredType::NATIVE_DOUBLE, mspace_s, fspace_s); // write in the hyperslab

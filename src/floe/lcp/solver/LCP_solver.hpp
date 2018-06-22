@@ -62,8 +62,10 @@ LCPSolver<T>::solve( TContactGraph& graph, bool& success, int lcp_failed_stats[]
 
     // variables:
     bool solved=false;
-    bool SR_status{0}, RP_status{0}; // using when Lemke ends with a secondary ray. Trying to go through an adjacent cone.
-    int itermax=1000;
+    static bool bool_save_solved=false;
+    bool SR_status{0}, RP_status{0};
+    int  last_status{0};             // -1 for RP_status, 0 for neither, 1 for SR_status.
+    int  itermax=1000;
     std::vector<int> error_status(2,0);
 
     bool use_lexico_ordering{0};     // "true" if the lexicographic ordering has been used during the Lemke's algorithm.
@@ -73,12 +75,44 @@ LCPSolver<T>::solve( TContactGraph& graph, bool& success, int lcp_failed_stats[]
     
     while (!solved && count_attempt<=ite_max_attempt) {
 
+        // std::cout << "before solving:\n";
+        // std::cout << "err: " << LCP_err << "\n\n";
+        // std::cout << "M: ";
+        // std::cout << lcp_a.M << "\n\n";
+        // std::cout << "q: ";
+        // std::cout << lcp_a.q << "\n\n";
+        // std::cout << "z: ";
+        // std::cout << lcp_a.z << "\n\n";
+        // std::cout << "basis: \n";
+        // for (i=0;i<lcp_a.basis.size();++i){
+        //     std::cout << lcp_a.basis[i] << ", ";
+        // }
+        // std::cout << "\n\n";
+        // std::cout << "driving: " << lcp_a.driving << "\n\n";
+
         error_status = lexicolemke_MR(tolerance, lcp_a, itermax);
 
         // Always comparing to the orignal one: (lcp.M could be perturbed)
         lcp_orig.z = lcp_a.z;
 
         T LCP_err = lcp_orig.LCP_error();
+
+
+        // std::cout << "after solving:\n";
+        // std::cout << "err: " << LCP_err << "\n\n";
+        // std::cout << "M: ";
+        // std::cout << lcp_a.M << "\n\n";
+        // std::cout << "q: ";
+        // std::cout << lcp_a.q << "\n\n";
+        // std::cout << "z: ";
+        // std::cout << lcp_a.z << "\n\n";
+        // std::cout << "basis: \n";
+        // for (i=0;i<lcp_a.basis.size();++i){
+        //     std::cout << lcp_a.basis[i] << ", ";
+        // }
+        // std::cout << "\n\n";
+        // std::cout << "driving: " << lcp_a.driving << "\n\n";
+
         if (LCP_err < best_err) {
             best_z = lcp_a.z;
             best_err = LCP_err;
@@ -88,23 +122,24 @@ LCPSolver<T>::solve( TContactGraph& graph, bool& success, int lcp_failed_stats[]
         if (LCP_err<=tolerance) {  
             // corresponding solution:
             Solc = calcSolc(graph_lcp, lcp_orig);
-            
+
+            last_status = SR_status-RP_status;
             solved = true; SR_status = 0; RP_status = 0;
         }
         // accurate solution not found
         else {    
             switch (error_status[0]) { // error_status[0] = -1: Lemke's algo ends with a solution
                 case 0:
-                    std::cout << "numerical error propagation\n"; // go to matrix perturbation
+                    // std::cout << "numerical error propagation\n"; // go to matrix perturbation
                     RP_status = 1; SR_status = 0;
                     break;
                 case 1:
-                    std::cout << "need for greater iteration number\n"; // go to matrix perturbation
+                    // std::cout << "need for greater iteration number\n"; // go to matrix perturbation
                     if (itermax<8000) {itermax *= 2;}
                     RP_status = 1; SR_status = 0;
                     break;
                 case 2:
-                    std::cout << "secondary ray, go through an adjacent cone\n"; // go through an adjacent cone
+                    // std::cout << "secondary ray, go through an adjacent cone\n"; // go through an adjacent cone
                     RP_status = 0; SR_status = 1;
                     if (count_SR > 2) {SR_status = 0; RP_status = 1;}
                     break;
@@ -152,8 +187,8 @@ LCPSolver<T>::solve( TContactGraph& graph, bool& success, int lcp_failed_stats[]
             }
             else { // the method consisting to go through an adjacent cone is not feasible!
                 ++count_SR_failed;
-                std::cout << "SR failed, perturbation is required\n";
-                RP_status = 1;
+                // std::cout << "SR failed, perturbation is required\n";
+                RP_status = 1; SR_status = 0;
             }
         }
 
@@ -176,18 +211,24 @@ LCPSolver<T>::solve( TContactGraph& graph, bool& success, int lcp_failed_stats[]
     if (!is_full_storage){
         if (!solved) {
             std::cout << "An unsolved LCP is storing!\n";
+            bool_save_solved = true;
+
             lcp_orig.z                  = best_z;
             Solc                        = calcSolc(graph_lcp, lcp_orig);
             bool Is_pos_rel_norm_vel    = Rel_Norm_Vel_test(prod(trans(graph_lcp.J), Solc), graph);
             vector<real_type> err_det   = lcp_orig.LCP_error_detailed();
             w_fail                      = which_failure( err_det, Is_pos_rel_norm_vel );   
+            last_status                 = SR_status-RP_status;
 
-            is_full_storage = saving_LCP_in_hdf5( lcp_orig, solved, count_attempt, count_RP, count_SR, count_SR_failed, 
-            use_lexico_ordering, best_err, w_fail );         
+            // is_full_storage = saving_LCP_in_hdf5( lcp_orig, solved, count_attempt, count_RP, count_SR, count_SR_failed, 
+            // use_lexico_ordering, best_err, w_fail );         
         }
 
-        // is_full_storage = saving_LCP_in_hdf5( lcp_orig, solved, count_attempt, count_RP, count_SR, count_SR_failed, 
-        //     use_lexico_ordering, best_err, w_fail );
+        if ( ( !solved ) || ( bool_save_solved ) ){
+            is_full_storage = saving_LCP_in_hdf5( lcp_orig, solved, count_attempt, count_RP, count_SR, count_SR_failed, 
+                last_status, use_lexico_ordering, best_err, w_fail );
+            bool_save_solved = false;
+        }
     }
     // End saving data on LCP
 
@@ -240,16 +281,16 @@ LCPSolver<T>::solve( TContactGraph& graph, bool& success, int lcp_failed_stats[]
             else {                          
                 switch (error_status[0]) {
                     case 0:
-                        std::cout << "numerical error propagation\n"; // go to matrix perturbation
+                        // std::cout << "numerical error propagation\n"; // go to matrix perturbation
                         RP_status = 1; SR_status = 0;
                         break;
                     case 1:
-                        std::cout << "need for greater iteration number\n"; // go to matrix perturbation
+                        // std::cout << "need for greater iteration number\n"; // go to matrix perturbation
                         if (itermax<8000) {itermax *= 2;}
                         RP_status = 1; SR_status = 0;
                         break;
                     case 2:
-                        std::cout << "secondary ray, go through an adjacent cone\n"; // go through an adjacent cone
+                        // std::cout << "secondary ray, go through an adjacent cone\n"; // go through an adjacent cone
                         SR_status = 0; RP_status = 1;
                         if (count_SR >= 2) {SR_status = 0; RP_status = 1;}
                         break;
@@ -359,7 +400,6 @@ int LCPSolver<T>::which_failure( vector<real_type> Err, bool Is_pos_rel_norm_vel
     std::size_t dim = Err.size()/3; // total dimension (3*4*nbc)
     std::size_t nbc = dim/4; // number of contact
 
-    std::cout << "which failure: \n";
     real_type EC_err(0), impulse_err(0);
     // global LCP error:
     for (std::size_t i=dim; i<2*dim; ++i) {
