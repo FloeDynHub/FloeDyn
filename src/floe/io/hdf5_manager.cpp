@@ -4,7 +4,7 @@
 #include <type_traits>
 
 template class floe::io::HDF5Manager<types::floe_group_type, types::dynamics_manager_type>;
-#ifndef SAME_PHYSICAL_DATA_FOR_GENERATOR
+#if !defined( SAME_PHYSICAL_DATA_FOR_GENERATOR ) || defined( PBC )
 template class floe::io::HDF5Manager<types::floe_group_type, types::generator_dynamics_manager_type>;
 #endif
 
