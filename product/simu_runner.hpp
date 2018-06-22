@@ -99,7 +99,6 @@ public:
         // P.get_dynamics_manager().get_external_forces().get_physical_data().set_modes(2,0);   // for simu: ?
         // P.get_dynamics_manager().get_external_forces().get_physical_data().set_modes(4,-1);  // for simu: floes against obstacle
 
-
         if (vm.count("rectime"))
         {
             P.recover_states_from_file(vm["recfile"].as<string>(), vm["rectime"].as<value_type>());
