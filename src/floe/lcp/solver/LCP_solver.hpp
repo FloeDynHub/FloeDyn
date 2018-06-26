@@ -75,43 +75,12 @@ LCPSolver<T>::solve( TContactGraph& graph, bool& success, int lcp_failed_stats[]
     
     while (!solved && count_attempt<=ite_max_attempt) {
 
-        // std::cout << "before solving:\n";
-        // std::cout << "err: " << LCP_err << "\n\n";
-        // std::cout << "M: ";
-        // std::cout << lcp_a.M << "\n\n";
-        // std::cout << "q: ";
-        // std::cout << lcp_a.q << "\n\n";
-        // std::cout << "z: ";
-        // std::cout << lcp_a.z << "\n\n";
-        // std::cout << "basis: \n";
-        // for (i=0;i<lcp_a.basis.size();++i){
-        //     std::cout << lcp_a.basis[i] << ", ";
-        // }
-        // std::cout << "\n\n";
-        // std::cout << "driving: " << lcp_a.driving << "\n\n";
-
         error_status = lexicolemke_MR(tolerance, lcp_a, itermax);
 
         // Always comparing to the orignal one: (lcp.M could be perturbed)
         lcp_orig.z = lcp_a.z;
 
         T LCP_err = lcp_orig.LCP_error();
-
-
-        // std::cout << "after solving:\n";
-        // std::cout << "err: " << LCP_err << "\n\n";
-        // std::cout << "M: ";
-        // std::cout << lcp_a.M << "\n\n";
-        // std::cout << "q: ";
-        // std::cout << lcp_a.q << "\n\n";
-        // std::cout << "z: ";
-        // std::cout << lcp_a.z << "\n\n";
-        // std::cout << "basis: \n";
-        // for (i=0;i<lcp_a.basis.size();++i){
-        //     std::cout << lcp_a.basis[i] << ", ";
-        // }
-        // std::cout << "\n\n";
-        // std::cout << "driving: " << lcp_a.driving << "\n\n";
 
         if (LCP_err < best_err) {
             best_z = lcp_a.z;
@@ -147,40 +116,8 @@ LCPSolver<T>::solve( TContactGraph& graph, bool& success, int lcp_failed_stats[]
         }
 
         if (SR_status) { // secondary ray, go through an adjacent cone
-            // std::cout << "before go_through_adj_cone:\n";
-            // std::cout << "err: " << LCP_err << "\n\n";
-            // std::cout << "M: ";
-            // std::cout << lcp_a.M << "\n\n";
-            // std::cout << "q: ";
-            // std::cout << lcp_a.q << "\n\n";
-            // std::cout << "z: ";
-            // std::cout << lcp_a.z << "\n\n";
-            // std::cout << "basis: \n";
-            // for (i=0;i<lcp_a.basis.size();++i){
-            //     std::cout << lcp_a.basis[i] << ", ";
-            // }
-            // std::cout << "\n\n";
-            // std::cout << "driving: " << lcp_a.driving << "\n\n";
-            ////////////////////////////////////
-            // bool is_done{0};
-            // if (count_attempt<1) {
-            //     std::cout << "Attempt for going through adj. cone!\n";
+
             bool    is_done = lcp_a.go_through_adj_cone( lcp_orig, Z0, tolerance );
-                // std::cout << "after go_through_adj_cone:\n";
-                // std::cout << "M: ";
-                // std::cout << lcp_a.M << "\n\n";
-                // std::cout << "q: ";
-                // std::cout << lcp_a.q << "\n\n";
-                // std::cout << "z: ";
-                // std::cout << lcp_a.z << "\n\n";
-                // std::cout << "basis: \n";
-                // for (i=0;i<lcp_a.basis.size();++i){
-                //     std::cout << lcp_a.basis[i] << ", ";
-                // }
-                // std::cout << "\n\n";
-                // std::cout << "driving: " << lcp_a.driving << "\n\n";
-                // }
-            ////////////////////////////////////
 
             if (is_done) {
                 ++count_SR;
@@ -211,17 +148,13 @@ LCPSolver<T>::solve( TContactGraph& graph, bool& success, int lcp_failed_stats[]
     if (!is_full_storage){
         if (!solved) {
             std::cout << "An unsolved LCP is storing!\n";
-            bool_save_solved = true;
-
+            bool_save_solved            = true;
             lcp_orig.z                  = best_z;
             Solc                        = calcSolc(graph_lcp, lcp_orig);
             bool Is_pos_rel_norm_vel    = Rel_Norm_Vel_test(prod(trans(graph_lcp.J), Solc), graph);
             vector<real_type> err_det   = lcp_orig.LCP_error_detailed();
             w_fail                      = which_failure( err_det, Is_pos_rel_norm_vel );   
-            last_status                 = SR_status-RP_status;
-
-            // is_full_storage = saving_LCP_in_hdf5( lcp_orig, solved, count_attempt, count_RP, count_SR, count_SR_failed, 
-            // use_lexico_ordering, best_err, w_fail );         
+            last_status                 = SR_status-RP_status;         
         }
 
         if ( ( !solved ) || ( bool_save_solved ) ){
