@@ -49,7 +49,7 @@ public:
         ite_max_attempt{5} {}
 
     template<typename TContactGraph>
-    std::array<vector<real_type>, 2> solve( TContactGraph& graph, bool& success, int lcp_failed_stats[] );
+    std::array<vector<real_type>, 2> solve( TContactGraph& graph, bool& success, int lcp_failed_stats[], bool active_stat_graph );
 
     double chrono_solver{0.0}; // test perf
     double max_chrono_solver{0.0}; // test perf

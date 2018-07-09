@@ -55,6 +55,17 @@ std::vector<int> lcp_lexicolemke_MR( const double tolerance, const int itermax, 
     std::size_t i, j;
     int block, drive, entering, leaving, Z0_priority;
     double tol = tolerance/dim; // same order as the LCP error
+    /* to prevent to remove all basis variable as candidate for pivoting (cause of strong numerical approximation)
+     * one adjust the tolerance with the smallest value of q
+     */
+    std::vector<T> q_abs(3*dim/4,0);
+    for (i=0;i<3*dim/4;++i) {q_abs[i] = std::abs(q[i]);} // std::cout << q_abs[i] << ", ";}
+    // std::cout << "\n";
+    typename std::vector<T>::iterator tol_it = std::min_element( q_abs.begin(), q_abs.end() );
+    // std::cout << "tol_it: " << *tol_it << "\n";
+    T val_tol = *tol_it*1e-5;
+    if (val_tol<tol) {tol = 1e-13;} // std::cout << "I am using the tol adjustement: " << *tol_it << " | " << tol << std::endl;}
+    // End of tol adjustement
 
     std::vector<int>::iterator it, drive_it, Z0_priority_it;
     typename std::vector<T>::iterator min_it;    
