@@ -29,12 +29,11 @@ namespace floe { namespace lcp { namespace solver
 template<typename T>
 template<typename TContactGraph>
 std::array<vector<typename LCPSolver<T>::real_type>, 2>
-LCPSolver<T>::solve( TContactGraph& graph, bool& success, int lcp_failed_stats[], bool active_stat_graph ) {
+LCPSolver<T>::solve( TContactGraph& graph, bool& success, int lcp_failed_stats[] ) {
 
     floe::lcp::builder::GraphLCP<real_type, decltype(graph)> graph_lcp( graph );
     auto lcp_orig = graph_lcp.getLCP();
 
-    static bool             is_full_storage = false;
     T                       best_err        = std::numeric_limits<T>::max();
     decltype(lcp_orig.z)    best_z;
     decltype(lcp_orig.M)    perturb_M       = lcp_orig.M;
@@ -55,6 +54,11 @@ LCPSolver<T>::solve( TContactGraph& graph, bool& success, int lcp_failed_stats[]
     lcp_type lcp_a(lcp_orig.dim,lcp_orig.M);
     lcp_a.q = lcp_orig.q;
 
+    // variables for storing LCP:
+    // static bool is_full_storage  = false;
+    // static bool bool_save_solved = true;
+    // int w_fail{0};
+
     // %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     // %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% COMPRESSION PHASE: %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     // %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -62,8 +66,7 @@ LCPSolver<T>::solve( TContactGraph& graph, bool& success, int lcp_failed_stats[]
 
     // variables:
     bool solved=false;
-    static bool bool_save_solved=true;
-    // if (active_stat_graph) {bool_save_solved=true;}
+
     bool SR_status{0}, RP_status{0};
     int  last_status{0};             // -1 for RP_status, 0 for neither, 1 for SR_status.
     int  itermax=1000;
@@ -71,34 +74,10 @@ LCPSolver<T>::solve( TContactGraph& graph, bool& success, int lcp_failed_stats[]
 
     bool use_lexico_ordering{0};     // "true" if the lexicographic ordering has been used during the Lemke's algorithm.
 
-    int w_fail{0}, count_attempt{0}, count_SR{0}, count_SR_failed{0}, count_RP{0};
+    int count_attempt{0}, count_SR{0}, count_SR_failed{0}, count_RP{0};
     const int Z0  = 2*lcp_a.dim;    // artificial variable associated with the covering vector
     
     while (!solved && count_attempt<=ite_max_attempt) {
-
-        /*if (active_stat_graph) {
-            // std::cout << "lcp is equal: M: ";
-            // for (i=0; i<lcp_orig.dim; ++i) {
-            //     std::cout << "[";
-            //     for (j=0; j<lcp_orig.dim; ++j) {
-            //         std::cout << lcp_orig.M(i,j) << ", ";
-            //     }
-            //     std::cout << "] \n";
-            // }
-            // std::cout <<  "] \n";
-            // std::cout << "lcp is equal: q: [";
-            // for (i=0; i<lcp_orig.dim; ++i) {
-            //     std::cout << lcp_orig.q(i) << ", ";
-            // }
-            // std::cout << "] \n";
-
-            std::cout << "The relative velocities before contact is: [";
-            auto rel_vit = prod(lcp_orig.M,lcp_orig.z) + lcp_orig.q;
-            for (std::size_t kk=0; kk<lcp_orig.dim; ++kk ) {
-                std::cout << rel_vit(kk) << ", ";
-            }
-            std::cout << "]\n";
-        }*/
 
         error_status = lexicolemke_MR(tolerance, lcp_a, itermax);
 
@@ -106,15 +85,6 @@ LCPSolver<T>::solve( TContactGraph& graph, bool& success, int lcp_failed_stats[]
         lcp_orig.z = lcp_a.z;
 
         T LCP_err = lcp_orig.LCP_error();
-
-        /*if (active_stat_graph) {
-            std::cout << "lcp is equal: z: [";
-            for (i=0; i<lcp_orig.dim; ++i) {
-                std::cout << lcp_orig.z(i) << ", ";
-            }
-            std::cout << "] \n";
-            std::cout << "lcp error is equal to " << LCP_err << "\n";
-        }*/
 
         if (LCP_err < best_err) {
             best_z = lcp_a.z;
@@ -125,27 +95,6 @@ LCPSolver<T>::solve( TContactGraph& graph, bool& success, int lcp_failed_stats[]
         if (LCP_err<=tolerance) {  
             // corresponding solution:
             Solc = calcSolc(graph_lcp, lcp_orig);
-
-            int count_zero_z=0;
-            for (i=0; i<lcp_orig.dim/4; ++i) {
-                if (lcp_orig.z[i]!=0) {++count_zero_z;}
-            }
-            if (count_zero_z==0) {std::cout << "solution null!\n";}
-            /*if (active_stat_graph) {
-                std::cout << "The relative velocities after contact is: [";
-                auto rel_vit = prod(lcp_orig.M,lcp_orig.z) + lcp_orig.q;
-                for (std::size_t kk=0; kk<lcp_orig.dim; ++kk ) {
-                    std::cout << rel_vit(kk) << ", ";
-                }
-                std::cout << "]\n";
-
-                std::cout << "The floes velocities after contact is: [";
-                for (int kk=0; kk<graph_lcp.nb_floes; ++kk ) {
-                    std::cout << Solc[3*kk] << ", " << Solc[3*kk+1] 
-                    << ", " << Solc[3*kk+2] << "]\n";
-                }
-                std::cout << " ]" << std::endl;
-            }*/
 
             last_status = SR_status-RP_status;
             solved = true; SR_status = 0; RP_status = 0;
@@ -223,7 +172,7 @@ LCPSolver<T>::solve( TContactGraph& graph, bool& success, int lcp_failed_stats[]
     if (!solved) {
         std::cout << "An unsolved LCP there!\n";
         std::cout << "With a LCP error:" << best_err << "\n";
-        bool_save_solved     = true;
+        // bool_save_solved     = true;
         lcp_failed_stats[0] += 1;
 
         success = 0;
@@ -254,14 +203,6 @@ LCPSolver<T>::solve( TContactGraph& graph, bool& success, int lcp_failed_stats[]
             lcp_d_orig.z = lcp_a.z;
             T LCP_err = lcp_d_orig.LCP_error();
 
-            /*if (active_stat_graph) {
-                std::cout << "lcp is equal: z: [";
-                for (i=0; i<lcp_d_orig.dim; ++i) {
-                    std::cout << lcp_d_orig.z(i) << ", ";
-                }
-                std::cout << "] \n";
-            }*/
-
             // accurate solution is found
             if (LCP_err<=tolerance) {    
                 Sold = calcSold(graph_lcp, lcp_orig, lcp_d_orig, Solc);
@@ -276,24 +217,6 @@ LCPSolver<T>::solve( TContactGraph& graph, bool& success, int lcp_failed_stats[]
                     floe_impulses = graph_lcp.impulse_vector(lcp_orig, lcp_d_orig, epsilon);
                 } 
                 solved = true; SR_status = 0; RP_status = 0;
-
-
-                /*if (active_stat_graph) {
-                    std::cout << "The relative velocities after contact and after decompression phase is: [";
-                    auto rel_vit = prod(lcp_d_orig.M,lcp_d_orig.z) + lcp_d_orig.q;
-                    for (std::size_t kk=0; kk<lcp_orig.dim; ++kk ) {
-                        std::cout << rel_vit(kk) << ", ";
-                    }
-                    std::cout << "]\n";
-
-                    std::cout << "The floes velocities after contact and after decompression phase is: [";
-                    for (int kk=0; kk<graph_lcp.nb_floes; ++kk ) {
-                        std::cout << Sold[3*kk] << ", " << Sold[3*kk+1] 
-                        << ", " << Sold[3*kk+2] << "]\n";
-                    }
-                    std::cout << " ]" << std::endl;
-                }*/
-
             }
             // accurate solution not found
             else {                          

@@ -123,9 +123,7 @@ int LCPManager<T>::solve_contacts(TContactGraph& contact_graph)
     const std::size_t limit_sup_nb_contact  =  500;//500; // from Quentin:   50
 
     // variables for contact informations:
-    static bool end_recording = false;
-    static bool active_stat_graph  = false;
-    long int lcp_nb_contact = 0;
+    // static bool end_recording = false;
 
     // m_solver.nb_solver_run = 0; // test perf
     // m_solver.chrono_solver = 0; // test perf
@@ -151,12 +149,12 @@ int LCPManager<T>::solve_contacts(TContactGraph& contact_graph)
         bool active_quad_cut    = 0;
 
         // variables for contact informations:
-        std::size_t size_a_sub_graph = asubgraphs.size();
+        // std::size_t size_a_sub_graph = asubgraphs.size();
         int contact_loop_stats[2]={0,0};    // number of contact points, indicator for be out of loop due to all success (1) or no success (0) 
                                             // or no enough iteration (2)
         contact_loop_stats[0] = static_cast<int>(num_contacts(subgraph));
         contact_loop_stats[1] = 1;
-        bool all_solved = true;
+        // bool all_solved = true;
 
         while (asubgraphs.size() != 0
                && loop_cnt < std::min( 100 * num_contacts(subgraph), limit_sup_loop_cnt) // 60 * num_contacts(subgraph)
@@ -166,39 +164,9 @@ int LCPManager<T>::solve_contacts(TContactGraph& contact_graph)
                                     // to browse again the while loop. Thus we add "loop_nb_succes !=0".
 
             LCP_count += asubgraphs.size();
-            if (active_stat_graph) {
-                std::cout << "nbr active graphs: " << asubgraphs.size() << "\n";
-                // if (asubgraphs.size()<10) {
-                //     std::cout << "gatering of asubgraph!\n";
-                //     asubgraphs = non_active_subgraphs(subgraphs);
-                // }
-            }
 
             for ( auto const& graph : asubgraphs ) // loop over the total number of active contact group
             {
-
-                lcp_nb_contact += static_cast<int>(num_contacts(graph));
-                if (active_stat_graph) {
-                    for ( auto const v : boost::make_iterator_range( vertices(graph) ) ){
-                        namespace fg = floe::geometry;
-                        std::cout << "floe mass: " << graph[v].floe->mass() << "\n";
-                        std::cout << "floe speed: ";
-                        auto const state = graph[v].floe->state(); 
-                        std::cout <<    fg::get<0>(state.speed) << ", " <<
-                                        fg::get<1>(state.speed) << ", " <<
-                                        state.rot << "\n";
-                    }
-                    for ( auto const& edge : boost::make_iterator_range( edges( graph ) ) ) {
-                        for (auto const& c : graph[edge]) {
-                            std::cout << "contact actif: " << c.is_active() << " due to rel_vel: "
-                            << c.relative_speed() << " and dist: " << c.dist << "\n";
-                             
-                        }
-                        std::cout << "edge: " << graph[edge].is_solved() << ", between floes: " <<
-                        graph[edge].n1() << " and " << graph[edge].n2() << "\n";
-                    }
-                }
-
                 bool success;
                 if (num_contacts(graph) > limit_sup_nb_contact){
                     std::cout << "Q4, nb contact:" << num_contacts(graph) << " \n";
@@ -206,65 +174,23 @@ int LCPManager<T>::solve_contacts(TContactGraph& contact_graph)
                     std::cout << "nb quad_cut: " << qdct.size() << " \n";
                     active_quad_cut = 1;
                     for ( auto const& igraph : quad_cut( graph ) ){
-                        auto Sol = m_solver.solve( igraph, success, nb_lcp_failed_stats, active_stat_graph );
+                        auto Sol = m_solver.solve( igraph, success, nb_lcp_failed_stats );
                         mark_solved(igraph, success);
                         if (success) {++loop_nb_success;}
                         update_floes_state(igraph, Sol);
                     }
                 } else {
-                    auto Sol = m_solver.solve( graph, success, nb_lcp_failed_stats, active_stat_graph );
+                    auto Sol = m_solver.solve( graph, success, nb_lcp_failed_stats );
                     mark_solved(graph, success);
                     if (success) {++loop_nb_success;}
                     update_floes_state(graph, Sol); // updates the velocity of floes
-
-                    if (active_stat_graph) {
-                        namespace fg = floe::geometry;
-                        std::cout << "\n";
-                        std::cout << "success: " << success << "\n";
-                        const std::size_t nb_floes = num_vertices( graph );
-                        std::cout << "floe stats: \n";
-                        for (std::size_t i=0; i<nb_floes; ++i){
-                            std::cout << "floe mass: " << graph[i].floe->mass() << "\n";
-                            std::cout << "floe speed: ";
-                            auto const state = graph[i].floe->state(); 
-                            std::cout <<    fg::get<0>(state.speed) << ", " <<
-                                            fg::get<1>(state.speed) << ", " <<
-                                            state.rot << "\n";
-                        } 
-                    }
-
                 }
+
                 mark_changed_parent(graph, subgraph); // indicates which floes have been modified
-
-                if (active_stat_graph) {
-                    std::cout << "\n";
-                    std::cout << "I'm after changed parent: \n";
-                    for ( auto const v : boost::make_iterator_range( vertices(graph) ) ){
-                        namespace fg = floe::geometry;
-                        std::cout << "floe mass: " << graph[v].floe->mass() << "\n";
-                        std::cout << "floe speed: ";
-                        auto const state = graph[v].floe->state(); 
-                        std::cout <<    fg::get<0>(state.speed) << ", " <<
-                                        fg::get<1>(state.speed) << ", " <<
-                                        state.rot << "\n";
-                    }
-                    for ( auto const& edge : boost::make_iterator_range( edges( graph ) ) ) {
-                        for (auto const& c : graph[edge]) {
-                            std::cout << "contact actif: " << c.is_active() << " due to rel_vel: "
-                            << c.relative_speed() << " and dist: " << c.dist << "\n";
-                             
-                        }
-                        std::cout << "edge: " << graph[edge].is_solved() << ", between floes: " <<
-                        graph[edge].n1() << " and " << graph[edge].n2() << "\n";
-                    }
-                }
             }
             // auto t_start2 = std::chrono::high_resolution_clock::now(); // test perf
             asubgraphs = active_subgraphs( subgraph ); // computes the new relative velocitoies from velocities of modified floes 
-            if (active_quad_cut){
-                std::cout << "nb active subgraph: " << asubgraphs.size() << "\n";
-                active_quad_cut = 0;
-            }
+            
             // auto t_end2 = std::chrono::high_resolution_clock::now(); // test perf
             // auto call_time = std::chrono::duration<double, std::milli>(t_end2-t_start2).count(); // test perf
             // chrono_active_subgraph += call_time; // test perf
@@ -276,7 +202,7 @@ int LCPManager<T>::solve_contacts(TContactGraph& contact_graph)
         }
         if (asubgraphs.size() != 0)
         {
-            all_solved = false;
+            // all_solved = false;
             if (loop_nb_success!=0) {contact_loop_stats[1] = 2;}
             std::cout << "End of the while loop without resolution of all contacts!! nb contact: "<< num_contacts(subgraph) << "\n";
             LCP_count += asubgraphs.size();
@@ -284,28 +210,16 @@ int LCPManager<T>::solve_contacts(TContactGraph& contact_graph)
             for ( auto const& graph : asubgraphs ) mark_solved(graph, false);
         }
 
-
         // Mat
+        // Saving data on LCP:
         /*
          * Recovery of contact data (LCP_count, etc). Save in h5 file:
          */
         // if (!end_recording && size_a_sub_graph!=0) {
         //     end_recording = saving_contact_graph_in_hdf5( LCP_count, loop_cnt, size_a_sub_graph, all_solved, contact_loop_stats );
         // } 
+        // End saving data on LCP
         // EndMat
-
-        // {
-        //     // Big LCP solving
-        //     LCP_count += 1;
-        //     bool success;
-        //     auto Sol = m_solver.solve( subgraph, success );
-        //     mark_solved(subgraph, success);
-        //     std::cout << "BIG LCP ";
-        //     if (success) {nb_success++; std::cout << "SUCCESS\n" ; }
-        //     update_floes_state(subgraph, Sol);
-        // }
-    //     nb_active_subgraph_loop += loop_cnt; // test perf
-    //     std::cout << "NB_LOOP : " << loop_cnt << " / " << 60 * num_contacts(subgraph) << "\n"; // test perf
     }
     // auto t_end = std::chrono::high_resolution_clock::now(); // test perf
     // auto call_time = std::chrono::duration<double, std::milli>(t_end-t_start).count(); // test perf
@@ -349,8 +263,6 @@ int LCPManager<T>::solve_contacts(TContactGraph& contact_graph)
     //     }
     // }
 
-    if (LCP_count == 10315 && lcp_nb_contact==2336) {active_stat_graph=true;}
-
     m_nb_lcp += LCP_count;
     m_nb_lcp_success += nb_success;
     for (int i=0;i<3;++i){
@@ -359,8 +271,7 @@ int LCPManager<T>::solve_contacts(TContactGraph& contact_graph)
 
     #ifndef MPIRUN
     if (LCP_count)
-        std::cout << " #LCP solve: "<< nb_success << " / " << LCP_count << "       nb contact: " 
-        << lcp_nb_contact << std::endl;
+        std::cout << " #LCP solve: "<< nb_success << " / " << LCP_count << std::endl;
     #endif
     return nb_success;
 }
