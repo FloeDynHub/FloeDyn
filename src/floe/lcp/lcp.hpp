@@ -277,7 +277,7 @@ bool LCP<T>::go_through_adj_cone( LCP<T> &lcp_orig, const int Z0, const double t
     drive = it-basis.begin()-dim;
     
     if (M(block,drive) > tolerance/n) {// first use pivoting operation
-        std::cout << "inside go_through_adj_cone function with single pivoting!\n";
+        // std::cout << "inside go_through_adj_cone function with single pivoting!\n";
         // std::cout << "pivot: " << M(block,drive) << "\n\n";
         // std::cout << "block&drive: " << block << " | " << drive << "\n";
         this->pivoting( block, drive );
@@ -309,7 +309,7 @@ bool LCP<T>::go_through_adj_cone( LCP<T> &lcp_orig, const int Z0, const double t
         M = M_temp;
     }    
     else {// second use direct inversing operation
-        std::cout << "inside go_through_adj_cone function with multi pivoting!\n";
+        // std::cout << "inside go_through_adj_cone function with multi pivoting!\n";
         std::vector<int> idx_alpha_temp, idx_alpha, idx_beta, idx_rem;
         for (k=0;k<dim;++k) {
             if (z[k] > tolerance/n) {

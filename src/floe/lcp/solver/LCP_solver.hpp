@@ -170,8 +170,8 @@ LCPSolver<T>::solve( TContactGraph& graph, bool& success, int lcp_failed_stats[]
     // EndMat
 
     if (!solved) {
-        std::cout << "An unsolved LCP there!\n";
-        std::cout << "With a LCP error:" << best_err << "\n";
+        // std::cout << "An unsolved LCP there!\n";
+        // std::cout << "With a LCP error:" << best_err << "\n";
         // bool_save_solved     = true;
         lcp_failed_stats[0] += 1;
 
