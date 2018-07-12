@@ -186,7 +186,13 @@ class FloePlotter(object):
         ax_mgr.get_collection("floes").set_verts(verts)
 
         if opt_ghosts:
-            ghosts_verts = [v for trans in d["ghosts_trans"] for v in translate_group(verts, trans)]
+            # attempt to fix bug: Matthias
+            w = data.get("window")
+            w_width, w_length = w[1] - w[0], w[3] - w[2]
+            ghosts_trans = [(i * w_width, j * w_length) for i in range(-1, 2) for j in range(-1, 2) if not i==j==0]
+            ghosts_verts = [v for trans in ghosts_trans for v in self.translate_group(verts, trans)]
+            # original line: ghosts_verts = [v for trans in d["ghosts_trans"] for v in translate_group(verts, trans)] 
+            # End of attempt
             ax_mgr.get_collection("floe_ghosts").set_verts(ghosts_verts)
 
         if opt_color:
