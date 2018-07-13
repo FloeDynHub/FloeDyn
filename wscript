@@ -45,8 +45,11 @@ def timeit(func):
     return timed
 
 
+floedyn_deps = ['boost', 'eigen', 'matio', 'hdf5', 'cgal', 'mpfr', 'gmp']
+
+
 def options(opt):
-    opt.load('compiler_cxx gxx boost')
+    opt.load('compiler_cxx gxx')
     # Build opts :
     # opt.add_option('--run', action='store_true', default=False, dest='run')
     opt.add_option('--name', action='store', default="", dest='name')
@@ -57,11 +60,18 @@ def options(opt):
     # configure opts :
     opt.add_option('--gcc', action='store_true', default=False, dest='gcc')
     opt.add_option('--icc', action='store_true', default=False, dest='icc')
+
+    for dep in floedyn_deps:
+        opt.load('find_' + dep, tooldir='.')
     # opt.add_option('--mpi', action='store_true', default=False, dest='mpi')
 
 
 def configure(conf):
+    # Check waf version
     conf.check_waf_version(mini='1.8.8')
+
+
+    # Check compiler
     if conf.options.gcc:
         conf.load('g++')
         # if conf.options.mpi:
@@ -70,11 +80,45 @@ def configure(conf):
         conf.load('icpc')  
     else:
         conf.load('compiler_cxx')
+
+    print("DEFAULT PATH TO SEARCH FOR LIBS ", conf.env.mylibs)
+
+    
+    # Boost path
+    conf.load('find_boost', tooldir='.')
+    print("BOOST PATH == ", conf.env.BOOST)
+    conf.env.LIBPATH_BOOST   = [os.path.join(conf.env.BOOST, 'lib')]
+    conf.env.INCLUDES_BOOST   = [os.path.join(conf.env.BOOST,'include')]
+    boost_required_libs = ['boost_system', 'boost_program_options']
+    boost_optional_libs = ['boost_thread'] # Fix this later ...
+    for libname in boost_required_libs:
+        conf.check_cxx(lib = libname, use = 'BOOST')
+    
+   # Matio path
+    conf.load('find_matio', tooldir='.')
+    conf.env.LIBPATH_MATIO   = [conf.env.MATIO + "lib"]
+    conf.env.INCLUDES_MATIO   = [conf.env.MATIO + "include"]
+    conf.check_cxx(lib = 'matio', use = 'MATIO')
+
+    # Eigen path
+    conf.load('find_eigen', tooldir='.')
+    print("EIGEN PATH == ", conf.env.EIGEN)
+    #conf.env.LIBPATH_EIGEN   = [conf.env.EIGEN + "lib"]
+    conf.env.INCLUDES_EIGEN   = [conf.env.EIGEN + "include/eigen3"]
+
+    # HDF5
+    conf.load('find_hdf5', tooldir='.')
+
+    # CGAL, mpfr, gmp
+    conf.load('find_cgal', tooldir='.')
+    conf.load('find_mpfr', tooldir='.')
+    conf.load('find_gmp', tooldir='.')
+    
     conf.check_cfg(atleast_pkgconfig_version='0.0.0')
-    conf.check_boost(lib='system filesystem', mandatory=False)
-    conf.check_cfg(
-        package='matio', args=['matio >= 1.5.2', '--cflags', '--libs'],
-        msg="Checking for 'matio 1.5.2'", mandatory=False)
+    #conf.check_boost(lib='system filesystem', mandatory=False)
+    # conf.check_cfg(
+    #     package='matio', args=['matio >= 1.5.2', '--cflags', '--libs'],
+    #     msg="Checking for 'matio 1.5.2'", mandatory=False)
 
 
 def recursive_file_finder(folder="", pattern=""):
@@ -136,6 +180,7 @@ def get_option_dict(debug=True):
         "libpath": ["/usr/local/lib", "/usr/lib"], # + os.environ.get("LD_LIBRARY_PATH", "/").split(":"),
         "framework": ["Accelerate"],
         "frameworkpath" : ["/System/Library/Frameworks"]
+        
     }
     if debug:
         OPTION_DICT.update({
@@ -168,10 +213,60 @@ def get_option_dict(debug=True):
     OPTION_DICT["linkflags"].extend(os.environ.get("LDFLAGS", "").split(" "))
     return OPTION_DICT
 
+
+def get_option_dict_nosys(debug=True):
+    OPTION_DICT = {
+        "includes": ['../src'
+            ], #+ [path for path in os.environ["PATH"].split(":") if not "bin" in path],
+        "lib": ['boost_system',
+                'boost_program_options',
+                'matio',
+                "hdf5",
+                "hdf5_cpp",
+                "CGAL", "gmp", "mpfr", "boost_thread",
+                # "siconos_numerics"
+                ],
+        "libpath": [], # + os.environ.get("LD_LIBRARY_PATH", "/").split(":"),
+        "framework": ["Accelerate"],
+        "frameworkpath" : ["/System/Library/Frameworks"]
+    }
+    if debug:
+        OPTION_DICT.update({
+            "linkflags": ['-g'],
+            "cxxflags": [
+                '-std=c++11',
+                 '-O0',
+                 "-Wall", #"-Wextra",
+            ],
+            "defines": []
+        })
+    else:
+        OPTION_DICT.update({
+            "linkflags": [],
+            "cxxflags": [
+                '-std=c++11',
+                 "-O3",
+                 # "-march=native", # g++ fails with this
+                 "-mtune=native",
+                 "-Wall", "-Wextra", #"-Wshadow",
+                 "-Wno-unused-parameter", "-Wno-unused-local-typedef",
+                 "-Wno-gnu-anonymous-struct", "-Wno-nested-anon-types", # floe/geometry/geometries/point.hpp
+                 "-Wno-redeclared-class-member",
+                 "-isystem /usr/local/include/boost/",
+                 # "-pedantic"
+             ],
+            "defines": ["NDEBUG"]
+        })
+    OPTION_DICT["cxxflags"].extend(os.environ.get("CFLAGS", "").split(" "))
+    OPTION_DICT["linkflags"].extend(os.environ.get("LDFLAGS", "").split(" "))
+    return OPTION_DICT
+
+
 import subprocess
 
 def build(bld):
-    opts = get_option_dict(bld.options.debug)
+    opts = get_option_dict_nosys(bld.options.debug)
+    opts['use']= ['BOOST', 'MATIO', 'EIGEN']
     if bld.options.omp:
         opts["linkflags"].append("-fopenmp")
         opts["cxxflags"].append("-fopenmp")
