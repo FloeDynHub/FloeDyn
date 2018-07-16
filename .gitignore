@@ -35,8 +35,8 @@ NODE_FILE_TEST
 
 ### doxygen ###
 doxygen_original.cfg
-doc_elements/
-html/
+#doc_elements/
+#html/
 latex/
 
 ### Quentin's files ###

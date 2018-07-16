@@ -1,9 +1,10 @@
 module purge
-source /applis/site/env.bash
-module load python/2.7.6_gcc-4.4.6
-module load boost-gcc4.7 matio-gcc4.7 eigen-gcc4.7 hdf5-1.8.15-gcc4.8.2 gcc/4.8.2_gcc-4.4.6 
-module load cgal4.6-gcc4.8.2 mpfr/3.1.2_gcc-4.4.6 qt/4.8.5_gcc-4.4.6 cereal1.2
-module load openmpi/1.8.5_gcc-4.4.6
-#module load openmpi/1.8.5_intel-15.0.3
-#module load openmpi/1.8.5_intel-14.0.2
-#module load intel-mpi/14.0.2  
+source /applis/ciment/v2/env.bash
+module use -a /home/rabatmat/modules
+module load intel-devel/2015
+# module load gcc/4.9.3_gcc-4.6.2 openmpi/1.6.5_gcc-4.7.2
+module load python/2.7.6_gcc-4.6.2
+module load boost-gcc4.7 matio-gcc4.7 eigen-gcc4.7 hdf5-1.8.15-gcc4.8.2
+#module load gcc/4.8.2_gcc-4.4.6
+module load cgal/4.6.3_gcc-4.6.2 mpfr/3.1.1_gcc-4.6.2 qt/4.8.3_gcc-4.6.2 cereal1.2
+
