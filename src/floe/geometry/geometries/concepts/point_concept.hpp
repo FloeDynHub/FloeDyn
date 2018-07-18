@@ -6,8 +6,8 @@
 namespace floe { namespace geometry { namespace concept
 {
 
-    using boost::geometry::concept::Point;
-    using boost::geometry::concept::ConstPoint;
+    using boost::geometry::concepts::Point;
+    using boost::geometry::concepts::ConstPoint;
 
 }}} // namespace floe::geometry::concept
 

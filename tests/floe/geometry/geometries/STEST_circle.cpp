@@ -17,7 +17,7 @@ int main() {
     using Circle = fg::Circle<Point>;
     using Box = fg::Box<Point>;
 
-    BOOST_CONCEPT_ASSERT( (boost::geometry::concept::Circle<Circle>) );
+    BOOST_CONCEPT_ASSERT( (boost::geometry::concepts::Circle<Circle>) );
     
     Circle circle{ {1.0,0.0}, 2. };
 

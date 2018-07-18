@@ -104,6 +104,6 @@ public:
     }
 };
 
-}}} // namespace boost::geometry::concept
+}}} // namespace boost::geometry::concepts
 
 #endif // FLOE_GEOMETRY_GEOMETRIES_CONCEPTS_STATIC_POLYGON_CONCEPT_HPP

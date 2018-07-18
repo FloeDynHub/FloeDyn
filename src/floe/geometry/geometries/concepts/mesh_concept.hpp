@@ -90,12 +90,12 @@ public:
     }
 };
 
-}}} // namespace boost::geometry::concept
+}}} // namespace boost::geometry::concepts
 
 namespace floe { namespace geometry { namespace concept
 {
-    using boost::geometry::concept::Mesh;
-    using boost::geometry::concept::ConstMesh;
+    using boost::geometry::concepts::Mesh;
+    using boost::geometry::concepts::ConstMesh;
 }}} // namespace floe::geometry::concept
 
 #endif // FLOE_GEOMETRY_GEOMETRIES_CONCEPTS_MESH_CONCEPT_HPP

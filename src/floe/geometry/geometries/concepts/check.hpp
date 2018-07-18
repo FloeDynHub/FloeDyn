@@ -120,7 +120,7 @@ struct check< Geometry, mesh_tag, false >
 
 namespace floe { namespace geometry { namespace concept
 {
-    using boost::geometry::concept::check;
+    using boost::geometry::concepts::check;
 }}} // namespace floe::geometry::concept
 
 #endif // FLOE_GEOMETRY_GEOMETRIES_CONCEPT_CHECK_HPP

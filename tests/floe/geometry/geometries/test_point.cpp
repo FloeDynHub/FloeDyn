@@ -11,7 +11,7 @@ TEST_CASE( "Test point", "[geometry]" ) {
     using real = double;
     using Point = floe::geometry::Point<real>;
 
-    BOOST_CONCEPT_ASSERT( (boost::geometry::concept::Point<Point>) );
+    BOOST_CONCEPT_ASSERT( (boost::geometry::concepts::Point<Point>) );
 
     auto pt = Point(1.0, 0.0);
     get<1>(pt) = 2.0;

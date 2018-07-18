@@ -40,12 +40,12 @@ public:
 };
 
 
-}}} // namespace boost::geometry::concept
+}}} // namespace boost::geometry::concepts
 
 namespace floe { namespace geometry { namespace concept
 {
-    using boost::geometry::concept::Triangle;
-    using boost::geometry::concept::ConstTriangle;
+    using boost::geometry::concepts::Triangle;
+    using boost::geometry::concepts::ConstTriangle;
 
 }}} // namespace floe::geometry::concept
 

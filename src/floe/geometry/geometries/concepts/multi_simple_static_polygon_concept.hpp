@@ -48,12 +48,12 @@ public:
     }
 };
 
-}}} // namespace boost::geometry::concept
+}}} // namespace boost::geometry::concepts
 
 namespace floe { namespace geometry { namespace concept
 {
-    using boost::geometry::concept::MultiSimpleStaticPolygon;
-    using boost::geometry::concept::ConstMultiSimpleStaticPolygon;
+    using boost::geometry::concepts::MultiSimpleStaticPolygon;
+    using boost::geometry::concepts::ConstMultiSimpleStaticPolygon;
 
 }}} // namespace floe::geometry::concept
 

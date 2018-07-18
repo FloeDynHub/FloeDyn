@@ -1,8 +1,6 @@
 #! /usr/bin/env python
 # encoding: utf-8
 
-print('→ loading myboost')
-
 from waflib.Configure import conf
 
 def options(opt):
@@ -15,8 +13,9 @@ def read_boost(ctx):
         ctx.env.BOOST = ctx.options.boost
         ctx.end_msg(ctx.env.BOOST)
     else:
-        ctx.env.BOOST = '/usr'
+        ctx.env.BOOST = ctx.env.default_search_path
         #ctx.end_msg('BOOST is not set')
 
 def configure(ctx): 
-        ctx.read_boost()
+    print('→ loading boost')
+    ctx.read_boost()

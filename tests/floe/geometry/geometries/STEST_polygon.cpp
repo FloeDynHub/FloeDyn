@@ -18,8 +18,8 @@ int main() {
     using Box = floe::geometry::Box<Point>;
     using ReferringBox = fg::ReferringBox<Point>;
 
-    BOOST_CONCEPT_ASSERT( (boost::geometry::concept::Polygon<Polygon>) );
-    BOOST_CONCEPT_ASSERT( (boost::geometry::concept::ConstPolygon<Polygon>) );
+    BOOST_CONCEPT_ASSERT( (boost::geometry::concepts::Polygon<Polygon>) );
+    BOOST_CONCEPT_ASSERT( (boost::geometry::concepts::ConstPolygon<Polygon>) );
 
     auto polygon = Polygon();
     polygon.boundary().push_back({0.0,0.0});
@@ -43,7 +43,7 @@ int main() {
 
     using Polygon2 = floe::geometry::Polygon<Point,true,false>;
 
-    BOOST_CONCEPT_ASSERT( (boost::geometry::concept::Polygon<Polygon2>) );
+    BOOST_CONCEPT_ASSERT( (boost::geometry::concepts::Polygon<Polygon2>) );
 
     auto polygon2 = Polygon2();
     polygon2.boundary().push_back({0.0,0.0});

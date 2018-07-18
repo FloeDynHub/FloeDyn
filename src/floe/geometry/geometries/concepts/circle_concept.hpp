@@ -99,12 +99,12 @@ public:
     }
 };
 
-}}} // namespace boost::geometry::concept
+}}} // namespace boost::geometry::concepts
 
 namespace floe { namespace geometry { namespace concept
 {
-    using boost::geometry::concept::Circle;
-    using boost::geometry::concept::ConstCircle;
+    using boost::geometry::concepts::Circle;
+    using boost::geometry::concepts::ConstCircle;
 
 }}} // namespace floe::geometry::concept
 

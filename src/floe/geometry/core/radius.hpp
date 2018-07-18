@@ -7,6 +7,7 @@
 #ifndef FLOE_GEOMETRY_CORE_RADIUS_HPP
 #define FLOE_GEOMETRY_CORE_RADIUS_HPP
 
+#include <type_traits>
 #include <boost/mpl/assert.hpp>
 
 #include <boost/geometry/util/bare_type.hpp>

@@ -16,7 +16,7 @@ template <
 >
 class Circle
 {
-    BOOST_CONCEPT_ASSERT( (boost::geometry::concept::Point<TPoint>) );
+    BOOST_CONCEPT_ASSERT( (boost::geometry::concepts::Point<TPoint>) );
 
 public:
 

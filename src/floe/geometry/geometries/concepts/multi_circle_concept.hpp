@@ -49,12 +49,12 @@ public:
     }
 };
 
-}}} // namespace boost::geometry::concept
+}}} // namespace boost::geometry::concepts
 
 namespace floe { namespace geometry { namespace concept
 {
-    using boost::geometry::concept::MultiCircle;
-    using boost::geometry::concept::ConstMultiCircle;
+    using boost::geometry::concepts::MultiCircle;
+    using boost::geometry::concepts::ConstMultiCircle;
 }}} // namespace floe::geometry::concept
 
 #endif // FLOE_GEOMETRY_GEOMETRIES_CONCEPTS_MULTI_CIRCLE_HPP
