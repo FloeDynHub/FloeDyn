@@ -8,7 +8,9 @@ build/
 doxygen-1.8.13/
 External_Libraries/
 FloeCpp.xcodeproj/
-io/
+io/outputs
+io/stdout
+io/videos
 
 ### macOS ###
 *.DS_Store
