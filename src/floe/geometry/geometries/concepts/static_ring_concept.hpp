@@ -12,7 +12,7 @@
 
 #include <boost/geometry/geometries/concepts/point_concept.hpp>
 
-namespace boost { namespace geometry { namespace concept
+namespace boost { namespace geometry { namespace concepts
 {
 
 /*! Static ring concept
@@ -26,7 +26,7 @@ class StaticRing
 {
     typedef typename point_type<Geometry>::type point_type;
 
-    BOOST_CONCEPT_ASSERT( (concept::Point<point_type>) );
+    BOOST_CONCEPT_ASSERT( (concepts::Point<point_type>) );
     BOOST_CONCEPT_ASSERT( (boost::RandomAccessRangeConcept<Geometry>) );
 
     enum { pcount = dimension<Geometry>::value };
@@ -68,7 +68,7 @@ class ConstStaticRing
 {
     typedef typename point_type<Geometry>::type point_type;
 
-    BOOST_CONCEPT_ASSERT( (concept::ConstPoint<point_type>) );
+    BOOST_CONCEPT_ASSERT( (concepts::ConstPoint<point_type>) );
     BOOST_CONCEPT_ASSERT( (boost::RandomAccessRangeConcept<Geometry>) );
 
     enum { pcount = dimension<Geometry>::value };

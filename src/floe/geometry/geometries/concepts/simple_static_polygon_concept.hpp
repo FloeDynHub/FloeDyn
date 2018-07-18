@@ -14,7 +14,7 @@
 
 #include <boost/geometry/geometries/concepts/point_concept.hpp>
 
-namespace boost { namespace geometry { namespace concept {
+namespace boost { namespace geometry { namespace concepts {
 
 /*! Checks simple static polygon concept
  *
@@ -39,7 +39,7 @@ class SimpleStaticPolygon
     
     typedef typename point_type<Geometry>::type point_type;
 
-    BOOST_CONCEPT_ASSERT( (concept::Point<point_type>) );
+    BOOST_CONCEPT_ASSERT( (concepts::Point<point_type>) );
     BOOST_CONCEPT_ASSERT( (boost::RandomAccessRangeConcept<Geometry>) );
     
     enum { pcount = static_num_points<Geometry>::value };   
@@ -130,7 +130,7 @@ class ConstSimpleStaticPolygon
     
     typedef typename point_type<Geometry>::type point_type;
 
-    BOOST_CONCEPT_ASSERT( (concept::ConstPoint<point_type>) );
+    BOOST_CONCEPT_ASSERT( (concepts::ConstPoint<point_type>) );
     BOOST_CONCEPT_ASSERT( (boost::RandomAccessRangeConcept<Geometry>) );
     
     enum { pcount = static_num_points<Geometry>::value };   
@@ -192,12 +192,12 @@ public:
 
 }}} // namespace boost::geometry::concepts
 
-namespace floe { namespace geometry { namespace concept
+namespace floe { namespace geometry { namespace concepts
 {
     using boost::geometry::concepts::SimpleStaticPolygon;
     using boost::geometry::concepts::ConstSimpleStaticPolygon;
 
-}}} // namespace floe::geometry::concept
+}}} // namespace floe::geometry::concepts
 
 #endif // FLOE_GEOMETRY_GEOMETRIES_CONCEPTS_SIMPLE_STATIC_POLYGON_CONCEPT_HPP
 

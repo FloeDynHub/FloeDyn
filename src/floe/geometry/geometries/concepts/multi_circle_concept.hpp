@@ -7,7 +7,7 @@
 
 #include "floe/geometry/geometries/concepts/circle_concept.hpp"
 
-namespace boost { namespace geometry { namespace concept
+namespace boost { namespace geometry { namespace concepts
 {
 
 /*! multi circle concept
@@ -19,7 +19,7 @@ struct MultiCircle
 {
     typedef typename boost::range_value<Geometry>::type circle_type;
 
-    BOOST_CONCEPT_ASSERT( (concept::Circle<circle_type>) );
+    BOOST_CONCEPT_ASSERT( (concepts::Circle<circle_type>) );
     BOOST_CONCEPT_ASSERT( (boost::RandomAccessRangeConcept<Geometry>) );
 
 public:
@@ -39,7 +39,7 @@ struct ConstMultiCircle
 {
     typedef typename boost::range_value<Geometry>::type circle_type;
 
-    BOOST_CONCEPT_ASSERT( (concept::ConstCircle<circle_type>) );
+    BOOST_CONCEPT_ASSERT( (concepts::ConstCircle<circle_type>) );
     BOOST_CONCEPT_ASSERT( (boost::RandomAccessRangeConcept<Geometry>) );
 
 public:
@@ -51,11 +51,11 @@ public:
 
 }}} // namespace boost::geometry::concepts
 
-namespace floe { namespace geometry { namespace concept
+namespace floe { namespace geometry { namespace concepts
 {
     using boost::geometry::concepts::MultiCircle;
     using boost::geometry::concepts::ConstMultiCircle;
-}}} // namespace floe::geometry::concept
+}}} // namespace floe::geometry::concepts
 
 #endif // FLOE_GEOMETRY_GEOMETRIES_CONCEPTS_MULTI_CIRCLE_HPP
 

@@ -23,8 +23,8 @@ int main() {
 
     Mesh mesh;
     
-    BOOST_CONCEPT_ASSERT( (fg::concept::Mesh<Mesh>) );
-    BOOST_CONCEPT_ASSERT( (fg::concept::ConstMesh<Mesh>) );
+    BOOST_CONCEPT_ASSERT( (fg::concepts::Mesh<Mesh>) );
+    BOOST_CONCEPT_ASSERT( (fg::concepts::ConstMesh<Mesh>) );
 
     mesh.points().push_back( { 0, 0 } );
     mesh.points().push_back( { 0, 1 } );

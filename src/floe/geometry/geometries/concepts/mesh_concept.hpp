@@ -10,7 +10,7 @@
 #include "floe/geometry/core/cells_type.hpp"
 #include "floe/geometry/core/point_type.hpp"
 
-namespace boost { namespace geometry { namespace concept {
+namespace boost { namespace geometry { namespace concepts {
 
 /*! Checks mesh concept
  *
@@ -92,11 +92,11 @@ public:
 
 }}} // namespace boost::geometry::concepts
 
-namespace floe { namespace geometry { namespace concept
+namespace floe { namespace geometry { namespace concepts
 {
     using boost::geometry::concepts::Mesh;
     using boost::geometry::concepts::ConstMesh;
-}}} // namespace floe::geometry::concept
+}}} // namespace floe::geometry::concepts
 
 #endif // FLOE_GEOMETRY_GEOMETRIES_CONCEPTS_MESH_CONCEPT_HPP
 

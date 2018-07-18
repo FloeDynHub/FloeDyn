@@ -22,7 +22,7 @@ template <
 struct MultiCircle
     : public TContainer<TCircle, TAllocator<TCircle> >
 {
-    BOOST_CONCEPT_ASSERT( (concept::Circle<TCircle>) );
+    BOOST_CONCEPT_ASSERT( (concepts::Circle<TCircle>) );
 };
 
 }} // namespace floe::geometry

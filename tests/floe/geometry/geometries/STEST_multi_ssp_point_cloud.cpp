@@ -33,9 +33,9 @@ int main()
     BOOST_CONCEPT_ASSERT( (boost::RandomAccessRangeConcept<MSSP_copy>) );
     BOOST_CONCEPT_ASSERT( (boost::RandomAccessRangeConcept<MSSP_ptr>) );
 
-    BOOST_CONCEPT_ASSERT( (fg::concept::ConstMultiSimpleStaticPolygon<MSSP_ref>) );
-    BOOST_CONCEPT_ASSERT( (fg::concept::ConstMultiSimpleStaticPolygon<MSSP_copy>) );
-    BOOST_CONCEPT_ASSERT( (fg::concept::ConstMultiSimpleStaticPolygon<MSSP_ptr>) );
+    BOOST_CONCEPT_ASSERT( (fg::concepts::ConstMultiSimpleStaticPolygon<MSSP_ref>) );
+    BOOST_CONCEPT_ASSERT( (fg::concepts::ConstMultiSimpleStaticPolygon<MSSP_copy>) );
+    BOOST_CONCEPT_ASSERT( (fg::concepts::ConstMultiSimpleStaticPolygon<MSSP_ptr>) );
 
     MP cloud;
     cloud.push_back({0,0});

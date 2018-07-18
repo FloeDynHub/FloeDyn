@@ -56,6 +56,16 @@ floedyn_deps = {
     'mpfr'  : ['mpfr'],
     }
 
+floedyn_includes = {
+    'gmp' : [],
+    'boost' : [],
+    'eigen3' : ['eigen3'],
+    'matio' : [],
+    'hdf5'  : ['hdf5/serial/'],
+    'cgal'  : [],
+    'mpfr'  : [],
+    }
+
 #import find_package as fp
 
 
@@ -83,7 +93,7 @@ def options(opt):
         opt.add_option(optname, action='store', default=None, dest=dep)
 
 @conf
-def configure_package(conf, name, required_libs=None):
+def configure_package(conf, name, required_libs=None, includes_suffix=None):
 
     searchpath = getattr(conf.env, name, conf.env.default_search_path)
     #setattr(conf.env, name.upper(), searchpath)
@@ -96,8 +106,10 @@ def configure_package(conf, name, required_libs=None):
 
     setattr(conf.env, libpath_name, [os.path.join(searchpath, 'lib')])
     incpath = os.path.join(searchpath, 'include')
-    setattr(conf.env, includespath_name, [incpath,
-                                          os.path.join(incpath, name)])
+    includes_list = [incpath]
+    for suffix in includes_suffix:
+        includes_list.append(os.path.join(incpath, suffix))
+    setattr(conf.env, includespath_name, includes_list)
     
     if required_libs is None:
         required_libs = [name]
@@ -139,11 +151,10 @@ def configure(conf):
         setattr(conf.env, dep, value)
     print("Default search path for libraries and headers of dependencies : ", conf.env.default_search_path)
     for dep in floedyn_deps:
-        configure_package(conf, dep, floedyn_deps[dep])
+        configure_package(conf, dep, floedyn_deps[dep], floedyn_includes[dep])
         for libname in floedyn_deps[dep]:
             conf.check_cxx(lib = libname, use = dep.upper())
 
-    print(conf.env)
     #'boost', ['boost_system', 'boost_program_options'])
     #configure_package(conf, 'matio',['matio'])
     #configure_package(conf, 'matio',['matio'])

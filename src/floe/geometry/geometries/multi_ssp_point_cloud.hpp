@@ -52,8 +52,8 @@ class MultiSSPPointCloud
 {
 
     // Concept checking
-    BOOST_CONCEPT_ASSERT( (concept::ConstSimpleStaticPolygon< typename std::remove_pointer<TPolygon>::type >) );
-    BOOST_CONCEPT_ASSERT( (concept::ConstMultiPoint< typename std::remove_pointer<TMultiPoint>::type >) );
+    BOOST_CONCEPT_ASSERT( (concepts::ConstSimpleStaticPolygon< typename std::remove_pointer<TPolygon>::type >) );
+    BOOST_CONCEPT_ASSERT( (concepts::ConstMultiPoint< typename std::remove_pointer<TMultiPoint>::type >) );
     BOOST_CONCEPT_ASSERT( (boost::RandomAccessRangeConcept< typename std::remove_pointer<TConnectivity>::type >) );
     // TODO: Concept for TConnectivity::value_type
 

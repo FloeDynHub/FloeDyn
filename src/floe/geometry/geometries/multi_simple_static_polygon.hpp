@@ -23,7 +23,7 @@ template <
 struct MultiSimpleStaticPolygon
     : public Container<Polygon, Allocator<Polygon> >
 {
-    BOOST_CONCEPT_ASSERT( (concept::SimpleStaticPolygon<Polygon>) );    
+    BOOST_CONCEPT_ASSERT( (concepts::SimpleStaticPolygon<Polygon>) );    
 };
 
 

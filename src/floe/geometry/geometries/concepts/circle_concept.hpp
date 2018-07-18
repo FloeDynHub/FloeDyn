@@ -11,7 +11,7 @@
 #include "floe/geometry/core/radius.hpp"
 #include "floe/geometry/core/coordinate_dimension.hpp"
 
-namespace boost { namespace geometry { namespace concept {
+namespace boost { namespace geometry { namespace concepts {
 
 /*! Checks circle concept (const version)
  */
@@ -62,7 +62,7 @@ public:
 template < typename Geometry >
 class Circle
 {
-    BOOST_CONCEPT_ASSERT( (concept::ConstCircle<Geometry>) );
+    BOOST_CONCEPT_ASSERT( (concepts::ConstCircle<Geometry>) );
 
     typedef typename geometry::point_type<Geometry>::type point_type;
     typedef typename geometry::radius_type<Geometry>::type radius_type;
@@ -101,11 +101,11 @@ public:
 
 }}} // namespace boost::geometry::concepts
 
-namespace floe { namespace geometry { namespace concept
+namespace floe { namespace geometry { namespace concepts
 {
     using boost::geometry::concepts::Circle;
     using boost::geometry::concepts::ConstCircle;
 
-}}} // namespace floe::geometry::concept
+}}} // namespace floe::geometry::concepts
 
 #endif // FLOE_GEOMETRY_GEOMETRIES_CONCEPT_CIRCLE_CONCEPT_HPP

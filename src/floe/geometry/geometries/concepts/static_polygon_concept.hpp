@@ -15,7 +15,7 @@
 #include "floe/geometry/geometries/concepts/static_ring_concept.hpp"
 #include <boost/geometry/geometries/concepts/point_concept.hpp>
 
-namespace boost { namespace geometry { namespace concept {
+namespace boost { namespace geometry { namespace concepts {
 
 /*! Checks static polygon concept (const version)
  *
@@ -43,8 +43,8 @@ class StaticPolygon
     typedef typename point_type<Geometry>::type point_type;
     typedef typename ring_type<Geometry>::type sring_type;
 
-    BOOST_CONCEPT_ASSERT( (concept::Point<point_type>) );
-    BOOST_CONCEPT_ASSERT( (concept::StaticRing<sring_type>) );
+    BOOST_CONCEPT_ASSERT( (concepts::Point<point_type>) );
+    BOOST_CONCEPT_ASSERT( (concepts::StaticRing<sring_type>) );
 
     struct checker
     {
@@ -81,8 +81,8 @@ class ConstStaticPolygon
     typedef typename point_type<cspolygon_type>::type point_type;
     typedef typename ring_type<cspolygon_type>::type sring_type;
 
-    BOOST_CONCEPT_ASSERT( (concept::ConstPoint<point_type>) );
-    BOOST_CONCEPT_ASSERT( (concept::ConstStaticRing<sring_type>) );
+    BOOST_CONCEPT_ASSERT( (concepts::ConstPoint<point_type>) );
+    BOOST_CONCEPT_ASSERT( (concepts::ConstStaticRing<sring_type>) );
 
     struct checker
     {

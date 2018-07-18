@@ -32,95 +32,95 @@ struct check<Geometry, circle_tag, IsConst>
 
 template <typename Geometry>
 struct check< Geometry, circle_tag, true >
-    : detail::concept_check::check< concept::ConstCircle< Geometry > >
+    : detail::concept_check::check< concepts::ConstCircle< Geometry > >
 {};
 
 template < typename Geometry >
 struct check< Geometry, circle_tag, false >
-    : detail::concept_check::check< concept::Circle< Geometry > >
+    : detail::concept_check::check< concepts::Circle< Geometry > >
 {};
 
 template < typename Geometry >
 struct check< Geometry, multi_circle_tag, true >
-    : detail::concept_check::check< concept::ConstMultiCircle<Geometry> >
+    : detail::concept_check::check< concepts::ConstMultiCircle<Geometry> >
 {};
 
 template < typename Geometry >
 struct check< Geometry, multi_circle_tag, false >
-    : detail::concept_check::check< concept::MultiCircle<Geometry> >
+    : detail::concept_check::check< concepts::MultiCircle<Geometry> >
 {};
 
 template < typename Geometry >
 struct check< Geometry, static_polygon_tag, true >
-    : detail::concept_check::check< concept::ConstStaticPolygon< Geometry > >
+    : detail::concept_check::check< concepts::ConstStaticPolygon< Geometry > >
 {};
 
 template < typename Geometry >
 struct check< Geometry, static_polygon_tag, false >
-    : detail::concept_check::check< concept::StaticPolygon<Geometry> >
+    : detail::concept_check::check< concepts::StaticPolygon<Geometry> >
 {};
 
 template < typename Geometry >
 struct check< Geometry, static_ring_tag, true >
-    : detail::concept_check::check< concept::ConstStaticRing<Geometry> >
+    : detail::concept_check::check< concepts::ConstStaticRing<Geometry> >
 {};
 
 template < typename Geometry >
 struct check< Geometry, static_ring_tag, false >
-    : detail::concept_check::check< concept::StaticRing<Geometry> >
+    : detail::concept_check::check< concepts::StaticRing<Geometry> >
 {};
 
 
 template < typename Geometry >
 struct check< Geometry, triangle_tag, true >
-    : detail::concept_check::check< concept::ConstTriangle<Geometry> >
+    : detail::concept_check::check< concepts::ConstTriangle<Geometry> >
 {};
 
 template < typename Geometry >
 struct check< Geometry, triangle_tag, false >
-    : detail::concept_check::check< concept::Triangle<Geometry> >
+    : detail::concept_check::check< concepts::Triangle<Geometry> >
 {};
 
 
 template < typename Geometry >
 struct check< Geometry, simple_static_polygon_tag, true >
-    : detail::concept_check::check< concept::ConstSimpleStaticPolygon<Geometry> >
+    : detail::concept_check::check< concepts::ConstSimpleStaticPolygon<Geometry> >
 {};
 
 template < typename Geometry >
 struct check< Geometry, simple_static_polygon_tag, false >
-    : detail::concept_check::check< concept::SimpleStaticPolygon<Geometry> >
+    : detail::concept_check::check< concepts::SimpleStaticPolygon<Geometry> >
 {};
 
 
 template < typename Geometry >
 struct check< Geometry, multi_simple_static_polygon_tag, true >
-    : detail::concept_check::check< concept::ConstMultiSimpleStaticPolygon<Geometry> >
+    : detail::concept_check::check< concepts::ConstMultiSimpleStaticPolygon<Geometry> >
 {};
 
 template < typename Geometry >
 struct check< Geometry, multi_simple_static_polygon_tag, false >
-    : detail::concept_check::check< concept::MultiSimpleStaticPolygon<Geometry> >
+    : detail::concept_check::check< concepts::MultiSimpleStaticPolygon<Geometry> >
 {};
 
 
 template < typename Geometry >
 struct check< Geometry, mesh_tag, true >
-    : detail::concept_check::check< concept::ConstMesh<Geometry> >
+    : detail::concept_check::check< concepts::ConstMesh<Geometry> >
 {};
 
 template < typename Geometry >
 struct check< Geometry, mesh_tag, false >
-    : detail::concept_check::check< concept::Mesh<Geometry> >
+    : detail::concept_check::check< concepts::Mesh<Geometry> >
 {};
 
 } // namespace dispatch
 
 }} // namespace boost::geometry
 
-namespace floe { namespace geometry { namespace concept
+namespace floe { namespace geometry { namespace concepts
 {
     using boost::geometry::concepts::check;
-}}} // namespace floe::geometry::concept
+}}} // namespace floe::geometry::concepts
 
 #endif // FLOE_GEOMETRY_GEOMETRIES_CONCEPT_CHECK_HPP

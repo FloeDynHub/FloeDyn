@@ -7,7 +7,7 @@
 
 #include "floe/geometry/geometries/concepts/simple_static_polygon_concept.hpp"
 
-namespace boost { namespace geometry { namespace concept
+namespace boost { namespace geometry { namespace concepts
 {
 
 /*! multi simple static polygon concept
@@ -19,7 +19,7 @@ struct MultiSimpleStaticPolygon
 {
     typedef typename boost::range_value<Geometry>::type polygon_type;
 
-    BOOST_CONCEPT_ASSERT( (concept::SimpleStaticPolygon<polygon_type>) );
+    BOOST_CONCEPT_ASSERT( (concepts::SimpleStaticPolygon<polygon_type>) );
     BOOST_CONCEPT_ASSERT( (boost::RandomAccessRangeConcept<Geometry>) );
 
 public:
@@ -38,7 +38,7 @@ struct ConstMultiSimpleStaticPolygon
 {
     typedef typename boost::range_value<Geometry>::type polygon_type;
 
-    BOOST_CONCEPT_ASSERT( (concept::ConstSimpleStaticPolygon<polygon_type>) );
+    BOOST_CONCEPT_ASSERT( (concepts::ConstSimpleStaticPolygon<polygon_type>) );
     BOOST_CONCEPT_ASSERT( (boost::RandomAccessRangeConcept<Geometry>) );
 
 public:
@@ -50,12 +50,12 @@ public:
 
 }}} // namespace boost::geometry::concepts
 
-namespace floe { namespace geometry { namespace concept
+namespace floe { namespace geometry { namespace concepts
 {
     using boost::geometry::concepts::MultiSimpleStaticPolygon;
     using boost::geometry::concepts::ConstMultiSimpleStaticPolygon;
 
-}}} // namespace floe::geometry::concept
+}}} // namespace floe::geometry::concepts
 
 #endif // FLOE_GEOMETRY_GEOMETRIES_CONCEPTS_MULTI_SIMPLE_STATIC_POLYGON_CONCEPT_HPP
 

@@ -14,6 +14,8 @@
 
 #include "floe/geometry/core/access.hpp"
 
+namespace bg = boost::geometry::strategy::transform;
+
 namespace floe { namespace geometry { namespace frame
 {
 
@@ -21,7 +23,6 @@ namespace floe { namespace geometry { namespace frame
 // Some tools
 namespace {
 
-namespace bg = boost::geometry::strategy::transform;
 
 //! Matrix type
 template < typename T >

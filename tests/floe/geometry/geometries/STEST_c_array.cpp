@@ -26,15 +26,15 @@ int main()
 
     using Point = fg::Point<real>;
 
-    BOOST_CONCEPT_ASSERT( (fg::concept::SimpleStaticPolygon<decltype(triangle)>) );
-    BOOST_CONCEPT_ASSERT( (fg::concept::ConstSimpleStaticPolygon<decltype(triangle)>) );
+    BOOST_CONCEPT_ASSERT( (fg::concepts::SimpleStaticPolygon<decltype(triangle)>) );
+    BOOST_CONCEPT_ASSERT( (fg::concepts::ConstSimpleStaticPolygon<decltype(triangle)>) );
 
     cout << bg::get<2,0>(triangle) << endl;
 
     Point triangle2[3] = { {0, 0}, {0, 1}, {1, 0} };
     
-    BOOST_CONCEPT_ASSERT( (fg::concept::SimpleStaticPolygon<decltype(triangle2)>) );
-    BOOST_CONCEPT_ASSERT( (fg::concept::ConstSimpleStaticPolygon<decltype(triangle2)>) );
+    BOOST_CONCEPT_ASSERT( (fg::concepts::SimpleStaticPolygon<decltype(triangle2)>) );
+    BOOST_CONCEPT_ASSERT( (fg::concepts::ConstSimpleStaticPolygon<decltype(triangle2)>) );
     
     
     cout << bg::get<2,0>(triangle2) << endl;
@@ -43,8 +43,8 @@ int main()
     cout << bg::dsv(triangle[1])  << endl;
 
     Point* triangle3[3] = { &triangle2[1], &triangle2[2], &triangle2[0] };
-    BOOST_CONCEPT_ASSERT( (fg::concept::SimpleStaticPolygon<decltype(triangle3)>) );
-    BOOST_CONCEPT_ASSERT( (fg::concept::ConstSimpleStaticPolygon<decltype(triangle3)>) );
+    BOOST_CONCEPT_ASSERT( (fg::concepts::SimpleStaticPolygon<decltype(triangle3)>) );
+    BOOST_CONCEPT_ASSERT( (fg::concepts::ConstSimpleStaticPolygon<decltype(triangle3)>) );
 
     cout << bg::get<1,0>(triangle3) << endl;
 
