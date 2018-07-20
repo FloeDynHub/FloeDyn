@@ -179,22 +179,22 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::flush() {
     // catch failure caused by the H5File operations
     catch( FileIException error )
     {
-        error.printError();
+        error.printErrorStack();
     }
     // catch failure caused by the DataSet operations
     catch( DataSetIException error )
     {
-        error.printError();
+        error.printErrorStack();
     }
     // catch failure caused by the DataSpace operations
     catch( DataSpaceIException error )
     {
-        error.printError();
+        error.printErrorStack();
     }
     // catch failure caused by the DataType operations
     catch( DataTypeIException error )
     {
-        error.printError();
+        error.printErrorStack();
     }
 };
 
@@ -634,22 +634,22 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::make_input_file(const dynamics_mgr_t
     // catch failure caused by the H5File operations
     catch( FileIException error )
     {
-        error.printError();
+        error.printErrorStack();
     }
     // catch failure caused by the DataSet operations
     catch( DataSetIException error )
     {
-        error.printError();
+        error.printErrorStack();
     }
     // catch failure caused by the DataSpace operations
     catch( DataSpaceIException error )
     {
-        error.printError();
+        error.printErrorStack();
     }
     // catch failure caused by the DataType operations
     catch( DataTypeIException error )
     {
-        error.printError();
+        error.printErrorStack();
     }
 };
 

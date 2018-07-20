@@ -504,17 +504,17 @@ void blabla(int result) {
    // // catch failure caused by the H5File operations
    // catch( FileIException error )
    // {
-   //  error.printError();
+   //  error.printErrorStack();
    // }
    // // catch failure caused by the DataSet operations
    // catch( DataSetIException error )
    // {
-   //  error.printError();
+   //  error.printErrorStack();
    // }
    // // catch failure caused by the DataSpace operations
    // catch( DataSpaceIException error )
    // {
-   //  error.printError();
+   //  error.printErrorStack();
    // }
 
 
@@ -723,19 +723,19 @@ void blabla(int result) {
 //    	// catch failure caused by the H5File operations
 
 // 	catch( FileIException error ){
-// 	    error.printError();
+// 	    error.printErrorStack();
 // 	    return -1;
 //    	}
 //    	// catch failure caused by the DataSet operations
 //    	catch( DataSetIException error )
 //    	{
-//     	error.printError();
+//     	error.printErrorStack();
 //     	return -1;
 //    	}
 //    	// catch failure caused by the DataSpace operations
 //    	catch( DataSpaceIException error )
 //    	{
-//     	error.printError();
+//     	error.printErrorStack();
 //     	return -1;
 //    	}
 //    	return 0;

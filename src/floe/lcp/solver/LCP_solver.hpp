@@ -55,6 +55,11 @@ LCPSolver<T>::solve( TContactGraph& graph, bool& success, int lcp_failed_stats[]
     lcp_type lcp_a(lcp_orig.dim,lcp_orig.M);
     lcp_a.q = lcp_orig.q;
 
+    // variables for storing LCP:
+    static bool is_full_storage  = false;
+    static bool bool_save_solved = true;
+    int w_fail{0};
+
     // %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     // %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% COMPRESSION PHASE: %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     // %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -62,7 +67,6 @@ LCPSolver<T>::solve( TContactGraph& graph, bool& success, int lcp_failed_stats[]
 
     // variables:
     bool solved=false;
-    static bool bool_save_solved=false;
     bool SR_status{0}, RP_status{0};
     int  last_status{0};             // -1 for RP_status, 0 for neither, 1 for SR_status.
     int  itermax=1000;
@@ -70,7 +74,7 @@ LCPSolver<T>::solve( TContactGraph& graph, bool& success, int lcp_failed_stats[]
 
     bool use_lexico_ordering{0};     // "true" if the lexicographic ordering has been used during the Lemke's algorithm.
 
-    int w_fail{0}, count_attempt{0}, count_SR{0}, count_SR_failed{0}, count_RP{0};
+    int count_attempt{0}, count_SR{0}, count_SR_failed{0}, count_RP{0};
     const int Z0  = 2*lcp_a.dim;    // artificial variable associated with the covering vector
     
     while (!solved && count_attempt<=ite_max_attempt) {
@@ -146,21 +150,19 @@ LCPSolver<T>::solve( TContactGraph& graph, bool& success, int lcp_failed_stats[]
 
     // Saving data on LCP:
     if (!is_full_storage){
-        if (!solved) {
-            std::cout << "An unsolved LCP is storing!\n";
-            bool_save_solved            = true;
+        if ( ( !solved ) || ( bool_save_solved ) ){
+    //         std::cout << "An more: " << bool_save_solved << " solved LCP stored!\n";
+
             lcp_orig.z                  = best_z;
             Solc                        = calcSolc(graph_lcp, lcp_orig);
             bool Is_pos_rel_norm_vel    = Rel_Norm_Vel_test(prod(trans(graph_lcp.J), Solc), graph);
             vector<real_type> err_det   = lcp_orig.LCP_error_detailed();
             w_fail                      = which_failure( err_det, Is_pos_rel_norm_vel );   
-            last_status                 = SR_status-RP_status;         
-        }
+            last_status                 = SR_status-RP_status;   
 
-        if ( ( !solved ) || ( bool_save_solved ) ){
             is_full_storage = saving_LCP_in_hdf5( lcp_orig, solved, count_attempt, count_RP, count_SR, count_SR_failed, 
                 last_status, use_lexico_ordering, best_err, w_fail );
-            bool_save_solved = false;
+    //         bool_save_solved = false;
         }
     }
     // End saving data on LCP

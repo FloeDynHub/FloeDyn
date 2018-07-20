@@ -108,7 +108,7 @@ int LCPManager<T>::solve_contacts(TContactGraph& contact_graph)
     const std::size_t limit_sup_nb_contact  =  500;//500; // from Quentin:   50
 
     // variables for contact informations:
-    // static bool end_recording = false;
+    static bool end_recording = false;
 
     // m_solver.nb_solver_run = 0; // test perf
     // m_solver.chrono_solver = 0; // test perf
@@ -137,12 +137,13 @@ int LCPManager<T>::solve_contacts(TContactGraph& contact_graph)
         bool active_quad_cut = 0;
 
         // variables for contact informations:
-        // std::size_t size_a_sub_graph = asubgraphs.size();
-        // int contact_loop_stats[2]={0,0}; // number of contact points, indicator for be out of loop due to all success (1) or no success (0) 
-            // or no enough iteration (2)
-        // contact_loop_stats[0] = static_cast<int>(num_contacts(subgraph));
-        // contact_loop_stats[1] = 1;
-        // bool all_solved = true;
+        std::size_t size_a_sub_graph = asubgraphs.size();
+        bool all_solved = true;
+
+        int contact_loop_stats[2]={0,0};    // number of contact points, indicator for be out of loop due to all success (1) or no success (0) 
+                                            // or no enough iteration (2)
+        contact_loop_stats[0] = static_cast<int>(num_contacts(subgraph));
+        contact_loop_stats[1] = 1;
 
         while (asubgraphs.size() != 0
                && loop_cnt < std::min( 100 * num_contacts(subgraph), limit_sup_loop_cnt) // 60 * num_contacts(subgraph)
@@ -191,37 +192,24 @@ int LCPManager<T>::solve_contacts(TContactGraph& contact_graph)
         }
         if (asubgraphs.size() != 0)
         {
-            // all_solved = false;
-            // if (loop_nb_success!=0) {contact_loop_stats[1] = 2;}
-            std::cout << "End of the while loop without resolution of all contacts!! nb contact: "<< 60 * num_contacts(subgraph) << "\n";
-            // LCP_count += asubgraphs.size();
+            all_solved = false;
+            if (loop_nb_success!=0) {contact_loop_stats[1] = 2;}
+            std::cout << "End of the while loop without resolution of all contacts!! nb contact: "<< num_contacts(subgraph) << "\n";
+            LCP_count += asubgraphs.size();
 
             for ( auto const& graph : asubgraphs ) mark_solved(graph, false);
         }
 
-
-        // // Mat
-        // /*
-        //  * Recovery of contact data (LCP_count, etc). Save in h5 file:
-        //  */
-        // if (!end_recording && size_a_sub_graph!=0) {
-        //     end_recording = saving_contact_graph_in_hdf5( LCP_count, loop_cnt, size_a_sub_graph, all_solved, contact_loop_stats );
-        // } 
-        // // EndMat
-
-        // {
-        //     // Big LCP solving
-        //     LCP_count += 1;
-        //     bool success;
-        //     auto Sol = m_solver.solve( subgraph, success );
-        //     mark_solved(subgraph, success);
-        //     std::cout << "BIG LCP ";
-        //     if (success) {nb_success++; std::cout << "SUCCESS\n" ; }
-        //     update_floes_state(subgraph, Sol);
-        // }
-
-    //     nb_active_subgraph_loop += loop_cnt; // test perf
-    //     std::cout << "NB_LOOP : " << loop_cnt << " / " << 60 * num_contacts(subgraph) << "\n"; // test perf
+        // Mat
+        // Saving data on LCP:
+        /*
+         * Recovery of contact data (LCP_count, etc). Save in h5 file:
+         */
+        if (!end_recording && size_a_sub_graph!=0) {
+            end_recording = saving_contact_graph_in_hdf5( LCP_count, loop_cnt, size_a_sub_graph, all_solved, contact_loop_stats );
+        } 
+        // End saving data on LCP
+        // EndMat
     }
     // auto t_end = std::chrono::high_resolution_clock::now(); // test perf
     // auto call_time = std::chrono::duration<double, std::milli>(t_end-t_start).count(); // test perf
@@ -403,17 +391,17 @@ bool LCPManager<T>::saving_contact_graph_in_hdf5(int LCP_count, std::size_t loop
     // catch failure caused by the H5File operations
     catch( FileIException error )
     {
-    error.printError();
+    error.printErrorStack();
     }
     // catch failure caused by the DataSet operations
     catch( DataSetIException error )
     {
-    error.printError();
+    error.printErrorStack();
     }
     // catch failure caused by the DataSpace operations
     catch( DataSpaceIException error )
     {
-    error.printError();
+    error.printErrorStack();
     }
     return false;
 }

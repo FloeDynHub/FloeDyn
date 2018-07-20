@@ -487,17 +487,17 @@ bool saving_LCP_in_hdf5(floe::lcp::LCP<T> lcp, bool solved, int count_attempt, i
    // catch failure caused by the H5File operations
    catch( FileIException error )
    {
-    error.printError();
+    error.printErrorStack();
    }
    // catch failure caused by the DataSet operations
    catch( DataSetIException error )
    {
-    error.printError();
+    error.printErrorStack();
    }
    // catch failure caused by the DataSpace operations
    catch( DataSpaceIException error )
    {
-    error.printError();
+    error.printErrorStack();
    }
    return false;
 }
