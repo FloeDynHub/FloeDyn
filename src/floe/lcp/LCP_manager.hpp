@@ -67,7 +67,7 @@ private:
     long m_nb_lcp_success; //!< Total number of LCP solving success
     long m_nb_lcp_failed_stats[3]={0,0,0}; // LCP failed statistics: [nb LCP failed during compression phase,
     // nb LCP failed during decompression phase, nb LCP solved maintaining the kinetic energy in decompression phase].
-    // Other LCP statistics are found in the matlab routine (see folder: outputs_mycode).
+    // Other LCP statistics are found in the matlab routine (see folder: io/outputs).
     
     double chrono_active_subgraph{0.0}; // test perf
     double max_chrono_active_subgraph{0.0}; // test perf
@@ -282,7 +282,7 @@ template<typename T>
 bool LCPManager<T>::saving_contact_graph_in_hdf5(int LCP_count, std::size_t loop_count, std::size_t size_a_sub_graph,
  bool all_solved, int contact_loop_stats[] ){
 
-    const H5std_string FILE_NAME("/Users/matthiasrabatel/Travail/outputs_mycode/matrix.h5");
+    const H5std_string FILE_NAME("io/outputs/matrix.h5");
     const H5std_string GROUP_NAME_I( "solved" ); // root group
     const H5std_string GROUP_NAME_II( "unsolved" ); // root group
     const H5std_string Last_Memb( "Last LCP" ); // to prevent similar LCP

@@ -7,8 +7,6 @@
 #ifndef OPE_GENERATOR_LCP_SOLVER_HPP
 #define OPE_GENERATOR_LCP_SOLVER_HPP
 
-#include "floe/lcp/solver/lexicolemke.hpp"
-#include "floe/lcp/solver/lemke_eigen.hpp"
 #include "floe/lcp/lcp.hpp"
 #include "floe/lcp/builder/graph_to_lcp.hpp"
 #include <boost/numeric/ublas/vector_proxy.hpp>

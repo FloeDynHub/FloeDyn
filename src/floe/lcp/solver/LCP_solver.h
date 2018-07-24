@@ -137,7 +137,7 @@ template<typename T>
 bool saving_LCP_in_hdf5(floe::lcp::LCP<T> lcp, bool solved, int count_attempt, int count_RP, 
     int count_SR, int count_SR_failed, int last_status, bool use_lexico_ordering, T lcp_err, int w_fail) 
 {
-    const H5std_string FILE_NAME("/Users/matthiasrabatel/Travail/outputs_mycode/matrix.h5");
+    const H5std_string FILE_NAME("io/outputs/matrix.h5");
     const H5std_string GROUP_NAME_I( "solved" ); // root group
     const H5std_string GROUP_NAME_II( "unsolved" ); // root group
     const H5std_string GROUP_NAME1( "M" ); 

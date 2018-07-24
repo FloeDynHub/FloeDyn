@@ -51,7 +51,7 @@ public:
 
         // Check radius access
         Geometry const* s = 0;
-        radius_type coord(geometry::get_radius(*s));
+        radius_type coord(floe::geometry::get_radius(*s));
         boost::ignore_unused_variable_warning(coord);
     }
 };

@@ -112,9 +112,10 @@ struct access< FloeCircle<TPoint, TCoordinate>, Dimension>
 //! Radius accessor
 template <
     typename TPoint,
-    typename TRadius
+    typename TRadius,
+    std::size_t Dimension
 >
-struct radius_access< FloeCircle<TPoint, TRadius>, TRadius>
+struct radius_access< FloeCircle<TPoint, TRadius>, Dimension>
 {
     static inline
     TRadius get( FloeCircle<TPoint, TRadius> const& circle )

@@ -30,7 +30,7 @@ public:
     {
         TOutManager& second_out_mgr = m_out_managers[1];
         second_out_mgr.set_out_step(10, 0);
-        second_out_mgr.set_out_file_name("/Users/matthiasrabatel/Travail/outputs_mycode/out_partial.h5"); // todo : less hardcoded if needed...
+        second_out_mgr.set_out_file_name("io/outputs/out_partial.h5"); // todo : less hardcoded if needed...
     }
 
     void restrain_second_mgr(){

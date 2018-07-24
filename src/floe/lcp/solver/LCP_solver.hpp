@@ -9,10 +9,7 @@
 // #include <mpi.h>
 #include "floe/lcp/solver/LCP_solver.h"
 
-#include "floe/lcp/solver/lexicolemke.hpp"
 #include "floe/lcp/solver/lexicolemke_MR.hpp"
-
-#include "floe/lcp/solver/lemke_eigen.hpp"
 
 #include "floe/lcp/builder/graph_to_lcp.hpp"
 #include "floe/collision/contact_graph.hpp" // boost::edges (todo : should be hidden)
@@ -34,7 +31,6 @@ LCPSolver<T>::solve( TContactGraph& graph, bool& success, int lcp_failed_stats[]
     floe::lcp::builder::GraphLCP<real_type, decltype(graph)> graph_lcp( graph );
     auto lcp_orig = graph_lcp.getLCP();
 
-    static bool             is_full_storage = false;
     T                       best_err        = std::numeric_limits<T>::max();
     decltype(lcp_orig.z)    best_z;
     decltype(lcp_orig.M)    perturb_M       = lcp_orig.M;

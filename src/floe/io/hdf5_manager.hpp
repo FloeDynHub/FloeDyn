@@ -34,7 +34,7 @@ std::string gen_random(const int len) {
 //! Default constructor.
 template <typename TFloeGroup, typename TDynamicsMgr>
 HDF5Manager<TFloeGroup, TDynamicsMgr>::HDF5Manager(floe_group_type const& floe_group) :
-    m_out_file_name{"/Users/matthiasrabatel/Travail/outputs_mycode/out_" + gen_random(5) + ".h5"},
+    m_out_file_name{"io/outputs/out_" + gen_random(5) + ".h5"},
     m_out_file{nullptr}, m_step_count{0}, m_chunk_step_count{0}, m_flush_max_step{2},
     m_floe_group{&floe_group},
     m_data_chunk_states(boost::extents[0][0][0]),

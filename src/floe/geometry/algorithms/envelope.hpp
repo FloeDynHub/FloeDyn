@@ -22,14 +22,20 @@ namespace boost { namespace geometry
 namespace detail { namespace envelope
 {
 
+/// Envelope implementation for circles
 struct envelope_circle
 {
+    /** Calculates the envelope of a given circle.
+     *
+     * @warning This envelope implementation doesn't depend on the given strategy.
+     */
     template <
         typename TCircle,
-        typename TBox
+        typename TBox,
+        typename TStrategy
     >
     static inline
-    void apply( TCircle const& circle, TBox & mbr )
+    void apply( TCircle const& circle, TBox & mbr, TStrategy const& )
     {
         assert_dimension<TBox, 2>();
 
@@ -46,6 +52,7 @@ struct envelope_circle
 
 namespace dispatch {
 
+/// Dispatch to envelope implementation for circles.
 template <typename TCircle>
 struct envelope<TCircle, circle_tag>
     : detail::envelope::envelope_circle

@@ -49,7 +49,7 @@ def timeit(func):
 floedyn_deps = {
     'gmp' : ['gmp'],
     'boost' : ['boost_system', 'boost_program_options'],
-    'eigen3' : [],
+    'eigen' : [],
     'matio' : ['matio'],
     'hdf5'  : ['hdf5_cpp'],
     'cgal'  : ['CGAL'],
@@ -59,7 +59,7 @@ floedyn_deps = {
 floedyn_includes = {
     'gmp' : [],
     'boost' : [],
-    'eigen3' : ['eigen3'],
+    'eigen' : ['eigen3','/usr/local/Cellar/eigen/3.3.4/include/eigen3'],
     'matio' : [],
     'hdf5'  : ['hdf5/serial/'],
     'cgal'  : [],
@@ -284,7 +284,7 @@ def get_option_dict(debug=True):
         OPTION_DICT.update({
             "linkflags": ['-g'],
             "cxxflags": [
-                '-std=c++11',
+                '-std=c++14',
                  '-O0',
                  "-Wall", #"-Wextra",
             ],
@@ -294,7 +294,7 @@ def get_option_dict(debug=True):
         OPTION_DICT.update({
             "linkflags": [],
             "cxxflags": [
-                '-std=c++11',
+                '-std=c++14',
                  "-O3",
                  # "-march=native", # g++ fails with this
                  "-mtune=native",

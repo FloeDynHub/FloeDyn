@@ -11,15 +11,15 @@
 #include "floe/geometry/core/tags.hpp"
 
 // Core algorithms
-#include "floe/geometry/core/radius.hpp"
+// #include "floe/geometry/core/radius.hpp"
 #include "floe/geometry/core/access.hpp"
-#include "floe/geometry/core/static_num_points.hpp"
+#include "floe/geometry/core/static_num_points.hpp"  	// not in boost/geometry.hpp 1_63
 #include "floe/geometry/core/exterior_ring.hpp"
 #include "floe/geometry/core/ring_type.hpp"
 #include "floe/geometry/core/coordinate_dimension.hpp"
 #include "floe/geometry/core/coordinate_type.hpp"
-#include "floe/geometry/core/cells_type.hpp"
-#include "floe/geometry/core/cells.hpp"
+#include "floe/geometry/core/cells_type.hpp"    		// not in boost/geometry.hpp 1_63 
+#include "floe/geometry/core/cells.hpp"					// not in boost/geometry.hpp 1_63
 #include "floe/geometry/core/point_type.hpp"
 #include "floe/geometry/core/point_order.hpp"
 
@@ -43,7 +43,7 @@
 #include "floe/geometry/geometries/concepts/check.hpp"
 
 // Views
-#include "floe/geometry/views/center_view.hpp"
+#include "floe/geometry/views/center_view.hpp"			// not in boost/geometry.hpp 1_63
 
 // IO
 #include "floe/geometry/io/dsv/write.hpp"

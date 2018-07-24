@@ -8,7 +8,7 @@
 #ifndef FLOE_GEOMETRY_FRAME_FRAME_TRANSFORMERS_HPP
 #define FLOE_GEOMETRY_FRAME_FRAME_TRANSFORMERS_HPP
 
-#include <boost/numeric/ublas/matrix.hpp>
+#include <boost/qvm/mat.hpp>
 #include <boost/geometry/strategies/transform/matrix_transformers.hpp>
 #include <boost/geometry/util/select_most_precise.hpp>
 
@@ -24,14 +24,14 @@ namespace floe { namespace geometry { namespace frame
 namespace {
 
 
-//! Matrix type
-template < typename T >
-using matrix_type = boost::numeric::ublas::matrix<T>;
+//! Matrix type alias
+template < typename T, int Rows, int Cols >
+using matrix_type = boost::qvm::mat<T, Rows, Cols>;
 
 //! Translate operation
-template <typename T>
+template < typename T >
 inline
-matrix_type<T> translate( T const& x, T const& y )
+auto translate( T const& x, T const& y )
 {
     return bg::translate_transformer<T,2,2>(x,y).matrix();
 }
@@ -40,9 +40,9 @@ matrix_type<T> translate( T const& x, T const& y )
  *
  * The boost rotate_transformer is clockwise oriented.
  */
-template <typename T>
+template < typename T >
 inline
-matrix_type<T> rotate( T const& theta )
+auto rotate( T const& theta )
 {
     return bg::rotate_transformer<boost::geometry::radian,T,2,2>(-theta).matrix();
 }
@@ -51,7 +51,7 @@ matrix_type<T> rotate( T const& theta )
 
 //! Transformer type
 template < typename T >
-using transformer_type = bg::ublas_transformer<T,2,2>;
+using transformer_type = bg::matrix_transformer<T,2,2>;
 
 /*! Transformer strategy from a frame to the canonical frame
  *
@@ -68,10 +68,8 @@ transformer_type<T> transformer( TFrame const& frame )
 {
     using floe::geometry::get;
     return transformer_type<T>(
-        prod(
-            translate(get<0>(frame.center()), get<1>(frame.center())),
-            rotate(frame.theta())
-        )
+          translate(get<0>(frame.center()), get<1>(frame.center()))
+        * rotate(frame.theta())
     );
 }
 
@@ -118,16 +116,12 @@ transformer_type<TOutput> transformer( TFrame1 const& frame1, TFrame2 const& fra
 {
     using floe::geometry::get;
     return transformer_type<TOutput>(
-        prod(
-            rotate(-frame2.theta()),
-            matrix_type<TOutput>(prod(
-                translate( 
-                    get<0>(frame1.center()) - get<0>(frame2.center()),
-                    get<1>(frame1.center()) - get<1>(frame2.center())
-                ),
-                rotate(frame1.theta())
-            ))
-        )
+          rotate(-frame2.theta())
+        * translate( 
+              get<0>(frame1.center()) - get<0>(frame2.center()),
+              get<1>(frame1.center()) - get<1>(frame2.center())
+          )
+        * rotate(frame1.theta())
     );
 }
 
@@ -152,13 +146,9 @@ transformer_type<TOutput> itransformer( TFrame1 const& frame1, TFrame2 const& fr
 {
     using floe::geometry::get;
     return transformer_type<TOutput>(
-        prod(
-            translate( get<0>(frame2.center()), get<1>(frame2.center()) ),
-            matrix_type<TOutput>(prod(
-                rotate(frame2.theta()-frame1.theta()),
-                translate( -get<0>(frame1.center()), -get<1>(frame1.center()) )
-            ))
-        )
+          translate( get<0>(frame2.center()), get<1>(frame2.center()) )
+        * rotate(frame2.theta() - frame1.theta())
+        * translate( -get<0>(frame1.center()), -get<1>(frame1.center()) )
     );
 }
 }}} // namespace floe::geometry::frame
