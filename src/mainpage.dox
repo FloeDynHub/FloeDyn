@@ -159,7 +159,24 @@
  * \endcode
  * So, the different <i> assert() </i> function will be activated.
  *
+ ********************************************************************************************************************************************
+ * \section contact_detection Contact Detection
+ **********************************************
+ *
+ * \subsection contact_point Contact Point
+ * The contact point between the floes <i> S1 </i> and <i> S2 </i> is treated as a struct ContactPoint with the following public members:
+ * - a pointer to the floe <i> S1 </i>
+ * - a pointer to the floe <i> S2 </i>
+ * - a frame of the contact (orthonormal and direct oriented) 
+ * - the distance between <i> S1 </i> and <i> S2 </i>
+ *
+ * \subsection contact_graph Contact Graph
+ * The graph of contact is treated as a undirected graph from <i> adjacency_list </i> of <b> BOOST </b>, which the 
+ * edges are a <i> std::vector </i> of contact points.
+ *
+ ********************************************************************************************************************************************
  * \section example Un exemple expliqué (Roland)
+ **********************************************
  *
  * Nous ici détailler le fonctionnement d'un exemple, le fichier floe/collision/matlab/TEST_detector_from_mat.cpp.
  * Cet exemple charge une configuration de floes depuis un fichier Matlab et en détecte les points de collisions. 

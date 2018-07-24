@@ -144,6 +144,7 @@ LCPSolver<T>::solve( TContactGraph& graph, bool& success, int lcp_failed_stats[]
         ++count_attempt;
     }
 
+    // Mat
     // Saving data on LCP:
     if (!is_full_storage){
         if ( ( !solved ) || ( bool_save_solved ) ){
@@ -162,8 +163,12 @@ LCPSolver<T>::solve( TContactGraph& graph, bool& success, int lcp_failed_stats[]
         }
     }
     // End saving data on LCP
+    // EndMat
 
     if (!solved) {
+        // std::cout << "An unsolved LCP there!\n";
+        // std::cout << "With a LCP error:" << best_err << "\n";
+        // bool_save_solved     = true;
         lcp_failed_stats[0] += 1;
 
         success = 0;
@@ -192,13 +197,14 @@ LCPSolver<T>::solve( TContactGraph& graph, bool& success, int lcp_failed_stats[]
 
             // Always comparing to the original one: (lcp.M could be perturbed)
             lcp_d_orig.z = lcp_a.z;
-            T LCP_err = lcp_orig.LCP_error();
+            T LCP_err = lcp_d_orig.LCP_error();
 
             // accurate solution is found
             if (LCP_err<=tolerance) {    
                 Sold = calcSold(graph_lcp, lcp_orig, lcp_d_orig, Solc);
                 auto ECd = calcEc(Sold, graph_lcp.M, graph_lcp.W);
                 if (ECd > 1) {
+                    // std::cout << "Oops I'm with an exceed of kinetic energy!\n";
                     lcp_failed_stats[2] += 1;
                     Sold = (1 + epsilon) * Solc - epsilon * graph_lcp.W; // return this instead of Sold
                     floe_impulses = graph_lcp.impulse_vector(lcp_orig, epsilon);

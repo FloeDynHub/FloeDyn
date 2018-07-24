@@ -16,6 +16,20 @@
 #include <chrono> // test perf
 #include <vector>
 
+#include <boost/graph/adjacency_list.hpp>
+
+
+// #include <boost/graph/adjacency_list.hpp>
+// #include <boost/graph/graph_utility.hpp>
+// #include <boost/graph/filtered_graph.hpp>
+// #include <boost/graph/connected_components.hpp>
+// #include <boost/graph/copy.hpp>
+
+// #include "floe/collision/contact_point.hpp"
+// #include "floe/collision/floe_contact.hpp"
+// #include "floe/collision/floe_vertex.hpp"
+
+
 #ifdef _OPENMP
 #include <omp.h>
 #endif
@@ -100,6 +114,7 @@ template<typename T>
 template<typename TContactGraph>
 int LCPManager<T>::solve_contacts(TContactGraph& contact_graph)
 {
+
     auto const subgraphs = collision_subgraphs( contact_graph );
     int LCP_count=0, nb_success=0;
     int nb_lcp_failed_stats[3]={0,0,0}; 
@@ -126,15 +141,12 @@ int LCPManager<T>::solve_contacts(TContactGraph& contact_graph)
         // mark_solved(subgraph, success);
         // if (success) nb_success++;
         // update_floes_state(subgraph, Sol, subgraph);
-        
-
-
 
         // Active subgraph LCP strategy
         auto asubgraphs = active_subgraphs( subgraph );
-        std::size_t loop_cnt = 0;
-        int loop_nb_success = -1;
-        bool active_quad_cut = 0;
+        std::size_t loop_cnt    = 0;
+        int loop_nb_success     = -1;
+        bool active_quad_cut    = 0;
 
         // variables for contact informations:
         std::size_t size_a_sub_graph = asubgraphs.size();
@@ -149,8 +161,9 @@ int LCPManager<T>::solve_contacts(TContactGraph& contact_graph)
                && loop_cnt < std::min( 100 * num_contacts(subgraph), limit_sup_loop_cnt) // 60 * num_contacts(subgraph)
                && loop_nb_success !=0 )
         {
-            loop_nb_success = 0; // if no succes after one total path of contact graph, no use (nothing change)
-            // to browse again the while loop. Thus we add "loop_nb_succes !=0".
+            loop_nb_success = 0;    // if no succes after one total path of contact graph, no use (nothing change)
+                                    // to browse again the while loop. Thus we add "loop_nb_succes !=0".
+
             LCP_count += asubgraphs.size();
 
             for ( auto const& graph : asubgraphs ) // loop over the total number of active contact group
@@ -173,14 +186,12 @@ int LCPManager<T>::solve_contacts(TContactGraph& contact_graph)
                     if (success) {++loop_nb_success;}
                     update_floes_state(graph, Sol); // updates the velocity of floes
                 }
+
                 mark_changed_parent(graph, subgraph); // indicates which floes have been modified
             }
             // auto t_start2 = std::chrono::high_resolution_clock::now(); // test perf
             asubgraphs = active_subgraphs( subgraph ); // computes the new relative velocitoies from velocities of modified floes 
-            if (active_quad_cut){
-                std::cout << "nb acitve subgraph: " << asubgraphs.size() << "\n";
-                active_quad_cut = 0;
-            }
+            
             // auto t_end2 = std::chrono::high_resolution_clock::now(); // test perf
             // auto call_time = std::chrono::duration<double, std::milli>(t_end2-t_start2).count(); // test perf
             // chrono_active_subgraph += call_time; // test perf
@@ -188,7 +199,7 @@ int LCPManager<T>::solve_contacts(TContactGraph& contact_graph)
             nb_success += loop_nb_success;
             ++loop_cnt;
 
-            // if (loop_nb_success==0) {contact_loop_stats[1] = 0;}
+            if (loop_nb_success==0) {contact_loop_stats[1] = 0;}
         }
         if (asubgraphs.size() != 0)
         {
@@ -252,6 +263,7 @@ int LCPManager<T>::solve_contacts(TContactGraph& contact_graph)
     //         loop_cnt++;
     //     }
     // }
+
     m_nb_lcp += LCP_count;
     m_nb_lcp_success += nb_success;
     for (int i=0;i<3;++i){
