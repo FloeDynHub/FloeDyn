@@ -33,6 +33,23 @@ std::default_random_engine get_uniquely_seeded_generator(){
     return generator;
 }
 
+std::string gen_random(const int len) {
+    static const char alphanum[] =
+        "0123456789"
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+        "abcdefghijklmnopqrstuvwxyz";
+        
+    std::string s;
+
+    auto seed = get_unique_seed();
+    std::srand(seed);
+
+    for (int i = 0; i < len; ++i) {
+        s += alphanum[rand() % (sizeof(alphanum) - 1)];
+    }
+
+    return s; 
+}
 
 }} // namespace floe::random
 

@@ -1,6 +1,10 @@
 #ifndef FLOE_GEOMETRY_ARITHMETIC_POINT_OPERATORS
 #define FLOE_GEOMETRY_ARITHMETIC_POINT_OPERATORS
 
+#include <cmath>
+#include <cstddef>     // std::size_t
+#include <type_traits> // std::enable_if
+#include <ostream>
 #include "floe/geometry/geometries/point.hpp"
 
 namespace floe { namespace geometry

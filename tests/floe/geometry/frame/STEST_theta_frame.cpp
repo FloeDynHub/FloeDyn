@@ -7,6 +7,7 @@
 #include <iostream>
 #include <boost/math/constants/constants.hpp>
 #include <boost/numeric/ublas/io.hpp>
+#include <boost/qvm/to_string.hpp>
 
 #include "floe/geometry/geometry.hpp"
 #include "floe/geometry/geometries/point.hpp"
@@ -31,11 +32,11 @@ int main()
     cout << "u = " << fg::dsv( frame.u() ) << " ; v = " << fg::dsv( frame.v() ) << endl;
 
     const auto strategy = fg::frame::transformer(frame);
-    cout << "m = " << strategy.matrix() << endl;
+    cout << "m = " << to_string(strategy.matrix()) << endl;
 
     const Frame frame2(0., 1., pi/2);
     const auto strategy2 = fg::frame::transformer(frame,frame2);
-    cout << "m2 = " << strategy2.matrix() << endl;
+    cout << "m2 = " << to_string(strategy2.matrix()) << endl;
 
     Point pt;
     fg::transform( Point{1.,0.}, pt, strategy2 );

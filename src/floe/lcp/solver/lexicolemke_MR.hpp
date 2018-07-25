@@ -62,7 +62,7 @@ std::vector<int> lcp_lexicolemke_MR( const double tolerance, const int itermax, 
     for (i=0;i<3*dim/4;++i) {q_abs[i] = std::abs(q[i]);}
     typename std::vector<T>::iterator tol_it = std::min_element( q_abs.begin(), q_abs.end() );
     T val_tol = *tol_it*1e-5;
-    if (val_tol<tol) {tol = 1e-13;} // std::cout << "I am using the tol adjustement: " << *tol_it << " | " << tol << std::endl;}
+    if (val_tol<tol) {tol = 1e-13;}
     // End of tol adjustement
 
     std::vector<int>::iterator it, drive_it, Z0_priority_it;

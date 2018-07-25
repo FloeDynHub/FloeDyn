@@ -17,13 +17,14 @@
 #include "floe/floes/floe_group.hpp"
 
 #include "H5Cpp.h"
-#ifndef H5_NO_NAMESPACE
-using namespace H5;
-#endif
+// #ifndef H5_NO_NAMESPACE
+// using namespace H5;
+// #endif
 
 
 namespace floe { namespace io
 {
+    using namespace H5;
 
 /*! HDF5Manager
  *
@@ -34,10 +35,6 @@ namespace floe { namespace io
  * Internally saves a fixed number of states before writing it to the file.
  *
  */
-
-// Generate random string
-std::string gen_random(const int len);
-
 
 // Get array size at compile time
 template<typename>

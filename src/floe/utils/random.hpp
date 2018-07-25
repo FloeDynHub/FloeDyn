@@ -18,6 +18,8 @@ void initiate_generator(std::default_random_engine& generator);
 
 std::default_random_engine get_uniquely_seeded_generator();
 
+std::string gen_random(const int len);
+
 }} // namespace floe::random
 
 

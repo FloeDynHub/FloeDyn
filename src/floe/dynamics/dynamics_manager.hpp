@@ -70,14 +70,14 @@ DynamicsManager<TExternalForces, TFloeGroup>::move_floe(floe_type& floe, real_ty
 
     /* Adding random perturbation to speed and rot
        (improve collision computing, physically justifiable) */
-    real_type rand_norm = std::min(1e-7, 1e-6 * delta_t);
-    auto dist_rot = std::uniform_real_distribution<real_type>{-rand_norm, rand_norm};
-    auto dist_angle = std::uniform_real_distribution<real_type>{0, 2 * M_PI};
-    auto rand_theta = dist_angle(this->m_random_generator);
-    auto rand_rot = dist_rot(this->m_random_generator);
-    auto rand_speed = rand_norm * point_type{cos(rand_theta), sin(rand_theta)};
-    new_state.speed += rand_speed;
-    new_state.rot += rand_rot;
+    // real_type rand_norm = std::min(1e-7, 1e-6 * delta_t);
+    // auto dist_rot = std::uniform_real_distribution<real_type>{-rand_norm, rand_norm};
+    // auto dist_angle = std::uniform_real_distribution<real_type>{0, 2 * M_PI};
+    // auto rand_theta = dist_angle(this->m_random_generator);
+    // auto rand_rot = dist_rot(this->m_random_generator);
+    // auto rand_speed = rand_norm * point_type{cos(rand_theta), sin(rand_theta)};
+    // new_state.speed += rand_speed;
+    // new_state.rot += rand_rot;
 
     // Floe update
     floe.set_state(new_state);

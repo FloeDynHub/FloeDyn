@@ -13,28 +13,10 @@
 namespace floe { namespace io
 {
 
-std::string gen_random(const int len) {
-    static const char alphanum[] =
-        "0123456789"
-        "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-        "abcdefghijklmnopqrstuvwxyz";
-        
-    std::string s;
-
-    auto seed = floe::random::get_unique_seed();
-    std::srand(seed);
-
-    for (int i = 0; i < len; ++i) {
-        s += alphanum[rand() % (sizeof(alphanum) - 1)];
-    }
-
-    return s; 
-}
-
 //! Default constructor.
 template <typename TFloeGroup, typename TDynamicsMgr>
 HDF5Manager<TFloeGroup, TDynamicsMgr>::HDF5Manager(floe_group_type const& floe_group) :
-    m_out_file_name{"io/outputs/out_" + gen_random(5) + ".h5"},
+    m_out_file_name{"io/outputs/out_" + floe::random::gen_random(5) + ".h5"},
     m_out_file{nullptr}, m_step_count{0}, m_chunk_step_count{0}, m_flush_max_step{2},
     m_floe_group{&floe_group},
     m_data_chunk_states(boost::extents[0][0][0]),
@@ -612,7 +594,7 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::make_input_file(const dynamics_mgr_t
         int nb_floe = this->nb_considered_floes();
         int conc = round(m_floe_group->initial_concentration() * 100);
         m_out_file_name = "io/inputs/in_" + std::to_string(nb_floe)
-            + "f_" + std::to_string(conc) + "p_" + gen_random(5) + ".h5";
+            + "f_" + std::to_string(conc) + "p_" + floe::random::gen_random(5) + ".h5";
         const H5std_string  FILE_NAME( m_out_file_name );
 
         m_out_file = new H5File( FILE_NAME.c_str(), H5F_ACC_TRUNC );

@@ -65,7 +65,7 @@ public:
     inline int mpi_source() const { return m_mpi_source; }
     inline void mpi_source(int n) { m_mpi_source = n; }
     template<typename TPoint>
-    inline void store_OBL_contribution(TPoint speed){ m_OBL_speed = {speed.x, speed.y}; }
+    inline void store_OBL_contribution(TPoint speed){ m_OBL_speed = { {speed.x, speed.y} }; }
     template<typename TPoint>
     inline TPoint get_OBL_speed() const { return TPoint{this->m_OBL_speed[0], this->m_OBL_speed[1]}; }
 

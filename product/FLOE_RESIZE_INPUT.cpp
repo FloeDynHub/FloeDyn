@@ -4,6 +4,10 @@
 
 // Boost geometry
 #include "floe/geometry/frame/frame_transformers.hpp"
+#include <cmath>
+#include <cstddef>     // std::size_t
+#include <type_traits> // std::enable_if
+#include <ostream>
 #include "floe/arithmetic/container_operators.hpp"
 
 /*
@@ -35,12 +39,11 @@ int main( int argc, char* argv[] )
     // auto win_height = (w[3] - w[2]);
     value_type scale_coeff = new_win_width / win_width;
     decltype(w) new_window{
-        scale_coeff * w[0],
+        {scale_coeff * w[0],
         scale_coeff * w[1],
         scale_coeff * w[2],
-        scale_coeff * w[3]
+        scale_coeff * w[3]}
     };
-    int id_floe = 0;
     for (auto& floe : floes){
         auto base_shape = floe.static_floe().geometry();
         floe::geometry::transform( base_shape, floe.static_floe().geometry(), scale_transformer<value_type>{ scale_coeff } );

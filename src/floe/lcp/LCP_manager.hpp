@@ -18,6 +18,9 @@
 
 #include <boost/graph/adjacency_list.hpp>
 
+// saving matrix when lcp solver failed for further analysing
+#include "H5Cpp.h"
+#include "floe/utils/random.hpp"                    // for saving lcp statistic matrix 
 
 // #include <boost/graph/adjacency_list.hpp>
 // #include <boost/graph/graph_utility.hpp>
@@ -77,9 +80,9 @@ public:
 private:
 
     solver_type m_solver; //!< LCP Solver
-    long m_nb_lcp; //!< Total number of LCP managed
-    long m_nb_lcp_success; //!< Total number of LCP solving success
-    long m_nb_lcp_failed_stats[3]={0,0,0}; // LCP failed statistics: [nb LCP failed during compression phase,
+    long        m_nb_lcp; //!< Total number of LCP managed
+    long        m_nb_lcp_success; //!< Total number of LCP solving success
+    long        m_nb_lcp_failed_stats[3]={0,0,0}; // LCP failed statistics: [nb LCP failed during compression phase,
     // nb LCP failed during decompression phase, nb LCP solved maintaining the kinetic energy in decompression phase].
     // Other LCP statistics are found in the matlab routine (see folder: io/outputs).
     
@@ -123,7 +126,8 @@ int LCPManager<T>::solve_contacts(TContactGraph& contact_graph)
     const std::size_t limit_sup_nb_contact  =  500;//500; // from Quentin:   50
 
     // variables for contact informations:
-    static bool end_recording = false;
+    static bool end_recording           = false;
+    bool        bool_lcp_stats_saving   = false;
 
     // m_solver.nb_solver_run = 0; // test perf
     // m_solver.chrono_solver = 0; // test perf
@@ -216,9 +220,11 @@ int LCPManager<T>::solve_contacts(TContactGraph& contact_graph)
         /*
          * Recovery of contact data (LCP_count, etc). Save in h5 file:
          */
-        if (!end_recording && size_a_sub_graph!=0) {
-            end_recording = saving_contact_graph_in_hdf5( LCP_count, loop_cnt, size_a_sub_graph, all_solved, contact_loop_stats );
-        } 
+        if (bool_lcp_stats_saving) {
+            if (!end_recording && size_a_sub_graph!=0) {
+                end_recording = saving_contact_graph_in_hdf5( LCP_count, loop_cnt, size_a_sub_graph, all_solved, contact_loop_stats );
+            } 
+        }
         // End saving data on LCP
         // EndMat
     }
@@ -294,7 +300,9 @@ template<typename T>
 bool LCPManager<T>::saving_contact_graph_in_hdf5(int LCP_count, std::size_t loop_count, std::size_t size_a_sub_graph,
  bool all_solved, int contact_loop_stats[] ){
 
-    const H5std_string FILE_NAME("io/outputs/matrix.h5");
+    using namespace H5;                                         // proper way inside a function (to prevent extension to entire code)
+
+    const H5std_string FILE_NAME("io/outputs/LCP_stats.h5");
     const H5std_string GROUP_NAME_I( "solved" ); // root group
     const H5std_string GROUP_NAME_II( "unsolved" ); // root group
     const H5std_string Last_Memb( "Last LCP" ); // to prevent similar LCP

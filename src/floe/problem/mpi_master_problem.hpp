@@ -174,9 +174,9 @@ void MPIMasterProblem<TProblem>::test_perf(){
 template<typename TProblem>
 int MPIMasterProblem<TProblem>::manage_collisions(){
     // TODO something more explicit !!
-    int OK_SET = 0; // first loop needs to consult all workers
+    unsigned long OK_SET = 0; // first loop needs to consult all workers
     bool still_collision;
-    int loop_count{0};
+    unsigned long loop_count{0};
     auto keys = this->m_proximity_detector.collision_process_partition_keys();
     int i = 0;
     while (OK_SET < keys.size() and loop_count++ < 20 * keys.size()) {

@@ -12,9 +12,9 @@
 #include "boost/multi_array.hpp"
 
 #include "H5Cpp.h"
-#ifndef H5_NO_NAMESPACE
-using namespace H5;
-#endif
+// #ifndef H5_NO_NAMESPACE
+// using namespace H5;
+// #endif
 
 
 namespace floe { namespace io
@@ -24,6 +24,8 @@ namespace floe { namespace io
 template <typename TFloeGroup>
 void import_floes_from_hdf5(H5std_string filename, TFloeGroup& floe_group)
 {
+    using namespace H5;
+    
     // using floe_type = typename TFloeList::real_type;
     using floe_type = typename TFloeGroup::floe_type;
     using geometry_type = typename floe_type::geometry_type;

@@ -20,8 +20,8 @@ def print_froggy_commands(**opts):
         "build/FLOE_MPI",
         "<args...>"
     ])
-    print oar_cmd
-    print run_cmd
+    print(oar_cmd)
+    print(run_cmd)
 
 
 ####################

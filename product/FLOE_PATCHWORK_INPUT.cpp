@@ -43,7 +43,7 @@ int main( int argc, char* argv[] )
     std::vector<int> floe_packs_limits;
     problem_type P;
     auto& floes = P.get_floe_group().get_floes();
-    int id_floe = 0;
+    unsigned long id_floe = 0;
     // decltype(w) nxp_unit_window{-nb_cols/2, nb_cols/2, -nb_rows/2, nb_rows/2};
     for (int i=0; i<nb_rows; i++){
         for (int j=0; j<nb_cols; j++){
@@ -58,7 +58,8 @@ int main( int argc, char* argv[] )
             point_type win_center{(w[0]+w[1])/2, (w[2]+w[3])/2};
             auto win_width = (w[1] - w[0]);
             floe_packs_limits.push_back(floes.size());
-            for (id_floe; id_floe < floes.size(); id_floe++){
+            // for (id_floe; id_floe < floes.size(); id_floe++){
+            while (id_floe < floes.size()){
                 auto & floe = floes[id_floe];
                 // re-center pack
                 floe.state().pos -= win_center;
@@ -69,11 +70,12 @@ int main( int argc, char* argv[] )
                 floe::geometry::transform( base_pos, floe.state().pos, scale_transformer<value_type>{ 1/win_width } );
                 // translate floe
                 floe.state().pos += trans;
+                id_floe++;
             }
         }
     }
 
-    P.get_floe_group().set_initial_window({(value_type)-nb_cols/2, (value_type)nb_cols/2, (value_type)-nb_rows/2, (value_type)nb_rows/2});
+    P.get_floe_group().set_initial_window({ {(value_type)-nb_cols/2, (value_type)nb_cols/2, (value_type)-nb_rows/2, (value_type)nb_rows/2} });
     P.make_input_file();
     return 0;
 }

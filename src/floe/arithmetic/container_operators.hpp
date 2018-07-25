@@ -16,10 +16,7 @@
 // 		* les opérations de réduction se sont plus compatibles (mais compilation OK si on ne les appelle pas)
 //		* comment se comportent les lambdas avec un type dépendant de l'indice ? (template & lambda ?)
 
-#include <cmath>
-#include <cstddef>     // std::size_t
-#include <type_traits> // std::enable_if
-#include <ostream>
+
 
 // namespace floe { namespace arithmetic {
 

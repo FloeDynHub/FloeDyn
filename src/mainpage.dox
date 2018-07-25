@@ -4,7 +4,9 @@
  *
  * \tableofcontents
  *
+ ********************************************************************************************************************************************
  * \section dev_todo À faire dans le code.
+ **********************************************
  *
  * - Tout traduire en Anglais !!!
  * - Générer une page de d'aide à l'installation et au lancement du code
@@ -13,25 +15,31 @@
  * - Créer des tests références pour vérifier que tout fonctionne bien
  * - Corriger bugs pour passer sur version ulterieure de <b> BOOST </b>
  *
- *
+ *****************
  * \subsection dev_optim Optimisation
- * 
+ *****************
  * \subsubsection dev_solver Solveur LCP
  * - voir la méthode de réduction de dimension de Lloyd 2005 (O(n^3) -> O(n))
  * - rendre plus propre la résolution des LCP par le développements des outils de base nécessaires : recherche de la variable bloquante, pivot, etc ...
  * - ensuite, permettre de modifier le comportement de ces outils, pour par exemple utiliser l'algo d'expansion du LCP de Lloyd 2005.
  * - voir Acary 2011 : A formulation of the linear discrete Coulomb friction problem via convex optimization. The novelty of their approach is to capture and treat directly the friction model as a parametric quadratic optimization problem with second-order cone constraints coupled with a fixed point equation.
  *
+ *****************
  * \subsubsection dev_multithread Parallélisation
+ *****************
  * - on peut facilement paralléliser la détection de contact,
  * - de même pour la résolution des contacts : à une étape donnée (groupes de contacts actifs), tous les LCPs peuvent se résoudre indépendamment les uns des autres ;
  * - à plus grande échelle, il faudrait pouvoir gérer l'ensemble des floes par groupes. On peut déjà avoir un détecteur de collision indépendant par groupe, il faut alors un autre détecteur sur les groupes eux-mêmes. Il faut également pouvoir détecter les "influences" entre groupes.
  * - Voir Drumwright 2010 (chapitre précédent), pour une optimisation sur GPU.
  * - Voir Mazhar 2015 pour une gestion des contacts avec méthodes facilement parallèlisable (accelerated projected gradient descent (APGD) method relies on an approach by Nesterov in which a quadratic optimization problem with conic constraints is solved at each simulation time step to recover the normal and friction forces present in the system).
  *
+ ********************************************************************************************************************************************
  * \section Installation
+ **********************************************
  *
+ *****************
  * \subsection Prerequisite
+ *****************
  * If you clone the GIT repository, you need at least the following to build the executable:
  * - Boost (version 1.57, Important, some routines need this version to compile).
  * 		+ Use for geometry, graphs, linear algebra, etc.
@@ -58,9 +66,9 @@
  * - when one install CGAL with brew, CGAL needing boost, it may be that brew install the lastest version of boost. In this case, please install CGAL without brew 
  * (see: <a href="https://doc.cgal.org/latest/Manual/installation.html">CGAL user manual </a>).
  *
- *
+ *****************
  * \subsection get_start Getting Started
- *
+ *****************
  * Once libraries have been installed, please check with the command:
  *
  * \code
@@ -71,8 +79,9 @@
  * You should obtain something like this:
  * \image html waf_config.png width=800
  *
+ *****************
  * \subsection Compilation
- *
+ *****************
  * \code
  * $ ./waf --target FLOE
  * \endcode
@@ -84,8 +93,9 @@
  *
  * or, all <i> .cpp </i> files contained in <i> product </i> folder. The executable are in the <i> build </i> folder.
  *
+ *****************
  * \subsection first_run First Running
- *
+ *****************
  * Run:
  * \code
  * $ ./build/FLOE -h
@@ -135,13 +145,35 @@
  * \endcode
  * with <i> dox_file.cfg </i> the configuration file.
  *
+ ********************************************************************************************************************************************
+ * \section Parallel Computing
+ **********************************************
+ *
+ * This is possible to run a MPI simulation:
+ * \code
+ * $ mpirun -np 2 ./build/FLOE_MPI -i io/inputs/floes_config.h5 -t 10000
+ * \endcode
+ *
+ * with <i> np </i> options is the number of processor determined by: 
+ * \code
+ * $ python froggy.py -n 1
+ * \endcode
+ * where <i> n </i> is the dimension from the <i> MPI min max grid dim </i> displayed when one launch:
+ * \code
+ * ./build/FLOE_INPUT_INFO -i io/inputs/floes_config.h5
+ * \endcode
+ *
+ ********************************************************************************************************************************************
  * \section Debug
+ **********************************************
+ *
  * Two tools:
  * - with <b> X-Code </b>.
  * - with <b> valgrind </b>.
  * 
+ *****************
  * \subsection val with valgrind:
- *
+ *****************
  * First, please compilling without <i> --debug </i>:
  * \code 
  * $ ./waf --target FLOE
@@ -151,8 +183,9 @@
  * $ valgrind --leak-check=full ./build/FLOE -i io/inputs/in_700f_60p_#1.h5 -t 10000
  * \endcode
  *
+ *****************
  * \subsection xcode with X-Code (or just with option --debug):
- * 
+ *****************
  * First, please compilling with <i> --debug </i>:
  * \code 
  * $ ./waf --target FLOE --debug
@@ -163,14 +196,18 @@
  * \section contact_detection Contact Detection
  **********************************************
  *
+ *****************
  * \subsection contact_point Contact Point
+ *****************
  * The contact point between the floes <i> S1 </i> and <i> S2 </i> is treated as a struct ContactPoint with the following public members:
  * - a pointer to the floe <i> S1 </i>
  * - a pointer to the floe <i> S2 </i>
  * - a frame of the contact (orthonormal and direct oriented) 
  * - the distance between <i> S1 </i> and <i> S2 </i>
  *
+ *****************
  * \subsection contact_graph Contact Graph
+ *****************
  * The graph of contact is treated as a undirected graph from <i> adjacency_list </i> of <b> BOOST </b>, which the 
  * edges are a <i> std::vector </i> of contact points.
  *

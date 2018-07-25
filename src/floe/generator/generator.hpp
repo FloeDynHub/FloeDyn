@@ -12,12 +12,15 @@
 
 // Boost geometry
 #include "floe/geometry/frame/frame_transformers.hpp"
+#include <cmath>
+#include <cstddef>     // std::size_t
+#include <type_traits> // std::enable_if
+#include <ostream>
 #include "floe/arithmetic/container_operators.hpp"
 
 // Matlab io
 #include <matio.h>
 
-#include <cmath>
 #include <ctime>
 #include <algorithm>
 #include <random>
