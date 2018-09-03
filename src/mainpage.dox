@@ -139,6 +139,7 @@
  * replacing <i> outputs.h5 </i> by the name of the outputs files in the <i> io/outputs </i> folder.
  * Be careful, <i> plot </i> is a folder containing <b> python </b> files in order to create a video in <i> videos </i> folder. One have to build the <i> io/videos </i> folder before.
  * The option <i> -s n </i> is the time step (1 image for each n second, n=1 by default).
+ * The option <i> -a 'xmin,xmax,ymin,ymax' </i> is the window size (e.g: ' -1200,200,-500,500', the blank is important before the minus!). 
  * 
  * Informations on the floe assemblies:
  * \code
@@ -184,6 +185,10 @@
  * - from a <i> matlab </i> file:
  * \code
  * $ ./build/FLOE -i io/inputs/config_4500_square_obs.mat -t 16000
+ * \endcode
+ * - from a <i> outputfile.h5 </i> (to resume a previously stopped simulation at the <i> breaktime </i>):
+ * \code
+ * $ ./build/FLOE -i io/inputs/inputfile -r breaktime -f io/outputs/outputfile.h5 -t finaltime
  * \endcode
  *
  *****************
