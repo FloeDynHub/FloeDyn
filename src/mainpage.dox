@@ -41,19 +41,19 @@
  * \subsection Prerequisite
  *****************
  * If you clone the GIT repository, you need at least the following to build the executable:
- * - Boost (version 1.57, Important, some routines need this version to compile).
+ * - Boost (version 1.67) (not earlier 1.64, <i> UBlas -> QVM </i>).
  * 		+ Use for geometry, graphs, linear algebra, etc.
- * - Matio (version no matter) 
+ * - Matio (version 1.5.12) (not earlier 1.5.12, bug still unfixed).
  *		+ Use for importing/exporting Matlab format files.
- * - Eigen (version no matter)
+ * - Eigen (version no matter, works with 3.3.4)
  * 		+ Use for linear algebra for linear complementarity problem.
  * - CGAL (version no matter)
  * 		+ Use for construction of mesh during the generation of floe assemblies.
- * - HDF5 (version no matter, addind <a href="https://support.hdfgroup.org/products/java/release/download.html">HDFView </a> for visualing files .h5)
+ * - HDF5 (version 1.10, addind <a href="https://support.hdfgroup.org/products/java/release/download.html">HDFView </a> for visualing files .h5) (not earlier 1.10, minor modification see commit history).
  * 		+ Use for outputs.
  * - ffmpeg (version no matter)
  *		+ Use for generation of videos.
- * - python (version no matter) (addind h5py, numpy and matplotlib)
+ * - python (version 3.6.5) (addind h5py, numpy and matplotlib) (not later 3.6.5, bug still unfixed, see issue).
  * 		+ Use for visualisation and generation of videos from outputs.
  * - doxygen (version no matter)
  * 		+ Use for generating documentation.
@@ -61,8 +61,8 @@
  * 		+ Use for generating graphics during the documentation generation.
  *
  * Every library could be installed with home brew. However you should be careful about: 
- * - when one install boost_1_57 with brew, one should check the folders <i> /usr/local/lib/ </i> and <i> /usr/local/include/ </i> contain the boost libraries and include (or link). It is required to compile.
- * Otherwise, one should install boost_1_57 without brew (see: <a href="http://www.boost.org/doc/libs/1_65_1/more/getting_started/unix-variants.html">the boost user manual for unix-variants</a>). 
+ * - when one install boost_1_67 with brew, one should check the folders <i> /usr/local/lib/ </i> and <i> /usr/local/include/ </i> contain the boost libraries and include (or link). It is required to compile.
+ * Otherwise, one should install boost_1_67 without brew (see: <a href="http://www.boost.org/doc/libs/1_65_1/more/getting_started/unix-variants.html">the boost user manual for unix-variants</a>). 
  * - when one install CGAL with brew, CGAL needing boost, it may be that brew install the lastest version of boost. In this case, please install CGAL without brew 
  * (see: <a href="https://doc.cgal.org/latest/Manual/installation.html">CGAL user manual </a>).
  *
@@ -75,6 +75,17 @@
  * $ cd /path/to/FloeCpp
  * $ ./waf configure
  * \endcode
+ *
+ * The default path is <i> /usr </i>. To specify the path (e.g.: <i> /home/user_name/ </i>):
+ * \code
+ * $ ./waf configure --default-search-path=/home/user_name
+ * \endcode 
+ *
+ * If one are using <b> nix </b> solftware:
+ * The default path is <i> /usr </i>. To specify the path (e.g.: <i> /home/user_name/ </i>):
+ * \code
+ * $ ./waf configure --default-search-path=/home/user_name/.nix-profile
+ * \endcode 
  *
  * You should obtain something like this:
  * \image html waf_config.png width=800
@@ -138,7 +149,7 @@
  * \code
  * $ python3 plot img -f io/outputs/outputs.h5
  * \endcode
- * 
+ *
  * To generate the documentation, please use doxygen:
  * \code
  * $ doxygen dox_file.cfg
@@ -146,9 +157,38 @@
  * with <i> dox_file.cfg </i> the configuration file.
  *
  ********************************************************************************************************************************************
- * \section Parallel Computing
+ * \section computing Computing
  **********************************************
  *
+ *****************
+ * \subsection gen Generation of more complex floe assemblies:
+ *****************
+ * The generator is able to handle less than 5 000 floes. An good optimum is about 2 000 floes.
+ * Then to create a huge floe assembly (<i> >10 000 floes </i>), one should use the following processus:
+ * - Knowing the total area of the floe assembly, split it in N*P cells (equal or not) containing about at the most 2 000 floes.
+ * - Generate the part of the floe assembly associated with each cells separately (using the generator).
+ * - Use the executable <i> FLOE_PATCHWORK_INPUT </i> to reproduce the whole area. Be careful the placement is random.
+ * - Instead, one can use <i> FLOE_MAKE_NXP_INPUT </i>, yet this loads N * P times the same input file (i.e.: same floe assembly N*P repeated).
+ * 
+ *****************
+ * \subsection ex First examples of run simulations:
+ *****************
+ * - with Periodic Boundary Conditions (PBC) with the Ocean Boundary Layer (OBL) actived:
+ * \code
+ * $ ./build/FLOE_PBC -i io/inputs/in_1000f_70p_l2o0h.h5 --obl 1 -t 10000
+ * \endcode
+ * - like a MPI simulation:
+ * \code
+ * $ mpirun -np 2 ./build/FLOE_MPI -i io/inputs/in_11200f_80p_UKXcR.h5 -t 500
+ * \endcode
+ * - from a <i> matlab </i> file:
+ * \code
+ * $ ./build/FLOE -i io/inputs/config_4500_square_obs.mat -t 16000
+ * \endcode
+ *
+ *****************
+ * \subsection parallel Parallel Computing
+ *****************
  * This is possible to run a MPI simulation:
  * \code
  * $ mpirun -np 2 ./build/FLOE_MPI -i io/inputs/floes_config.h5 -t 10000
