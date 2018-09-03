@@ -44,13 +44,13 @@ public:
         m_vortex_radius{0}, m_vortex_origin{0,0}, m_vortex_speed{0,0}, m_vortex_max_norm{0},
         m_water_mode{0}, m_air_mode{0} {}
 
-    //! water speed accessor
+    //! water speed accessor (m/s)
     point_type water_speed(point_type pt = {0,0});
-    //! air speed accessor
+    //! air speed accessor (m/s)
     point_type air_speed(point_type pt = {0,0});
-    //! OBL update speed
+    //! OBL update speed (m/s)
     void update_water_speed(point_type diff_speed);
-    //! OBL speed accessor for output
+    //! OBL speed accessor for output (m/s)
     inline point_type OBL_speed() const { return m_geo_relative_water_speed; }
     void set_OBL_speed(point_type speed) { m_geo_relative_water_speed = speed; }
     //! Load ocean and wind data from a topaz file
@@ -136,7 +136,7 @@ private:
             + circular_inside_window_field(pt, in_speed);
     }
     //! x axis convergent wind, then constant
-    point_type x_convergent_then_constant(point_type pt = {0,0}, real_type coeff = 10, point_type constant = {10,0}) {
+    point_type x_convergent_then_constant(point_type pt = {0,0}, real_type coeff = 1, point_type constant = {1,0}) {
         if (m_time_ref < 1500)
             return {0, - coeff * (pt.y / (100 + std::abs(pt.y)))};
         else

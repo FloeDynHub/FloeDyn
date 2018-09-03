@@ -287,7 +287,7 @@ bool MPIMasterProblem<TProblem>::handle_responses(std::set<int>& msg_id_set, flo
     bool ret{false};
     int lcp_tot = 0;
     point_type OBL_floes_force{0,0};
-    while (msg_id_set.size()){
+    while (msg_id_set.size()){ // while there is still workers who did not respond yet! 
         auto resp = receive_response();
         msg_id_set.erase(resp.id());
         this->get_floe_group().update_floe_states(resp, false); // do not update floe border or mesh (slow and useless for master)

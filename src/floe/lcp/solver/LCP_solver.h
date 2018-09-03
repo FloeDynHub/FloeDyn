@@ -43,7 +43,7 @@ public:
      *  lighter weight and greater velocity).
      * 
      */
-    LCPSolver(real_type epsilon) : epsilon{epsilon}, m_tolerance{1e-7}, m_coef_perturb{1e-9}, m_ite_max_attempt{5} {}
+    LCPSolver(real_type epsilon) : epsilon{epsilon}, m_tolerance{1e-5}, m_coef_perturb{1e-9}, m_ite_max_attempt{5} {}
 
     template<typename TContactGraph>
     std::array<vector<real_type>, 2> solve( TContactGraph& graph, bool& success, int lcp_failed_stats[] );

@@ -97,7 +97,7 @@ public:
         P.load_matlab_topaz_data(matlab_topaz_filename);
         // P.get_dynamics_manager().get_external_forces().get_physical_data().set_storm_mode(); // for simu: with storm
         // P.get_dynamics_manager().get_external_forces().get_physical_data().set_modes(2,0);   // for simu: ?
-        // P.get_dynamics_manager().get_external_forces().get_physical_data().set_modes(4,-1);  // for simu: floes against obstacle
+        P.get_dynamics_manager().get_external_forces().get_physical_data().set_modes(4,-1);  // for simu: floes against obstacle
 
         if (vm.count("rectime"))
         {

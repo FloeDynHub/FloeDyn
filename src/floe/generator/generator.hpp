@@ -155,7 +155,9 @@ Generator<TProblem>::exp_size_repartition(std::size_t n, real_type R_max)
     std::vector<real_type> v;
     real_type alpha = 1.5;
     real_type R_min = 0; // no min (resize if min floe too small)
-    int nb_floes_per_size = 1;
+    int nb_floes_per_size = 1; // allow to generate more than one floe per size categories! 
+    // Useful for making easier the init. config. generation!
+    // Yet, warning, since the exponential distribution of size is no longer corresponding to alpha!! 
     for (std::size_t i = 1; i <= n/nb_floes_per_size; i++)
     {
         // real_type R =  exp( (- 1 /  alpha) * log(i) + log(R_max));

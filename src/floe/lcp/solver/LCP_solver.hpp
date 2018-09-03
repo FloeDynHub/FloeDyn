@@ -54,7 +54,7 @@ LCPSolver<T>::solve( TContactGraph& graph, bool& success, int lcp_failed_stats[]
     // variables for storing LCP:
     static bool is_full_storage     = false;
     static bool bool_save_solved    = true;
-    bool        m_saving_lcp        = false;
+    bool        m_saving_lcp        = true;
     int         w_fail              = 0;
 
     // %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -150,7 +150,7 @@ LCPSolver<T>::solve( TContactGraph& graph, bool& success, int lcp_failed_stats[]
     if (m_saving_lcp) {
         if (!is_full_storage){
             if ( ( !solved ) || ( bool_save_solved ) ){
-        //         std::cout << "An more: " << bool_save_solved << " solved LCP stored!\n";
+                // std::cout << "A more: " << bool_save_solved << " solved LCP stored!\n";
 
                 lcp_orig.z                  = best_z;
                 Solc                        = calcSolc(graph_lcp, lcp_orig);
@@ -161,7 +161,7 @@ LCPSolver<T>::solve( TContactGraph& graph, bool& success, int lcp_failed_stats[]
 
                 is_full_storage = saving_LCP_in_hdf5( lcp_orig, solved, count_attempt, count_RP, count_SR, count_SR_failed, 
                     last_status, use_lexico_ordering, best_err, w_fail );
-        //         bool_save_solved = false;
+                bool_save_solved = false;
             }
         }
     }
@@ -169,9 +169,9 @@ LCPSolver<T>::solve( TContactGraph& graph, bool& success, int lcp_failed_stats[]
     // EndMat
 
     if (!solved) {
-        // std::cout << "An unsolved LCP there!\n";
-        // std::cout << "With a LCP error:" << best_err << "\n";
-        // bool_save_solved     = true;
+        std::cout << "An unsolved LCP there!\n";
+        std::cout << "With a LCP error:" << best_err << "\n";
+        bool_save_solved     = true;
         lcp_failed_stats[0] += 1;
 
         success = 0;

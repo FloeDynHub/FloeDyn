@@ -75,18 +75,18 @@ private:
 
     physical_data_type m_physical_data;
 
-    const real_type rho_w = 1024.071; //!< Water density
-    const real_type C_w = 5 * 1e-3; //!< Oceanic skin drag average coeff (10.8124936*10.8124936)*
-    const real_type rho_a = 1.341; //!< Air density
-    const real_type C_a = 1.7 * 1e-3; //!< Atmospheric skin drag average coeff (10.8124936*10.8124936)*
+    const real_type rho_w = 1024.071; //!< (kg/m^3) Water density.
+    const real_type C_w = 5 * 1e-3; //!< Oceanic skin drag average coefficient.
+    const real_type rho_a = 1.341; //!< (kg/m^3) Air density.
+    const real_type C_a = 1.7 * 1e-3; //!< Atmospheric skin drag average coefficient.
 
-    const real_type R_earth = 6371 * 1e3; //!< earth radius
-    const real_type V_earth = 7.292 * 1e-5; //!< Earth angular velocity
+    const real_type R_earth = 6371 * 1e3; //!< (m) Earth radius.
+    const real_type V_earth = 7.292 * 1e-5; //!< (s^-1) Earth angular velocity.
 
-    const real_type O_latitude = 80.207; //!< Origin latitude
+    const real_type O_latitude = 80.207; //!< (rad) Origin latitude.
 
-    const real_type gamma = 1e-5; //!< m/s friction velocity within the OBL
-    const real_type h_w = 15; //!< OBL height
+    const real_type gamma = 1e-5; //!< (m/s) friction velocity within the OBL.
+    const real_type h_w = 15; //!< (m) Ocean Boundary Layer (OBL) height.
 
     //! Coriolis coefficient at a point
     real_type coriolis_coeff(point_type p);
