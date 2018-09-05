@@ -86,6 +86,7 @@ def options(opt):
     opt.add_option('--icc', action='store_true', default=False, dest='icc')
     opt.add_option('--default-search-path', action='store', default='/usr', dest='default_search_path')
     opt.add_option('--with-nix', action='store', default=False, dest='nix_build_inputs')
+    opt.add_option('--enable-mpi', action='store_true', default=False, dest='mpi_on')
     # #for dep in floedyn_deps:
     # #    opt.load('find_' + dep, tooldir='.')
     # # opt.add_option('--mpi', action='store_true', default=False, dest='mpi')
@@ -142,12 +143,17 @@ def configure(conf):
     # Check compiler
     if conf.options.gcc:
         conf.load('g++')
-        # if conf.options.mpi:
-        #     conf.env['CXX'] = 'mpicxx'
+        if conf.options.mpi_on:
+            conf.env['CXX'] = 'mpicxx'
     elif conf.options.icc:
-        conf.load('icpc')  
+        conf.load('icpc')
+        if conf.options.mpi_on:
+            conf.env['CXX'] = 'mpicpc'
     else:
         conf.load('compiler_cxx')
+        if conf.options.mpi_on:
+             conf.env['CXX'] = 'mpicxx'
+
 
     conf.env.default_search_path = conf.options.default_search_path.split()
     
@@ -172,7 +178,7 @@ def configure(conf):
         for libname in floedyn_deps[dep]:
             conf.check_cxx(lib = libname, use = dep.upper())
 
-    print(f'- CXX compiler is {conf.env.COMPILER_CXX}')
+    print(f'- CXX compiler is {conf.env.CXX}')
     #'boost', ['boost_system', 'boost_program_options'])
     #configure_package(conf, 'matio',['matio'])
     #configure_package(conf, 'matio',['matio'])
@@ -348,6 +354,8 @@ def build(bld):
         opts["linkflags"].extend(subprocess.check_output(["mpicc", "--showme:link"]).strip().split(b" "))
         # print opts["linkflags"]
     if bld.options.target in ["FLOE", "FLOE_PBC", "FLOE_MPI"]:
+
+        print(" mpi !!!!!!!")
         opts["source"] = ["product/FLOE.cpp"] + recursive_file_finder("src/floe", "*.cpp")
         opts["target"] = bld.options.target
         if bld.options.target == "FLOE_PBC":

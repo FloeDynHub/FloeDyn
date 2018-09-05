@@ -6,6 +6,7 @@
   gmp ? pkgs.gmp,
   version ? "1.0.0",
   devel_mode ? true,
+  mpi ? false,
   }:
   
 with pkgs;
@@ -18,6 +19,8 @@ let
         mpfr-dev-meta = (pkgs.mpfr.meta // {outputsToInstall =["out" "dev"]; });
         mpfr-dev = pkgs.mpfr // {meta = mpfr-dev-meta;};
 	cereal = callPackage ./cereal.nix {};
+	target = if mpi then "FLOE_MPI" else "FLOE";
+        opts = if mpi then "--enable-mpi" else "";
 in
 
 stdenv.mkDerivation rec {
@@ -25,14 +28,15 @@ stdenv.mkDerivation rec {
  
  enableParallelBuilding = true;	
 
+ propagatedNativeBuildInputs = [pythonX.pkgs.wrapPython pythonenv] ++ optional (mpi == true) [ openmpi ];
+
  nativeBuildInputs = [
     pkgconfig
     pythonX
-    gcc
-    pythonenv
-    pythonX.pkgs.wrapPython];
- 
- buildInputs = [
+    gcc];
+
+
+buildInputs = [
     mpfr-dev
     gmp
     boost-dev
@@ -56,17 +60,28 @@ stdenv.mkDerivation rec {
 
   configurePhase = ''
   
-  ${pythonX.interpreter} $src/waf configure --prefix=$out --with-nix="$buildInputs"
+  ${pythonX.interpreter} $src/waf configure --prefix=$out --with-nix="$buildInputs" ${opts}
   '';
 
-  buildPhase = "${pythonX.interpreter} $src/waf --target FLOE";
+
+  buildPhase = ''
+    ${pythonX.interpreter} $src/waf --target ${target} -v;
+
+  '';
 
   installPhase = ''
     mkdir $out
-    ${pythonX.interpreter} $src/waf install --target=FLOE
+    ${pythonX.interpreter} $src/waf install --target=${target}
   '';
 
-  meta = with stdenv.lib; {
+ postFixup = ''
+    echo "Create links in bin ..."
+    if test -e $out/nix-support/propagated-native-build-inputs; then
+        ln -s $out/nix-support/propagated-native-build-inputs $out/nix-support/propagated-user-env-packages
+    fi
+  '';
+
+ meta = with stdenv.lib; {
     homepage = https://gricad-gitlab.univ-grenoble-alpes.fr/Mo_MIZ/Floe_Cpp;
     description = "Ice granular model ";
     license = licenses.asl20;

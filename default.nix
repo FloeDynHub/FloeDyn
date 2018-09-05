@@ -23,6 +23,7 @@ boost-dev = pkgs.boost165 // {meta = boost-dev-meta;};
 mpfr-dev = pkgs.mpfr // {meta = mpfr-dev-meta;};
 gmp-dev = pkgs.gmp // {meta = gmp-dev-meta;};
 floecpp-dev = callPackage ./floecpp.nix {};
+floecpp-mpi = callPackage ./floecpp.nix {mpi = true;};
 #floecpp-release = callPackage ./floecpp.nix { devel_mode = false;};
 
 cereal = callPackage ./cereal.nix {};

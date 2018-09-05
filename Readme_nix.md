@@ -31,8 +31,16 @@ echo $buildInputs
 
 ## Build and install soft system-wide
 
+Check list of local nix packages :
+
 ```
-nix-env -f . -iA floecpp
+nix-env -f . -qaPs
+```
+
+Install:
+
+```
+nix-env -f . -iA floecpp-dev
 
 which FLOE
 /home/perignon/.nix-profile/bin/FLOE
