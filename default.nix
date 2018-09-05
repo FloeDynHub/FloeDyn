@@ -5,9 +5,10 @@ with pkgs;
 let
 
 
-boost-dev-meta = (pkgs.boost163.meta // {outputsToInstall =["out" "dev"]; });
+boost-dev-meta = (pkgs.boost165.meta // {outputsToInstall =["out" "dev"]; });
 mpfr-dev-meta = (pkgs.mpfr.meta // {outputsToInstall =["out" "dev"]; });
 gmp-dev-meta = (pkgs.gmp.meta // {outputsToInstall =["out" "dev"]; });
+
 
 in
 
@@ -18,11 +19,13 @@ inherit pkgs;
 
 
 python-env = pkgs.python36.withPackages (ps: with ps; [pip  ipython ]);
-boost-dev = pkgs.boost163 // {meta = boost-dev-meta;};
+boost-dev = pkgs.boost165 // {meta = boost-dev-meta;};
 mpfr-dev = pkgs.mpfr // {meta = mpfr-dev-meta;};
 gmp-dev = pkgs.gmp // {meta = gmp-dev-meta;};
+floecpp-dev = callPackage ./floecpp.nix {};
+#floecpp-release = callPackage ./floecpp.nix { devel_mode = false;};
 
-floecpp = callPackage ./floecpp.nix {};
+cereal = callPackage ./cereal.nix {};
 
 # Run :
 # source /applis/site/nix.sh

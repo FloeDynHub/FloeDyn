@@ -5,6 +5,7 @@
   boost ? pkgs.boost,
   gmp ? pkgs.gmp,
   version ? "1.0.0",
+  devel_mode ? true,
   }:
   
 with pkgs;
@@ -16,6 +17,7 @@ let
         boost-dev = pkgs.boost // {meta = boost-dev-meta;};
         mpfr-dev-meta = (pkgs.mpfr.meta // {outputsToInstall =["out" "dev"]; });
         mpfr-dev = pkgs.mpfr // {meta = mpfr-dev-meta;};
+	cereal = callPackage ./cereal.nix {};
 in
 
 stdenv.mkDerivation rec {
@@ -27,10 +29,11 @@ stdenv.mkDerivation rec {
     pkgconfig
     pythonX
     gcc
-    mpfr-dev
+    pythonenv
     pythonX.pkgs.wrapPython];
  
  buildInputs = [
+    mpfr-dev
     gmp
     boost-dev
     cgal
@@ -38,20 +41,29 @@ stdenv.mkDerivation rec {
     gmpxx
     hdf5-cpp
     matio
+    cereal
     ];
   
  hardeningDisable = [ "format" ];
- src = ./.;
+
+ src = if devel_mode then ./.
+ else ./.; # ssh keys issue
+    #fetchgitPrivate "$HOME/.ssh" {
+    ##url = "git@gricad-gitlab.univ-grenoble-alpes.fr:Mo_MIZ/Floe_Cpp.git";
+    #rev = "a5189d1ba98e09612fd17a032131d6345308352c";
+    #sha256 = "1wjghd5vbk42mb7jyjz4b0gmhw21d7zf4ihxwqh7nw9im3isa56s";
+    #};
 
   configurePhase = ''
-  ls $cgal
-  ${python.interpreter} waf configure --prefix=$out --default-search-path=$buildInputs
+  
+  ${pythonX.interpreter} $src/waf configure --prefix=$out --with-nix="$buildInputs"
   '';
 
-  buildPhase = "${python.interpreter} waf --target FLOE";
+  buildPhase = "${pythonX.interpreter} $src/waf --target FLOE";
 
   installPhase = ''
-    #${python.interpreter} waf install
+    mkdir $out
+    ${pythonX.interpreter} $src/waf install --target=FLOE
   '';
 
   meta = with stdenv.lib; {
