@@ -28,7 +28,6 @@ from subprocess import call, Popen, PIPE, STDOUT
 import time
 from waflib.Configure import conf
 
-
 out = "build"
 
 test_target = 'catchtest'
@@ -49,21 +48,23 @@ def timeit(func):
 floedyn_deps = {
     'gmp' : ['gmp'],
     'boost' : ['boost_system', 'boost_program_options'],
-    'eigen' : [],
+    'eigen' : [], # header only
     'matio' : ['matio'],
     'hdf5'  : ['hdf5_cpp'],
     'cgal'  : ['CGAL'],
     'mpfr'  : ['mpfr'],
+    'cereal' : [''], # header only
     }
 
 floedyn_includes = {
     'gmp' : [],
     'boost' : [],
-    'eigen' : ['eigen3','/usr/local/Cellar/eigen/3.3.4/include/eigen3'],
+    'eigen' : ['eigen3'],
     'matio' : [],
     'hdf5'  : ['hdf5/serial/'],
     'cgal'  : [],
     'mpfr'  : [],
+    'cereal' : [],
     }
 
 #import find_package as fp
@@ -84,37 +85,47 @@ def options(opt):
     opt.add_option('--gcc', action='store_true', default=False, dest='gcc')
     opt.add_option('--icc', action='store_true', default=False, dest='icc')
     opt.add_option('--default-search-path', action='store', default='/usr', dest='default_search_path')
+    opt.add_option('--with-nix', action='store', default=False, dest='nix_build_inputs')
+    opt.add_option('--enable-mpi', action='store_true', default=False, dest='mpi_on')
     # #for dep in floedyn_deps:
     # #    opt.load('find_' + dep, tooldir='.')
     # # opt.add_option('--mpi', action='store_true', default=False, dest='mpi')
-    #print(opt['default_search_path'])
+
     for dep in floedyn_deps:
         optname = '--' + dep + 'dir'
         opt.add_option(optname, action='store', default=None, dest=dep)
 
 @conf
 def configure_package(conf, name, required_libs=None, includes_suffix=None):
-
+    print(f'---> Start conf for package {name} ...')
     searchpath = getattr(conf.env, name, conf.env.default_search_path)
     #setattr(conf.env, name.upper(), searchpath)
     # if len(searchpath.Value) < 1:
     #     setattr(conf.env, name.upper(), conf.env.default_search_path)
-    print('Search for package ', name, ' in ',  searchpath)
-    
     libpath_name = 'LIBPATH_' + name.upper()
     includespath_name = 'INCLUDES_' + name.upper()
+    if isinstance(searchpath, list):
+        lib_paths = []
+        includes_list = []
+        for p in searchpath:
+            lib_paths.append(os.path.join(p, 'lib'))
+            includes_list.append(os.path.join(p, 'include'))
+            for suffix in includes_suffix:
+                includes_list.append(os.path.join(os.path.join(p, 'include'), suffix))
 
-    setattr(conf.env, libpath_name, [os.path.join(searchpath, 'lib')])
-    incpath = os.path.join(searchpath, 'include')
-    includes_list = [incpath]
-    for suffix in includes_suffix:
-        includes_list.append(os.path.join(incpath, suffix))
+    else:
+        lib_paths = [os.path.join(searchpath, 'lib')]
+        incpath = os.path.join(searchpath, 'include')
+        includes_list = [incpath]
+        for suffix in includes_suffix:
+            includes_list.append(os.path.join(incpath, suffix))
+    setattr(conf.env, libpath_name, lib_paths)
     setattr(conf.env, includespath_name, includes_list)
-    
     if required_libs is None:
         required_libs = [name]
 
-    print("Required libs for ", name, " : ", required_libs)
+    print(f'  * Required libs for {name} : {required_libs}')
+    print(f'  * Search for package {name} in {searchpath}')
     #conf.env.LIBPATH_BOOST   = [os.path.join(conf.env.BOOST, 'lib')]
     #conf.env.INCLUDES_BOOST   = [os.path.join(conf.env.BOOST,'include')]
     #boost_required_libs = ['boost_system', 'boost_program_options']
@@ -129,32 +140,45 @@ def configure_package(conf, name, required_libs=None, includes_suffix=None):
 def configure(conf):
     # Check waf version
     conf.check_waf_version(mini='1.8.8')
-    #conf.env.BOOST = conf.options.BOOST
-    #
     # Check compiler
     if conf.options.gcc:
         conf.load('g++')
-        # if conf.options.mpi:
-        #     conf.env['CXX'] = 'mpicxx'
+        if conf.options.mpi_on:
+            conf.env['CXX'] = 'mpicxx'
     elif conf.options.icc:
-        conf.load('icpc')  
+        conf.load('icpc')
+        if conf.options.mpi_on:
+            conf.env['CXX'] = 'mpicpc'
     else:
         conf.load('compiler_cxx')
+        if conf.options.mpi_on:
+             conf.env['CXX'] = 'mpicxx'
 
+
+    conf.env.default_search_path = conf.options.default_search_path.split()
     
-    conf.env.default_search_path = conf.options.default_search_path
     for dep in floedyn_deps:
         value = getattr(conf.options, dep,
                         conf.options.default_search_path)
         if value is None:
-            value = conf.env.default_search_path
+            if conf.options.nix_build_inputs:
+                depdirs = conf.options.nix_build_inputs.split()
+                for d in depdirs:
+                    if d.find(dep) > -1:
+                        value = d
+                if value is None:
+                    value = conf.env.default_search_path
+            else:
+                value = conf.env.default_search_path
         setattr(conf.env, dep, value)
     print("Default search path for libraries and headers of dependencies : ", conf.env.default_search_path)
+
     for dep in floedyn_deps:
         configure_package(conf, dep, floedyn_deps[dep], floedyn_includes[dep])
         for libname in floedyn_deps[dep]:
             conf.check_cxx(lib = libname, use = dep.upper())
 
+    print(f'- CXX compiler is {conf.env.CXX}')
     #'boost', ['boost_system', 'boost_program_options'])
     #configure_package(conf, 'matio',['matio'])
     #configure_package(conf, 'matio',['matio'])
@@ -317,6 +341,7 @@ import subprocess
 def build(bld):
     opts = get_option_dict(bld.options.debug)
     opts['use']= []
+    bld.options.install_path = '${PREFIX}'
     for dep in floedyn_deps:
         opts['use'].append(dep.upper())
     if bld.options.omp:
@@ -329,6 +354,8 @@ def build(bld):
         opts["linkflags"].extend(subprocess.check_output(["mpicc", "--showme:link"]).strip().split(b" "))
         # print opts["linkflags"]
     if bld.options.target in ["FLOE", "FLOE_PBC", "FLOE_MPI"]:
+
+        print(" mpi !!!!!!!")
         opts["source"] = ["product/FLOE.cpp"] + recursive_file_finder("src/floe", "*.cpp")
         opts["target"] = bld.options.target
         if bld.options.target == "FLOE_PBC":
@@ -349,8 +376,7 @@ def build(bld):
         bld.program(**opts)
     else:
         print("Nothing to build.")
-
-
+  
 def forward_options(opt_list, options):
     def my_str(var):
         return " " + var if isinstance(var, basestring) else ""
