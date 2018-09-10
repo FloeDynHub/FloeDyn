@@ -205,7 +205,7 @@
  * \endcode
  * where <i> n </i> is the dimension from the <i> MPI min max grid dim </i> displayed when one launch:
  * \code
- * ./build/FLOE_INPUT_INFO -i io/inputs/floes_config.h5
+ * ./build/FLOE_INPUT_INFO io/inputs/floes_config.h5
  * \endcode
  *
  ********************************************************************************************************************************************

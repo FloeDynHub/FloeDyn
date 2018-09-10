@@ -22,8 +22,8 @@ using namespace boost::numeric::ublas;
 // using namespace std;
 
 #include <string>
-// #include "H5Cpp.h"
-// using namespace H5;
+#include "H5Cpp.h"
+using namespace H5;
 
 // int main( int argc, char* argv[] )
 // {
@@ -32,17 +32,31 @@ void blabla(int result);
 
 int main (void)
 {
-	std::vector<int> v(6,0);
-	// std::vector<int>::iterator it=v.begin();
-	for (std::size_t i=0; i<v.size(); ++i) {
+	int vec_init[2] = {10,0};
+	int vec[4] = { vec_init[0], vec_init[1], 12, 12 };
+
+	std::cout << std::max(10,2);
+
+	int i=0;
+	std::cout << "vec: [";
+	for (i=0; i<4; i++){
+		std::cout << vec[i] << ", " << i << ", ";
+		if (i==2){break;}
+	} 
+	std::cout << ", " << i <<"]\n";
+	// std::vector<int> v={6,0};
+
+	// std::cout << v;
+	// // std::vector<int>::iterator it=v.begin();
+	/*for (std::size_t i=0; i<v.size(); ++i) {
 		if (i==2 || i==4){ v[i] = 1;}
 		else {v[i]=3;}
-	}
+	}*/
  
-    std::vector<int>::iterator result = std::min_element(std::begin(v), std::end(v));
-    std::cout << "min element:" << *result << ", at: " << (result-v.begin()) << "\n";
+    // std::vector<int>::iterator result = std::min_element(std::begin(v), std::end(v));
+    // std::cout << "min element:" << *result << ", at: " << (result-v.begin()) << "\n";
 
-    blabla(*result);
+    // blabla(*result);
 
 	// int ll = -1;
 	// int dd = 10;

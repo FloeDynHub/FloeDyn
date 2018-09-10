@@ -48,13 +48,13 @@ std::vector<int> lcp_lexicolemke_MR( const double tolerance, const int itermax, 
         matrix<T> &M, vector<T> &q, vector<T> &z, std::vector<int> &basis, int &driving  )
 {
     // itermax, by default: 1000
-    int err{-1}, iter;
-    int use_lexico_order = 0;
+    int iter;
     std::vector<int> res(2,0);
+    res[0] = -1;
 
     std::size_t i, j;
     int block, drive, entering, leaving, Z0_priority;
-    double tol = tolerance/dim; // same order as the LCP error
+    double tol = tolerance/dim;//1e-7/dim; // same order as the LCP error
     // /* to prevent to remove all basis variable as candidate for pivoting (cause of strong numerical approximation)
     //  * one adjust the tolerance with the smallest value of q
     //  */
@@ -74,8 +74,9 @@ std::vector<int> lcp_lexicolemke_MR( const double tolerance, const int itermax, 
         if (q[i]>=0) {++num_negative;}
     }
     if ( num_negative == int(dim) ){
-        z = q;
-        res[0] = err; res[1] = use_lexico_order;
+        zero_vector<T> Sol_Null(dim);
+        z = Sol_Null;
+        res[0] = -2;
         return res;
     }   
 
@@ -169,7 +170,7 @@ std::vector<int> lcp_lexicolemke_MR( const double tolerance, const int itermax, 
         }
         
         if (E_block.size()==0) {    // no new pivot, secondary ray! 
-            err = 2;                // unbounded driving variable
+            res[0] = 2;                // unbounded driving variable
             break;
         }
 
@@ -220,7 +221,7 @@ std::vector<int> lcp_lexicolemke_MR( const double tolerance, const int itermax, 
 
             nb_candidate = candidate_pivots_indx.size();
             if (nb_candidate > 1) {// lexicographic comparison:
-                ++use_lexico_order;
+                res[1]=1;
                 Q_tmp = Q[candidate_pivots_indx[0]];
                 block = candidate_pivots_indx[0];
                 // // debug:
@@ -298,7 +299,7 @@ std::vector<int> lcp_lexicolemke_MR( const double tolerance, const int itermax, 
 
     }
       
-    if (iter >= itermax && leaving != Z0){err=1;}
+    if (iter > itermax && leaving != Z0){res[0]=1;}
 
     vector<T> w(dim,0.0);   
     // re-initialization of z:
@@ -322,15 +323,14 @@ std::vector<int> lcp_lexicolemke_MR( const double tolerance, const int itermax, 
     }
 
     // numerical error test:
-    if (err==-1) { // Lemke's algorithme ends with a solution
+    if (res[0]==-1) { // Lemke's algorithme ends with a solution
         T N2 = norm_2( w - vector<T>( prod( subrange(M_orig,0,dim,0,dim) , z ) ) - q_orig );
-        if (N2>tolerance) {err=0;}
+        if (N2>tolerance) {res[0]=3;}
     }
 
     // save the last driving variable in the case where Lemke's algorithm ends with a secondary ray:
     driving = entering;
 
-    res[0] = err; res[1] = use_lexico_order;
     return res;
 }
 

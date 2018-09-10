@@ -65,13 +65,11 @@ LCPSolver<T>::solve( TContactGraph& graph, bool& success, int lcp_failed_stats[]
     // variables:
     bool solved=false;
     bool SR_status{0}, RP_status{0};
-    int  last_status{0};             // -1 for RP_status, 0 for neither, 1 for SR_status.
     int  itermax=1000;
-    std::vector<int> error_status(2,0);
+    std::vector<int>    error_status(2,0);
+    std::vector<double> stats_vec_lcp(2*m_ite_max_attempt,0);
 
-    bool use_lexico_ordering{0};     // "true" if the lexicographic ordering has been used during the Lemke's algorithm.
-
-    int count_attempt{0}, count_SR{0}, count_SR_failed{0}, count_RP{0};
+    int count_attempt{1}, count_SR{0};
     const int Z0  = 2*lcp_a.dim;    // artificial variable associated with the covering vector
     
     while (!solved && count_attempt<=m_ite_max_attempt) {
@@ -83,6 +81,9 @@ LCPSolver<T>::solve( TContactGraph& graph, bool& success, int lcp_failed_stats[]
 
         T LCP_err = lcp_orig.LCP_error();
 
+        stats_vec_lcp[2*(count_attempt-1)]  = LCP_err;
+        stats_vec_lcp[2*(count_attempt-1)+1]    = double(error_status[0])*10+double(error_status[1]); 
+
         if (LCP_err < best_err) {
             best_z = lcp_a.z;
             best_err = LCP_err;
@@ -93,13 +94,18 @@ LCPSolver<T>::solve( TContactGraph& graph, bool& success, int lcp_failed_stats[]
             // corresponding solution:
             Solc = calcSolc(graph_lcp, lcp_orig);
 
-            last_status = SR_status-RP_status;
             solved = true; SR_status = 0; RP_status = 0;
         }
         // accurate solution not found
         else {    
             switch (error_status[0]) { // error_status[0] = -1: Lemke's algo ends with a solution
-                case 0:
+                case -1: // bad solution
+                    RP_status = 1; SR_status = 0;
+                    break;
+                case -2: // bad solution
+                    RP_status = 1; SR_status = 0;
+                    break;
+                case 3:
                     // std::cout << "numerical error propagation\n"; // go to matrix perturbation
                     RP_status = 1; SR_status = 0;
                     break;
@@ -111,23 +117,25 @@ LCPSolver<T>::solve( TContactGraph& graph, bool& success, int lcp_failed_stats[]
                 case 2:
                     // std::cout << "secondary ray, go through an adjacent cone\n"; // go through an adjacent cone
                     RP_status = 0; SR_status = 1;
-                    if (count_SR > 2) {SR_status = 0; RP_status = 1;}
+                    if (count_SR > 5) {
+                        SR_status = 0; RP_status = 1; 
+                        stats_vec_lcp[2*(count_attempt-1)+1]    = 10*stats_vec_lcp[2*(count_attempt-1)+1] + 3;
+                    }
                     break;
             }
         }
 
         if (SR_status) { // secondary ray, go through an adjacent cone
 
-            bool    is_done = lcp_a.go_through_adj_cone( lcp_orig, Z0, m_tolerance );
+            int    is_done = lcp_a.go_through_adj_cone( lcp_orig, Z0, m_tolerance ); // is_done = 0 for failed SR
+            // is_done = 1 for successful SR with unique pivoting operation
+            // is_done = 2 for successful SR with direct inversing operation
 
-            if (is_done) {
-                ++count_SR;
-            }
-            else { // the method consisting to go through an adjacent cone is not feasible!
-                ++count_SR_failed;
+            if (is_done==0) { // the method consisting to go through an adjacent cone is not feasible!
                 // std::cout << "SR failed, perturbation is required\n";
                 RP_status = 1; SR_status = 0;
-            }
+            } else {++count_SR;}
+            stats_vec_lcp[2*(count_attempt-1)+1]    = 10*stats_vec_lcp[2*(count_attempt-1)+1] + double(is_done);
         }
 
         if (RP_status) {
@@ -136,12 +144,10 @@ LCPSolver<T>::solve( TContactGraph& graph, bool& success, int lcp_failed_stats[]
 
             reduction_via_perturbation( lcp_a.dim, perturb_M, alpha );
             project(lcp_a.M,range(0,lcp_a.dim),range(0,lcp_a.dim)) = perturb_M;
-            ++count_RP;
+
+            stats_vec_lcp[2*(count_attempt-1)+1]    = 10*stats_vec_lcp[2*(count_attempt-1)+1] + double(RP_status);
         }
 
-        use_lexico_ordering = (error_status[1]!=0)? 1:0; // if, at least, once the lexicographic ordering is used
-                                                         // during the Lemke's algo, one store this information
-                                                         // just to know.
         ++count_attempt;
     }
 
@@ -156,11 +162,9 @@ LCPSolver<T>::solve( TContactGraph& graph, bool& success, int lcp_failed_stats[]
                 Solc                        = calcSolc(graph_lcp, lcp_orig);
                 bool Is_pos_rel_norm_vel    = Rel_Norm_Vel_test(prod(trans(graph_lcp.J), Solc), graph);
                 vector<real_type> err_det   = lcp_orig.LCP_error_detailed();
-                w_fail                      = which_failure( err_det, Is_pos_rel_norm_vel );   
-                last_status                 = SR_status-RP_status;   
+                w_fail                      = which_failure( err_det, Is_pos_rel_norm_vel );     
 
-                is_full_storage = saving_LCP_in_hdf5( lcp_orig, solved, count_attempt, count_RP, count_SR, count_SR_failed, 
-                    last_status, use_lexico_ordering, best_err, w_fail );
+                is_full_storage = saving_LCP_in_hdf5( lcp_orig, m_ite_max_attempt, stats_vec_lcp, solved, w_fail );
                 bool_save_solved = false;
             }
         }
@@ -192,7 +196,8 @@ LCPSolver<T>::solve( TContactGraph& graph, bool& success, int lcp_failed_stats[]
         // variables:
         solved=false;
         itermax=1000;
-        count_attempt=0;
+        count_attempt=1;
+        count_SR=0;
 
         while (!solved && count_attempt<=m_ite_max_attempt) {
 
@@ -220,7 +225,13 @@ LCPSolver<T>::solve( TContactGraph& graph, bool& success, int lcp_failed_stats[]
             // accurate solution not found
             else {                          
                 switch (error_status[0]) {
-                    case 0:
+                    case -1:
+                        RP_status = 1; SR_status = 0;
+                        break;
+                    case -2:
+                        RP_status = 1; SR_status = 0;
+                        break;    
+                    case 3:
                         // std::cout << "numerical error propagation\n"; // go to matrix perturbation
                         RP_status = 1; SR_status = 0;
                         break;
@@ -232,17 +243,20 @@ LCPSolver<T>::solve( TContactGraph& graph, bool& success, int lcp_failed_stats[]
                     case 2:
                         // std::cout << "secondary ray, go through an adjacent cone\n"; // go through an adjacent cone
                         SR_status = 0; RP_status = 1;
-                        if (count_SR >= 2) {SR_status = 0; RP_status = 1;}
+                        if (count_SR > 5) {SR_status = 0; RP_status = 1;}
                         break;
                 }
             }
 
             if (SR_status) { // secondary ray, go through an adjacent cone
-                bool is_done = lcp_a.go_through_adj_cone( lcp_d_orig, Z0, m_tolerance );
+                int    is_done = lcp_a.go_through_adj_cone( lcp_orig, Z0, m_tolerance ); // is_done = 0 for failed SR
+                // is_done = 1 for successful SR with unique pivoting operation
+                // is_done = 2 for successful SR with direct inversing operation
 
-                if (!is_done) { // the method consisting to go through an adjacent cone is not feasible!
-                    RP_status = 1;
-                }            
+                if (is_done==0) { // the method consisting to go through an adjacent cone is not feasible!
+                    // std::cout << "SR failed, perturbation is required\n";
+                    RP_status = 1; SR_status = 0;
+                } else {++count_SR;}            
             }
 
             if (RP_status) {
@@ -380,8 +394,7 @@ void reduction_via_perturbation(std::size_t dim , matrix<T> &M, T alpha){
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 template<typename T>
-bool saving_LCP_in_hdf5(floe::lcp::LCP<T> lcp, bool solved, int count_attempt, int count_RP, 
-    int count_SR, int count_SR_failed, int last_status, bool use_lexico_ordering, T lcp_err, int w_fail)
+bool saving_LCP_in_hdf5(floe::lcp::LCP<T> lcp, int m_ite_max_attempt, std::vector<double> stats_vec_lcp, bool solved, int w_fail)
 {
     using namespace H5;                                 // proper way inside a function (to prevent extension to entire code)
 
@@ -400,7 +413,7 @@ bool saving_LCP_in_hdf5(floe::lcp::LCP<T> lcp, bool solved, int count_attempt, i
     const hsize_t Max_storage_sol = 15000;
     const hsize_t Max_storage_unsol = 15000;
 
-    const hsize_t dim_solver(8);
+    const hsize_t dim_solver(2*m_ite_max_attempt+1);
 
     H5std_string GROUP_TEMP;
     hsize_t Max_storage_temp;
@@ -456,14 +469,6 @@ bool saving_LCP_in_hdf5(floe::lcp::LCP<T> lcp, bool solved, int count_attempt, i
             DataSet(M_solved->createDataSet( LCP_error, PredType::NATIVE_DOUBLE, space_solver, prop ));
             DataSet(M_unsolved->createDataSet( LCP_error, PredType::NATIVE_DOUBLE, space_solver, prop ));
 
-            // hsize_t maxdims_le[1] = {H5S_UNLIMITED};
-            // DataSpace space_LE( 1, dim_LM, maxdims_le );
-            // DSetCreatPropList prop_le; // Modify dataset creation property to enable chunking
-            // hsize_t chunk_dims_le[1] = {1}; // with extendible dataset we cannot use contiguous but chunked dataset
-            // prop_le.setChunk(1, chunk_dims_le);
-            // DataSet(M_solved->createDataSet( LCP_error, PredType::NATIVE_DOUBLE, space_LE, prop_le ));
-            // DataSet(M_unsolved->createDataSet( LCP_error, PredType::NATIVE_DOUBLE, space_LE, prop_le ));
-
             delete M_unsolved;
             delete M_solved;
         }
@@ -518,14 +523,14 @@ bool saving_LCP_in_hdf5(floe::lcp::LCP<T> lcp, bool solved, int count_attempt, i
             G_exist=0;
             // Initialisation: we fulfill the first line before to extend the dataset
             DataSet* dataset_solver = new DataSet(Root->openDataSet( LCP_error ));
-            double idx_solv[dim_solver] = { lcp_err, double(count_attempt), double(count_RP), 
-                double(count_SR), double(count_SR_failed), double(use_lexico_ordering), 
-                double(w_fail), double(last_status) };
-            dataset_solver->write(idx_solv, PredType::NATIVE_DOUBLE);
+        
+            double idx_solv[dim_solver];
+            for (hsize_t i=0; i<dim_solver; ++i){
+                if (int(i)<2*m_ite_max_attempt) { idx_solv[i] = stats_vec_lcp[i]; }
+                else { idx_solv[i] = double(w_fail); }
+            }
 
-            // DataSet* dataset_LE = new DataSet(Root->openDataSet( LCP_error ));
-            
-            // dataset_LE->write( &lcp_err, PredType::NATIVE_DOUBLE );
+            dataset_solver->write(idx_solv, PredType::NATIVE_DOUBLE);
         }
 
         /*
@@ -633,34 +638,16 @@ bool saving_LCP_in_hdf5(floe::lcp::LCP<T> lcp, bool solved, int count_attempt, i
                 hsize_t offset_s[2] = {dim_curr_s[0], 0};
                 fspace_s.selectHyperslab( H5S_SELECT_SET, dim_s, offset_s); // selection of the hyperslab
                 DataSpace mspace_s( 2, dim_s );
-                double idx_solv[dim_solver] = { lcp_err, double(count_attempt), double(count_RP), 
-                    double(count_SR), double(count_SR_failed), double(use_lexico_ordering), 
-                    double(w_fail), double(last_status) };
-                // int idx_solv[dim_solver] = { test_idx , solver_used, perturb_used, static_cast<int>(nb_lcp+1), w_fail, 
-                //     min_how_is_solved };
+                
+                double idx_solv[dim_solver];
+                for (hsize_t i=0; i<dim_solver; ++i){
+                    if (int(i)<2*m_ite_max_attempt) { idx_solv[i] = stats_vec_lcp[i]; }
+                    else { idx_solv[i] = double(w_fail); }
+                }
+                
                 dataset_solver->write(idx_solv, PredType::NATIVE_DOUBLE, mspace_s, fspace_s); // write in the hyperslab
                 
                 delete dataset_solver;
-
-                // /*
-                //  * Save information on LCP error with extendible dataset
-                //  */                
-                // DataSet* dataset_LE = new DataSet(Root->openDataSet( LCP_error ));
-                // DataSpace space_LE = dataset_LE->getSpace();
-                // hsize_t dim_curr_le[1]; // dimension of the dataset
-                // space_LE.getSimpleExtentDims( dim_curr_le, NULL); // retrieves the current dimensions 
-                // hsize_t ext_size_le[1] = { dim_curr_le[0]+1}; 
-                // dataset_LE->extend( ext_size_le ); // extension with one new line 
-      
-                // DataSpace fspace_le = dataset_LE->getSpace();
-                // hsize_t dim_le[1] = {1}; 
-                // hsize_t offset_le[1] = {dim_curr_le[0]};
-                // fspace_le.selectHyperslab( H5S_SELECT_SET, dim_le, offset_le); // selection of the hyperslab
-                // DataSpace mspace_le( 1, dim_le );
-
-                // dataset_LE->write( &lcp_err, PredType::NATIVE_DOUBLE, mspace_le, fspace_le); // write in the hyperslab
-
-                // delete dataset_LE;
             }
             /*-----------------------------------------------------------------------------------------
              * new dataset for relative velocities

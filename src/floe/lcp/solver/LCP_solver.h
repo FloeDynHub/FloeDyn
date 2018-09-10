@@ -43,7 +43,7 @@ public:
      *  lighter weight and greater velocity).
      * 
      */
-    LCPSolver(real_type epsilon) : epsilon{epsilon}, m_tolerance{1e-5}, m_coef_perturb{1e-9}, m_ite_max_attempt{5} {}
+    LCPSolver(real_type epsilon) : epsilon{epsilon}, m_tolerance{1e-7}, m_coef_perturb{1e-8}, m_ite_max_attempt{10} {}
 
     template<typename TContactGraph>
     std::array<vector<real_type>, 2> solve( TContactGraph& graph, bool& success, int lcp_failed_stats[] );
@@ -120,8 +120,9 @@ void reduction_via_perturbation(std::size_t dim , matrix<T> &M, T alpha);
  *          and \e last \e technique for the last SR or perturbation used before solving or last attempt done. 
  */
 template<typename T>
-bool saving_LCP_in_hdf5(floe::lcp::LCP<T> lcp, bool solved, int count_attempt, int count_RP, 
-    int count_SR, int count_SR_failed, int last_status, bool use_lexico_ordering, T lcp_err, int w_fail);
+bool saving_LCP_in_hdf5(floe::lcp::LCP<T> lcp, int m_ite_max_attempt, std::vector<double> stats_vec_lcp, bool solved, int w_fail);
+// bool saving_LCP_in_hdf5(floe::lcp::LCP<T> lcp, int m_ite_max_attempt, bool solved, int count_attempt, int count_RP, 
+//     int count_SR, int count_SR_failed, int last_status, bool use_lexico_ordering, T lcp_err, int w_fail);
 
 }}} // namespace floe::lcp::solver
 

@@ -259,8 +259,9 @@ void LCP<T>::reinit(LCP<T> &lcp_ori)
 
 ////////////////////////////////////////////////////////////
 template<typename T>
-bool LCP<T>::go_through_adj_cone( LCP<T> &lcp_orig, const int Z0, const double tolerance )
+int LCP<T>::go_through_adj_cone( LCP<T> &lcp_orig, const int Z0, const double tolerance )
 {
+    int SR_status;
     std::vector<int>::iterator it;
     //! /warning favo
     std::size_t k, kc, kr;
@@ -277,6 +278,7 @@ bool LCP<T>::go_through_adj_cone( LCP<T> &lcp_orig, const int Z0, const double t
     drive = it-basis.begin()-dim;
     
     if (M(block,drive) > tolerance/n) {// first use pivoting operation
+        SR_status = 1;
         // std::cout << "inside go_through_adj_cone function with single pivoting!\n";
         // std::cout << "pivot: " << M(block,drive) << "\n\n";
         // std::cout << "block&drive: " << block << " | " << drive << "\n";
@@ -309,6 +311,7 @@ bool LCP<T>::go_through_adj_cone( LCP<T> &lcp_orig, const int Z0, const double t
         M = M_temp;
     }    
     else {// second use direct inversing operation
+        SR_status = 2;
         // std::cout << "inside go_through_adj_cone function with multi pivoting!\n";
         std::vector<int> idx_alpha_temp, idx_alpha, idx_beta, idx_rem;
         for (k=0;k<dim;++k) {
@@ -374,7 +377,8 @@ bool LCP<T>::go_through_adj_cone( LCP<T> &lcp_orig, const int Z0, const double t
         int res = lu_factorize(A,pm);
         
         if( res != 0 ) {
-            return false; // sub-matrix is singular, the method is not feasible!
+            SR_status = 0;
+            return SR_status; // sub-matrix is singular, the method is not feasible!
         }
 
         // create identity matrix of "inverse"
@@ -402,7 +406,7 @@ bool LCP<T>::go_through_adj_cone( LCP<T> &lcp_orig, const int Z0, const double t
 
     // this method is possible, that means either the pivot M(block,drive) is non zero or
     // the sub-matrix from the set of z-basis is non-singular.
-    return true;
+    return SR_status;
 }
 
 }} // namespace floe::lcp

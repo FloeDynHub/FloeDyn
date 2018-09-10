@@ -239,7 +239,7 @@ void PROBLEM::safe_move_floe_group(){
         m_floe_group.recover_previous_step_states();
         m_domain.rewind_time();
         compute_time_step(); // will only divide previous time step
-        if (m_domain.time_step() < m_domain.default_time_step() / 1e8)
+        if (m_domain.time_step() < m_domain.default_time_step() / 1e5) // 1e8 from Q.Jouet
         {   
             // Hack to bypass repeating interpenetrations...
             m_out_manager.flush();

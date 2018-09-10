@@ -134,7 +134,7 @@ struct LCP
      *
      * \remark + in C++ 20 a std function for set difference is implementing. This could help for the pivoting operation with a sub-matrix.
      */
-    bool go_through_adj_cone(LCP<T> &lcp_orig, const int Z0, const double tolerance);
+    int go_through_adj_cone(LCP<T> &lcp_orig, const int Z0, const double tolerance);
 }; // End Struct
   
 

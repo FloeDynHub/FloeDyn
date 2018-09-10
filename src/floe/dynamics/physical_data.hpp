@@ -61,16 +61,19 @@ public:
         m_window_height = height;
     }
     //! Air and water conditions mode setter
-    void set_modes(int water_mode, int air_mode) {
-        m_water_mode = water_mode;
+    void set_modes(int air_mode, int water_mode) {
         m_air_mode = air_mode;
+        m_water_mode = water_mode;
+
+        //! Activate storm (random vortex) mode
+        if (m_air_mode==5) {this->init_random_vortex();m_water_mode = -1;}
     }
-    //! Activate storm (random vortex) mode
-    void set_storm_mode(){
-        this->init_random_vortex();
-        m_air_mode = 5;
-        m_water_mode = -1;
-    }
+    
+    // void set_storm_mode(){
+        
+    //     m_air_mode = 5;
+    //     m_water_mode = -1;
+    // }
     //! Random vortex initialisation
     void init_random_vortex();
 
@@ -119,8 +122,8 @@ private:
         if (std::abs(pt.y) > m_window_height / 2) y = - speed * pt.y / std::abs(pt.y);
         return {x,y};
     }
-    //! convergent current outside null rectangle window
-    point_type circular_inside_window_field(point_type pt = {0,0}, real_type in_speed=1) {
+    //! circular current inside the windows field
+    point_type circular_inside_window_field(point_type pt = {0,0}, real_type speed_current=1) {
         real_type x{0}, y{0};
         if (std::abs(pt.x) <= m_window_width / 2 and std::abs(pt.y) <= m_window_height / 2){
             if (std::abs(pt.x) < std::abs(pt.y)) x = - 10 * pt.y / std::abs(pt.y);
@@ -136,16 +139,18 @@ private:
             + circular_inside_window_field(pt, in_speed);
     }
     //! x axis convergent wind, then constant
-    point_type x_convergent_then_constant(point_type pt = {0,0}, real_type coeff = 1, point_type constant = {1,0}) {
+
+    point_type x_convergent_then_constant(point_type pt = {0,0}, real_type coeff = 1, point_type speed_current = {1,0})
+    {
         if (m_time_ref < 1500)
             return {0, - coeff * (pt.y / (100 + std::abs(pt.y)))};
         else
-            return constant;
+            return speed_current;
     }
+    //! vortex storm
     point_type vortex_center(){
         return m_vortex_origin + m_time_ref * m_vortex_speed;
     }
-    //! x axis convergent wind, then constant
     point_type vortex(point_type pt) {
         point_type vortex_center_to_pt = pt - vortex_center();
         real_type distance_to_center = norm2(vortex_center_to_pt);
@@ -311,14 +316,19 @@ PhysicalData<TPoint>::get_speed(point_type pt, int mode){
     point_type resp;
     switch(mode){
         case 1:
+            // std::cout << "generation of a centered convergent field\n";
             return centered_convergent_field(pt);
         case 2:
+            // std::cout << "generation of a convergent outside window field\n";
             return convergent_outside_window_field(pt);
         case 3:
+            // std::cout << "generation of a convergent outside window circular inside field\n";
             return convergent_outside_window_circular_inside_field(pt);
         case 4:
+            // std::cout << "generation of a x convergent then constant\n";
             return x_convergent_then_constant(pt);
         case 5:
+            // std::cout << "generation of a vortex storm\n";
             return vortex(pt);
         default:
             return {0,0};

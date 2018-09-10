@@ -210,7 +210,7 @@ int LCPManager<T>::solve_contacts(TContactGraph& contact_graph)
             all_solved = false;
             if (loop_nb_success!=0) {contact_loop_stats[1] = 2;}
             std::cout << "End of the while loop without resolution of all contacts!! nb contact: "<< num_contacts(subgraph) << "\n";
-            LCP_count += asubgraphs.size();
+            // LCP_count += asubgraphs.size();
 
             for ( auto const& graph : asubgraphs ) mark_solved(graph, false);
         }

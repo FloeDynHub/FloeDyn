@@ -95,9 +95,10 @@ public:
 
         std::cout << "read TOPAZ" << std::endl;
         P.load_matlab_topaz_data(matlab_topaz_filename);
+        // P.get_dynamics_manager().get_external_forces().get_physical_data().set_modes(forces_modes[0],forces_modes[1]);
         // P.get_dynamics_manager().get_external_forces().get_physical_data().set_storm_mode(); // for simu: with storm
         // P.get_dynamics_manager().get_external_forces().get_physical_data().set_modes(2,0);   // for simu: ?
-        P.get_dynamics_manager().get_external_forces().get_physical_data().set_modes(4,-1);  // for simu: floes against obstacle
+        P.get_dynamics_manager().get_external_forces().get_physical_data().set_modes(-1,4);  // for simu: floes against obstacle
 
         if (vm.count("rectime"))
         {
@@ -121,6 +122,7 @@ protected:
     value_type endtime;
     value_type default_time_step = 10;
     value_type out_time_step = 60;
+    // int forces_modes[2]={2,0};
     int OBL_status = 0;
     value_type epsilon = 0.4;
     value_type random_thickness_coeff = 0.01;
@@ -135,6 +137,7 @@ protected:
         ("help,h", "print usage message")
         ("input,i", po::value(&input_file_name)->required(), "input file path")
         ("fext, z", po::value(&matlab_topaz_filename)->default_value(matlab_topaz_filename), "external forces input file")
+        // ("fmodes, fm", po::value(&forces_modes)->default_value(forces_modes[2]), "forces modes [air, water], ex.: for a storm the air mode is set to 5 and the water mode is set to -1")
         ("tend,t", po::value(&endtime)->required(), "simulation duration (seconds)")
         ("step,s", po::value(&default_time_step)->default_value(default_time_step), "default time step")
         ("outstep,o", po::value(&out_time_step)->default_value(out_time_step), "output time step")
