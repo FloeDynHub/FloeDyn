@@ -32,18 +32,114 @@ void blabla(int result);
 
 int main (void)
 {
-	int vec_init[2] = {10,0};
-	int vec[4] = { vec_init[0], vec_init[1], 12, 12 };
+	std::vector<int> v(10,0);
+	v[3] = 10;
+	std::cout << v[3] << "\n" << std::endl;
 
-	std::cout << std::max(10,2);
+	std::cout << v.size() << "\n";
 
-	int i=0;
-	std::cout << "vec: [";
-	for (i=0; i<4; i++){
-		std::cout << vec[i] << ", " << i << ", ";
-		if (i==2){break;}
-	} 
-	std::cout << ", " << i <<"]\n";
+	int val[v.size()];
+    for (size_t i=0; i<v.size(); ++i) {
+    	val[i] = v[i];
+    }
+
+    std::cout << val[8] << std::endl;
+
+
+    const H5std_string FILE_NAME( "io/outputs/selected_floes.h5" );
+    const H5std_string GROUP_NAME_I( "selected_floe_ids" );
+    H5File* file;
+    file = new H5File( FILE_NAME, H5F_ACC_RDONLY );
+
+    DataSet* dataset = new DataSet(file->openDataSet( GROUP_NAME_I ));
+    /*
+    * Get dataspace of the dataset.
+    */
+    DataSpace dataspace = dataset->getSpace();
+    /*
+    * Get the dimension size of each dimension in the dataspace and
+    * display them.
+    */
+    hsize_t dims_out[1];
+    dataspace.getSimpleExtentDims(dims_out);
+    std::cout << "dim_out: " << dims_out[0] << "\n";
+    int selection_tmp[dims_out[0]];
+    dataset->read( selection_tmp, PredType::NATIVE_INT );
+
+    std::cout << "selected_floe_ids: [\n";
+    std::vector<std::size_t> selected_floe_ids;
+    for (hsize_t i=0; i<dims_out[0]; ++i) {
+        std::cout << selection_tmp[i] << ", ";
+        selected_floe_ids.push_back(selection_tmp[i]);
+    }
+    std::cout << "]\n" << std::endl;
+
+    delete dataset;
+    delete file;
+	// const H5std_string  FILE_NAME( "test" );
+	// H5File* m_out_file;
+
+	// /*
+	//  * Try block to detect exceptions raised by any of the calls inside it
+	//  */
+	// try{
+	//     /*
+	//      * Turn off the auto-printing when failure occurs so that we can
+	//      * handle the errors appropriately
+	//      */
+	//     Exception::dontPrint();
+	//     /*
+	//      * Create or Open a file.
+	//      */
+	//     try {
+	//         m_out_file = new H5File( FILE_NAME, H5F_ACC_RDWR );
+	//     } catch (...) {
+	//         m_out_file = new H5File( FILE_NAME, H5F_ACC_TRUNC );
+
+	//         /* write list of selected floes */
+	//         hsize_t dim[2] = {1, v.size()};
+	//         DataSpace space( 2, dim );
+
+	//         int val[v.size()];
+	//         for (size_t i=0; i<v.size(); ++i) {
+	//         	val[i] = v[i];
+	//         }
+
+	//         std::cout << val << std::endl;
+	//         DataSet* data_floes = new DataSet(m_out_file->createDataSet("selected_floe_ids", 
+	//             PredType::NATIVE_INT, space));
+
+	//         data_floes->write(val, PredType::NATIVE_INT);
+
+	//         delete data_floes;
+	//     }
+
+	//     delete m_out_file;
+	// }
+
+	// // catch failure caused by the H5File operations
+	// catch( FileIException error )
+	// {
+	// 	error.printError();
+	// }
+	// // catch failure caused by the DataSet operations
+	// catch( DataSetIException error )
+	// {
+	// 	error.printError();
+	// }
+
+	// int vec_init[2] = {10,0};
+	// int vec[4] = { vec_init[0], vec_init[1], 12, 12 };
+
+	// std::cout << std::max(10,2);
+
+	// int i=0;
+	// std::cout << "vec: [";
+	// for (i=0; i<4; i++){
+	// 	std::cout << vec[i] << ", " << i << ", ";
+	// 	if (i==2){break;}
+	// } 
+	// std::cout << ", " << i <<"]\n";
 	// std::vector<int> v={6,0};
 
 	// std::cout << v;

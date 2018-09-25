@@ -249,7 +249,7 @@ TimeScaleManager<TDetector>::delta_t_secu_fast(
     // Axe reliant chaque couple de floe
     point_type Axe = (C2 - C1) / distance(C1, C2);
 
-    // Vitesse relative projetÃ©e sur l'axe
+    // Vitesse relative projetee sur l'axe
     real_type VRel = geometry::dot_product(Vg2 - Vg1, Axe);
 
     // Calcul du dt max

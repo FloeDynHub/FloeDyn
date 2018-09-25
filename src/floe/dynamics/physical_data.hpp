@@ -296,8 +296,8 @@ PhysicalData<TPoint>::init_random_vortex(){
         0, 2 * M_PI};
     auto gen = std::default_random_engine{};
     std::cout << "RANDOM SEED " << std::time(0);
-    // gen.seed(std::time(0));
-    gen.seed(0);
+    gen.seed(std::time(0));
+    // gen.seed(0);
     m_vortex_radius = dist_Rc(gen);
     m_vortex_max_norm = dist_Umax(gen);
     real_type theta = dist_angle(gen);

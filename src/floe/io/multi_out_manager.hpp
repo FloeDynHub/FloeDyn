@@ -38,7 +38,7 @@ public:
         // little out_step + big number of floes = too big out file
         // -> first manager outs all floes rarely, second outs few floes often
         auto const& floe_group = *m_floe_group;
-        TOutManager& second_out_mgr = m_out_managers[1];
+        TOutManager& second_out_mgr = m_out_managers[1]; // second_out_mgr is a reference to m_out_manager[1]
         // get floe_group window
         auto win = floe_group.get_initial_window();
         real_type x_margin = (win[1] - win[0]) / 5;
@@ -62,18 +62,24 @@ public:
             }
             id++;
         }
-        std::srand(0); // be sure to get the same result.
-        std::random_shuffle(
+
+        unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();        // std::srand( seed ); // be sure to get the same result. Why would like the same result?
+        std::shuffle(
             interesting_floe_ids.begin(),
-            interesting_floe_ids.end()
+            interesting_floe_ids.end(),
+            std::default_random_engine(seed)
         );
+
         // selecting floes for output
         std::size_t nb_floe_select = 1000;
+
         std::vector<std::size_t> selected_floe_ids(
             interesting_floe_ids.begin(),
             interesting_floe_ids.begin() + nb_floe_select
         );
         second_out_mgr.restrain_floe_ids(selected_floe_ids);
+
+        second_out_mgr.write_selected_floe_ids(selected_floe_ids);
         // second_out_mgr.set_out_file_name("");
     }
 
@@ -83,7 +89,8 @@ public:
     };
     //! Calls save_step() if this time needs to be saved
     void save_step_if_needed(real_type time, const dynamics_mgr_type& dyn_mgr){
-        if (!this->m_out_managers[1].is_restrained()){
+        if (!this->m_out_managers[1].is_restrained()){ // initialization of the selection. This is the
+            // multi-out-manager object containing m_out_managers that is the vector of out_manager
             this->restrain_second_mgr();
         }
         for (auto& mgr : this->m_out_managers) mgr.save_step_if_needed(time, dyn_mgr);
@@ -100,6 +107,8 @@ public:
         real_type recover_time = m_out_managers[0].recover_states(
             filename, time, floe_group, dyn_mgr, keep_as_outfile
         );
+        const H5std_string selec_floe_file("io/outputs/selected_floes.h5");
+        m_out_managers[1].recover_restrained_floes( selec_floe_file );
         m_out_managers[1].auto_step_count(recover_time);
         return recover_time;
     }

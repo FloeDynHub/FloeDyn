@@ -93,6 +93,10 @@ public:
     }
     inline void auto_step_count(real_type time){ this->m_step_count = (int)time/this->m_out_step; }
 
+    void recover_restrained_floes(const H5std_string filename);
+
+    void write_selected_floe_ids(std::vector<std::size_t> selected_floe_ids);
+
 
 
 private:
