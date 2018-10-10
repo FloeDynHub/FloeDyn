@@ -7,6 +7,12 @@
 Documentation : https://waf.io/book/
 
 USAGE
+configuration with: ./waf configure
+eventually if one or more dependencies and/or libraries are not found,
+one can use:        ./waf configure --depdir=path_to_dep_include
+example with eigen: ./waf configure --eigendir=/usr/local/
+or:                 ./waf configure --eigendir=/usr/local/Cellar/eigen/3.3.5/
+
 Build main product : ./waf --target <targ>
     with <targ> = FLOE or FLOE_PBC (PBC for Periodic Boundary Conditions)
 
@@ -291,7 +297,7 @@ def run_tests(ctx):
 def get_option_dict(debug=True):
     OPTION_DICT = {
         "includes": ['../src'
-            ], #+ [path for path in os.environ["PATH"].split(":") if not "bin" in path],
+                    ], #+ [path for path in os.environ["PATH"].split(":") if not "bin" in path],
         "lib": ['boost_system',
                 'boost_program_options',
                 'matio',
@@ -354,8 +360,6 @@ def build(bld):
         opts["linkflags"].extend(subprocess.check_output(["mpicc", "--showme:link"]).strip().split(b" "))
         # print opts["linkflags"]
     if bld.options.target in ["FLOE", "FLOE_PBC", "FLOE_MPI"]:
-
-        print(" mpi !!!!!!!")
         opts["source"] = ["product/FLOE.cpp"] + recursive_file_finder("src/floe", "*.cpp")
         opts["target"] = bld.options.target
         if bld.options.target == "FLOE_PBC":

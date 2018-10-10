@@ -54,7 +54,7 @@ LCPSolver<T>::solve( TContactGraph& graph, bool& success, int lcp_failed_stats[]
     // variables for storing LCP:
     static bool is_full_storage     = false;
     static bool bool_save_solved    = true;
-    bool        m_saving_lcp        = true;
+    bool        m_saving_lcp        = false;
     int         w_fail              = 0;
 
     // %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

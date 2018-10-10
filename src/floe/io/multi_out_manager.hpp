@@ -7,6 +7,7 @@
 #ifndef FLOE_IO_MULTI_OUT_MANAGER_HPP
 #define FLOE_IO_MULTI_OUT_MANAGER_HPP
 
+#include <cassert> // assert
 #include <random>
 #include <vector>
 #include <type_traits>
@@ -50,6 +51,11 @@ public:
             win[3] - y_margin
         }};
         // subgroup of floes in subwin
+        std::cout << "The size of the sub windows is: \n";
+        for (int i=0; i<4; ++i) {
+            std::cout << subwin[i] << ", ";
+        }
+        std::cout << "\n" << std::endl;
         std::vector<std::size_t> interesting_floe_ids;
         std::size_t id = 0;
         for (auto const& floe : floe_group.get_floes()){
@@ -71,7 +77,12 @@ public:
         );
 
         // selecting floes for output
-        std::size_t nb_floe_select = 1000;
+        std::size_t nb_floe_select = 10;
+        assert(nb_floe_select<interesting_floe_ids.size());
+        if (nb_floe_select>interesting_floe_ids.size()){
+            std::cout << "WARNING: the size of the floe selection exceeds the total number of floes whitin this pack part!! An error is occuring!\n";
+            std::cout << "size of the floe selection: " << nb_floe_select << " | floe number whitin the pack part: " << interesting_floe_ids.size() << std::endl;
+        }
 
         std::vector<std::size_t> selected_floe_ids(
             interesting_floe_ids.begin(),
@@ -90,6 +101,8 @@ public:
     //! Calls save_step() if this time needs to be saved
     void save_step_if_needed(real_type time, const dynamics_mgr_type& dyn_mgr){
         if (!this->m_out_managers[1].is_restrained()){ // initialization of the selection. This is the
+            std::cout << "We are using an multi out_manager (actually a vector of out_manager).\n"
+            << "The second stores a selection of floes within a sub domain." << std::endl;
             // multi-out-manager object containing m_out_managers that is the vector of out_manager
             this->restrain_second_mgr();
         }
@@ -100,8 +113,7 @@ public:
         for (auto& mgr : this->m_out_managers) mgr.flush();
     }
     //! Recover simulation state from file
-    double recover_states(
-        H5std_string filename, real_type time, floe_group_type& floe_group,
+    double recover_states(H5std_string filename, real_type time, floe_group_type& floe_group,
         dynamics_mgr_type& dyn_mgr, bool keep_as_outfile)
     {
         real_type recover_time = m_out_managers[0].recover_states(

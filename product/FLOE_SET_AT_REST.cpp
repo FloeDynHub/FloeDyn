@@ -46,7 +46,7 @@ int main( int argc, char* argv[] )
     std::array<value_type, 4>    window_type    = P.get_floe_group().get_initial_window();
     value_type                   win_width      = 2*(window_type[1]-window_type[0]);
     value_type                   win_height     = 2*(window_type[3]-window_type[2]);
-    std::cout << "size of the window: " << win_width << " | " << win_height << "\n";
+    std::cout << "size of the window: " << win_width/2 << " | " << win_height/2 << "\n";
     P.get_floe_group().stop_floes_in_window(win_width, win_height);
 
     std::cout << "Kinetic energy after setting at rest: " << P.get_floe_group().kinetic_energy() << std::endl;

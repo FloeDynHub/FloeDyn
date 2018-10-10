@@ -1,65 +1,55 @@
 /*!
  *
- * \mainpage Code C++ de simulation de floes
+ * \mainpage MoMIZ: Modeling of Marginal Ice Zone
  *
  * \tableofcontents
  *
  ********************************************************************************************************************************************
- * \section dev_todo À faire dans le code.
+ * \section dev_todo TODO list (without prioritization)
  **********************************************
  *
- * - Tout traduire en Anglais !!!
- * - Générer une page de d'aide à l'installation et au lancement du code
- * - Générateur de configurations initiales de floes
- * - Compléter la documentation
- * - Créer des tests références pour vérifier que tout fonctionne bien
- * - Corriger bugs pour passer sur version ulterieure de <b> BOOST </b>
- *
- *****************
- * \subsection dev_optim Optimisation
- *****************
- * \subsubsection dev_solver Solveur LCP
- * - voir la méthode de réduction de dimension de Lloyd 2005 (O(n^3) -> O(n))
- * - rendre plus propre la résolution des LCP par le développements des outils de base nécessaires : recherche de la variable bloquante, pivot, etc ...
- * - ensuite, permettre de modifier le comportement de ces outils, pour par exemple utiliser l'algo d'expansion du LCP de Lloyd 2005.
- * - voir Acary 2011 : A formulation of the linear discrete Coulomb friction problem via convex optimization. The novelty of their approach is to capture and treat directly the friction model as a parametric quadratic optimization problem with second-order cone constraints coupled with a fixed point equation.
- *
- *****************
- * \subsubsection dev_multithread Parallélisation
- *****************
- * - on peut facilement paralléliser la détection de contact,
- * - de même pour la résolution des contacts : à une étape donnée (groupes de contacts actifs), tous les LCPs peuvent se résoudre indépendamment les uns des autres ;
- * - à plus grande échelle, il faudrait pouvoir gérer l'ensemble des floes par groupes. On peut déjà avoir un détecteur de collision indépendant par groupe, il faut alors un autre détecteur sur les groupes eux-mêmes. Il faut également pouvoir détecter les "influences" entre groupes.
- * - Voir Drumwright 2010 (chapitre précédent), pour une optimisation sur GPU.
- * - Voir Mazhar 2015 pour une gestion des contacts avec méthodes facilement parallèlisable (accelerated projected gradient descent (APGD) method relies on an approach by Nesterov in which a quadratic optimization problem with conic constraints is solved at each simulation time step to recover the normal and friction forces present in the system).
+ * - transalation: all English (US)
+ * - completing the documentation:
+ *		+ prerequisite and installation within any operating system
+ *		+ making a Quick start part
+ *		+ making a User's guide part
+ * - Generating Unit tests
  *
  ********************************************************************************************************************************************
  * \section Installation
  **********************************************
  *
+ * First, you need to clone the <i> git </i> repository (see <i> gitlab project</i>).
+ *
  *****************
  * \subsection Prerequisite
  *****************
- * If you clone the GIT repository, you need at least the following to build the executable:
- * - Boost (version 1.67) (not earlier 1.64, <i> UBlas -> QVM </i>).
- * 		+ Use for geometry, graphs, linear algebra, etc.
- * - Matio (version 1.5.12) (not earlier 1.5.12, bug still unfixed).
- *		+ Use for importing/exporting Matlab format files.
+ * Whatever your IT environment, <b> MoMIZ </b> needs for some libraries and dependencies:
+ * - Waf (version no matter, see <a href="https://waf.io/">Waf site</a>)
+ *		+ Use for compilation
+ * - Boost (version 1.67) (not earlier 1.64, <i> UBlas -> QVM </i>)
+ * 		+ Use for geometry, graphs, linear algebra, etc
+ * - Matio (version no matter, works with 1.5.10 and 1.5.12)
+ *		+ Use for importing/exporting Matlab format files
  * - Eigen (version no matter, works with 3.3.4)
- * 		+ Use for linear algebra for linear complementarity problem.
+ * 		+ Use for linear algebra for linear complementarity problem
  * - CGAL (version no matter)
- * 		+ Use for construction of mesh during the generation of floe assemblies.
- * - HDF5 (version 1.10, addind <a href="https://support.hdfgroup.org/products/java/release/download.html">HDFView </a> for visualing files .h5) (not earlier 1.10, minor modification see commit history).
- * 		+ Use for outputs.
+ * 		+ Use for construction of mesh during the generation of floe assemblies
+ * - HDF5 (version no matter, works with 1.10, addind <a href="https://support.hdfgroup.org/products/java/release/download.html">HDFView </a> for visualing files .h5) (not earlier 1.10, minor modification see commit history).
+ * 		+ Use for inputs/outputs
  * - ffmpeg (version no matter)
- *		+ Use for generation of videos.
- * - python (version 3.6.5) (addind h5py, numpy and matplotlib) (not later 3.6.5, bug still unfixed, see issue).
- * 		+ Use for visualisation and generation of videos from outputs.
+ *		+ Use for generation of videos
+ * - python (version 3.6.5) (addind h5py, numpy and matplotlib) (not later 3.6.5, bug still unfixed, see issue 28)
+ * 		+ Use for visualisation and generation of videos from outputs
  * - doxygen (version no matter)
- * 		+ Use for generating documentation.
+ * 		+ Use for generating documentation
  * - graphviz (version no matter)
- * 		+ Use for generating graphics during the documentation generation.
+ * 		+ Use for generating graphics during the documentation generation
+ * - cereal (version no matter, see <a href="https://uscilab.github.io/cereal/">cereal header-only site</a>)
+ *		+ Use for serialize/deserialize <i>C++</i> object in order to make easier message passing. 
+ * - openmpi (version no matter) 
  *
+ * <b> mac os </b>
  * Every library could be installed with home brew. However you should be careful about: 
  * - when one install boost_1_67 with brew, one should check the folders <i> /usr/local/lib/ </i> and <i> /usr/local/include/ </i> contain the boost libraries and include (or link). It is required to compile.
  * Otherwise, one should install boost_1_67 without brew (see: <a href="http://www.boost.org/doc/libs/1_65_1/more/getting_started/unix-variants.html">the boost user manual for unix-variants</a>). 
@@ -80,15 +70,28 @@
  * \code
  * $ ./waf configure --default-search-path=/home/user_name
  * \endcode 
+ * 
+ * Eventually if one or more dependencies and/or libraries are not found:
+ * \code
+ * $ ./waf configure --depdir=path_to_dep_include
+ * \endcode
+ * where <i> dep </i> is the name of the library/dependency. Example with <b> EIGEN </b>:
+ * \code
+ * $ ./waf configure --eigendir=/usr/local/
+ * \endcode
+ * or,
+ * \code
+ * $ ./waf configure --eigendir=/usr/local/Cellar/eigen/3.3.5/
+ * \endcode
+ *
+ * You should obtain something like this:
+ * \image html waf_config.png width=800
  *
  * If one are using <b> nix </b> solftware:
  * The default path is <i> /usr </i>. To specify the path (e.g.: <i> /home/user_name/ </i>):
  * \code
  * $ ./waf configure --default-search-path=/home/user_name/.nix-profile
  * \endcode 
- *
- * You should obtain something like this:
- * \image html waf_config.png width=800
  *
  *****************
  * \subsection Compilation
@@ -168,9 +171,26 @@
  * Then to create a huge floe assembly (<i> >10 000 floes </i>), one should use the following processus:
  * - Knowing the total area of the floe assembly, split it in N*P cells (equal or not) containing about at the most 2 000 floes.
  * - Generate the part of the floe assembly associated with each cells separately (using the generator).
- * - Use the executable <i> FLOE_PATCHWORK_INPUT </i> to reproduce the whole area. Be careful the placement is random.
+ * - Use the executable <i> FLOE_PATCHWORK_INPUT </i> to reproduce the whole area (and resize for <i>N m x P m</i>). Be careful the placement is random.
  * - Instead, one can use <i> FLOE_MAKE_NXP_INPUT </i>, yet this loads N * P times the same input file (i.e.: same floe assembly N*P repeated).
+ * - One should use <i> FLOE_SET_AT_REST </i> for removing all kinetic energy still present in the ice pack after the generation.	
+ *
+ * In order to erase the artificial border between cells, one should run simulation without external forces (<i>set_modes(-1,-1)</i>) yet with
+ * the random bustle (see <i> Adding random perturbation to speed and rot </i> in dynamics_manager.hpp) during 10 000s. Adjusting the coefficient for the bustle
+ * be strong enough. 
+ * - Finally, using <i> FLOE_RESIZE_INPUT </i> to resize the <i>N m x P m</i> ice pack to the desired size.
  * 
+ * Example:
+ * \code
+ * $ ./build/FLOE -i generator -n 2000 -c 0.65 -t 0
+ * .
+ * .
+ * .
+ * $ ./build/FLOE_PATCHWORK_INPUT 5 5 io/inputs/in_2000f_65p_25e-1a_1nbfpersize_#1.h5 <...> io/inputs/in_2000f_60p_25e-1a_1nbfpersize_#10.h5
+ * $ ./build/FLOE_SET_AT_REST io/inputs/in_50000f_65p_25e-1a_1nbfpersize_#1.h5
+ * $ ./build/FLOE_RESIZE_INPUT io/inputs/in_50000f_65p_25e-1a_1nbfpersize_#1.h5 100000
+ * \endcode
+ *
  *****************
  * \subsection ex First examples of run simulations:
  *****************
@@ -212,9 +232,10 @@
  * \section Debug
  **********************************************
  *
- * Two tools:
- * - with <b> X-Code </b>.
- * - with <b> valgrind </b>.
+ * Three tools:
+ * - with <b> X-Code </b>
+ * - with <b> valgrind </b>
+ * - with <b> lldb </b>
  * 
  *****************
  * \subsection val with valgrind:
@@ -237,6 +258,20 @@
  * \endcode
  * So, the different <i> assert() </i> function will be activated.
  *
+ *****************
+ * \subsection lldb with lldb:
+ *****************
+ * First, please compilling without <i> --debug </i>:
+ * \code 
+ * $ lldb exe
+ * \endcode
+ * where <i> exe </i> may be <i> ./build/FLOE</i>.
+ * Then, launching the simulation with the command: 
+ * \code 
+ * (lldb) run $arguments
+ * \endcode 
+ * where <i> $arguments </i> may be <i> -i io/inputs/floes_config.h5 -t 10000 </i>.
+ *
  ********************************************************************************************************************************************
  * \section contact_detection Contact Detection
  **********************************************
@@ -255,6 +290,54 @@
  *****************
  * The graph of contact is treated as a undirected graph from <i> adjacency_list </i> of <b> BOOST </b>, which the 
  * edges are a <i> std::vector </i> of contact points.
+ *
+ ********************************************************************************************************************************************
+ * \section Components Components
+ ********************************
+ *
+ * Basically, an executable like <i> FLOE </i> build a simulation as an objet <i> simu_runner </i> (they are within the <i> product </i> folder). 
+ * This object has a method <i> run </i> for running the simulation. The object <i> simu_runner </i> is built initializing the options and the 
+ * <i> sigaction </i> API struct (for handling interruption signal). 
+ * 
+ *****************
+ * \subsection Product Product
+ *****************
+ * 
+ * The folder <i> product </i> contains the <i> cpp </i> files (like <b> FLOE </b>) as well as the <i> simu_runner </i> object and
+ * the <i> config </i> header files. These header contains the names of the templates used. The <i> run </i> method call an object <i> problem </i>
+ * and, eventually, an object <i> generator </i> if the input file name is <i> generator </i>.
+ *
+ *****************
+ * \subsection Problem Problem
+ *****************
+ *
+ * The folder <i> src/problem </i> the different kind of problem (mpi, periodic). A problem is initialized with the elasticity coefficient (for the contact)
+ * and the status of the Ocean Boundary Layer (OBL). It build:
+ *	- group of floes as an object <i> FloeGroup </i>, 
+ *	- a time environment as an object <i> Domain </i> to define the time and the time step of the simulation, 
+ *	- a method for contact detection as an object <i> MatlabDetector </i> (based on a Bounding Volume (Surface in 2D) Hierarchies with disks), 
+ *	- a method for contact processing as an object <i> LCPManager </i> (based on the Linear Complementarity Problem form and the LEMKE algorithm), 
+ *	- a method for dealing with the smooth dynamics as an object <i> DynamicsManager </i>, 
+ *	- a event-driven method as an object <i> TimeScaleManager </i> for computing the time step and
+ *	- a method to handle the outputs as an object <i> HDF5Manager </i> or an object <i> MultiOutManager </i> that calls a vector of <i> HDF5Manager </i>.
+ * 
+ * Once a problem is built, the following actions are call:
+ *	- an initial configuration is called (or eventually generated see <i> generator </i> object),
+ *	- the external forces are setted,
+ *	- the restart process is eventually called,
+ *	- two random routines are called: one for the ice thickness, the other for the oceanic drag coefficient (useful??)
+ *	- the <i> solve </i> method is called
+ * 
+ *****************
+ * \subsection FloeGroup Floe Group
+ ***************** 
+ * to be completed...
+ *
+ *****************
+ * \subsection MPI specification for MPI
+ *****************
+ *
+ * to be completed...
  *
  ********************************************************************************************************************************************
  * \section example Un exemple expliqué (Roland)

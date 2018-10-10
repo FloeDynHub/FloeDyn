@@ -357,7 +357,7 @@ class FloePlotter(object):
             fig, update, len(data_chunk.get("time")), fargs=(data_chunk, ax),
             interval=1, blit=False)
         print(6)
-        print (out_filename)
+        print(out_filename)
         anim.save(out_filename, writer=self.writer)
 
     def make_partial_floe_video_helper(self, t):

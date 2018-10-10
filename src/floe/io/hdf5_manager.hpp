@@ -670,11 +670,15 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::recover_restrained_floes(const H5std
         dataset->read( selection_tmp, PredType::NATIVE_INT);
 
         std::vector<std::size_t> selected_floe_ids;
+        std::cout << "floe recovered: [";
         for (hsize_t i=0; i<dims_out[0]; ++i) {
             selected_floe_ids.push_back(selection_tmp[i]);
+            std::cout << selection_tmp[i] << ", ";
         }
+        std::cout << "]" << std::endl;
 
         this->restrain_floe_ids(selected_floe_ids);
+        std::cout << "the selection of floes has been recovered!" << std::endl;
     }
     catch( FileIException error )
     {

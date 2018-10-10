@@ -70,6 +70,11 @@ DynamicsManager<TExternalForces, TFloeGroup>::move_floe(floe_type& floe, real_ty
 
     /* Adding random perturbation to speed and rot
        (improve collision computing, physically justifiable) */
+    static bool is_random_perturb = false;
+    if (is_random_perturb) {
+        std::cout << "An adding of random perturbations to speed and rot is activated!" << std::endl;
+        is_random_perturb = false;
+    }
     // real_type rand_norm = std::min(1e-7, 1e-6 * delta_t);
     // auto dist_rot = std::uniform_real_distribution<real_type>{-rand_norm, rand_norm};
     // auto dist_angle = std::uniform_real_distribution<real_type>{0, 2 * M_PI};

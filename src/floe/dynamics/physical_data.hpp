@@ -65,6 +65,8 @@ public:
         m_air_mode = air_mode;
         m_water_mode = water_mode;
 
+        if (m_air_mode==-1 && m_water_mode==2) {std::cout << "The external forces are setted for an ice pack initial configuration." << std::endl;}
+
         //! Activate storm (random vortex) mode
         if (m_air_mode==5) {this->init_random_vortex();m_water_mode = -1;}
     }
@@ -115,8 +117,8 @@ private:
     point_type centered_convergent_field(point_type pt = {0,0}, real_type coeff = 1) {
         return - coeff * pt / norm2(pt);
     }
-    //! convergent current outside null rectangle window
-    point_type convergent_outside_window_field(point_type pt = {0,0}, real_type speed=1) {
+    //! convergent current outside null rectangle window (for initial configuration generation)
+    point_type convergent_outside_window_field(point_type pt = {0,0}, real_type speed=3) {
         real_type x{0}, y{0};
         if (std::abs(pt.x) > m_window_width / 2) x = - speed * pt.x / std::abs(pt.x);
         if (std::abs(pt.y) > m_window_height / 2) y = - speed * pt.y / std::abs(pt.y);

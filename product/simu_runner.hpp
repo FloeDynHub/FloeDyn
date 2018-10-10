@@ -97,18 +97,41 @@ public:
         P.load_matlab_topaz_data(matlab_topaz_filename);
         // P.get_dynamics_manager().get_external_forces().get_physical_data().set_modes(forces_modes[0],forces_modes[1]);
         // P.get_dynamics_manager().get_external_forces().get_physical_data().set_storm_mode(); // for simu: with storm
-        // P.get_dynamics_manager().get_external_forces().get_physical_data().set_modes(2,0);   // for simu: ?
-        P.get_dynamics_manager().get_external_forces().get_physical_data().set_modes(-1,4);  // for simu: floes against obstacle
+        P.get_dynamics_manager().get_external_forces().get_physical_data().set_modes(-1,2);   // for initial configuration generation
+        // P.get_dynamics_manager().get_external_forces().get_physical_data().set_modes(-1,4);  // for simu: floes against obstacle
 
         if (vm.count("rectime"))
         {
             P.recover_states_from_file(vm["recfile"].as<string>(), vm["rectime"].as<value_type>());
+
+            //!< \remark    useful for taking over the generation of floe packs. 
+            //!< /warning   no suitable with the following "P.get_floe_group()" and "P.solve" yet.
+            // std::cout << "CONTINUING FLOE PACK GENERATION...\n"; 
+            // std::cout << "Until: " << endtime << std::endl;
+            // value_type win_width = sqrt(P.get_floe_group().total_area() / 0.65);
+            // value_type time_to_stop_floe_in_target_window = 20;
+            // bool init = true;
+            // do {
+            //     P.solve(endtime, 10, 10, init);
+            //     //!<  Trick for helping floe to stay within the target area 
+            //     if (endtime>time_to_stop_floe_in_target_window) {
+            //         std::cout << "It is time to stop floes within the target area." << std::endl;
+            //         P.get_floe_group().stop_floes_in_window(win_width, win_width);
+            //         time_to_stop_floe_in_target_window += 20;
+            //     }
+            //     std::cout << " Concentration : " << P.floe_concentration() << std::endl;
+            //     endtime += 20; init = false;
+            //     if (*P.QUIT) break; // exit normally after SIGINT
+            // } while (P.get_floe_group().kinetic_energy() != 0 && endtime < 1e6 );
+            // // P.get_floe_group().stop_floes_in_window(win_width, win_width);
+            // P.get_floe_group().reset_impulses();
         }
 
         std::cout << "SOLVE..." << std::endl;
         // cout.precision(17);
         // std::cout << P.get_floe_group().total_area();
         P.get_floe_group().randomize_floes_thickness(random_thickness_coeff);
+        // adding a random ocean drag coefficient for simulating the heterogeneity of the floe bottom surface:
         P.get_floe_group().randomize_floes_oceanic_skin_drag(0.01);
         P.solve(endtime, default_time_step, out_time_step);
         return 0;

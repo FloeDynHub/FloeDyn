@@ -71,18 +71,41 @@ public:
 
     //! kinetic energy of the group
     real_type kinetic_energy() const;
-    //! sum all floe areas
+    
+    /*! the total area of the floe pack
+     *
+     * \return  the sum of all floe area in (m^2)
+     */
     real_type total_area() const;
+
     //! sum all floe masses
     real_type total_mass() const;
     //! mass center of the group
     point_type mass_center() const;
-    //! bounding window of floe group (return array of min_x, max_x, min_y, max_y)
+
+    /*! bounding window of floe group (return array of )
+     *  
+     * \param   margin  a real_type margin in meter (m)
+     * \return  an 4-array: min_x-margin, max_x+margin, min_y-margin, max_y+margin where
+     *          min_x is the minimal abscisse of the floe pack
+     */
     std::array<real_type, 4> bounding_window(real_type margin = 1) const;
-    //! bounding window area
+
+    /*! bounding window area
+     *
+     * \param   margin  a real_type margin for the bounding window of the floe group (m)
+     * \return  the area of the bounding window of the floe group (m^2)
+     */
     real_type bounding_window_area(real_type margin = 1) const;
-    //! Floe Concentration
+
+    /*! floe concentration
+     *
+     * \return  the ratio: total area (sum of all floe area) of the floe group divided by
+     *          the bounding window area (area of the smallest rectangle containing the
+     *          floe group. (\f$ 0 <= \f$ floe concentration \f$ <= 1 \f$).
+     */
     real_type floe_concentration() const;
+
     //! Initial Floe Concentration
     real_type initial_concentration() const;
 
@@ -99,7 +122,13 @@ public:
     virtual void recover_previous_step_states();
     //! Set floes thickness to normal distributed random values around default
     void randomize_floes_thickness(real_type coeff);
-    //! Set floes oceanic skin drag coeff to normal distributed random values around default
+
+    /*! random oceanic drag coefficient
+     *  Set floes oceanic skin drag coeff to normal distributed random values around default.
+     *  This is for simulating the heterogeneity of the floe bottom surface.  
+     *
+     * \param coeff     coefficient corresponding to the absolute max of the random values     
+     */
     void randomize_floes_oceanic_skin_drag(real_type coeff);
 
     virtual inline int absolute_id(int id) const { return id; }

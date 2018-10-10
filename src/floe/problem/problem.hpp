@@ -44,8 +44,8 @@ class Problem
 {
 
 public:
-    // using out_manager_type = io::HDF5Manager<TFloeGroup, TDynamicsManager>;
-    using out_manager_type = io::MultiOutManager<io::HDF5Manager<TFloeGroup, TDynamicsManager>>;
+    using out_manager_type = io::HDF5Manager<TFloeGroup, TDynamicsManager>;
+    // using out_manager_type = io::MultiOutManager<io::HDF5Manager<TFloeGroup, TDynamicsManager>>;
     using real_type = typename TFloeGroup::real_type;
     using point_type = typename TFloeGroup::point_type;
     using floe_group_type = TFloeGroup; // generator accessor
@@ -72,7 +72,11 @@ public:
     inline TFloeGroup& get_floe_group() { return m_floe_group; }
     //! Dynamics mgr accessor for config generator
     inline TDynamicsManager& get_dynamics_manager(){ return m_dynamics_manager; }
-    //! Floe Concentration
+    
+    /*! Floe Concentration
+     *
+     * \return the floe concentration using FloeGroup::floe_concentration. (\f$ 0 <= \f$ floe concentration \f$ <= 1 \f$).
+     */
     virtual real_type floe_concentration() { return m_floe_group.floe_concentration(); }
     void make_input_file();
     //! Access detector
