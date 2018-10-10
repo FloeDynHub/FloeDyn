@@ -78,8 +78,11 @@ def options(opt):
     # opt.add_option('--run', action='store_true', default=False, dest='run')
     opt.add_option('--name', action='store', default="", dest='name')
     opt.add_option('-t','--target', action='store', default="", dest='target')
-    opt.add_option(
-        '--debug', action='store_true', default=False, dest='debug')
+    opt.add_option('--debug', action='store_true', default=False, dest='debug', help='to active assertions')
+    opt.add_option('-D','--defmacro', action='store', default="", dest='defmacro',
+     help="MULTIOUTPUT: for using multiple output files. The size of a floe selection is required.\n"
+
+        "LCPSTATS: for saving LCP statistics. The LCP max number saved is required (still below to 30000 to avoid memory overflow!)" )
     opt.add_option('--omp', action='store_true', default=False, dest='omp')
     # configure opts :
     opt.add_option('--gcc', action='store_true', default=False, dest='gcc')
@@ -347,6 +350,12 @@ def build(bld):
     if bld.options.omp:
         opts["linkflags"].append("-fopenmp")
         opts["cxxflags"].append("-fopenmp")
+    if "MULTIOUTPUT" in bld.options.defmacro:
+        print("compilation with multiple output files.")
+        opts["defines"].append('MULTIOUTPUT')
+    if "LCPSTATS" in bld.options.defmacro:
+        print("compilation with LCP statistics storage.")
+        opts["defines"].append('LCPSTATS')
     if "MPI" in bld.options.target:
         opts["linkflags"].extend(["-lmpi"])
         opts["defines"].append('MPIRUN')
@@ -354,8 +363,6 @@ def build(bld):
         opts["linkflags"].extend(subprocess.check_output(["mpicc", "--showme:link"]).strip().split(b" "))
         # print opts["linkflags"]
     if bld.options.target in ["FLOE", "FLOE_PBC", "FLOE_MPI"]:
-
-        print(" mpi !!!!!!!")
         opts["source"] = ["product/FLOE.cpp"] + recursive_file_finder("src/floe", "*.cpp")
         opts["target"] = bld.options.target
         if bld.options.target == "FLOE_PBC":

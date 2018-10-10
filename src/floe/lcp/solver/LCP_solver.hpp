@@ -52,10 +52,11 @@ LCPSolver<T>::solve( TContactGraph& graph, bool& success, int lcp_failed_stats[]
     lcp_a.q = lcp_orig.q;
 
     // variables for storing LCP:
-    static bool is_full_storage     = false;
-    static bool bool_save_solved    = true;
-    bool        m_saving_lcp        = true;
-    int         w_fail              = 0;
+    #ifdef LCPSTATS
+        static bool is_full_storage     = false;
+        static bool bool_save_solved    = true;
+        int         w_fail              = 0;
+    #endif
 
     // %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     // %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% COMPRESSION PHASE: %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -153,7 +154,7 @@ LCPSolver<T>::solve( TContactGraph& graph, bool& success, int lcp_failed_stats[]
 
     // Mat
     // Saving data on LCP:
-    if (m_saving_lcp) {
+    #ifdef LCPSTATS
         if (!is_full_storage){
             if ( ( !solved ) || ( bool_save_solved ) ){
                 // std::cout << "A more: " << bool_save_solved << " solved LCP stored!\n";
@@ -168,14 +169,17 @@ LCPSolver<T>::solve( TContactGraph& graph, bool& success, int lcp_failed_stats[]
                 bool_save_solved = false;
             }
         }
-    }
+    #endif
     // End saving data on LCP
     // EndMat
 
     if (!solved) {
         // std::cout << "An unsolved LCP there!\n";
         // std::cout << "With a LCP error:" << best_err << "\n";
-        bool_save_solved     = true;
+        #ifdef LCPSTATS
+            bool_save_solved     = true;
+        #endif
+            
         lcp_failed_stats[0] += 1;
 
         success = 0;
@@ -394,7 +398,7 @@ void reduction_via_perturbation(std::size_t dim , matrix<T> &M, T alpha){
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 template<typename T>
-bool saving_LCP_in_hdf5(floe::lcp::LCP<T> lcp, int m_ite_max_attempt, std::vector<double> stats_vec_lcp, bool solved, int w_fail)
+bool LCPSolver<T>::saving_LCP_in_hdf5(floe::lcp::LCP<T> lcp, int m_ite_max_attempt, std::vector<double> stats_vec_lcp, bool solved, int w_fail)
 {
     using namespace H5;                                 // proper way inside a function (to prevent extension to entire code)
 
@@ -410,8 +414,6 @@ bool saving_LCP_in_hdf5(floe::lcp::LCP<T> lcp, int m_ite_max_attempt, std::vecto
     // const H5std_string Idx_solver( "Which solver" ); // Information on which solver, 
     // how many random perturbations are used before to compute solution, the index in the h5 file and
     // the source of the LCP error (see which_failure)
-    const hsize_t Max_storage_sol = 15000;
-    const hsize_t Max_storage_unsol = 15000;
 
     const hsize_t dim_solver(2*m_ite_max_attempt+1);
 
@@ -420,11 +422,11 @@ bool saving_LCP_in_hdf5(floe::lcp::LCP<T> lcp, int m_ite_max_attempt, std::vecto
 
     if (solved){
         GROUP_TEMP = "solved";
-        Max_storage_temp = Max_storage_sol;
+        Max_storage_temp = m_max_storage_sol;
     }
     else {
         GROUP_TEMP = "unsolved";
-        Max_storage_temp = Max_storage_unsol;
+        Max_storage_temp = m_max_storage_unsol;
     }
 
     /*
@@ -496,8 +498,8 @@ bool saving_LCP_in_hdf5(floe::lcp::LCP<T> lcp, int m_ite_max_attempt, std::vecto
         /*
          * Checking if the total capacity of storage is reached
          */
-        if (nb_lcp_sol > Max_storage_sol && nb_lcp_unsol > Max_storage_unsol){
-            std::cout << "the maximum storage (" << Max_storage_sol+Max_storage_unsol << ") is reached.\n";
+        if (int(nb_lcp_sol) > m_max_storage_sol && int(nb_lcp_unsol) > m_max_storage_unsol){
+            std::cout << "the maximum storage (" << m_max_storage_sol+m_max_storage_unsol << ") is reached.\n";
             delete file;
             return true;
         }

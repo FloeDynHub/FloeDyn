@@ -7,6 +7,7 @@
 #ifndef PRODUCT_SIMU_RUNNER_HPP
 #define PRODUCT_SIMU_RUNNER_HPP
 #include <iostream>
+#include <vector>
 #include <string>
 #include <cassert>
 #include "../product/config/interrupt.hpp"
@@ -81,9 +82,9 @@ public:
                 cerr << "Error : Generator constraint : 0 < concentration < 1.\n";
                 return 1;
             }
-            generator_type G;
+            generator_type G( alpha, nbfpersize );
             G.set_exit_signal(&QUIT); // clean interrupt
-            G.generate_floe_set(nb_floes, concentration, max_size);
+            G.generate_floe_set(nb_floes, concentration, max_size, force_modes, force_speeds);
             P.set_floe_group(G.get_floe_group());
             P.get_floe_group().set_mu_static(0.7);
             #ifdef PBC
@@ -95,10 +96,22 @@ public:
 
         std::cout << "read TOPAZ" << std::endl;
         P.load_matlab_topaz_data(matlab_topaz_filename);
-        // P.get_dynamics_manager().get_external_forces().get_physical_data().set_modes(forces_modes[0],forces_modes[1]);
+        P.get_dynamics_manager().set_rand_speed_add(rand_speed_add);
+        P.get_dynamics_manager().set_norm_rand_speed(rand_norm);
+        P.get_dynamics_manager().get_external_forces().get_physical_data().set_modes(force_modes[0],force_modes[1]);
+        P.get_dynamics_manager().get_external_forces().get_physical_data().set_speeds(force_speeds[0],force_speeds[1]);
         // P.get_dynamics_manager().get_external_forces().get_physical_data().set_storm_mode(); // for simu: with storm
         // P.get_dynamics_manager().get_external_forces().get_physical_data().set_modes(2,0);   // for simu: ?
-        P.get_dynamics_manager().get_external_forces().get_physical_data().set_modes(-1,4);  // for simu: floes against obstacle
+        // P.get_dynamics_manager().get_external_forces().get_physical_data().set_modes(-1,4);  // for simu: floes against obstacle
+
+        #ifdef MULTIOUTPUT
+            P.get_out_manager().set_size(nb_floe_select);
+        #endif
+        #ifdef LCPSTATS
+            P.get_lcp_manager().get_solver().set_max_storage_sol(max_storage[0]);
+            P.get_lcp_manager().get_solver().set_max_storage_unsol(max_storage[1]);
+        #endif
+
 
         if (vm.count("rectime"))
         {
@@ -115,19 +128,32 @@ public:
     }
 
 protected:
+    //!< Declare the supported options with BOOST
     po::options_description desc;
     po::variables_map vm;
-    // OPTIONS VARS
+
+    //!< supported options
     string input_file_name;
-    value_type endtime;
-    value_type default_time_step = 10;
-    value_type out_time_step = 60;
-    // int forces_modes[2]={2,0};
-    int OBL_status = 0;
-    value_type epsilon = 0.4;
-    value_type random_thickness_coeff = 0.01;
-    string matlab_topaz_filename = "io/inputs/DataTopaz01.mat";
-    value_type max_size = 250;
+    #ifdef MULTIOUTPUT
+        std::size_t nb_floe_select; //!< the size of the floe selection for the multiple output files (it is required!)
+    #endif
+    #ifdef LCPSTATS
+        std::vector<int> max_storage; //!< solved and unsolved lcp max number 
+    #endif
+    value_type              endtime;
+    value_type              default_time_step       = 10;
+    value_type              out_time_step           = 60;
+    std::vector<int>        force_modes             = std::vector<int>(2,0);
+    std::vector<value_type> force_speeds            = std::vector<value_type>(2,0);
+    int                     OBL_status              = 0;
+    value_type              epsilon                 = 0.4;
+    value_type              random_thickness_coeff  = 0.01;
+    string                  matlab_topaz_filename   = "io/inputs/DataTopaz01.mat";
+    value_type              max_size                = 250;
+    bool                    rand_speed_add          = 0;
+    value_type              rand_norm               = 1e-7;
+    value_type              alpha                   = 1.5;
+    int                     nbfpersize              = 1;
 
     void init_program_options( int argc, char* argv[] ){
         desc.add_options()
@@ -137,17 +163,69 @@ protected:
         ("help,h", "print usage message")
         ("input,i", po::value(&input_file_name)->required(), "input file path")
         ("fext, z", po::value(&matlab_topaz_filename)->default_value(matlab_topaz_filename), "external forces input file")
-        // ("fmodes, fm", po::value(&forces_modes)->default_value(forces_modes[2]), "forces modes [air, water], ex.: for a storm the air mode is set to 5 and the water mode is set to -1")
+        #ifdef MULTIOUTPUT
+            ("nbsefloes", po::value<std::size_t>(&nb_floe_select)->required(), "the size of the floe selection for the multiple output files")
+        #endif
+        #ifdef LCPSTATS
+            ("lcpstats,l", po::value< std::vector<int> >(&max_storage)->required()->multitoken(), "both solved and unsolved lcp max number (2 entries)")
+        #endif    
+
+        ("fmodes", po::value< std::vector<int> >(&force_modes)->multitoken(), "forces modes [air, water].\n"
+            "Possibilities: \n\n"
+
+            "   (By default) NO atmospheric and water currents:\n"
+            "       air mode: 0      water mode: 0\n\n"
+
+            "   From a atmospheric and water fields: (by default)\n"
+            "       air mode: 1      water mode: 1\n\n"
+
+            "   For a storm (as a vortex): \n"
+            "       air mode: 5      water mode: 0\n\n"
+
+            "   For the initial floe pack generation: \n"
+            "       air mode: 2      water mode: 0\n\n"
+            "   or  air mode: 0     water mode: 2\n\n"
+
+            "   For the simulation of percution against an obstacle: \n"
+            "       air mode: 4      water mode: 0\n"
+            "   or  air mode: 0     water mode: 4\n\n")
+
+        ("fspeeds", po::value< std::vector<value_type> >(&force_speeds)->multitoken(), "forces speeds [air, water] (m/s).\n"
+            "Possibilities: \n\n"
+
+            "   From a atmospheric and water fields: (by default)\n"
+            "       (no need for speeds)\n"
+            "       air speed: 0      water speed: 0\n\n"
+
+            "   For a storm (as a vortex): \n"
+            "       (no need for speeds)\n"
+            "       air speed: 0      water speed: 0\n\n"
+
+            "   For the initial floe pack generation: \n"
+            "       air speed >=10    water speed: 0\n\n"
+            "   or  air speed: 0  1<= water speed <=4\n\n"
+
+            "   For the simulation of percution against an obstacle: \n"
+            "       air speed: 10     water speed: 0\n"
+            "   or  air speed: 0      water speed: 1\n\n")
+
+        ("bustle", po::value<bool>(&rand_speed_add), "1 to active the additional random floe velocities.")
+        ("nbustle", po::value<value_type>(&rand_norm), "norm of the additional random floe velocities.")
+
         ("tend,t", po::value(&endtime)->required(), "simulation duration (seconds)")
         ("step,s", po::value(&default_time_step)->default_value(default_time_step), "default time step")
         ("outstep,o", po::value(&out_time_step)->default_value(out_time_step), "output time step")
         ("obl", po::value(&OBL_status)->default_value(OBL_status), "OBL status (0 or 1)")
         ("rectime,r", po::value<value_type>(), "time to recover states from")
         ("recfile,f", po::value<string>(), "file name to recover states from")
+
         ("nbfloes,n", po::value<int>(), "generator : how many floes ?")
         ("concentration,c", po::value<value_type>(), "generator : floes concentration (between 0 and 1)")
         ("maxsize,m", po::value(&max_size)->default_value(
             max_size, std::to_string(max_size)), "generator : floe max size (radius)")
+        ("alpha,a", po::value<value_type>(&alpha), "fractal dimension for the distribution power law.")
+        ("nbfpersize", po::value<int>(&nbfpersize), "number of floes per size for the distribution power law.")
+
         ("epsilon,e", po::value(&epsilon)->default_value(
             epsilon, std::to_string(epsilon)), "collision restitution coeff")
         ("sigma", po::value(&random_thickness_coeff)->default_value(

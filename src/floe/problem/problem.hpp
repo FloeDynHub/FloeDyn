@@ -17,7 +17,7 @@
 #include <atomic>
 #include <stdexcept>
 
- #include <numeric> // FOR TEST
+#include <numeric> // FOR TEST
 
 namespace floe { namespace problem
 {
@@ -44,8 +44,12 @@ class Problem
 {
 
 public:
-    // using out_manager_type = io::HDF5Manager<TFloeGroup, TDynamicsManager>;
-    using out_manager_type = io::MultiOutManager<io::HDF5Manager<TFloeGroup, TDynamicsManager>>;
+    #ifdef MULTIOUTPUT
+        using out_manager_type = io::MultiOutManager<io::HDF5Manager<TFloeGroup, TDynamicsManager>>;
+    #else
+        using out_manager_type = io::HDF5Manager<TFloeGroup, TDynamicsManager>;
+    #endif
+
     using real_type = typename TFloeGroup::real_type;
     using point_type = typename TFloeGroup::point_type;
     using floe_group_type = TFloeGroup; // generator accessor
@@ -79,6 +83,10 @@ public:
     inline proximity_detector_type& proximity_detector() { return m_proximity_detector; }
     //! Initializing proximity detector with floe set
     void create_optim_vars();
+    //!< OutManager accessor
+    inline out_manager_type& get_out_manager() {return m_out_manager;}
+    //!< LCP solver accessor
+    inline TCollisionManager& get_lcp_manager() { return m_collision_manager; }
 
     const std::atomic<bool>* QUIT; //!< Exit signal
 

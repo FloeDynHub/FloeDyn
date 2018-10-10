@@ -33,6 +33,10 @@ public:
         second_out_mgr.set_out_file_name("io/outputs/out_partial.h5"); // todo : less hardcoded if needed...
     }
 
+    inline std::size_t get_size() const {return m_nb_floe_select;}
+
+    inline void set_size(const std::size_t nb_floe_select) {m_nb_floe_select = nb_floe_select;};
+
     void restrain_second_mgr(){
         // Configure second out manager to manage only a subgroup of floes
         // little out_step + big number of floes = too big out file
@@ -71,15 +75,14 @@ public:
         );
 
         // selecting floes for output
-        std::size_t nb_floe_select = 1000;
-
         std::vector<std::size_t> selected_floe_ids(
             interesting_floe_ids.begin(),
-            interesting_floe_ids.begin() + nb_floe_select
+            interesting_floe_ids.begin() + m_nb_floe_select
         );
         second_out_mgr.restrain_floe_ids(selected_floe_ids);
 
         second_out_mgr.write_selected_floe_ids(selected_floe_ids);
+        std::cout << "I just wrote a selection of " << m_nb_floe_select << " floes." << std::endl;
         // second_out_mgr.set_out_file_name("");
     }
 
@@ -125,6 +128,7 @@ public:
 private:
     std::vector<TOutManager> m_out_managers;
     floe_group_type const* m_floe_group; //!< floe group pointer
+    std::size_t m_nb_floe_select;
 
 };
 

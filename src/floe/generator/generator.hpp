@@ -26,6 +26,8 @@
 #include <random>
 #include "floe/utils/random.hpp"
 
+// assertion
+#include <cassert>
 
 // TEST
 #include "floe/integration/gauss_legendre.hpp"
@@ -49,7 +51,8 @@ using scale_transformer = boost::geometry::strategy::transform::scale_transforme
 
 template<typename TProblem>
 void
-Generator<TProblem>::generate_floe_set(std::size_t nb_floes, real_type concentration, real_type max_size)
+Generator<TProblem>::generate_floe_set(std::size_t nb_floes, real_type concentration, real_type max_size, std::vector<int> force_modes,
+    std::vector<real_type> force_speeds)
 {   
     std::cout << "Generate " << nb_floes << " floes..." << std::endl;
     load_biblio_floe("io/inputs/Biblio_Floes.mat");
@@ -64,7 +67,13 @@ Generator<TProblem>::generate_floe_set(std::size_t nb_floes, real_type concentra
     m_problem.get_floe_group().set_initial_window(m_window);
     auto& physical_data = m_problem.get_dynamics_manager().get_external_forces().get_physical_data();
     physical_data.set_window_size(win_width * 0.99, win_width * 0.99);
-    physical_data.set_modes(2,-1);
+
+    assert( (force_modes[0]==2 && force_modes[1]==0) || (force_modes[0]==0 && force_modes[1]==2) 
+        && "Error : The Atmospheric or/and Oceanic currents are not suitable for initial ice pack generation.\n" 
+        && "Please type:   air mode = 2 and water mode = 0 or air mode = 0 and water mode = 2.\n");
+    physical_data.set_modes(force_modes[0],force_modes[1]);
+
+    physical_data.set_speeds(force_speeds[0],force_speeds[1]);
     for (auto& floe : m_problem.get_floe_group().get_floes()){
         floe.static_floe().set_thickness(floe.static_floe().thickness() * max_size / 250);
     }
@@ -152,17 +161,18 @@ template<typename TProblem>
 std::vector<typename Generator<TProblem>::real_type>
 Generator<TProblem>::exp_size_repartition(std::size_t n, real_type R_max)
 {
+    std::cout << "fractal dimension: " << m_alpha << " and nbfpersize: " << m_nbfpersize << std::endl;
     std::vector<real_type> v;
-    real_type alpha = 1.5;
+    // real_type alpha = 1.5;
     real_type R_min = 0; // no min (resize if min floe too small)
-    int nb_floes_per_size = 1; // allow to generate more than one floe per size categories! 
+    // int nb_floes_per_size = 1; // allow to generate more than one floe per size categories! 
     // Useful for making easier the init. config. generation!
-    // Yet, warning, since the exponential distribution of size is no longer corresponding to alpha!! 
-    for (std::size_t i = 1; i <= n/nb_floes_per_size; i++)
+    // Yet, warning, since the exponential distribution of size is no longer corresponding to m_alpha!! 
+    for (std::size_t i = 1; i <= n/m_nbfpersize; i++)
     {
-        // real_type R =  exp( (- 1 /  alpha) * log(i) + log(R_max));
-        real_type R =  std::max(R_max * exp( (- 1 /  alpha) * log(i) ), R_min);
-        for (int j=0; j<nb_floes_per_size; ++j){
+        // real_type R =  exp( (- 1 /  m_alpha) * log(i) + log(R_max));
+        real_type R =  std::max(R_max * exp( (- 1 /  m_alpha) * log(i) ), R_min);
+        for (int j=0; j<m_nbfpersize; ++j){
             v.push_back(R);
         }
     }

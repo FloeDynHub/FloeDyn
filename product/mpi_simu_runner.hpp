@@ -72,11 +72,24 @@ private:
 
         std::cout << "read TOPAZ" << std::endl;
         P.load_matlab_topaz_data(this->vm["fext"].as<string>());
-        P.get_dynamics_manager().get_external_forces().get_physical_data().set_storm_mode();
+        P.get_dynamics_manager().set_rand_speed_add(rand_speed_add);
+        P.get_dynamics_manager().set_norm_rand_speed(rand_norm);
+        P.get_dynamics_manager().get_external_forces().get_physical_data().set_modes(force_modes[0],force_modes[1]);
+        P.get_dynamics_manager().get_external_forces().get_physical_data().set_speeds(force_speeds[0],force_speeds[1]);
+        
+        // P.get_dynamics_manager().get_external_forces().get_physical_data().set_storm_mode();
         // To get same forcing as generator :
         // P.get_dynamics_manager().get_external_forces().get_physical_data().set_modes(2,0);
         // auto w = P.get_floe_group().get_initial_window();
         // P.get_dynamics_manager().get_external_forces().get_physical_data().set_window_size(w[1] - w[0], w[3] - w[2]);
+
+        #ifdef MULTIOUTPUT
+            P.get_out_manager().set_size(nb_floe_select);
+        #endif
+        #ifdef LCPSTATS
+            P.get_lcp_manager().get_solver().set_max_storage_sol(max_storage[0]);
+            P.get_lcp_manager().get_solver().set_max_storage_unsol(max_storage[1]);
+        #endif
 
         if (this->vm.count("rectime"))
         {
