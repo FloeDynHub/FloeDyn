@@ -12,6 +12,7 @@
 #include <cmath>
 #include <vector>
 #include <iostream> // DEBUG
+#include <cassert>
 
 
 namespace floe { namespace dynamics
@@ -62,21 +63,36 @@ public:
     }
     //! Air and water conditions mode setter
     void set_modes(int air_mode, int water_mode) {
-        m_air_mode = air_mode;
-        m_water_mode = water_mode;
+        m_air_mode      = air_mode;
+        m_water_mode    = water_mode;
 
-        if (m_air_mode==-1 && m_water_mode==2) {std::cout << "The external forces are setted for an ice pack initial configuration." << std::endl;}
-
-        //! Activate storm (random vortex) mode
-        if (m_air_mode==5) {this->init_random_vortex();m_water_mode = -1;}
+        if (m_air_mode==0 && m_water_mode==0) {std::cout << "NO Atmospheric and Ocean currents!" << std::endl;}
+        else if (m_air_mode==1 && m_water_mode==1) {std::cout << "Atmospheric and Ocean currents from weather data files" << std::endl;}
+        else if ((m_air_mode==2 && m_water_mode==0) || (m_air_mode==0 && m_water_mode==2)) {
+            std::cout << "Convergent current towards the target area for initial ice pack generation" << std::endl;
+        }
+        else if ((m_air_mode==4 && m_water_mode==0) || (m_air_mode==0 && m_water_mode==4)) {
+            std::cout << "Current directed towards the obstacle" << std::endl;
+        }
+        else if (m_air_mode==5) {
+            this->init_random_vortex();m_water_mode = 0;
+            std::cout << "Storm defined as a wind vortex" << std::endl;
+        }
+        else { std::cout << "Error: air and/or water modes: " << m_air_mode << " and " << m_water_mode << " are unknown!" << std::endl; assert(true==false); }
     }
     
-    // void set_storm_mode(){
-        
-    //     m_air_mode = 5;
-    //     m_water_mode = -1;
-    // }
-    //! Random vortex initialisation
+    //!< Air and water speeds:
+    void set_speeds(real_type air_speed, real_type water_speed) {
+        m_air_speed     = air_speed;
+        m_water_speed   = water_speed;
+
+        if ((m_air_mode==2 && m_water_mode==0) || (m_air_mode==0 && m_water_mode==2) 
+            || (m_air_mode==4 && m_water_mode==0) || (m_air_mode==0 && m_water_mode==4)) {
+            std::cout << "The Atmospheric current speed is fixed to: " << m_air_speed << "m/s   |   The Ocean current speed is fixed to: "
+                << m_water_speed << "m/s" << std::endl;
+        }
+    }
+    //!< Initialization of the storm as a wind vortex
     void init_random_vortex();
 
 private:
@@ -100,6 +116,9 @@ private:
     // modes
     int m_water_mode;
     int m_air_mode;
+    //!< speeds
+    real_type m_air_speed;
+    real_type m_water_speed;
 
     //! Interpolate all hour datas to minute datas
     void interpolate_hour_to_minute();
@@ -112,42 +131,45 @@ private:
     //! Get topaz air speed
     point_type topaz_air_speed(point_type = {0,0});
     //! Mode router to get air or water speed
-    point_type get_speed(point_type pt = {0,0}, int mode=0);
+    point_type get_speed(point_type pt = {0,0}, int mode=0, real_type speed=0);
     //! center convergent current (negative coeff will give divergent field)
-    point_type centered_convergent_field(point_type pt = {0,0}, real_type coeff = 1) {
-        return - coeff * pt / norm2(pt);
-    }
-    //! convergent current outside null rectangle window (for initial configuration generation)
-    point_type convergent_outside_window_field(point_type pt = {0,0}, real_type speed=3) {
+    // point_type centered_convergent_field(point_type pt = {0,0}, real_type coeff = 1) {
+    //     return - coeff * pt / norm2(pt);
+    // }
+    //! convergent current outside null rectangle window
+    point_type convergent_outside_window_field(point_type pt = {0,0}, real_type speed=1) {
         real_type x{0}, y{0};
         if (std::abs(pt.x) > m_window_width / 2) x = - speed * pt.x / std::abs(pt.x);
         if (std::abs(pt.y) > m_window_height / 2) y = - speed * pt.y / std::abs(pt.y);
         return {x,y};
     }
     //! circular current inside the windows field
-    point_type circular_inside_window_field(point_type pt = {0,0}, real_type speed_current=1) {
-        real_type x{0}, y{0};
-        if (std::abs(pt.x) <= m_window_width / 2 and std::abs(pt.y) <= m_window_height / 2){
-            if (std::abs(pt.x) < std::abs(pt.y)) x = - 10 * pt.y / std::abs(pt.y);
-            if (std::abs(pt.x) >= std::abs(pt.y)) y = 10 * pt.x / std::abs(pt.x);
-        }
-        return {x,y};
-    }
-    //! convergent current outside null rectangle window
-    point_type convergent_outside_window_circular_inside_field(
-        point_type pt = {0,0}, real_type out_speed=30, real_type in_speed=10
-    ){
-        return convergent_outside_window_field(pt, out_speed)
-            + circular_inside_window_field(pt, in_speed);
-    }
+    // point_type circular_inside_window_field(point_type pt = {0,0}, real_type speed_current=1) {
+    //     real_type x{0}, y{0};
+    //     if (std::abs(pt.x) <= m_window_width / 2 and std::abs(pt.y) <= m_window_height / 2){
+    //         if (std::abs(pt.x) < std::abs(pt.y)) x = - 10 * pt.y / std::abs(pt.y);
+    //         if (std::abs(pt.x) >= std::abs(pt.y)) y = 10 * pt.x / std::abs(pt.x);
+    //     }
+    //     return {x,y};
+    // }
+    // ! convergent current outside null rectangle window
+    // point_type convergent_outside_window_circular_inside_field(
+    //     point_type pt = {0,0}, real_type out_speed=30, real_type in_speed=10
+    // ){
+    //     return convergent_outside_window_field(pt, out_speed)
+    //         + circular_inside_window_field(pt, in_speed);
+    // }
     //! x axis convergent wind, then constant
 
-    point_type x_convergent_then_constant(point_type pt = {0,0}, real_type coeff = 1, point_type speed_current = {1,0})
+    point_type x_convergent_then_constant(point_type pt = {0,0}, real_type coeff=1, real_type speed=1)
     {
-        if (m_time_ref < 1500)
+        if (m_time_ref < 1500) {
             return {0, - coeff * (pt.y / (100 + std::abs(pt.y)))};
-        else
+        }
+        else {
+            point_type speed_current = {speed,0};
             return speed_current;
+        }
     }
     //! vortex storm
     point_type vortex_center(){
@@ -171,10 +193,10 @@ template <typename TPoint>
 TPoint
 PhysicalData<TPoint>::water_speed(point_type pt) {
     point_type resp;
-    if (m_water_mode == 0){
+    if (m_water_mode == 1){
         resp = geostrophic_water_speed();
     } else {
-        resp = get_speed(pt, m_water_mode);
+        resp = get_speed(pt, m_water_mode, m_water_speed);
     }
     return resp + m_geo_relative_water_speed;
 }
@@ -182,10 +204,10 @@ PhysicalData<TPoint>::water_speed(point_type pt) {
 template <typename TPoint>
 TPoint
 PhysicalData<TPoint>::air_speed(point_type pt) {
-    if (m_air_mode == 0){
+    if (m_air_mode == 1){
         return topaz_air_speed(pt);
     } else {
-        return get_speed(pt, m_air_mode);
+        return get_speed(pt, m_air_mode, m_air_speed);
     }
 }
 
@@ -314,26 +336,30 @@ PhysicalData<TPoint>::init_random_vortex(){
 
 template <typename TPoint>
 TPoint
-PhysicalData<TPoint>::get_speed(point_type pt, int mode){
+PhysicalData<TPoint>::get_speed(point_type pt, int mode, real_type speed){
     point_type resp;
     switch(mode){
-        case 1:
-            // std::cout << "generation of a centered convergent field\n";
-            return centered_convergent_field(pt);
+        // case 6:
+        //     // std::cout << "generation of a centered convergent field\n";
+        //     return centered_convergent_field(pt, speed);
         case 2:
             // std::cout << "generation of a convergent outside window field\n";
-            return convergent_outside_window_field(pt);
-        case 3:
-            // std::cout << "generation of a convergent outside window circular inside field\n";
-            return convergent_outside_window_circular_inside_field(pt);
+            return convergent_outside_window_field(pt, speed);
+        // case 3:
+        //     // std::cout << "generation of a convergent outside window circular inside field\n";
+        //     return convergent_outside_window_circular_inside_field(pt, speed);
         case 4:
             // std::cout << "generation of a x convergent then constant\n";
-            return x_convergent_then_constant(pt);
+            return x_convergent_then_constant(pt, speed);
         case 5:
             // std::cout << "generation of a vortex storm\n";
             return vortex(pt);
-        default:
+        case 0:
             return {0,0};
+
+        default :  
+            return {0,0};   
+
     }
 }
 
