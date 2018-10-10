@@ -38,7 +38,8 @@ public:
     using state_type = typename floe_type::state_type;
 
     //! Constructor
-    DynamicsManager(real_type const& time_ref, int OBL_status) : m_external_forces{time_ref}, m_ocean_window_area{0}, m_OBL_status{OBL_status} {}
+    DynamicsManager(real_type const& time_ref, int OBL_status) : m_external_forces{time_ref}, m_ocean_window_area{0}, 
+        m_OBL_status{OBL_status}, m_rand_speed_add{false}, m_rand_norm{1e-7} {}
 
     //! Floes state update (+ update_ocean call, returns update_ocean's return value)
     point_type move_floes(floe_group_type& floe_group, real_type delta_t);
@@ -61,6 +62,10 @@ public:
     //! Ocean window area setter
     inline void set_ocean_window_area(real_type area) { m_ocean_window_area = area; }
 
+    //!< extra random velocities
+    inline void set_rand_speed_add(bool rand_speed_add) {m_rand_speed_add = rand_speed_add;}
+    inline void set_norm_rand_speed(real_type rand_norm) {m_rand_norm = rand_norm;}
+
     //! Accessor for specific use
     external_forces_type& get_external_forces() { return m_external_forces; }
 
@@ -70,6 +75,9 @@ protected:
     real_type m_ocean_window_area; //! Ocean window area (for OBL computing)
     int m_OBL_status; //! OBL (Oceanic Boundary Layer) status : 0 = no coupling, 1 = coupling
     std::default_random_engine m_random_generator;
+
+    bool m_rand_speed_add; //!< extra random velocities 
+    real_type m_rand_norm; //!< norm of these extra random velocities
 
     //! Move one floe
     virtual void move_floe(floe_type& floe, real_type delta_t);

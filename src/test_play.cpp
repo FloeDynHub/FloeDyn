@@ -46,36 +46,36 @@ int main (void)
     std::cout << val[8] << std::endl;
 
 
-    const H5std_string FILE_NAME( "io/outputs/selected_floes.h5" );
-    const H5std_string GROUP_NAME_I( "selected_floe_ids" );
-    H5File* file;
-    file = new H5File( FILE_NAME, H5F_ACC_RDONLY );
+    // const H5std_string FILE_NAME( "io/outputs/selected_floes.h5" );
+    // const H5std_string GROUP_NAME_I( "selected_floe_ids" );
+    // H5File* file;
+    // file = new H5File( FILE_NAME, H5F_ACC_RDONLY );
 
-    DataSet* dataset = new DataSet(file->openDataSet( GROUP_NAME_I ));
-    /*
-    * Get dataspace of the dataset.
-    */
-    DataSpace dataspace = dataset->getSpace();
-    /*
-    * Get the dimension size of each dimension in the dataspace and
-    * display them.
-    */
-    hsize_t dims_out[1];
-    dataspace.getSimpleExtentDims(dims_out);
-    std::cout << "dim_out: " << dims_out[0] << "\n";
-    int selection_tmp[dims_out[0]];
-    dataset->read( selection_tmp, PredType::NATIVE_INT );
+    // DataSet* dataset = new DataSet(file->openDataSet( GROUP_NAME_I ));
+    // /*
+    // * Get dataspace of the dataset.
+    // */
+    // DataSpace dataspace = dataset->getSpace();
+    // /*
+    // * Get the dimension size of each dimension in the dataspace and
+    // * display them.
+    // */
+    // hsize_t dims_out[1];
+    // dataspace.getSimpleExtentDims(dims_out);
+    // std::cout << "dim_out: " << dims_out[0] << "\n";
+    // int selection_tmp[dims_out[0]];
+    // dataset->read( selection_tmp, PredType::NATIVE_INT );
 
-    std::cout << "selected_floe_ids: [\n";
-    std::vector<std::size_t> selected_floe_ids;
-    for (hsize_t i=0; i<dims_out[0]; ++i) {
-        std::cout << selection_tmp[i] << ", ";
-        selected_floe_ids.push_back(selection_tmp[i]);
-    }
-    std::cout << "]\n" << std::endl;
+    // std::cout << "selected_floe_ids: [\n";
+    // std::vector<std::size_t> selected_floe_ids;
+    // for (hsize_t i=0; i<dims_out[0]; ++i) {
+    //     std::cout << selection_tmp[i] << ", ";
+    //     selected_floe_ids.push_back(selection_tmp[i]);
+    // }
+    // std::cout << "]\n" << std::endl;
 
-    delete dataset;
-    delete file;
+    // delete dataset;
+    // delete file;
 	// const H5std_string  FILE_NAME( "test" );
 	// H5File* m_out_file;
 

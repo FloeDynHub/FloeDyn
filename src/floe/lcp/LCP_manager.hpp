@@ -126,8 +126,9 @@ int LCPManager<T>::solve_contacts(TContactGraph& contact_graph)
     const std::size_t limit_sup_nb_contact  =  500;//500; // from Quentin:   50
 
     // variables for contact informations:
-    static bool end_recording           = false;
-    bool        bool_lcp_stats_saving   = false;
+    #ifdef LCPSTATS
+        static bool end_recording = false;
+    #endif
 
     // m_solver.nb_solver_run = 0; // test perf
     // m_solver.chrono_solver = 0; // test perf
@@ -153,7 +154,9 @@ int LCPManager<T>::solve_contacts(TContactGraph& contact_graph)
         bool active_quad_cut    = 0;
 
         // variables for contact informations:
-        std::size_t size_a_sub_graph = asubgraphs.size();
+        #ifdef LCPSTATS
+            std::size_t size_a_sub_graph = asubgraphs.size();
+        #endif
         bool all_solved = true;
 
         int contact_loop_stats[2]={0,0};    // number of contact points, indicator for be out of loop due to all success (1) or no success (0) 
@@ -220,11 +223,11 @@ int LCPManager<T>::solve_contacts(TContactGraph& contact_graph)
         /*
          * Recovery of contact data (LCP_count, etc). Save in h5 file:
          */
-        if (bool_lcp_stats_saving) {
+        #ifdef LCPSTATS
             if (!end_recording && size_a_sub_graph!=0) {
                 end_recording = saving_contact_graph_in_hdf5( LCP_count, loop_cnt, size_a_sub_graph, all_solved, contact_loop_stats );
             } 
-        }
+        #endif
         // End saving data on LCP
         // EndMat
     }

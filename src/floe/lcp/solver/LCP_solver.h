@@ -43,13 +43,30 @@ public:
      *  lighter weight and greater velocity).
      * 
      */
-    LCPSolver(real_type epsilon) : epsilon{epsilon}, m_tolerance{1e-5}, m_coef_perturb{1e-8}, m_ite_max_attempt{10} {}
+    LCPSolver(real_type epsilon) : epsilon{epsilon}, m_tolerance{1e-5}, m_coef_perturb{1e-8}, m_ite_max_attempt{10}, m_max_storage_sol{0}, m_max_storage_unsol{0} {}
 
     template<typename TContactGraph>
     std::array<vector<real_type>, 2> solve( TContactGraph& graph, bool& success, int lcp_failed_stats[] );
 
     double chrono_solver{0.0}; // test perf
     double max_chrono_solver{0.0}; // test perf
+
+    inline int get_max_storage_sol() const {return m_max_storage_sol;};
+    inline int get_max_storage_unsol() const {return m_max_storage_unsol;};
+    inline void set_max_storage_sol(int max_storage_sol) {
+            if (max_storage_sol>30000) {
+                std::cout << "the max number of lcp saved is too high! Risk of memory overflow. The max number is setted to 30000" << std::endl;
+                max_storage_sol = 30000;
+            }
+            m_max_storage_sol = max_storage_sol;
+    };
+    inline void set_max_storage_unsol(int max_storage_unsol) {
+            if (max_storage_unsol>30000) {
+                std::cout << "the max number of lcp saved is too high! Risk of memory overflow. The max number is setted to 30000" << std::endl;
+                max_storage_unsol = 30000;
+            }
+        m_max_storage_unsol = max_storage_unsol;
+    };
 
 protected:
     typedef boost::numeric::ublas::matrix<real_type> array_type;
@@ -62,6 +79,8 @@ protected:
     int         m_ite_max_attempt;  // integer for the number of perturbations (5 seems to be a good compromise between 
                                 // do not loose too much time and good succes rate). To increase the success rate, 
                                 // one could increase up to 10.
+    int     m_max_storage_sol;   //!< solved lcp max number 
+    int     m_max_storage_unsol; //!< unsolved lcp max number
 
     //! Compute normalized Kinetic Energy
     template<typename Tmat, typename Tvect>
@@ -83,6 +102,26 @@ protected:
     //! 3 for relative normale velocity that may cause an interpenetration. Ex: 123 correspond to all of sources.
     int which_failure( vector<real_type> Err, bool Is_pos_rel_norm_vel );
 
+    /*  \fn saving_LCP_in_hdf5(lcp_type lcp, bool solved, int count_attempt, int count_RP, 
+     *      int count_SR, int count_SR_failed, int last_status, int perturb_used, bool use_lexico_ordering, 
+     *      real_type lcp_err, int w_fail)
+     *  
+     *  \brief  Saving M and q from dealt with LCP(M,q) (solved and unsolved) for further analysis
+     *          Return a boolean to prevent the maximum capacity to store (ex: 50 000 LCP ~ 250 Mo).
+     *
+     *  \remark The storage used hdf5 file formulation and consists in the following kind of table:
+     *          |     1     |     2      |     3      |   4   |          5         |   6    |      8      |        9       |
+     *          |:---------:|:----------:|:----------:|:-----:|:------------------:|:------:|:-----------:|:--------------:|
+     *          | LCP error | nb attempt | nb perturb | nb SR | nb adj cone failed | lexico | idx failure | last technique |
+     *
+     *          with: \e nb for number, \e SR for secondary ray, \e adj \e cone \e failed for the failure of the 
+     *          method consisting in going through an adjacent cone, \e lexico is true if the lexicographic 
+     *          ordering is used during at least one Lemke's algorithm, \e idx \e perturb for the index of the
+     *          matrix perturbation (see LCPSolver::matrix_perturbation(const std::size_t dim , matrix &M, const double alpha, const int Idx_perturb)),
+     *          \e idx \e failure for the source of the LCP error (see LCPSolver::which_failure( vector<real_type> Err, bool Is_pos_rel_norm_vel ))
+     *          and \e last \e technique for the last SR or perturbation used before solving or last attempt done. 
+     */
+    bool saving_LCP_in_hdf5(floe::lcp::LCP<T> lcp, int m_ite_max_attempt, std::vector<double> stats_vec_lcp, bool solved, int w_fail);
 };
 
 /*  \fn void reduction_via_perturbation(lcp_type& lcp, real_type max)
@@ -99,30 +138,6 @@ protected:
  */ 
 template<typename T>
 void reduction_via_perturbation(std::size_t dim , matrix<T> &M, T alpha);
-
-/*  \fn saving_LCP_in_hdf5(lcp_type lcp, bool solved, int count_attempt, int count_RP, 
- *      int count_SR, int count_SR_failed, int last_status, int perturb_used, bool use_lexico_ordering, 
- *      real_type lcp_err, int w_fail)
- *  
- *  \brief  Saving M and q from dealt with LCP(M,q) (solved and unsolved) for further analysis
- *          Return a boolean to prevent the maximum capacity to store (ex: 50 000 LCP ~ 250 Mo).
- *
- *  \remark The storage used hdf5 file formulation and consists in the following kind of table:
- *          |     1     |     2      |     3      |   4   |          5         |   6    |      8      |        9       |
- *          |:---------:|:----------:|:----------:|:-----:|:------------------:|:------:|:-----------:|:--------------:|
- *          | LCP error | nb attempt | nb perturb | nb SR | nb adj cone failed | lexico | idx failure | last technique |
- *
- *          with: \e nb for number, \e SR for secondary ray, \e adj \e cone \e failed for the failure of the 
- *          method consisting in going through an adjacent cone, \e lexico is true if the lexicographic 
- *          ordering is used during at least one Lemke's algorithm, \e idx \e perturb for the index of the
- *          matrix perturbation (see LCPSolver::matrix_perturbation(const std::size_t dim , matrix &M, const double alpha, const int Idx_perturb)),
- *          \e idx \e failure for the source of the LCP error (see LCPSolver::which_failure( vector<real_type> Err, bool Is_pos_rel_norm_vel ))
- *          and \e last \e technique for the last SR or perturbation used before solving or last attempt done. 
- */
-template<typename T>
-bool saving_LCP_in_hdf5(floe::lcp::LCP<T> lcp, int m_ite_max_attempt, std::vector<double> stats_vec_lcp, bool solved, int w_fail);
-// bool saving_LCP_in_hdf5(floe::lcp::LCP<T> lcp, int m_ite_max_attempt, bool solved, int count_attempt, int count_RP, 
-//     int count_SR, int count_SR_failed, int last_status, bool use_lexico_ordering, T lcp_err, int w_fail);
 
 }}} // namespace floe::lcp::solver
 
