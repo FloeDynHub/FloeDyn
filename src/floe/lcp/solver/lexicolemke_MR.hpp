@@ -54,7 +54,7 @@ std::vector<int> lcp_lexicolemke_MR( const double tolerance, const int itermax, 
 
     std::size_t i, j;
     int block, drive, entering, leaving, Z0_priority;
-    double tol = tolerance/dim;//1e-7/dim; // same order as the LCP error
+    double tol = 1e-7/dim;//tolerance/dim;//1e-7/dim; // same order as the LCP error
     // /* to prevent to remove all basis variable as candidate for pivoting (cause of strong numerical approximation)
     //  * one adjust the tolerance with the smallest value of q
     //  */

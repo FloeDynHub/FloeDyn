@@ -14,6 +14,9 @@
  *		+ making a Quick start part
  *		+ making a User's guide part
  * - Generating Unit tests
+ * - For initial configuration generation: 
+ * 		+ make possble for generation with MPI
+ *		+ enabling to surround the initial configuration by floe obstacles (this allows to active the bustle without fearing floes go out of the initial window see \ref Gen)
  *
  ********************************************************************************************************************************************
  * \section Installation
@@ -106,6 +109,18 @@
  * \endcode
  *
  * or, all <i> .cpp </i> files contained in <i> product </i> folder. The executable are in the <i> build </i> folder.
+ * There exists options for compilation: 
+ * \code
+ * $ --debug 			# (to active assertions)
+ * $ -D macro			# (to active macro:)
+ * \endcode
+ * with <i> macro </i> among:
+ * - <i> MULTIOUTPUT </i> for using multiple output files. The second output file contains floe states from a floe selection. The size of this selection is required (with <i> --nbsefloes </i>).
+ * - <i> LCPSTATS </i>	for saving LCP statistics. Stats from solved and unsolved LCP are stored, then the max number of solved and unsolved LCP to store is required (with <i> --lcpstats n_sol n_unsol </i>).	 
+ * 
+ * \code
+ * $ --help 			# (for some help)
+ * \endcode
  *
  *****************
  * \subsection first_run First Running
@@ -172,13 +187,21 @@
  * - Knowing the total area of the floe assembly, split it in N*P cells (equal or not) containing about at the most 2 000 floes.
  * - Generate the part of the floe assembly associated with each cells separately (using the generator).
  * - Use the executable <i> FLOE_PATCHWORK_INPUT </i> to reproduce the whole area (and resize for <i>N m x P m</i>). Be careful the placement is random.
- * - Instead, one can use <i> FLOE_MAKE_NXP_INPUT </i>, yet this loads N * P times the same input file (i.e.: same floe assembly N*P repeated).
- * - One should use <i> FLOE_SET_AT_REST </i> for removing all kinetic energy still present in the ice pack after the generation.	
+ * - Instead, one can use <i> FLOE_MAKE_NXP_INPUT </i>, yet this loads N * P times the same input file (i.e.: same floe assembly N*P repeated).	
  *
- * In order to erase the artificial border between cells, one should run simulation without external forces (<i>set_modes(-1,-1)</i>) yet with
- * the random bustle (see <i> Adding random perturbation to speed and rot </i> in dynamics_manager.hpp) during 10 000s. Adjusting the coefficient for the bustle
- * be strong enough. 
- * - Finally, using <i> FLOE_RESIZE_INPUT </i> to resize the <i>N m x P m</i> ice pack to the desired size.
+ * In order to erase the artificial border between cells, one should run simulation without external forces yet with
+ * the random bustle (see <i> Adding random perturbation to speed and rot </i> in dynamics_manager.hpp) during about 10 000s. Adjusting the coefficient for the bustle
+ * be strong enough. A command line should be as follow:
+ * \code
+ * $ ./build/FLOE -i io/inputs/config.h5 --fmodes 0 0 --bustle 1 --nbustle 1e-7 -t 10000 
+ * or $ ./build/FLOE -i io/inputs/config.h5 --bustle 1 --nbustle 1e-4 -t 10000 
+ * or $ ./build/FLOE -i io/inputs/config.h5 --fmodes 0 2 --fspeeds 0 5e-2 --bustle 1 --nbustle 1e-7 -t 10000
+ * \endcode
+ * since by default the external force modes are fixed to zero. However, from the bustle, floes may go out the initial window and then, the ice
+ * concentration may be decrease. To avoid this, a solution may be addind convergent forces outside the initial window (or possibility to block them with floe obstacles!). 
+ * - Use <i> FLOE_EXTRACT_INPUT </i> to load a ice pack configuration from an output file at a required time.
+ * - Use <i> FLOE_RESIZE_INPUT </i> to resize the <i>N m x P m</i> ice pack to the desired size.
+ * - Finally, one should use <i> FLOE_SET_AT_REST </i> for removing all kinetic energy still present in the ice pack after the generation.
  * 
  * Example:
  * \code
@@ -187,8 +210,10 @@
  * .
  * .
  * $ ./build/FLOE_PATCHWORK_INPUT 5 5 io/inputs/in_2000f_65p_25e-1a_1nbfpersize_#1.h5 <...> io/inputs/in_2000f_60p_25e-1a_1nbfpersize_#10.h5
- * $ ./build/FLOE_SET_AT_REST io/inputs/in_50000f_65p_25e-1a_1nbfpersize_#1.h5
+ * $ ./build/FLOE -i io/inputs/config.h5 --fmodes 0 2 --fspeeds 0 5e-2 --bustle 1 --nbustle 1e-7 -t 10000
+ * $ ./build/FLOE_EXTRACT_INPUT io/outputs/outputfile 10000
  * $ ./build/FLOE_RESIZE_INPUT io/inputs/in_50000f_65p_25e-1a_1nbfpersize_#1.h5 100000
+ * $ ./build/FLOE_SET_AT_RESET io/inputs/in_50000f_65p_25e-1a_1nbfpersize_#1.h5
  * \endcode
  *
  *****************

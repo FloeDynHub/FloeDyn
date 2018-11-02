@@ -32,19 +32,22 @@ void blabla(int result);
 
 int main (void)
 {
-	std::vector<int> v(10,0);
-	v[3] = 10;
-	std::cout << v[3] << "\n" << std::endl;
+	// std::vector<int> v(10,0);
+	// v[3] = 10;
+	// std::cout << v[3] << "\n" << std::endl;
 
-	std::cout << v.size() << "\n";
+	// std::cout << v.size() << "\n";
 
-	int val[v.size()];
-    for (size_t i=0; i<v.size(); ++i) {
-    	val[i] = v[i];
-    }
+	// int val[v.size()];
+ //    for (size_t i=0; i<v.size(); ++i) {
+ //    	val[i] = v[i];
+ //    }
 
-    std::cout << val[8] << std::endl;
+ //    std::cout << val[8] << std::endl;
 
+	double a = 12;
+	int n = 15;
+	std::cout << a/n << " int: " << int(a/n) << std::endl;
 
     // const H5std_string FILE_NAME( "io/outputs/selected_floes.h5" );
     // const H5std_string GROUP_NAME_I( "selected_floe_ids" );

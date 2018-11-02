@@ -33,6 +33,7 @@ DynamicsManager<TExternalForces, TFloeGroup>::move_floes(floe_group_type& floe_g
     // OpenMP doesn't like this syntax
     // for (auto& floe : floe_group.get_floes())
     //     move_floe(floe, delta_t);
+
     #pragma omp parallel for
     for (std::size_t i=0; i < floe_group.get_floes().size(); ++i){
         this->move_floe(floe_group.get_floes()[i], delta_t);

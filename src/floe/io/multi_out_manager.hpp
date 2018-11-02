@@ -42,9 +42,12 @@ public:
         // Configure second out manager to manage only a subgroup of floes
         // little out_step + big number of floes = too big out file
         // -> first manager outs all floes rarely, second outs few floes often
+
         auto const& floe_group = *m_floe_group;
         TOutManager& second_out_mgr = m_out_managers[1]; // second_out_mgr is a reference to m_out_manager[1]
         // get floe_group window
+        
+        //!< First method: m_nb_floe_select is the size of the floe selection
         auto win = floe_group.get_initial_window();
         real_type x_margin = (win[1] - win[0]) / 5;
         real_type y_margin = (win[3] - win[2]) / 5;
@@ -91,6 +94,14 @@ public:
             interesting_floe_ids.begin(),
             interesting_floe_ids.begin() + m_nb_floe_select
         );
+
+        //!< Second method: using the central cells:
+        // std::vector<std::size_t> selected_floe_ids;
+        // for (std::size_t i=24000; i<26000; ++i) {
+        //     selected_floe_ids.push_back(i);
+        // }
+
+        //!< common part between the two methods:
         second_out_mgr.restrain_floe_ids(selected_floe_ids);
 
         second_out_mgr.write_selected_floe_ids(selected_floe_ids);

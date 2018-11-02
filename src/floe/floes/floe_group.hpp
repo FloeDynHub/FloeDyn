@@ -138,7 +138,7 @@ protected:
     floe_list_type m_list_floe; //!< List of floes
     floe_group_h_type m_floe_group_h; //!< Discrete floe group (access to floes discretisation)
     //! initial reference window (min_x, max_x, min_y, max_y)
-    window_type m_window;
+    window_type m_window; //!< determined during the generation phase.
     //! floes previous states backup
     std::vector<typename floe_type::state_type> m_previous_step_states;
 

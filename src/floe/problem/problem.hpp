@@ -232,6 +232,11 @@ void PROBLEM::step_solve(){
     auto t2 = std::chrono::high_resolution_clock::now();
     safe_move_floe_group();
     auto t3 = std::chrono::high_resolution_clock::now();
+    if (this->m_dynamics_manager.get_external_forces().get_physical_data().get_air_mode()==5) { //!< only if the external forces is a vortex
+        std::cout << "the vortex wind speed is: " << 
+            this->m_dynamics_manager.get_external_forces().get_physical_data().get_vortex_wind_speed() 
+            << std::endl;
+    }
     std::cout << "Chrono : collisions " << std::chrono::duration<double, std::milli>(t1-t0).count() << " ms + "
     << "time_step " << std::chrono::duration<double, std::milli>(t2-t1).count() << " ms + "
     << "move " << std::chrono::duration<double, std::milli>(t3-t2).count() << " ms = "

@@ -116,6 +116,11 @@ void MPIMasterProblem<TProblem>::step_solve(){
     safe_move_floe_group();
     t_end = std::chrono::high_resolution_clock::now();
     std::cout << "Chrono Move job : " << std::chrono::duration<double, std::milli>(t_end-t_start).count() << " ms" << std::endl;
+    if (this->m_dynamics_manager.get_external_forces().get_physical_data().get_air_mode()==5) { //!< only if the external forces is a vortex
+        std::cout << "the vortex wind speed is: " << 
+            this->m_dynamics_manager.get_external_forces().get_physical_data().get_vortex_wind_speed() 
+            << std::endl;
+    }
 
     // Output
     this->output_datas();

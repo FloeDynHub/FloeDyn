@@ -122,8 +122,8 @@ int LCPManager<T>::solve_contacts(TContactGraph& contact_graph)
     int LCP_count=0, nb_success=0;
     int nb_lcp_failed_stats[3]={0,0,0}; 
 
-    const std::size_t limit_sup_loop_cnt    = 5000;//5000; // from Quentin: 1000
-    const std::size_t limit_sup_nb_contact  =  500;//500; // from Quentin:   50
+    const std::size_t limit_sup_loop_cnt    = 800;//5000; // from Quentin: 1000
+    const std::size_t limit_sup_nb_contact  =  80;//500; // from Quentin:   50
 
     // variables for contact informations:
     #ifdef LCPSTATS
