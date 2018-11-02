@@ -42,7 +42,7 @@ public:
         m_time_ref{time_ref},
         m_geo_relative_water_speed{0, 0},
         m_window_width{1}, m_window_height{1},
-        m_vortex_radius{0}, m_vortex_origin{0,0}, m_vortex_speed{0,0}, m_vortex_max_norm{0},
+        m_vortex_radius{0}, m_vortex_origin{0,0}, m_vortex_speed{0,0}, m_vortex_max_norm{0}, m_nb_time_step{0}, m_dt{300}, 
         m_water_mode{0}, m_air_mode{0} {}
 
     //! water speed accessor (m/s)
@@ -95,13 +95,19 @@ public:
     //!< Initialization of the storm as a wind vortex
     void init_random_vortex();
 
+    //!< For checking the vortex wind evolution
+    real_type get_vortex_wind_speed() {return set_vortex_wind_speed();};
+
+    //!< air mode accessor 
+    int get_air_mode() {return m_air_mode;};
+
 private:
 
     point_vector m_ocean_data_hours; //!< Geostrophic datas
     point_vector m_air_data_hours; //!< Geostrophic datas
     point_vector m_ocean_data_minutes; //!< Geostrophic datas
     point_vector m_air_data_minutes; //!< Geostrophic datas
-    real_type const& m_time_ref; //!< reference to time variable
+    real_type const& m_time_ref; //!< reference to time variable in second
 
     point_type m_geo_relative_water_speed; //!< Water speed correction compared to geostrophic data
 
@@ -109,10 +115,12 @@ private:
     real_type m_window_width;
     real_type m_window_height;
     // vortex attributes
-    real_type m_vortex_radius;
-    point_type m_vortex_origin;
-    point_type m_vortex_speed;
-    real_type m_vortex_max_norm;
+    real_type   m_vortex_radius;
+    point_type  m_vortex_origin;    //!< vortex eye
+    point_type  m_vortex_speed;
+    real_type   m_vortex_max_norm;
+    int         m_nb_time_step;
+    real_type   m_dt;         //!< time in second for the velocity discretization.
     // modes
     int m_water_mode;
     int m_air_mode;
@@ -175,14 +183,35 @@ private:
     point_type vortex_center(){
         return m_vortex_origin + m_time_ref * m_vortex_speed;
     }
+
+    //!< set the vortex wind speed:
+    real_type set_vortex_wind_speed() {
+        real_type vortex_wind_speed;
+
+        if ( m_time_ref < (m_nb_time_step+1)*m_dt ) {
+            vortex_wind_speed = int(m_time_ref/m_dt) * m_vortex_max_norm/m_nb_time_step;
+        }
+        else if ( m_time_ref < 2*m_nb_time_step*m_dt ) {
+            vortex_wind_speed = int( (2*m_nb_time_step-m_time_ref)/m_dt ) * 
+                m_vortex_max_norm/m_nb_time_step;
+        }
+        else {vortex_wind_speed=0;}
+
+        return vortex_wind_speed;
+    }
+
     point_type vortex(point_type pt) {
         point_type vortex_center_to_pt = pt - vortex_center();
         real_type distance_to_center = norm2(vortex_center_to_pt);
+
+        //!< wind velocity computation:
+        real_type vortex_wind_speed = set_vortex_wind_speed();
+
         if (distance_to_center < m_vortex_radius){
-            return (m_vortex_max_norm / m_vortex_radius) *
+            return (vortex_wind_speed / m_vortex_radius) *
                 floe::geometry::direct_orthogonal(vortex_center_to_pt);
         } else {
-            return m_vortex_max_norm * (m_vortex_radius / distance_to_center) *
+            return vortex_wind_speed * (m_vortex_radius / distance_to_center) *
                 floe::geometry::direct_orthogonal(vortex_center_to_pt) / distance_to_center;
         }
     }
@@ -319,6 +348,7 @@ PhysicalData<TPoint>::init_random_vortex(){
     auto dist_angle = std::uniform_real_distribution<double>{
         0, 2 * M_PI};
     auto gen = std::default_random_engine{};
+    //!< warning    with MPI simulation, std::time(0) may be different from workers!!
     std::cout << "RANDOM SEED " << std::time(0);
     gen.seed(std::time(0));
     // gen.seed(0);
@@ -327,11 +357,19 @@ PhysicalData<TPoint>::init_random_vortex(){
     real_type theta = dist_angle(gen);
     m_vortex_origin = 1e6 * point_type{cos(theta), sin(theta)}; // Vortex starts at 1000km from origin
     m_vortex_speed = - dist_V(gen) * point_type{cos(theta), sin(theta)};
+
+    //!< linear increase of the vortex wind speed from 0 to m_vortex_max_norm reached above the ice pack:
+    real_type dist_to_ice_pack_center = norm2(m_vortex_origin);
+    m_nb_time_step = int( dist_to_ice_pack_center / (norm2(m_vortex_speed) * m_dt) );
+    if (m_nb_time_step<=0) {std::cout << "Problem with the distance to the ice pack and the velocity of the eye vortex." << std::endl;}
+    assert(m_nb_time_step>0);
+
     std::cout << "WIND VORTEX : "
     << "radius = " << m_vortex_radius
     << ", speed =  " << m_vortex_speed
     << ", origin = " << m_vortex_origin
-    << ", max norm = " << m_vortex_max_norm << std::endl;
+    << ", max norm = " << m_vortex_max_norm
+    << ", the vortex takes: " << int(m_nb_time_step*m_dt/3600) << "h to reach the ice pack center." << std::endl;
 }
 
 template <typename TPoint>
