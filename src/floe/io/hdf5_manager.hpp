@@ -23,15 +23,18 @@ HDF5Manager<TFloeGroup, TDynamicsMgr>::HDF5Manager(floe_group_type const& floe_g
     m_data_chunk_time{new real_type[m_flush_max_step]},
     m_data_chunk_mass_center(boost::extents[m_flush_max_step][2]),
     m_data_chunk_OBL_speed(boost::extents[m_flush_max_step][2]),
+    m_data_chunk_kinE{new real_type[m_flush_max_step]},
     m_out_step{0}, m_next_out_limit{0}
     {}
 
-
+//! Definition of the destructor:
 template <typename TFloeGroup, typename TDynamicsMgr>
 HDF5Manager<TFloeGroup, TDynamicsMgr>::~HDF5Manager()
 {
     flush();
     if (m_step_count) std::cout << "OUT FILE : " << m_out_file_name << std::endl;
+    if (m_data_chunk_time) {delete[] m_data_chunk_time;}
+    if (m_data_chunk_kinE) {delete[] m_data_chunk_kinE;}
 }
 
 template <typename TFloeGroup, typename TDynamicsMgr>
@@ -102,6 +105,9 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::save_step(real_type time, const dyna
     m_data_chunk_OBL_speed[m_chunk_step_count][0] = OBL_speed.x;
     m_data_chunk_OBL_speed[m_chunk_step_count][1] = OBL_speed.y;
 
+    // save Kinetic Energy:
+    m_data_chunk_kinE[m_chunk_step_count] = floe_group.kinetic_energy();
+
     m_step_count++;
     m_chunk_step_count++;
 
@@ -153,6 +159,7 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::flush() {
         write_time();
         write_mass_center();
         write_OBL_speed();
+        write_kinE();
 
         // Close the file after each flush to keep a valid ouput even if program crashes
         delete m_out_file;
@@ -283,7 +290,6 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::write_states() {
     states_dataset.write(m_data_chunk_states.data(), PredType::NATIVE_DOUBLE, memspace, filespace);
 };
 
-
 template <typename TFloeGroup, typename TDynamicsMgr>
 void HDF5Manager<TFloeGroup, TDynamicsMgr>::write_time() {
     
@@ -388,6 +394,40 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::write_OBL_speed() {
     DataSpace memspace{RANK, chunk_dims, NULL};
 
     dataset.write(m_data_chunk_OBL_speed.data(), PredType::NATIVE_DOUBLE, memspace, filespace);
+};
+
+template <typename TFloeGroup, typename TDynamicsMgr>
+void HDF5Manager<TFloeGroup, TDynamicsMgr>::write_kinE() {
+    
+    H5File& file( *m_out_file );
+
+    /* saving kinE */
+    DataSet kinE_dataset;
+    hsize_t     dimst[1] = {m_step_count - m_chunk_step_count};
+    hsize_t     chunk_dimst[1] = {m_chunk_step_count};
+    try {
+        kinE_dataset = file.openDataSet("Kinetic Enegy");
+    } catch (...) {
+        FloatType datatype( PredType::NATIVE_DOUBLE );
+        // datatype.setOrder( H5T_ORDER_LE );
+        hsize_t maxdims[1] = {H5S_UNLIMITED}; 
+        DataSpace dataspace( 1, dimst, maxdims );
+        // Modify dataset creation property to enable chunking
+        DSetCreatPropList prop;
+        prop.setChunk(1, chunk_dimst);
+
+        kinE_dataset = file.createDataSet("Kinetic Enegy", datatype, dataspace, prop);
+    }
+    // Extend the dataset.
+    dimst[0] += chunk_dimst[0];
+    kinE_dataset.extend(dimst); 
+
+    DataSpace filespace = kinE_dataset.getSpace();
+    hsize_t offset[1] = {m_step_count - m_chunk_step_count};
+    filespace.selectHyperslab(H5S_SELECT_SET, chunk_dimst, offset);
+    // Define memory space.
+    DataSpace memspace{1, chunk_dimst, NULL};
+    kinE_dataset.write(m_data_chunk_kinE, PredType::NATIVE_DOUBLE, memspace, filespace);
 };
 
 template <typename TFloeGroup, typename TDynamicsMgr>

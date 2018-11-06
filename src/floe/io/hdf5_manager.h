@@ -114,6 +114,7 @@ private:
     real_type* m_data_chunk_time; //!< Temp saved times
     boost::multi_array<real_type, 2> m_data_chunk_mass_center; //!< Temp saved floe group mass centers
     boost::multi_array<real_type, 2> m_data_chunk_OBL_speed; //!< Temp saved ocean datas
+    real_type* m_data_chunk_kinE; //!< Temp saved Kinetic Energy
 
     // output
     real_type m_out_step; //!< Time step between simulation state outputs
@@ -128,6 +129,7 @@ private:
     void write_mass_center();
     void write_OBL_speed();
     void write_window();
+    void write_kinE();
 
     inline std::size_t nb_considered_floes() const { return m_floe_ids.size() ? m_floe_ids.size() : m_floe_group->get_floes().size(); }
     inline typename floe_group_type::floe_type const& get_floe(std::size_t id) const {

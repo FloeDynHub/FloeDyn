@@ -11,6 +11,9 @@
 // using namespace Eigen;
 #include <algorithm>
 
+#include <random>
+
+
 using namespace boost::numeric::ublas;
 
 // #include <string>
@@ -45,9 +48,19 @@ int main (void)
 
  //    std::cout << val[8] << std::endl;
 
-	double a = 12;
-	int n = 15;
-	std::cout << a/n << " int: " << int(a/n) << std::endl;
+	double avg_Rc{300000}, delta_Rc{110000};
+    auto dist_Rc = std::uniform_real_distribution<double>{
+        avg_Rc - delta_Rc, avg_Rc + delta_Rc};
+
+    auto gen1 = std::default_random_engine{};
+    // auto gen = std::linear_congruential_engine<double>{0,1};
+
+    //!< warning    with MPI simulation, std::time(0) may be different from workers!!
+    gen.seed(1540384961);
+    double m_vortex_radius = dist_Rc(gen);
+    // std::cout << "generator: " << gen.notes << "\n";
+    std::cout << "WIND VORTEX : "
+    << "radius = " << m_vortex_radius << "\n";
 
     // const H5std_string FILE_NAME( "io/outputs/selected_floes.h5" );
     // const H5std_string GROUP_NAME_I( "selected_floe_ids" );

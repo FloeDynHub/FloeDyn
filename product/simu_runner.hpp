@@ -169,6 +169,7 @@ public:
         // cout.precision(17);
         // std::cout << P.get_floe_group().total_area();
         P.get_floe_group().set_mu_static(mu_static);
+        if (mu_static!=0.7) {std::cout << "Warning: the ice/ice static friction coefficient is fixed to: " << mu_static << std::endl;}
         P.get_floe_group().randomize_floes_thickness(random_thickness_coeff);
         // adding a random ocean drag coefficient for simulating the heterogeneity of the floe bottom surface:
         P.get_floe_group().randomize_floes_oceanic_skin_drag(0.01);
@@ -278,7 +279,7 @@ protected:
 
         ("epsilon,e", po::value(&epsilon)->default_value(
             epsilon, std::to_string(epsilon)), "collision restitution coeff")
-        ("mu", po::value(&mu_static)->default_value(mu_static), "ice/ice static friction coeff")
+        ("mu", po::value(&mu_static)->default_value(mu_static, std::to_string(mu_static)), "ice/ice static friction coeff")
         ("sigma", po::value(&random_thickness_coeff)->default_value(
             random_thickness_coeff, std::to_string(random_thickness_coeff)),
             "Normal distribution coeff (sigma) for random ice thickness variation around 1m")

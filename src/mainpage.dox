@@ -195,10 +195,10 @@
  * \code
  * $ ./build/FLOE -i io/inputs/config.h5 --fmodes 0 0 --bustle 1 --nbustle 1e-7 -t 10000 
  * or $ ./build/FLOE -i io/inputs/config.h5 --bustle 1 --nbustle 1e-4 -t 10000 
- * or $ ./build/FLOE -i io/inputs/config.h5 --fmodes 0 2 --fspeeds 0 5e-2 --bustle 1 --nbustle 1e-7 -t 10000
+ * or $ ./build/FLOE -i io/inputs/config.h5 --fmodes 0 2 --fspeeds 0 5e-2 -c 0.7 --mu 0 --bustle 1 --nbustle 1e-7 -t 10000
  * \endcode
  * since by default the external force modes are fixed to zero. However, from the bustle, floes may go out the initial window and then, the ice
- * concentration may be decrease. To avoid this, a solution may be addind convergent forces outside the initial window (or possibility to block them with floe obstacles!). 
+ * concentration may be decrease. To avoid this, a solution may be addind convergent forces outside (<i> fmodes=(0,2) </i> with <i> fspeeds=(0,5e-2) </i>) the initial window (or possibility to block them with floe obstacles!) (the initial window may be adjusted specifying the concentration <i> c=0.7 </i>). 
  * - Use <i> FLOE_EXTRACT_INPUT </i> to load a ice pack configuration from an output file at a required time.
  * - Use <i> FLOE_RESIZE_INPUT </i> to resize the <i>N m x P m</i> ice pack to the desired size.
  * - Finally, one should use <i> FLOE_SET_AT_REST </i> for removing all kinetic energy still present in the ice pack after the generation.
