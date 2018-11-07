@@ -55,11 +55,18 @@ Generator<TProblem>::generate_floe_set(std::size_t nb_floes, real_type concentra
     std::vector<real_type> force_speeds)
 {   
     std::cout << "Generate " << nb_floes << " floes..." << std::endl;
+    std::cout << "the restitution coefficient is fixed to: " << 
+    m_problem.get_lcp_manager().get_solver().get_epsilon() << std::endl;
     load_biblio_floe("io/inputs/Biblio_Floes.mat");
     discretize_biblio_floe(25);
     generate_meshes();
     random_floe_group(nb_floes, max_size);
-    m_problem.get_floe_group().set_mu_static(0);
+    real_type mu_static = 0;
+    m_problem.get_floe_group().set_mu_static(mu_static);
+    std::cout << "the ice/ice static friction coefficient is fixed to: " << mu_static << std::endl;
+    assert( (m_problem.get_lcp_manager().get_solver().get_epsilon()==0 && mu_static==0) 
+        && "Error: to optimize the initial configuration generation,\n"
+        && "please set the restitution and the ice/ice static friction coefficients to zero!\n" );
 
     m_problem.create_optim_vars();
     real_type max_radius = 0;

@@ -192,7 +192,7 @@ private:
             vortex_wind_speed = int(m_time_ref/m_dt) * m_vortex_max_norm/m_nb_time_step;
         }
         else if ( m_time_ref < 2*m_nb_time_step*m_dt ) {
-            vortex_wind_speed = int( (2*m_nb_time_step-m_time_ref)/m_dt ) * 
+            vortex_wind_speed = int( ( 2*m_nb_time_step*m_dt - m_time_ref )/m_dt ) * 
                 m_vortex_max_norm/m_nb_time_step;
         }
         else {vortex_wind_speed=0;}

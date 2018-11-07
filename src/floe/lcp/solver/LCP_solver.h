@@ -51,6 +51,7 @@ public:
     double chrono_solver{0.0}; // test perf
     double max_chrono_solver{0.0}; // test perf
 
+    inline real_type get_epsilon() const {return epsilon;};
     inline int get_max_storage_sol() const {return m_max_storage_sol;};
     inline int get_max_storage_unsol() const {return m_max_storage_unsol;};
     inline void set_max_storage_sol(int max_storage_sol) {

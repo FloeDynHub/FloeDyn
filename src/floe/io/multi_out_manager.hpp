@@ -45,9 +45,9 @@ public:
 
         auto const& floe_group = *m_floe_group;
         TOutManager& second_out_mgr = m_out_managers[1]; // second_out_mgr is a reference to m_out_manager[1]
-        // get floe_group window
         
         //!< First method: m_nb_floe_select is the size of the floe selection
+        // get floe_group window
         auto win = floe_group.get_initial_window();
         real_type x_margin = (win[1] - win[0]) / 5;
         real_type y_margin = (win[3] - win[2]) / 5;
@@ -96,6 +96,7 @@ public:
         );
 
         //!< Second method: using the central cells:
+        // std::cout << "The second method for the floe selection is used!" << std::endl;
         // std::vector<std::size_t> selected_floe_ids;
         // for (std::size_t i=24000; i<26000; ++i) {
         //     selected_floe_ids.push_back(i);
