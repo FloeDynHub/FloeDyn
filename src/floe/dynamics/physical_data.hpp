@@ -171,13 +171,19 @@ private:
 
     point_type x_convergent_then_constant(point_type pt = {0,0}, real_type coeff=1, real_type speed=1)
     {
-        if (m_time_ref < 1500) {
-            return {0, - coeff * (pt.y / (100 + std::abs(pt.y)))};
+        real_type x{0}, y{0};
+        if (m_time_ref < 500) {
+            if (pt.x<=-0.3) {x=1e-3; y=-5e-2;}
         }
-        else {
-            point_type speed_current = {speed,0};
-            return speed_current;
-        }
+        else {x=speed;}
+        return {x,y};        
+        // if (m_time_ref < 1500) {
+        //     return {0, - coeff * (pt.y / (100 + std::abs(pt.y)))};
+        // }
+        // else {
+        //     point_type speed_current = {speed,0};
+        //     return speed_current;
+        // }
     }
     //! vortex storm
     point_type vortex_center(){

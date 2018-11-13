@@ -33,8 +33,8 @@ HDF5Manager<TFloeGroup, TDynamicsMgr>::~HDF5Manager()
 {
     flush();
     if (m_step_count) std::cout << "OUT FILE : " << m_out_file_name << std::endl;
-    if (m_data_chunk_time) {delete[] m_data_chunk_time;}
-    if (m_data_chunk_kinE) {delete[] m_data_chunk_kinE;}
+    // if (m_data_chunk_time) {delete[] m_data_chunk_time;}
+    // if (m_data_chunk_kinE) {delete[] m_data_chunk_kinE;} // BUG: sometimes freed allocated memory not allocated!!
 }
 
 template <typename TFloeGroup, typename TDynamicsMgr>
