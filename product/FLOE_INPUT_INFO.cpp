@@ -28,6 +28,12 @@ int main( int argc, char* argv[] )
     auto win_width = (w[1] - w[0]);
     auto win_height = (w[3] - w[2]);
     std::cout << "Domain (WxH): " << win_width << " x " << win_height << std::endl;
+
+    std::cout << "initial windows is: " << w[0] << ", " << w[1] << ", " << w[2] << ", " << w[3] << "\n";
+    auto wc = P.get_floe_group().bounding_window(0);
+    std::cout << "current windows is: " << wc[0] << ", " << wc[1] << ", " << wc[2] << ", " << wc[3] << "\n";
+    std::cout << "the current concentration is: " << P.get_floe_group().floe_concentration() << "\n";
+
     value_type max_radius = 0;
     value_type min_radius = std::numeric_limits<value_type>::max();
     P.create_optim_vars();

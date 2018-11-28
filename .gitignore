@@ -30,14 +30,11 @@ OAR.*
 
 ### files related to FROGGY install ###
 CIMENT.txt
-#env.bash
 env2.bash
 NODE_FILE_TEST
-#froggy.py
 
 ### doxygen ###
 doxygen_original.cfg
-doc_elements/
 html/
 latex/
 
@@ -46,7 +43,6 @@ TODO-quentin
 
 ### Matthias's files ###
 MR_comments.txt
-# src/test_play.cpp
 src/test_play
 test_play
 Untitled.ipynb

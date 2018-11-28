@@ -148,6 +148,9 @@ public:
     }
     inline void set_out_step(real_type out_step, real_type time) { 
         this->m_out_managers[0].set_out_step(out_step, time);
+        std::cout << "the next output back-up timestep is: " << this->m_out_managers[0].get_next_out_limit() << "\n";
+        this->m_out_managers[1].set_out_step(10, time-10);
+        std::cout << "the next partial output back-up timestep is: " << this->m_out_managers[1].get_next_out_limit() << "\n";
     }
 
 private:
