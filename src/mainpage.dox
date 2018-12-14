@@ -56,6 +56,8 @@
  * Every library could be installed with home brew. However you should be careful about: 
  * - when one install boost_1_67 with brew, one should check the folders <i> /usr/local/lib/ </i> and <i> /usr/local/include/ </i> contain the boost libraries and include (or link). It is required to compile.
  * Otherwise, one should install boost_1_67 without brew (see: <a href="http://www.boost.org/doc/libs/1_65_1/more/getting_started/unix-variants.html">the boost user manual for unix-variants</a>). 
+ * - after boost installation, it may occur <i> .dylib </i> files from library like boost_thread (and other) are written with <i> -mt </i> (e.g.: <i> libboost_thread-mt.dylib </i>). In this case,
+ * one should rename removing the <i> -mt </i> part. 
  * - when one install CGAL with brew, CGAL needing boost, it may be that brew install the lastest version of boost. In this case, please install CGAL without brew 
  * (see: <a href="https://doc.cgal.org/latest/Manual/installation.html">CGAL user manual </a>).
  *
@@ -254,7 +256,15 @@
  * \endcode
  *
  ********************************************************************************************************************************************
- * \section Debug
+ * \section simulation with wind as vortex
+ **********************************************
+ *
+ * Here, a vortex is determined by its center (and its velocity), its radius and the maximum magnitude of they winds.
+ * Those parameters are defined in the file <i> src/floe/dynamics/physical_data.hpp </i>. It is important to remove 
+ * the random generator to apply again the same vortex paramters.
+ *
+ ********************************************************************************************************************************************
+ * \section Debug Debug
  **********************************************
  *
  * Three tools:

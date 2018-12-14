@@ -355,14 +355,14 @@ PhysicalData<TPoint>::init_random_vortex(){
         0, 2 * M_PI};
     auto gen = std::default_random_engine{};
     //!< warning    with MPI simulation, std::time(0) may be different from workers!!
-    std::cout << "RANDOM SEED " << std::time(0);
-    gen.seed(std::time(0));
+    // std::cout << "RANDOM SEED " << std::time(0);
+    gen.seed(90839527656);
     // gen.seed(0);
-    m_vortex_radius = dist_Rc(gen);
-    m_vortex_max_norm = dist_Umax(gen);
+    m_vortex_radius = 291720; //291720; //277476; //342577; //325639; //374848; //dist_Rc(gen);
+    m_vortex_max_norm = 23.562; //23.562; //21.4638; //27.6211; //19.1004; //19.3233; //dist_Umax(gen);
     real_type theta = dist_angle(gen);
-    m_vortex_origin = 1e6 * point_type{cos(theta), sin(theta)}; // Vortex starts at 1000km from origin
-    m_vortex_speed = - dist_V(gen) * point_type{cos(theta), sin(theta)};
+    m_vortex_origin = point_type{-529615 , 848238}; //point_type{-529615 , 848238}; //point_type{932306 , -361672}; //point_type{-377083 , -926180}; //point_type{-141212 , -989979}; //point_type{996034 , -88975.9}; //1e6 * point_type{cos(theta), sin(theta)}; // Vortex starts at 1000km from origin
+    m_vortex_speed = point_type{3.00029 , -4.8053}; //point_type{3.00029 , -4.8053}; //point_type{-8.7237 , 3.38421}; //point_type{3.73322 , 9.16942}; //point_type{1.26598 , 8.87528}; //point_type{-9.10191 , 0.813075}; //- dist_V(gen) * point_type{cos(theta), sin(theta)};
 
     //!< linear increase of the vortex wind speed from 0 to m_vortex_max_norm reached above the ice pack:
     real_type dist_to_ice_pack_center = norm2(m_vortex_origin);

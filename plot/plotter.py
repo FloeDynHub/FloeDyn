@@ -11,7 +11,7 @@ from matplotlib.collections import PatchCollection, PolyCollection, CircleCollec
 from multiprocessing import Pool, Process, cpu_count
 from subprocess import call
 
-from utils import filename_without_extension, get_unused_path
+from utils import filename_without_extension, get_unused_path, check_path_existence, mkdir_path
 import h5py
 import datetime
 import math
@@ -83,6 +83,9 @@ class FloePlotter(object):
 
     def get_final_video_path(self, input_file_path, video_ext="mp4"):
         filename = filename_without_extension(input_file_path)
+        if not check_path_existence("io/videos"):
+            print('Warning: the directory ''io/videos'' does not exist! It will be created')
+            mkdir_path('io/videos')
         return get_unused_path('io/videos/{}.{}'.format(filename, video_ext))
 
     def _init1(self, data, ax):

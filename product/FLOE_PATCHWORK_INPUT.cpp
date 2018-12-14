@@ -9,8 +9,8 @@
 #include "floe/geometry/frame/frame_transformers.hpp"
 
 /*
-Create an unit hdf5 input file (domain = 1m * 1m) from a list of input files
-by randomly placing floe packs on a N * P grid
+Create an unit hdf5 input file (domain = N m * P m) from a list of input files
+by randomly placing floe packs on a N * P grid. Each input files used are first resize to an unitary window 1x1.
 */
 
 template<typename T>

@@ -37,3 +37,9 @@ def get_unused_path(path):
         path = "{}_{}{}".format(base, i, ext)
         i+=1
     return path
+
+def check_path_existence(path):
+    return os.path.isdir(path)    
+
+def mkdir_path(path):
+    return os.mkdir(path)    

@@ -34,6 +34,8 @@ int main( int argc, char* argv[] )
     std::cout << "current windows is: " << wc[0] << ", " << wc[1] << ", " << wc[2] << ", " << wc[3] << "\n";
     std::cout << "the current concentration is: " << P.get_floe_group().floe_concentration() << "\n";
 
+    std::cout << "Kinetic energy before setting at rest: " << P.get_floe_group().kinetic_energy() << "\n";
+
     value_type max_radius = 0;
     value_type min_radius = std::numeric_limits<value_type>::max();
     P.create_optim_vars();
