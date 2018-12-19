@@ -6,9 +6,7 @@
 %
 function plot_results
 
-% filenames = {'60p_a_unknown','60p_15e-1a','60p_25e-1a','70p_15e-1a','70p_25e-1a',...
-%     '80p_15e-1a'};
-filenames = {'60p_a_unknown','60p_25e-1a','70p_15e-1a','70p_25e-1a',...
+filenames = {'60p_a_unknown','60p_15e-1a','60p_25e-1a','70p_15e-1a','70p_25e-1a',...
     '80p_15e-1a'};
 
 Col     = {'m','b','r','k','g'};
@@ -26,6 +24,14 @@ for idx_f=1:length(filenames)
     t_o = floor(linspace(1,(temporal_window/10),500)); % divided by 10 (min time_step)
     % time step:
     delta_t = [10:10:1e2 150:50:1e3 1500:500:1e4 12500:5000:simu_left]/10;
+    % floe sets:
+    if nb_floes>500
+        floeSet = unique( ceil( nb_floes * rand(1,500) ) );
+        floeSet_min_S = 1:1:2000; floeSet_min_S = floeSet_min_S(idx_min_s);
+        floeSet_min_S = floeSet_min_S(unique( ceil( size(floeSet_min_S,2) * rand(1,500) ) ) );
+    else
+        floeSet = 1:1:nb_floes;
+    end
     
     temporal_window_a = 345600; % 4 days
     simu_left_a = 604800-temporal_window_a;
@@ -102,31 +108,26 @@ for idx_f=1:length(filenames)
         hold on;
     end
     
-    % 3/ acceleration
+    % 3
     kfigs = kfigs+1;
     figure(kfigs)
+    loglog(10*delta_t,acc(:,1),'b')
+    hold on
+    grid on
+    for j=2:length(q)
+        loglog(10*delta_t,acc(:,j),'b')
+    end
+    ylabel('$\left< \left( \frac{\Delta u}{\tau} \right)^q \right>$','Interpreter','latex','FontSize',12);
+    xlabel('time (s)','FontSize',12);
     
     q = [0.5 1 1.5 2 2.5 3];
-    
-    loglog(10*delta_t,ACC(:,1),Col{idx_f})
-    
-    if idx_f == 1
-        hold on
-        grid on
-        ylabel('$\left< \left( \frac{\Delta u}{\tau} \right)^q \right>$','Interpreter','latex','FontSize',12);
-        xlabel('time (s)','FontSize',12);
-    end
-    for j=2:length(q)
-        loglog(10*delta_t,ACC(:,j),Col{idx_f})
-    end
 end
 
-for i=1:kfigs-1
-    figure(kfigs)
-    leg = legend;
+leg = legend;
+    leg.String = {'$\tau \in \left[0,5.5j \right]$','$\tau \in \left[0,4.5j \right]$','$\tau \in \left[0,3j \right]$','$\tau \in \left[0,1.5j \right]$'};
+    leg.String = {'$60\%, a=2.5$','$70\%, a=1.5$','$70\%, a=2.5$','$80\%, a=1.5$'};
     leg.Interpreter = 'latex';
+    title('Autocorrelation for 1 simu','FontSize',14);
     leg.FontSize = 12;
-    leg.String = Leg_txt;
-end
 
 end
