@@ -18,6 +18,8 @@ let
         boost-dev = pkgs.boost // {meta = boost-dev-meta;};
         mpfr-dev-meta = (pkgs.mpfr.meta // {outputsToInstall =["out" "dev"]; });
         mpfr-dev = pkgs.mpfr // {meta = mpfr-dev-meta;};
+	gmp-dev-meta = (pkgs.gmp.meta // {outputsToInstall =["out" "dev"]; });
+	gmp-dev = pkgs.gmp // {meta = gmp-dev-meta;};
 	cereal = callPackage ./cereal.nix {};
 	target = if mpi then "FLOE_MPI" else "FLOE";
         opts = if mpi then "--enable-mpi" else "";
@@ -38,11 +40,11 @@ stdenv.mkDerivation rec {
 
 buildInputs = [
     mpfr-dev
-    gmp
+    gmpxx
+    gmp-dev
     boost-dev
     cgal
     eigen
-    gmpxx
     hdf5-cpp
     matio
     cereal

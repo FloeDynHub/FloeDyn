@@ -135,8 +135,8 @@ def configure_package(conf, name, required_libs=None, includes_suffix=None):
 
     print(f'  * Required libs for {name} : {required_libs}')
     print(f'  * Search for package {name} in {searchpath}')
-    #conf.env.LIBPATH_BOOST   = [os.path.join(conf.env.BOOST, 'lib')]
-    #conf.env.INCLUDES_BOOST   = [os.path.join(conf.env.BOOST,'include')]
+    # conf.env.LIBPATH_BOOST   = [os.path.join(conf.env.BOOST, 'lib')]
+    # conf.env.INCLUDES_BOOST   = [os.path.join(conf.env.BOOST,'include')]
     #boost_required_libs = ['boost_system', 'boost_program_options']
     #boost_optional_libs = ['boost_thread'] # Fix this later ...
     #for libname in required_libs:
