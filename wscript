@@ -57,7 +57,7 @@ floedyn_deps = {
     'eigen' : [], # header only
     'matio' : ['matio'],
     'hdf5'  : ['hdf5_cpp'],
-    'cgal'  : ['CGAL'],
+    'cgal'  : [''],
     'mpfr'  : ['mpfr'],
     'cereal' : [''], # header only
     }
@@ -257,7 +257,7 @@ def run_tests(ctx):
 #                 'matio',
 #                 "hdf5",
 #                 "hdf5_cpp",
-#                 "CGAL", "gmp", "mpfr", "boost_thread",
+#                 "gmp", "mpfr", "boost_thread",
 #                 # "siconos_numerics"
 #                 ],
 #         "libpath": ["/usr/local/lib", "/usr/lib"], # + os.environ.get("LD_LIBRARY_PATH", "/").split(":"),
@@ -306,7 +306,7 @@ def get_option_dict(debug=True):
                 'matio',
                 "hdf5",
                 "hdf5_cpp",
-                "CGAL", "gmp", "mpfr", "boost_thread",
+                "gmp", "mpfr", "boost_thread",
                 # "siconos_numerics"
                 ],
         #"libpath": ["/home/perignon/.nix-profiles"], # + os.environ.get("LD_LIBRARY_PATH", "/").split(":"),

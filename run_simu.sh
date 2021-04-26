@@ -1,45 +1,26 @@
 #!/bin/bash
-
-source /applis/site/nix.sh
+#OAR -l /nodes=1/cpu=1/core=4,walltime=00:01:00
+#OAR -n floedyn_example
+#OAR --project floedyn
 
 input_file=$1
 nb_time_steps=$2
 
-#OAR --project floedyn
-#OAR -l /nodes=1/cpu=1/core=2,walltime=02:01:00
+# Absolute path to floedyn runner 
+EXE=$HOME/Floe_Cpp/build/FLOE_MPI
+# Absolute path to input files 
+INPUTDIR=$HOME/Floe_Cpp/io/inputs
 
-# Choisir l'executable (chemin absolu!)
-EXE=FLOE_MPI
-
-# Liste des noeuds
-export NODES=`awk -v ORS=, '{print}' $OAR_FILE_NODES|sed 's/,$//'`
-
-# Number of cores
 nbcores=`cat $OAR_NODE_FILE|wc -l`
-# Number of nodes
-nbnodes=`cat $OAR_NODE_FILE|sort|uniq|wc -l`
-#Name of the first node
-firstnode=`head -1 $OAR_NODE_FILE`
-#Number of cores allocated on the first node (it is the same on all the nodes)
-pernode=`grep "$firstnode\$" $OAR_NODE_FILE|wc -l`
-
-if [ -d /bettik ]; then
-    rundir=/bettik/$USER/floedyn/F_${OAR_JOB_ID}
-else
-    rundir=/scratch/$USER/floedyn/F_${OAR_JOB_ID}
-fi
-
+rundir=/bettik/$USER/floedyn/F_${OAR_JOB_ID}
 echo ${OAR_JOB_ID} ${HOSTNAME} $input_file $nb_time_steps ${OAR_JOB_NAME}>> jobs_params
-mkdir -p $rundir
-echo $rundir
-cd $rundir
+
 mkdir -p $rundir/io/inputs
 mkdir -p $rundir/io/outputs
-cp $HOME/Softs/Floe_Cpp/io/inputs/DataTopaz01.mat $rundir/io/inputs
-#INPUTS_PATH=/home/$USER/Softs/Floe_cpp/io/inputs
-which mpirun
-echo $input_file
-echo $nb_time_steps
-echo $nbcores
-which $EXE
-/home/$USER/.nix-profile/bin/mpirun  --machinefile $OAR_NODE_FILE --mca orte_rsh_agent "oarsh" -np $nbcores $EXE -i $input_file -t $nb_time_steps
+cp $INPUTDIR/DataTopaz01.mat $rundir/io/inputs/
+cd $rundir
+source /applis/site/guix-start.sh
+refresh_guix floedyn
+export MPIPREFIX=$GUIX_USER_PROFILE_DIR/floedyn
+
+mpirun  --machinefile $OAR_NODE_FILE --mca orte_rsh_agent "oarsh"  -mca btl_openib_allow_ib 1 -np $nbcores --prefix $MPIPREFIX $EXE -i $input_file -t $nb_time_steps
