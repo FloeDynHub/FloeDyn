@@ -171,7 +171,7 @@ Generator<TProblem>::random_floe_group(std::size_t n, real_type max_size)
         m_problem.get_floe_group().get_floe_group_h().add_floe(floe.get_floe_h());
 
         // Set space-time state
-        typename floe_type::state_type state;
+        typename floe_type::state_type state {{0, 0}, 0, {0, 0}, 0, {0, 0}};
         state.pos = centers[i];
         floe.set_state( state );
     }
