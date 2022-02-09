@@ -340,26 +340,27 @@ class FloePlotter(object):
 
     def make_partial_floe_video(self, out_filename, data_chunk, version):
         "creates video directly from data"
-        print(1)
+        # print(1)
         fig, ax = plt.subplots()
-        print(2)
+        # print(2)
         if getattr(self.OPTIONS, "hd", False):
             fig.set_size_inches(20, 15)
             fig.set_dpi(100)
-        print(3)
+        # print(3)
         init, update = self.get_anim_fcts(version)
-        ax = init(data_chunk, ax)
-        print(4)
+        ax_mgr = AxeManager(ax)
+        init(data_chunk, ax_mgr)
+        # print(4)
         if not data_chunk.get("static_axes"):
             ax.axis('equal') # automatic scale
         else:
             ax.axis(data_chunk.get("static_axes"))
-        print(5)
+        # print(5)
         # ax.set_axis_bgcolor('#162252')
         anim = animation.FuncAnimation(
-            fig, update, len(data_chunk.get("time")), fargs=(data_chunk, ax),
+            fig, update, len(data_chunk.get("time")), fargs=(data_chunk, ax_mgr),
             interval=1, blit=False)
-        print(6)
+        # print(6)
         print(out_filename)
         anim.save(out_filename, writer=self.writer)
 
@@ -411,7 +412,7 @@ class FloePlotter(object):
         p = Pool(nb_process)
         partial_video_maker = self.make_partial_floe_video_helper if not dual else make_partial_floe_video_dual_plot_helper
         p.map(partial_video_maker, L)
-        # p.close()
+        p.close()
         p.join()
         # Concat all partial video
         out_filename = self.get_final_video_path(self.OPTIONS.filename)
@@ -431,7 +432,10 @@ class FloePlotter(object):
                 d[key] = data_file.get(key)[::self.OPTIONS.step]
         else:
             for key in file_time_dependant_keys:
-                d[key] = [data_file.get(key)[single_step]]
+                if img and key == "time" and not "time" in data_file: # plot input files
+                    d[key] = [0]
+                else:
+                    d[key] = [data_file.get(key)[single_step]]
         if not img:
             d["total_time"] = d["time"]
         if self.OPTIONS.version == 1:
@@ -452,7 +456,7 @@ class FloePlotter(object):
         w_width, w_length = w[1] - w[0], w[3] - w[2]
         d["static_axes"] = self.OPTIONS.static_axes
         if not d["static_axes"]:
-            d["static_axes"] = [w[0] - w_width/4, w[1] + w_width/4, w[2] - w_length/4, w[3] + w_length/4]
+            d["static_axes"] = [w[0] - w_width/2, w[1] + w_width/2, w[2] - w_length/2, w[3] + w_length/2]
             # d["static_axes"] = [w[0] - w_width*2, w[1] + w_width*2, w[2] - w_length*2, w[3] + w_length*2] #MPI bigger domain
         d["window"] = list(data_file.get("window", None))
         if getattr(self.OPTIONS, "ghosts"):
