@@ -133,6 +133,8 @@ public:
 
     virtual inline int absolute_id(int id) const { return id; }
     
+    std::vector<real_type> get_KinematicFloeWithMaxKineticEnergy();
+
 protected:
 
     floe_list_type m_list_floe; //!< List of floes
@@ -323,6 +325,33 @@ FloeGroup<TFloe, TFloeList>::randomize_floes_oceanic_skin_drag(real_type coeff)
         auto& static_floe = floe.static_floe();
         static_floe.set_C_w(static_floe.C_w() * dist(gen));
     }
+}
+
+template <typename TFloe, typename TFloeList>
+std::vector<typename FloeGroup<TFloe, TFloeList>::real_type>
+FloeGroup<TFloe, TFloeList>::get_KinematicFloeWithMaxKineticEnergy()
+{
+    real_type maxKE = -1;
+    std::size_t idMaxKE;
+
+    for (std::size_t i = 0; i < m_list_floe.size(); ++i)
+    {
+        if (maxKE < m_list_floe[i].kinetic_energy())
+        {
+            maxKE = m_list_floe[i].kinetic_energy();
+            idMaxKE = i;
+        }
+    }
+
+    std::vector<real_type> v;
+    v.push_back(idMaxKE);
+    v.push_back(m_list_floe[idMaxKE].state().pos.x);
+    v.push_back(m_list_floe[idMaxKE].state().pos.y);
+    v.push_back(m_list_floe[idMaxKE].state().speed.x);
+    v.push_back(m_list_floe[idMaxKE].state().speed.y);
+    v.push_back(m_list_floe[idMaxKE].state().rot);
+
+    return v;
 }
 
 }} // namespace floe::floes

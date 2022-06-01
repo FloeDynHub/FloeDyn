@@ -38,7 +38,7 @@ public:
     using state_type = typename floe_type::state_type;
 
     //! Constructor
-    DynamicsManager(real_type const& time_ref, int OBL_status) : m_external_forces{time_ref}, m_ocean_window_area{0}, 
+    DynamicsManager(real_type const& time_ref, int OBL_status) : m_external_forces{time_ref}, m_ocean_window_area{0},
         m_OBL_status{OBL_status}, m_rand_speed_add{false}, m_rand_norm{1e-7} {}
 
     //! Floes state update (+ update_ocean call, returns update_ocean's return value)

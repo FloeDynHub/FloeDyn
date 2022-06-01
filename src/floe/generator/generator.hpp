@@ -105,12 +105,13 @@ Generator<TProblem>::generate_floe_set(std::size_t nb_floes, real_type concentra
         if (end_time>time_to_stop_floe_in_target_window) {
             std::cout << "It is time to stop floes within the target area." << std::endl;
             m_problem.get_floe_group().stop_floes_in_window(win_width, win_width);
-            time_to_stop_floe_in_target_window += 500;
+            time_to_stop_floe_in_target_window += 500; //
         }
         std::cout << " Concentration : " << m_problem.floe_concentration() << std::endl;
         end_time += 20; init = false;
         if (*m_problem.QUIT) break; // exit normally after SIGINT
-    } while (m_problem.get_floe_group().kinetic_energy() != 0 && end_time < 1e6 );
+    } 
+    while (m_problem.get_floe_group().kinetic_energy() != 0 && end_time < 1e6 );
     //!< \remark    It is better do not use the while condition below since for building a big floe packs as
     //!<            an assembly of generated 2000-floe packs one need for exact inclusion within a box, otherwise
     //!<            interpenetrations may occur at the border!

@@ -93,10 +93,17 @@ public:
             P.make_input_file();
         }
 
-        std::cout << "read TOPAZ" << std::endl;
+        //std::cout << "read TOPAZ" << std::endl;
         P.load_matlab_topaz_data(matlab_topaz_filename);
         P.get_dynamics_manager().set_rand_speed_add(rand_speed_add);
         P.get_dynamics_manager().set_norm_rand_speed(rand_norm);
+        if (vortex_characs[0]>0) {
+            P.get_dynamics_manager().get_external_forces().get_physical_data().set_nb_vortex(vortex_characs[0]);
+            P.get_dynamics_manager().get_external_forces().get_physical_data().set_nbVortexByZone(vortex_characs[1]);
+            P.get_dynamics_manager().get_external_forces().get_physical_data().set_vortexZoneSize(vortex_characs[2]*1e3);
+            P.get_dynamics_manager().get_external_forces().get_physical_data().set_firstVortexZoneDistToOrigin(vortex_characs[3]*1e3);
+        }
+
         P.get_dynamics_manager().get_external_forces().get_physical_data().set_modes(force_modes[0],force_modes[1]);
         P.get_dynamics_manager().get_external_forces().get_physical_data().set_speeds(force_speeds[0],force_speeds[1]);
         // P.get_dynamics_manager().get_external_forces().get_physical_data().set_storm_mode(); // for simu: with storm
@@ -206,6 +213,7 @@ protected:
     value_type              rand_norm               = 1e-7;
     value_type              alpha                   = 1.5;
     int                     nbfpersize              = 1;
+    std::vector<value_type> vortex_characs          = std::vector<value_type>(4,0);
 
     void init_program_options( int argc, char* argv[] ){
         desc.add_options()
@@ -233,6 +241,7 @@ protected:
 
             "   For a storm (as a vortex): \n"
             "       air mode: 5      water mode: 0\n\n"
+            "   or  air mode: 6      water mode: 0\n\n"
 
             "   For the initial floe pack generation: \n"
             "       air mode: 2      water mode: 0\n\n"
@@ -284,6 +293,16 @@ protected:
         ("sigma", po::value(&random_thickness_coeff)->default_value(
             random_thickness_coeff, std::to_string(random_thickness_coeff)),
             "Normal distribution coeff (sigma) for random ice thickness variation around 1m")
+
+        ("vortexCharacs,v", po::value< std::vector<value_type> >(&vortex_characs)->multitoken(),
+            "vortex characteristics (for mode 6) as a vector of size 4:\n"
+            "   1/ the total number of vortex: \n"
+
+            "   2/ the number of vortex by zone (defined as rings surrounding the ice fields)\n"
+
+            "   3/ the size of these rings (in [km]).\n"
+
+            "   4/ the distance of the first ring to the ice field origin (in [km]).\n")
         ;
         try {
             po::store(po::parse_command_line(argc, argv, desc), this->vm);

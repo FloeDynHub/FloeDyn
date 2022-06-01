@@ -232,10 +232,35 @@ void PROBLEM::step_solve(){
     auto t2 = std::chrono::high_resolution_clock::now();
     safe_move_floe_group();
     auto t3 = std::chrono::high_resolution_clock::now();
-    if (this->m_dynamics_manager.get_external_forces().get_physical_data().get_air_mode()==5) { //!< only if the external forces is a vortex
-        std::cout << "the vortex wind speed is: " << 
-            this->m_dynamics_manager.get_external_forces().get_physical_data().get_vortex_wind_speed() 
-            << std::endl;
+    if (this->m_dynamics_manager.get_external_forces().get_physical_data().get_air_mode()==5 || this->m_dynamics_manager.get_external_forces().get_physical_data().get_air_mode()==6) { //!< only if the external forces is a vortex
+        for (size_t i=0; i<m_dynamics_manager.get_external_forces().get_physical_data().get_nb_vortex(); ++i) {
+            std::cout << "the vortex wind speed is: " << 
+                this->m_dynamics_manager.get_external_forces().get_physical_data().get_vortex_wind_speed(i) 
+                << std::endl;
+        }
+        /*
+        std::vector<real_type> statsKinematic = m_floe_group.get_KinematicFloeWithMaxKineticEnergy();
+        std::cout << "Velocities from Floe Id: " << statsKinematic[0] <<
+        " At position x= " << statsKinematic[1] << ", y= " << statsKinematic[2] <<
+        " with the max Kinetic Energy: Vx = " <<
+        statsKinematic[3] << ", Vy = " << statsKinematic[4] << ", Vtheta = " <<
+        statsKinematic[5] << std::endl;
+
+        std::vector<real_type> statsDist = m_proximity_detector.get_statsDistance();
+        std::cout << "\nMinimal true distance = " << statsDist[0] << " between floes: ("
+        << statsDist[1] << ", " << statsDist[2] << ")" << "far as: " << statsDist[3]
+        << std::endl;
+        std::cout << "optimal distance = " << statsDist[4] << " between floes: ("
+        << statsDist[5] << ", " << statsDist[6] << ")" << "far as: " << statsDist[7]
+        << std::endl;
+        std::vector<real_type> statsDeltaT = m_time_scale_manager.get_statsDeltaT();
+        std::cout << "\nMinimal Fast Delta T = " << statsDeltaT[0] << " between floes: ("
+        << statsDeltaT[1] << ", " << statsDeltaT[2] << ")" << "far as: " << statsDeltaT[3]
+        << std::endl;
+        std::cout << "Minimal Safe Delta T = " << statsDeltaT[4] << " between floes: ("
+        << statsDeltaT[5] << ", " << statsDeltaT[6] << ")" << "far as: " << statsDeltaT[7]
+        << std::endl;
+         */
     }
     std::cout << "Chrono : collisions " << std::chrono::duration<double, std::milli>(t1-t0).count() << " ms + "
     << "time_step " << std::chrono::duration<double, std::milli>(t2-t1).count() << " ms + "
