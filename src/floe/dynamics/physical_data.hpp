@@ -43,7 +43,7 @@ public:
         m_geo_relative_water_speed{0, 0},
         m_window_width{1}, m_window_height{1},
         m_firstVortexZoneDistToOrigin{0}, m_vortexZoneSize{0}, m_nbVortexByZone{0}, m_nb_vortex{0},
-        m_vortex_radius{0}, m_vortex_origin{}, m_vortex_speed{}, m_vortex_max_norm{0}, m_nb_time_step{0}, m_dt{300},
+        m_vortex_radius{0}, m_vortex_origin{}, m_vortex_speed{}, m_vortex_max_norm{0}, m_nb_time_step{}, m_dt{300},
         m_water_mode{0}, m_air_mode{0} {}
 
     //! water speed accessor (m/s)
@@ -405,6 +405,7 @@ PhysicalData<TPoint>::init_vortex(){
         //!< linear increase of the vortex wind speed from 0 to m_vortex_max_norm reached above the ice pack:
         real_type dist_to_ice_pack_center = norm2(m_vortex_origin[i]);
         m_nb_time_step.push_back( int( dist_to_ice_pack_center / (norm2(m_vortex_speed[i]) * m_dt) ) );
+        std::cout << "m_dn " << m_nb_time_step[i] << std::endl;
         if (m_nb_time_step[i]<=0) {std::cout << "Problem with the distance to the ice pack and the velocity of the eye vortex." << std::endl;}
         assert(m_nb_time_step[i]>0);
 
