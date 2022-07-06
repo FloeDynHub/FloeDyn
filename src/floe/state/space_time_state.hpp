@@ -51,7 +51,15 @@ struct SpaceTimeState
 
     TPos    trans; // total translation (periodic boundaries gaps sum)
 
-    //! real position ( ignoring periodic boundaries gaps )
+    bool active {true}; // false if floe is inactive (after a fracture)
+    // faut il le mettre en real pour plus de facilité lors du traitement en hdf5 ? voir hdf5 manager    l.81 for (auto& val: .....
+     
+    //activate and desactivate floe
+    inline void activate() { active=true; }
+    inline void desactivate() { active=false; }
+    inline bool is_activate() const { return active; }
+    
+     //! real position ( ignoring periodic boundaries gaps )
     inline TPos real_position() const { return pos + trans; }
 
     //! Compound addition with other state

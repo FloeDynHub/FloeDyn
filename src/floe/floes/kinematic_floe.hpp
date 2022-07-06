@@ -58,9 +58,11 @@ public:
     using Uptr_geometry_type = std::unique_ptr<geometry_type>;
     using floe_interface_type = FloeInterface<TStaticFloe, TState>;
 
-    //! Default constructor
-    KinematicFloe() : m_geometry{nullptr}, m_floe{nullptr}, m_state{ {0,0}, 0, {0,0}, 0, {0,0} },
+    KinematicFloe() : m_geometry{nullptr}, m_floe{nullptr}, m_state{ {0,0}, 0, {0,0}, 0, {0,0}, true},
                       m_obstacle{false}, m_floe_h{}, m_total_impulse_received{0} {}
+                      
+    KinematicFloe(static_floe_type new_static_floe) : m_geometry{nullptr}, m_floe{new_static_floe}, m_state{ {0,0}, 0, {0,0}, 0, {0,0}, true},
+                      m_obstacle{false}, m_floe_h{}, m_total_impulse_received{0} {} //comment je fais avec floe_h ????
 
     //! Deleted copy constructor
     KinematicFloe( KinematicFloe<TStaticFloe,TState> const& ) = delete;
@@ -143,6 +145,12 @@ public:
     void add_impulse(real_type impulse) const { m_total_impulse_received += impulse; }
     //! Reset received impulse
     void reset_impulse(real_type new_impulse = 0) const { m_total_impulse_received = new_impulse; }
+    
+     std::vector<KinematicFloe<TStaticFloe,TState>> fracture_floe();
+    
+    void update_after_fracture(const state_type init_state,const bool init_obstacle_m,const real_type init_total_impulse_received, point_type mass_center_floe_init);
+    
+    bool is_active() {return this->m_state.is_active();}
 
 private:
 
@@ -191,6 +199,37 @@ KinematicFloe<TStaticFloe,TState>::kinetic_energy() const
 {
     return 0.5 * ( mass() * geometry::dot_product( m_state.speed, m_state.speed ) + moment_cst() * m_state.rot * m_state.rot );
 }
+
+
+template < typename TStaticFloe, typename TState >
+std::vector<KinematicFloe<TStaticFloe,TState>> 
+KinematicFloe<TStaticFloe,TState>::fracture_floe(){
+	// fracture floe, today arbitrary fracture
+	std::vector<TStaticFloe> new_static_floes {this->static_floe().fracture_floe()};
+	// create new kinematic floe from static floe
+	std::vector<KinematicFloe<TStaticFloe,TState>>  new_floes; // {KinematicFloe<TStaticFloe,TState>(new_static_floes[0]),KinematicFloe<TStaticFloe,TState>(new_static_floes[1])};
+	//KinematicFloe<TStaticFloe,TState> new_floes;
+	// update 
+	//point_type mass_center_floe_init {this->static_floe().get_mass_center()};
+	//new_floes[0].update_after_fracture(m_state,m_obstacle,m_total_impulse_received,mass_center_floe_init);
+	//new_floes[1].update_after_fracture(m_state,m_obstacle,m_total_impulse_received,mass_center_floe_init);
+	//this->m_state.desactivate();
+	return new_floes;
+}
+
+//! Update frame, geometry and mesh with respect to the current state.
+template < typename TStaticFloe, typename TState >
+void
+KinematicFloe<TStaticFloe,TState>::update_after_fracture(const state_type init_state,const bool init_obstacle,const real_type init_total_impulse_received, point_type mass_center_floe_init)
+{
+	TState new_state {init_state};
+	new_state.pos()=init_state.pos()+this->get_mass_center-mass_center_floe_init;
+	this->set_state(new_state); // the update is inside;
+	this->set_obstacle(init_obstacle);
+	this->set_total_impulse_received(init_total_impulse_received);
+	this->update(); // update frame ect.. 
+}
+
 
 
 }} // namespace floe::floes

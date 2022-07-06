@@ -44,6 +44,11 @@ public:
     void update_floe_states(message_type const& msg, bool update=true); // override;
     virtual void post_load_floe() override { m_states_origin.clear(); m_states_origin.resize(this->get_floes().size(), 0); }
     virtual void recover_previous_step_states() override { base_class::recover_previous_step_states(); this->post_load_floe(); };
+    
+    // fracture !
+    void apply_fracture_from_max_area(const real_type max_area_for_fracture);//{std::cout<<"test"<<std::endl;}
+    void update_list_ids_active();//{std::cout<<"test"<<std::endl;}
+    
 private:
     std::vector<int> m_states_origin;
 };
@@ -69,6 +74,58 @@ PartialFloeGroup<TFloe, TFloeList>::update_floe_states(message_type const& msg, 
         m_states_origin[iter.first] = msg.mpi_source();
     }
 }
+
+
+
+template <typename TFloe, typename TFloeList>
+void 
+PartialFloeGroup<TFloe, TFloeList>::apply_fracture_from_max_area(const real_type max_area_for_fracture)
+{
+	// doest it automatically consider only active floe ?
+	for (std::size_t i = 0; i < base_class::get_floes().size(); ++i){
+    	if (this->m_list_floe[i].static_floe().area()>max_area_for_fracture) {
+    	std::cout<<"test"<<std::endl;
+			auto new_floe=base_class::get_floes()[i].fracture_floe();
+        	//for (std::size_t i = 0; i < new_floe.size(); ++i){
+        	//	base_class::get_floes().push_back(new_floe[i]);// add new floes to floe group
+        	//}
+        	
+        }
+    }
+    
+} 
+
+/*
+
+template <typename TFloe, typename TFloeList>
+real_type 
+PartialFloeGroup<TFloe, TFloeList>::max_floe_area()
+{
+	real_type max_area {0.0};
+	for (std::size_t i = 0; i < base_class::get_floes().size(); ++i){
+    	max_floe_are = std::max(max_area, base_class::get_floes()[i].static_floe.area());
+    }	  
+    return max_area;
+} 
+
+*/
+
+// method which checks which floe is active or not and creates a filter
+// find a way to do that more efficiency
+template <typename TFloe, typename TFloeList>
+void
+PartialFloeGroup<TFloe, TFloeList>::update_list_ids_active()
+{	
+	base_class::get_floes().filter_off();
+	std::vector<std::size_t> m_list_id_active_floe {nullptr};
+	// add active floe to the liste of indice of active floe
+	for (std::size_t i = 0; i < base_class::get_floes().size(); ++i){
+    	if ( base_class::get_floes()[i].state.is_active()) {m_list_id_active_floe.push_back(i);}
+    }	
+    this->update_partial_list(m_list_id_active_floe);
+    base_class::get_floes().filter_on();	
+    //std::cout<<"test"<<std::endl;
+} 
 
 
 }} // namespace floe::floes

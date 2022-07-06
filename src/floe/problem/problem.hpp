@@ -116,7 +116,7 @@ protected:
     //! Load floes set and initial states from hdf5 file
     virtual void load_h5_config(std::string const& filename);
     //! Move one time step forward
-    virtual void step_solve();
+    virtual void step_solve(real_type max_area_for_fracture,real_type end_time);
     //! Proximity detection (inter-floe distance and eventual collisions)
     void detect_proximity();
     //! Collision solving
@@ -211,10 +211,13 @@ void PROBLEM::solve(real_type end_time, real_type dt_default, real_type out_step
     this->m_out_manager.set_out_step(out_step, this->m_domain.time());
     this->output_datas(); // Initial state out
     this->detect_proximity(); // First proximity detection
+        // condition for fracture :
+    real_type max_area_for_fracture = 0.8*m_floe_group.max_floe_area();
+    //auto t00 = std::chrono::high_resolution_clock::now();
     while (this->m_domain.time() < end_time)
     {   
         // auto t_start = std::chrono::high_resolution_clock::now();
-        this->step_solve();
+        this->step_solve(max_area_for_fracture,end_time);
         // auto t_end = std::chrono::high_resolution_clock::now();
         // std::cout << "Chrono STEP : " << std::chrono::duration<double, std::milli>(t_end-t_start).count() << " ms" << std::endl;
         if (*this->QUIT) break; // exit normally after SIGINT
@@ -224,43 +227,25 @@ void PROBLEM::solve(real_type end_time, real_type dt_default, real_type out_step
 
 
 TEMPLATE_PB
-void PROBLEM::step_solve(){
+void PROBLEM::step_solve(real_type max_area_for_fracture,real_type end_time){
     auto t0 = std::chrono::high_resolution_clock::now();
     manage_collisions();
+    // fracture
+    if (m_domain.time()>0.5*end_time){
+    	std::cout << "nb floes before fracture "<<m_floe_group.get_floes().size()<<std::endl;
+    	m_floe_group.apply_fracture_from_max_area(max_area_for_fracture);
+    	std::cout << "nb floes after fracture "<<m_floe_group.get_floes().size()<<std::endl;
+    	std::cout<<max_area_for_fracture<<std::endl;
+    }
     auto t1 = std::chrono::high_resolution_clock::now();
     compute_time_step();
     auto t2 = std::chrono::high_resolution_clock::now();
     safe_move_floe_group();
     auto t3 = std::chrono::high_resolution_clock::now();
-    if (this->m_dynamics_manager.get_external_forces().get_physical_data().get_air_mode()==5 || this->m_dynamics_manager.get_external_forces().get_physical_data().get_air_mode()==6) { //!< only if the external forces is a vortex
-        for (size_t i=0; i<m_dynamics_manager.get_external_forces().get_physical_data().get_nb_vortex(); ++i) {
-            std::cout << "the vortex wind speed is: " << 
-                this->m_dynamics_manager.get_external_forces().get_physical_data().get_vortex_wind_speed(i) 
-                << std::endl;
-        }
-        /*
-        std::vector<real_type> statsKinematic = m_floe_group.get_KinematicFloeWithMaxKineticEnergy();
-        std::cout << "Velocities from Floe Id: " << statsKinematic[0] <<
-        " At position x= " << statsKinematic[1] << ", y= " << statsKinematic[2] <<
-        " with the max Kinetic Energy: Vx = " <<
-        statsKinematic[3] << ", Vy = " << statsKinematic[4] << ", Vtheta = " <<
-        statsKinematic[5] << std::endl;
-
-        std::vector<real_type> statsDist = m_proximity_detector.get_statsDistance();
-        std::cout << "\nMinimal true distance = " << statsDist[0] << " between floes: ("
-        << statsDist[1] << ", " << statsDist[2] << ")" << "far as: " << statsDist[3]
-        << std::endl;
-        std::cout << "optimal distance = " << statsDist[4] << " between floes: ("
-        << statsDist[5] << ", " << statsDist[6] << ")" << "far as: " << statsDist[7]
-        << std::endl;
-        std::vector<real_type> statsDeltaT = m_time_scale_manager.get_statsDeltaT();
-        std::cout << "\nMinimal Fast Delta T = " << statsDeltaT[0] << " between floes: ("
-        << statsDeltaT[1] << ", " << statsDeltaT[2] << ")" << "far as: " << statsDeltaT[3]
-        << std::endl;
-        std::cout << "Minimal Safe Delta T = " << statsDeltaT[4] << " between floes: ("
-        << statsDeltaT[5] << ", " << statsDeltaT[6] << ")" << "far as: " << statsDeltaT[7]
-        << std::endl;
-         */
+    if (this->m_dynamics_manager.get_external_forces().get_physical_data().get_air_mode()==5) { //!< only if the external forces is a vortex
+        std::cout << "the vortex wind speed is: " << 
+            this->m_dynamics_manager.get_external_forces().get_physical_data().get_vortex_wind_speed() 
+            << std::endl;
     }
     std::cout << "Chrono : collisions " << std::chrono::duration<double, std::milli>(t1-t0).count() << " ms + "
     << "time_step " << std::chrono::duration<double, std::milli>(t2-t1).count() << " ms + "
@@ -302,7 +287,6 @@ void PROBLEM::output_datas(){
     // ouput data
     m_out_manager.save_step_if_needed(this->m_domain.time(), this->m_dynamics_manager);
 }
-
 
 TEMPLATE_PB
 void PROBLEM::detect_proximity(){

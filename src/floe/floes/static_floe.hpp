@@ -8,6 +8,8 @@
 #define FLOE_FLOES_STATIC_FLOE_HPP
 
 #include <cmath>
+#include <iostream>
+#include <vector>
 
 #include "floe/geometry/geometry.hpp"
 #include "floe/geometry/geometries/point.hpp"           // Default point type
@@ -17,6 +19,7 @@
 
 #include "floe/integration/integrate.hpp"
 #include "floe/integration/gauss_legendre.hpp"
+#include "floe/generator/mesh_generator.hpp"
 
 namespace floe { namespace floes
 {
@@ -62,6 +65,10 @@ public:
     //! Default constructor.
     StaticFloe() : m_frame{0,0,0}, m_geometry{nullptr}, m_mesh{nullptr}, m_density{917}, m_mu_static{0.7},
                     m_thickness{1}, m_C_w{5 * 1e-3}, m_area{-1}, m_moment_cst{-1} {}
+                    
+    StaticFloe(geometry_type new_border) : m_frame{0,0,0}, m_geometry{new_border}, m_mesh{nullptr}, m_density{917}, m_mu_static{0.7},
+                    m_thickness{1}, m_C_w{5 * 1e-3}, m_area{-1}, m_moment_cst{-1} {}                    
+                   
 
     //! Deleted copy-constructor.
     StaticFloe( StaticFloe const& ) = delete;
@@ -126,6 +133,12 @@ public:
     inline real_type   get_density()   const   { return m_density; }
     inline void         set_density( real_type const& density ) { m_density = density; m_moment_cst = -1; }
     inline real_type const&    density()   const { return m_density; }
+    
+	inline std::vector<StaticFloe> fracture_floe(); //{point_type mass_center {0,0};}
+	inline void update_caracteristic(real_type init_density,real_type init_mu_static, real_type init_thickness, real_type init_C_w);
+	inline void generate_mesh(); 
+	inline point_type get_mass_center() ;
+	inline std::vector<TGeometry> separate_border();
 
 private:
 
@@ -175,7 +188,126 @@ private:
         }
     }
 
+
 };
+
+
+template <typename T,typename TPoint,typename TGeometry,typename TMesh,typename TFrame ,typename TDensity>
+std::vector<StaticFloe<T,TPoint,TGeometry,TMesh,TFrame,TDensity>> 
+StaticFloe<T,TPoint,TGeometry,TMesh,TFrame,TDensity>::fracture_floe()
+{
+	//collect the new borders in new_border
+	std::vector<TGeometry> new_border {this->separate_border()}; 
+	// cretate static floe from new border
+	StaticFloe<T,TPoint,TGeometry,TMesh,TFrame,TDensity> floe1; //= StaticFloe<T,TPoint,TGeometry,TMesh,TFrame,TDensity>(new_border[0]); //{StaticFloe<T,TPoint,TGeometry,TMesh,TFrame,TDensity> (new_border[0])};
+	//floe1.set_geometry(new_border[0]);
+	//floe1.update_caracteristic(m_density, m_mu_static,m_thickness, m_C_w);
+	//StaticFloe<T,TPoint,TGeometry,TMesh,TFrame,TDensity> floe2;
+	//floe2.set_geometry(new_border[1]);
+	// {,StaticFloe<T,TPoint,TGeometry,TMesh,TFrame,TDensity>(new_border[1])};
+	//new_floe[0].update_caracteristic(m_density, m_mu_static,m_thickness, m_C_w);
+	//new_floe[1].update_caracteristic(m_density, m_mu_static,m_thickness, m_C_w); 
+	// vérifier qu'il ne faut pas aussi désactiver autre chose!
+	std::vector<StaticFloe<T,TPoint,TGeometry,TMesh,TFrame,TDensity>> new_floes;
+    return new_floes;
+}
+
+
+template <typename T,typename TPoint,typename TGeometry,typename TMesh,typename TFrame ,typename TDensity>
+std::vector<TGeometry> 
+StaticFloe<T,TPoint,TGeometry,TMesh,TFrame,TDensity>::separate_border()
+{
+	// arbitrary choice, there is 24 edges so I choose to have the fracture
+    // crossed on the opposite edge
+    std::size_t crack_it=std::size_t(this->geometry().outer().size()/2);
+    point_type border1_begin {this->geometry().outer()[0] + (this->geometry().outer()[1]-this->geometry().outer()[0])*0.1};
+    point_type border2_end {this->geometry().outer()[0] + (this->geometry().outer()[-1]-this->geometry().outer()[0])*0.1};
+    point_type border2_begin {this->geometry().outer()[crack_it] + (this->geometry().outer()[crack_it+1]-this->geometry().outer()[crack_it])*0.1};
+    point_type border1_end {this->geometry().outer()[crack_it] + (this->geometry().outer()[crack_it-1]-this->geometry().outer()[crack_it])*0.1};
+    
+	// create geometry type...
+	geometry_type border1;//{this->geometry().outer().begin()+1,this->geometry().outer().begin()+10};
+	// rajouter des point entre les deux !
+	border1.outer().push_back(border1_begin);
+	for (std::size_t i = 1; i < crack_it ; ++i){
+		border1.outer().push_back(this->geometry().outer()[i]);
+	}
+	border1.outer().push_back(border1_end);
+	
+	geometry_type border2;//{this->geometry().outer().begin()+1,this->geometry().outer().begin()+10};
+	border2.outer().push_back(border2_begin);
+	for (std::size_t i = crack_it+1; i < this->geometry().outer().size() ; ++i){
+		border2.outer().push_back(this->geometry().outer()[i]);
+	}
+	border2.outer().push_back(border2_end);
+	//border1.outer().insert(0,border1_begin);
+	
+	// create two floe, generate by the border and caracteristic of the initial floe ?
+	std::vector<TGeometry> new_border {border1,border2};
+    return new_border;
+}
+
+template <typename T,typename TPoint,typename TGeometry,typename TMesh,typename TFrame ,typename TDensity>
+void
+StaticFloe<T,TPoint,TGeometry,TMesh,TFrame,TDensity>::update_caracteristic(real_type init_density,real_type init_mu_static, real_type init_thickness, real_type init_C_w){
+	
+	// generate mesh : récup dans mesh generator 
+	this->generate_mesh();
+	///set_frame(); est fait dans le update de kinematic floe
+	this->set_mu_static(init_mu_static);
+	this->set_thickness(init_thickness);
+	this->set_density( init_density);
+	this->set_C_w(init_C_w);
+	this->m_area=this->area();
+	this->m_moment_cst=this->moment_cst();
+}   
+
+
+
+template <typename T,typename TPoint,typename TGeometry,typename TMesh,typename TFrame ,typename TDensity>
+void
+StaticFloe<T,TPoint,TGeometry,TMesh,TFrame,TDensity>::generate_mesh()
+{
+		// suppose here border have around 25 vertex
+		TMesh mesh =floe::generator::generate_mesh_for_shape<TGeometry,TMesh>(this->geometry()); 
+		using integration_strategy = floe::integration::RefGaussLegendre<real_type,2,2>;		
+        // Center mesh and shape on floe's center of mass
+        TPoint mass_center=this->get_mass_center();
+        // a faire !!
+        //TGeometry shape_cpy = m_geometry();
+        //Tframe new_frame  {-mass_center, 0};
+        //geometry::transform( *shape_cpy, this->geometry(), geometry::frame::transformer( newframe));
+        //TMesh mesh_cpy = mesh;
+        //geometry::transform( mesh_cpy, mesh, geometry::frame::transformer( typename floe_type::frame_type{-mass_center, 0} ));
+
+        this->set_mesh(mesh); 
+        
+} 
+
+
+
+
+
+template <typename T,typename TPoint,typename TGeometry,typename TMesh,typename TFrame ,typename TDensity>
+TPoint
+StaticFloe<T,TPoint,TGeometry,TMesh,TFrame,TDensity>::get_mass_center()
+{
+		using integration_strategy = floe::integration::RefGaussLegendre<real_type,2,2>;
+        TPoint mass_center = floe::integration::integrate(
+            [] (real_type x, real_type y) { return point_type{x, y}; },
+            m_mesh, integration_strategy()
+        ) / floe::integration::integrate(
+            [] (real_type x, real_type y) { return 1.; },
+            m_mesh,integration_strategy()
+        );
+        
+        //TPoint mass_center {0,0};
+        
+        return mass_center;
+}
+
+
+
 
 }} // namespace floe::floes
 
