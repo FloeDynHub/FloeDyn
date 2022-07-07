@@ -43,7 +43,7 @@ public:
         m_geo_relative_water_speed{0, 0},
         m_window_width{1}, m_window_height{1},
         m_firstVortexZoneDistToOrigin{0}, m_vortexZoneSize{0}, m_nbVortexByZone{0}, m_nb_vortex{0},
-        m_vortex_radius{0}, m_vortex_origin{}, m_vortex_speed{}, m_vortex_max_norm{0}, m_nb_time_step{0}, m_dt{300},
+        m_vortex_radius{}, m_vortex_origin{}, m_vortex_speed{}, m_vortex_max_norm{}, m_nb_time_step{}, m_dt{300},
         m_water_mode{0}, m_air_mode{0} {}
 
     //! water speed accessor (m/s)
