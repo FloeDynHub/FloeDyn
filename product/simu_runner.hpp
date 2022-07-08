@@ -99,7 +99,7 @@ public:
         P.get_dynamics_manager().set_norm_rand_speed(rand_norm);
         if (vortex_characs[0]>0) {
             P.get_dynamics_manager().get_external_forces().get_physical_data().set_nb_vortex(vortex_characs[0]);
-            P.get_dynamics_manager().get_external_forces().get_physical_data().set_nbVortexByZone(vortex_characs[1]);
+           P.get_dynamics_manager().get_external_forces().get_physical_data().set_nbVortexByZone(vortex_characs[1]);
             P.get_dynamics_manager().get_external_forces().get_physical_data().set_vortexZoneSize(vortex_characs[2]*1e3);
             P.get_dynamics_manager().get_external_forces().get_physical_data().set_firstVortexZoneDistToOrigin(vortex_characs[3]*1e3);
         }

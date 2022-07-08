@@ -105,7 +105,7 @@ Generator<TProblem>::generate_floe_set(std::size_t nb_floes, real_type concentra
         if (end_time>time_to_stop_floe_in_target_window) {
             std::cout << "It is time to stop floes within the target area." << std::endl;
             m_problem.get_floe_group().stop_floes_in_window(win_width, win_width);
-            time_to_stop_floe_in_target_window += 500; //
+            time_to_stop_floe_in_target_window += 500; //500
         }
         std::cout << " Concentration : " << m_problem.floe_concentration() << std::endl;
         end_time += 20; init = false;
