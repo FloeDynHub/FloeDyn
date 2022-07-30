@@ -9,11 +9,14 @@
 
 #include "floe/geometry/arithmetic/point_operators.hpp"
 #include "floe/io/matlab/topaz_import.hpp"
+#include "floe/io/matlab/forcing_import.hpp"
+#include "mlinterp.hpp"
 #include <cmath>
 #include <vector>
 #include <iostream> // DEBUG
 #include <cassert>
 
+using namespace mlinterp;
 
 namespace floe { namespace dynamics
 {
@@ -39,12 +42,14 @@ public:
     PhysicalData(real_type const& time_ref) :
         m_ocean_data_hours{}, m_air_data_hours{},
         m_ocean_data_minutes{}, m_air_data_minutes{},
+        m_data_mat_x{}, m_data_mat_y{}, m_data_mat_t{}, m_data_mat_u{}, m_data_mat_v{}, m_data_mat_size{},
         m_time_ref{time_ref},
         m_geo_relative_water_speed{0, 0},
         m_window_width{1}, m_window_height{1},
         m_firstVortexZoneDistToOrigin{0}, m_vortexZoneSize{0}, m_nbVortexByZone{0}, m_nb_vortex{0},
         m_vortex_radius{}, m_vortex_origin{}, m_vortex_speed{}, m_vortex_max_norm{}, m_nb_time_step{}, m_dt{300},
         m_water_mode{0}, m_air_mode{0} {}
+        
 
     //! water speed accessor (m/s)
     point_type water_speed(point_type pt = {0,0});
@@ -126,6 +131,13 @@ private:
     point_vector m_ocean_data_minutes; //!< Geostrophic datas
     point_vector m_air_data_minutes; //!< Geostrophic datas
     real_type const& m_time_ref; //!< reference to time variable in second
+
+    const double *m_data_mat_x; //
+    const double *m_data_mat_y;  //   
+    const double *m_data_mat_t;  //   
+    const double *m_data_mat_u;  //   
+    const double *m_data_mat_v;  //   
+    int m_data_mat_size[3];  //   
 
     point_type m_geo_relative_water_speed; //!< Water speed correction compared to geostrophic data
 
@@ -271,13 +283,32 @@ private:
 /* ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼ */
 
     // Analytically defined forcing velocity
-    point_type custom_analytical_forcing(point_type pt = {0,0}, real_type speed=1)
+    point_type custom_forcing_analytical(point_type pt = {0,0}, real_type speed=1)
     {
         real_type u{0}, v{0};
-        double W = 1000, H = 1000;
-        u =  speed*cos(2*pt.y*M_PI/H) * sin(2*pt.x*M_PI/W);
-        v = -speed*sin(2*pt.y*M_PI/H) * cos(2*pt.x*M_PI/W);
+        double W = 1000, H = 1000, T = 86400;
+        u =  speed*cos(2*pt.y*M_PI/H) * sin(2*pt.x*M_PI/W) * sin(2*m_time_ref*M_PI/T);
+        v = -speed*sin(2*pt.y*M_PI/H) * cos(2*pt.x*M_PI/W) * sin(2*m_time_ref*M_PI/T);
         return {u,v}; 
+    }
+
+    point_type custom_forcing_fileread(point_type pt = {0,0}, real_type speed=1)
+    {   
+        real_type u{0}, v{0};
+        constexpr int ni = 1;
+        double xi[ni], yi[ni], ti[ni], ui[ni], vi[ni];
+        xi[0] = pt.x;
+        yi[0] = pt.y;
+        ti[0] = m_time_ref;
+        interp<rnatord>( m_data_mat_size, ni, // Number of points
+                         m_data_mat_u, ui,         // Output axis (z)
+                         m_data_mat_y, yi, m_data_mat_x, xi, m_data_mat_t, ti ); // Input axes (x and y)
+        interp<rnatord>( m_data_mat_size, ni, // Number of points
+                         m_data_mat_v, vi,         // Output axis (z)
+                         m_data_mat_y, yi, m_data_mat_x, xi, m_data_mat_t, ti ); // Input axes (x and y)
+        u = speed*ui[0]; 
+        v = speed*vi[0];
+        return {u,v};
     }
 /* ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲ */
 /* ===================================================================================================== */    
@@ -311,6 +342,9 @@ void
 PhysicalData<TPoint>::load_matlab_topaz_data(std::string const& filename){
     floe::io::matlab::read_topaz_from_file(filename, m_ocean_data_hours, m_air_data_hours);
     interpolate_hour_to_minute();
+
+    // Hi-jack TOPAZ file read function to read in custom input forcing file
+    floe::io::matlab::read_forcing_from_file(m_data_mat_x,m_data_mat_y,m_data_mat_t,m_data_mat_u,m_data_mat_v,m_data_mat_size);
 }
 
 
@@ -541,7 +575,9 @@ PhysicalData<TPoint>::get_speed(point_type pt, int mode, real_type speed){
         case 0:
             return {0,0};
         case 7:
-            return custom_analytical_forcing(pt, speed);
+            return custom_forcing_analytical(pt, speed);
+        case 8:
+            return custom_forcing_fileread(pt, speed);           
         default :  
             return {0,0};   
 
