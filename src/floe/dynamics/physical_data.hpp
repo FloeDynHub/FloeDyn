@@ -83,6 +83,7 @@ public:
             this->init_random_vortex();m_water_mode = 0;
             std::cout << "Storm defined as a wind vortex" << std::endl;
         }
+        else if (m_air_mode==7 || m_water_mode==7 || m_air_mode== 8 || m_water_mode==8) {}
         else { std::cout << "Error: air and/or water modes: " << m_air_mode << " and " << m_water_mode << " are unknown!" << std::endl; assert(true==false); }
     }
     
@@ -265,6 +266,21 @@ private:
         // if (display) {std::cout << "point: " << pt << std::endl;}
         return totalAirVelocityAppliedToPoint;
     }
+
+/* ==================== CUSTOM forcing data ============================================================ */
+/* ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼ */
+
+    // Analytically defined forcing velocity
+    point_type custom_analytical_forcing(point_type pt = {0,0}, real_type speed=1)
+    {
+        real_type u{0}, v{0};
+        double W = 1000, H = 1000;
+        u =  speed*cos(2*pt.y*M_PI/H) * sin(2*pt.x*M_PI/W);
+        v = -speed*sin(2*pt.y*M_PI/H) * cos(2*pt.x*M_PI/W);
+        return {u,v}; 
+    }
+/* ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲ */
+/* ===================================================================================================== */    
 
 };
 
@@ -524,7 +540,8 @@ PhysicalData<TPoint>::get_speed(point_type pt, int mode, real_type speed){
             return vortex(pt);
         case 0:
             return {0,0};
-
+        case 7:
+            return custom_analytical_forcing(pt, speed);
         default :  
             return {0,0};   
 
