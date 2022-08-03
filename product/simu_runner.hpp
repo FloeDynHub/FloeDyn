@@ -181,7 +181,7 @@ public:
         P.get_floe_group().randomize_floes_thickness(random_thickness_coeff);
         // adding a random ocean drag coefficient for simulating the heterogeneity of the floe bottom surface:
         P.get_floe_group().randomize_floes_oceanic_skin_drag(0.01);
-        P.solve(endtime, default_time_step, out_time_step);
+        P.solve(endtime, default_time_step, out_time_step, true, fracture);
         return 0;
     }
 
@@ -210,6 +210,7 @@ protected:
     string                  matlab_topaz_filename   = "io/inputs/DataTopaz01.mat";
     value_type              max_size                = 250;
     bool                    rand_speed_add          = 0;
+    bool                    fracture                = 0;
     value_type              rand_norm               = 1e-7;
     value_type              alpha                   = 1.5;
     int                     nbfpersize              = 1;
@@ -303,6 +304,7 @@ protected:
             "   3/ the size of these rings (in [km]).\n"
 
             "   4/ the distance of the first ring to the ice field origin (in [km]).\n")
+        ("crack", po::value<bool>(&fracture), "1 to activate floe cracking model.\n")
         ;
         try {
             po::store(po::parse_command_line(argc, argv, desc), this->vm);

@@ -57,7 +57,7 @@ struct SpaceTimeState
     //activate and desactivate floe
     inline void activate() { active=true; }
     inline void desactivate() { active=false; }
-    inline bool is_activate() const { return active; }
+    inline bool is_active() const { return active; }
     
      //! real position ( ignoring periodic boundaries gaps )
     inline TPos real_position() const { return pos + trans; }

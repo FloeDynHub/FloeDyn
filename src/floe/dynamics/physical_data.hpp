@@ -110,13 +110,13 @@ public:
 
     //!< vortex getter and setter
     size_t get_nb_vortex() const {return m_nb_vortex;};
-    size_t set_nb_vortex(size_t nb_vortex) {m_nb_vortex = nb_vortex; };
+    void set_nb_vortex(size_t nb_vortex) {m_nb_vortex = nb_vortex; };
     size_t get_nbVortexByZone() const {return m_nbVortexByZone;};
-    size_t set_nbVortexByZone(size_t nbVortexByZone) {m_nbVortexByZone = nbVortexByZone;};
+    void set_nbVortexByZone(size_t nbVortexByZone) {m_nbVortexByZone = nbVortexByZone;};
     real_type get_vortexZoneSize() const {return m_vortexZoneSize;};
-    real_type set_vortexZoneSize(real_type vortexZoneSize) {m_vortexZoneSize = vortexZoneSize;};
+    void set_vortexZoneSize(real_type vortexZoneSize) {m_vortexZoneSize = vortexZoneSize;};
     real_type get_firstVortexZoneDistToOrigin() const {return m_firstVortexZoneDistToOrigin;};
-    real_type set_firstVortexZoneDistToOrigin(real_type firstVortexZoneDistToOrigin) {m_firstVortexZoneDistToOrigin = firstVortexZoneDistToOrigin;};
+    void set_firstVortexZoneDistToOrigin(real_type firstVortexZoneDistToOrigin) {m_firstVortexZoneDistToOrigin = firstVortexZoneDistToOrigin;};
 
 private:
 

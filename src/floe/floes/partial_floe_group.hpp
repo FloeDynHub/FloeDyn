@@ -10,6 +10,7 @@
 #include "floe/floes/floe_group.hpp"
 #include "floe/arithmetic/filtered_container.hpp"
 #include "floe/io/inter_process_message.hpp"
+#include "floe/generator/mesh_generator.hpp"
  
 namespace floe { namespace floes
 {
@@ -27,11 +28,15 @@ template <
 >
 class PartialFloeGroup : public FloeGroup<TFloe, TFloeList>
 {
-
+ 
 public:
     using base_class = FloeGroup<TFloe, TFloeList>;
     using floe_type = TFloe;
     using real_type = typename floe_type::real_type;
+    using geometry_type = typename floe_type::geometry_type;
+    using point_type = typename floe_type::point_type;
+    using static_floe_type = typename floe_type::static_floe_type;
+    using mesh_type = typename floe_type::mesh_type;
     using message_type = io::InterProcessMessage<real_type>;
 
     void update_partial_list(std::vector<std::size_t> floe_id_list){
@@ -46,7 +51,9 @@ public:
     virtual void recover_previous_step_states() override { base_class::recover_previous_step_states(); this->post_load_floe(); };
     
     // fracture !
-    void apply_fracture_from_max_area(const real_type max_area_for_fracture);//{std::cout<<"test"<<std::endl;}
+    // void apply_fracture_from_max_area(const real_type max_area_for_fracture);//{std::cout<<"test"<<std::endl;}
+    void add_floe(geometry_type geometry, std::size_t parent_floe_idx);
+    void fracture_biggest_floe();
     void update_list_ids_active();//{std::cout<<"test"<<std::endl;}
     
 private:
@@ -77,23 +84,106 @@ PartialFloeGroup<TFloe, TFloeList>::update_floe_states(message_type const& msg, 
 
 
 
+// template <typename TFloe, typename TFloeList>
+// void 
+// PartialFloeGroup<TFloe, TFloeList>::apply_fracture_from_max_area(const real_type max_area_for_fracture)
+// {
+// 	// doest it automatically consider only active floe ?
+// 	for (std::size_t i = 0; i < base_class::get_floes().size(); ++i){
+//     	if (this->m_list_floe[i].static_floe().area()>max_area_for_fracture) {
+//     	std::cout<<"test"<<std::endl;
+// 			auto new_floe=base_class::get_floes()[i].fracture_floe();
+//         	//for (std::size_t i = 0; i < new_floe.size(); ++i){
+//         	//	base_class::get_floes().push_back(new_floe[i]);// add new floes to floe group
+//         	//}
+        	
+//         }
+//     }
+    
+// } 
+
 template <typename TFloe, typename TFloeList>
 void 
-PartialFloeGroup<TFloe, TFloeList>::apply_fracture_from_max_area(const real_type max_area_for_fracture)
+PartialFloeGroup<TFloe, TFloeList>::fracture_biggest_floe()
 {
-	// doest it automatically consider only active floe ?
+	real_type max_area = 0;
+    int biggest_floe_idx = 0;
 	for (std::size_t i = 0; i < base_class::get_floes().size(); ++i){
-    	if (this->m_list_floe[i].static_floe().area()>max_area_for_fracture) {
-    	std::cout<<"test"<<std::endl;
-			auto new_floe=base_class::get_floes()[i].fracture_floe();
-        	//for (std::size_t i = 0; i < new_floe.size(); ++i){
-        	//	base_class::get_floes().push_back(new_floe[i]);// add new floes to floe group
-        	//}
-        	
+        if (base_class::get_floes()[i].area() > max_area){
+            max_area = base_class::get_floes()[i].area();
+            biggest_floe_idx = i;
         }
     }
+    auto new_geometries = base_class::get_floes()[biggest_floe_idx].fracture_floe();
+    for (std::size_t i = 0; i < new_geometries.size(); ++i){
+    	this->add_floe(new_geometries[i], biggest_floe_idx);
+    }
+    this->update_list_ids_active();
+
+    for (auto & floe : this->get_floes()) { // TODO why is it needed ?
+        floe.static_floe().attach_mesh_ptr(&floe.get_floe_h().m_static_mesh);
+        floe.update();
+    }
+}
+
+template <typename TFloe, typename TFloeList>
+void 
+PartialFloeGroup<TFloe, TFloeList>::add_floe(geometry_type shape, std::size_t parent_floe_idx)
+{
+	// Resize floe group, set all floe properties
+    auto& list_floes = base_class::get_floes();
+    std::size_t parent_floe_abs_id = list_floes.get_absolute_id(parent_floe_idx);
+    base_class::get_floes().filter_off();
+
+    // Create Kinematic floe
+    list_floes.resize(list_floes.size() + 1);
+    auto& floe = list_floes[list_floes.size() - 1];
     
-} 
+    // link static floe
+    floe.attach_static_floe_ptr(std::unique_ptr<static_floe_type>(new static_floe_type()));
+    auto& static_floe = floe.static_floe();
+    
+    // Create mesh
+    auto mesh = floe::generator::generate_mesh_for_shape<geometry_type, mesh_type>(shape);
+
+    // Center mesh and shape on new floe's center of mass
+     using integration_strategy = floe::integration::RefGaussLegendre<real_type,2,2>;
+     auto mass_center = floe::integration::integrate(
+         [] (real_type x, real_type y) { return point_type{x, y}; },
+         mesh, integration_strategy()
+     ) / floe::integration::integrate(
+         [] (real_type x, real_type y) { return 1.; },
+         mesh,integration_strategy()
+     );
+    geometry_type shape_cpy = shape;
+    geometry::transform( shape_cpy, shape, geometry::frame::transformer( typename floe_type::frame_type{-mass_center, 0} ));
+    mesh_type mesh_cpy = mesh;
+    geometry::transform( mesh_cpy, mesh, geometry::frame::transformer( typename floe_type::frame_type{-mass_center, 0} ));
+    
+    // Save mesh and shape
+    std::unique_ptr<typename floe_type::geometry_type> geometry(new typename floe_type::geometry_type(shape));
+    static_floe.attach_geometry_ptr(std::move(geometry));
+
+    mesh_type& floe_mesh = floe.get_floe_h().m_static_mesh;
+    floe_mesh = mesh;
+    static_floe.attach_mesh_ptr(&floe_mesh);
+    
+    this->get_floe_group_h().add_floe(floe.get_floe_h());
+    // Set space-time state
+    auto& parent_floe = list_floes[parent_floe_abs_id];
+    point_type rotated_mc {
+        mass_center.x * std::cos(parent_floe.state().theta) - mass_center.y * std::sin(parent_floe.state().theta),
+        mass_center.x * std::sin(parent_floe.state().theta) + mass_center.y * std::cos(parent_floe.state().theta),
+    };
+    floe.set_state({
+        parent_floe.state().pos + rotated_mc,
+        parent_floe.state().theta,
+        parent_floe.state().speed, // TODO : correct speed with speed of new floe's MC (involving parent's rot)
+        0, // TODO : compute new floe's rot
+        {0,0} // TODO
+    });
+    base_class::get_floes().filter_on();
+}
 
 /*
 
@@ -117,14 +207,13 @@ void
 PartialFloeGroup<TFloe, TFloeList>::update_list_ids_active()
 {	
 	base_class::get_floes().filter_off();
-	std::vector<std::size_t> m_list_id_active_floe {nullptr};
+	std::vector<std::size_t> m_list_id_active_floe;
 	// add active floe to the liste of indice of active floe
 	for (std::size_t i = 0; i < base_class::get_floes().size(); ++i){
-    	if ( base_class::get_floes()[i].state.is_active()) {m_list_id_active_floe.push_back(i);}
+    	if ( base_class::get_floes()[i].state().is_active()) { m_list_id_active_floe.push_back(i); }
     }	
     this->update_partial_list(m_list_id_active_floe);
     base_class::get_floes().filter_on();	
-    //std::cout<<"test"<<std::endl;
 } 
 
 

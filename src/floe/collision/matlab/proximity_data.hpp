@@ -60,6 +60,7 @@ public:
 
     virtual void set_floe_group(floe_group_type const& floe_group){
         m_floe_group = &floe_group;
+        m_optims.clear();
         for (auto const& floe : get_floes())
             m_optims.push_back( new optim_type{floe} );
     }

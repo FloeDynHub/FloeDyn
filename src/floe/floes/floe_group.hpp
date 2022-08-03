@@ -205,7 +205,9 @@ FloeGroup<TFloe, TFloeList>::mass_center() const
 {
     return std::accumulate(
         get_floes().begin(), get_floes().end(), point_type{0,0} , 
-        [](point_type partial_sum, floe_type const& floe) { return partial_sum + floe.mass() * floe.state().real_position(); }
+        [](point_type partial_sum, floe_type const& floe) {
+            return partial_sum + floe.mass() * floe.state().real_position();
+        }
     ) / total_mass();
 }
 

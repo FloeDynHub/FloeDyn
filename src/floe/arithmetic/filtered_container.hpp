@@ -48,7 +48,8 @@ public:
     T& operator()(std::size_t n) { return base_class::operator[](n); }
     T const& operator()(std::size_t n) const { return base_class::operator[](n); }
     void update_ids(std::vector<std::size_t> ids){ this->filter_on(); m_ids = ids; }
-    std::size_t absolute_id(std::size_t n) const { return m_filter ? m_ids[n] : n; }
+    std::size_t absolute_id(std::size_t n) const { return m_filter ? n : n; } // TODO restore m_ids[n] else MPI version is broken
+    std::size_t get_absolute_id(std::size_t n) const { return m_filter ? m_ids[n] : n; }
     const_iterator_type begin() const { return const_iterator_type(*this, 0); }
     const_iterator_type end() const { return const_iterator_type(*this, size()); }
     iterator_type begin() { return iterator_type(*this, 0); }
