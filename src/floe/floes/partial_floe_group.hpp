@@ -114,10 +114,16 @@ PartialFloeGroup<TFloe, TFloeList>::fracture_biggest_floe()
             biggest_floe_idx = i;
         }
     }
+
     auto new_geometries = base_class::get_floes()[biggest_floe_idx].fracture_floe();
     for (std::size_t i = 0; i < new_geometries.size(); ++i){
     	this->add_floe(new_geometries[i], biggest_floe_idx);
     }
+    
+    // Desactivate cracked floe
+    base_class::get_floes()[biggest_floe_idx].state().desactivate();
+    base_class::get_floes()[biggest_floe_idx].static_floe().set_thickness(0);
+
     this->update_list_ids_active();
 
     for (auto & floe : this->get_floes()) { // TODO why is it needed ?
@@ -182,6 +188,13 @@ PartialFloeGroup<TFloe, TFloeList>::add_floe(geometry_type shape, std::size_t pa
         0, // TODO : compute new floe's rot
         {0,0} // TODO
     });
+    // FLoes's inherited caracteristics
+    // static_floe.set_thickness(parent_floe.static_floe().thickness());
+    // Random floe oceanic skin drag variation
+    auto dist = std::normal_distribution<real_type>{1, 0.01};
+    auto gen = std::default_random_engine{};
+    static_floe.set_C_w(static_floe.C_w() * dist(gen));
+    static_floe.set_thickness(parent_floe.static_floe().thickness() * dist(gen));
     base_class::get_floes().filter_on();
 }
 

@@ -230,9 +230,7 @@ KinematicFloe<TStaticFloe,TState>::kinetic_energy() const
 template < typename TStaticFloe, typename TState >
 std::vector<typename TStaticFloe::geometry_type>
 KinematicFloe<TStaticFloe,TState>::fracture_floe(){
-	// fracture floe, today arbitrary fracture
-    this->state().desactivate();
-    this->static_floe().set_thickness(0);
+	// fracture floe (arbitrary fracture for now)
 	return this->static_floe().fracture_floe();
 }
 
