@@ -65,6 +65,12 @@ public:
             m_optims.push_back( new optim_type{floe} );
     }
 
+    virtual void update_optim_vars(){
+        // Add missing optims (new floes in m_floe_group)
+        for (std::size_t i = m_optims.size() ; i < m_floe_group->get_floes().absolute_size() ; ++i)
+            m_optims.push_back( new optim_type{m_floe_group->get_floes()(i)} ); // get_floes()(i) is the filter_off getter
+    }
+
     inline std::size_t size1() const { return m_indic.size1(); }
     inline std::size_t size2() const { return m_indic.size2(); }
     inline std::size_t nb_floes() const { return get_floes().size(); }

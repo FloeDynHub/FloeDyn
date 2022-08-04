@@ -87,6 +87,8 @@ public:
     inline proximity_detector_type& proximity_detector() { return m_proximity_detector; }
     //! Initializing proximity detector with floe set
     void create_optim_vars();
+    //! updating proximity detector after fracture
+    void update_optim_vars();
     //!< OutManager accessor
     inline out_manager_type& get_out_manager() {return m_out_manager;}
     //!< LCP solver accessor
@@ -204,6 +206,12 @@ void PROBLEM::create_optim_vars() {
     m_proximity_detector.set_floe_group(m_floe_group);
 }
 
+TEMPLATE_PB
+void PROBLEM::update_optim_vars() {
+    m_proximity_detector.reset();
+    m_proximity_detector.rescan_floe_group();
+}
+
 
 TEMPLATE_PB
 void PROBLEM::solve(real_type end_time, real_type dt_default, real_type out_step, bool reset, bool fracture){
@@ -241,7 +249,7 @@ void PROBLEM::step_solve(bool crack) {
     if (crack) {
     	std::cout << "nb floes before fracture " << m_floe_group.get_floes().size() << std::endl;
     	m_floe_group.fracture_biggest_floe();
-        this->create_optim_vars();
+        this->update_optim_vars();
     	std::cout << "nb floes after fracture " << m_floe_group.get_floes().size() << std::endl;
     }
     auto t1 = std::chrono::high_resolution_clock::now();

@@ -132,7 +132,7 @@ PartialFloeGroup<TFloe, TFloeList>::add_floe(geometry_type shape, std::size_t pa
 {
 	// Resize floe group, set all floe properties
     auto& list_floes = base_class::get_floes();
-    std::size_t parent_floe_abs_id = list_floes.get_absolute_id(parent_floe_idx);
+    std::size_t parent_floe_abs_id = list_floes.absolute_id(parent_floe_idx);
     base_class::get_floes().filter_off();
 
     // Create Kinematic floe
