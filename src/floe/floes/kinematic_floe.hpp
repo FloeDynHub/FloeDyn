@@ -16,6 +16,7 @@
 
 #include "floe/floes/floe_h.hpp"
 #include "floe/geometry/arithmetic/dot_product.hpp"
+#include "floe/geometry/arithmetic/arithmetic.hpp"
 
 #include "floe/floes/floe_interface.hpp"
 
@@ -33,6 +34,9 @@ namespace floe { namespace floes
  * \tparam TState       Type of space-time state.
  *
  */
+
+namespace fg = floe::geometry;
+
 template <
     typename TStaticFloe,
     typename TState = state::SpaceTimeState< typename TStaticFloe::point_type, typename TStaticFloe::real_type > 
@@ -152,6 +156,11 @@ public:
     void update_after_fracture(const state_type init_state,const bool init_obstacle_m,const real_type init_total_impulse_received, point_type mass_center_floe_init);
     
     bool is_active() {return this->m_state.is_active();}
+
+    //! Ice speed at point p
+    point_type ice_speed(point_type p) const {
+        return m_state.speed + m_state.rot * fg::direct_orthogonal(p - m_state.pos);
+    }
 
 private:
 

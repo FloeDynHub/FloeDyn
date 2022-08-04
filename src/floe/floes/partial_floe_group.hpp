@@ -169,7 +169,7 @@ PartialFloeGroup<TFloe, TFloeList>::add_floe(geometry_type shape, std::size_t pa
     static_floe.attach_mesh_ptr(&floe_mesh);
     
     this->get_floe_group_h().add_floe(floe.get_floe_h());
-    // Set space-time state
+    // Compute and set space-time state
     auto& parent_floe = list_floes[parent_floe_abs_id];
     point_type rotated_mc {
         mass_center.x * std::cos(parent_floe.state().theta) - mass_center.y * std::sin(parent_floe.state().theta),
@@ -178,7 +178,7 @@ PartialFloeGroup<TFloe, TFloeList>::add_floe(geometry_type shape, std::size_t pa
     floe.set_state({
         parent_floe.state().pos + rotated_mc,
         parent_floe.state().theta,
-        parent_floe.state().speed, // TODO : correct speed with speed of new floe's MC (involving parent's rot)
+        parent_floe.ice_speed(parent_floe.state().pos + rotated_mc),
         0, // TODO : compute new floe's rot
         {0,0} // TODO
     });
