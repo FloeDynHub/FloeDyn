@@ -2,6 +2,7 @@
  * \file dynamics/physical_data.hpp
  * \brief Physical datas (air & ocean speed)
  * \author Quentin Jouet
+ * \updated Samuel Brenner, 07/2022
  */
 
 #ifndef OPE_PHYSICAL_DATA_HPP
