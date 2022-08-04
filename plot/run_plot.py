@@ -20,7 +20,7 @@ def run():
     parser.add_argument('--nocolor', dest='color', action="store_false", default=True, help='Color floes according to impulses')
     parser.add_argument('--follow', action="store_true", default=False, help="Automatically adjust axes to follow floes")
     parser.add_argument('--ghosts', action="store_true", default=False, help="Display ghost floes (PBC)")
-    parser.add_argument('--fracture', action="store_true", default=False, help="Floes can fracture")
+    parser.add_argument('--crack', dest="fracture", action="store_true", default=False, help="Floes can fracture")
     parser.add_argument('--hd', action="store_true", default=False, help="Make HD video")
     parser.add_argument('-c', '--codec', dest="codec", default=None, help='Video codec')
     parser.add_argument('-a', '--axes', dest="static_axes", type=str, help='Initial Axes (xmin,xmax,ymin,ymax)', default=None)
