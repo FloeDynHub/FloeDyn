@@ -18,7 +18,8 @@ namespace floe { namespace io
 template <typename TFloeGroup, typename TDynamicsMgr>
 HDF5Manager<TFloeGroup, TDynamicsMgr>::HDF5Manager(floe_group_type const& floe_group) :
     m_out_file_name{"io/outputs/out_" + floe::random::gen_random(5) + ".h5"},
-    m_out_file{nullptr}, m_step_count{0}, m_chunk_step_count{0}, m_flush_max_step{1},
+    m_out_file{nullptr}, m_step_count{0}, m_chunk_step_count{0},
+    m_flush_max_step{2}, // min val = 2
     m_floe_group{&floe_group},
     m_data_chunk_states(boost::extents[0][0][0]),
     m_data_chunk_time{new real_type[m_flush_max_step]},
