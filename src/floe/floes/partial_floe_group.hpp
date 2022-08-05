@@ -191,8 +191,9 @@ PartialFloeGroup<TFloe, TFloeList>::add_floe(geometry_type shape, std::size_t pa
     // FLoes's inherited caracteristics
     // static_floe.set_thickness(parent_floe.static_floe().thickness());
     // Random floe oceanic skin drag variation
-    auto dist = std::normal_distribution<real_type>{1, 0.01};
+    auto dist = std::normal_distribution<real_type>{1, 0.02};
     auto gen = std::default_random_engine{};
+    gen.seed(list_floes.absolute_size());
     static_floe.set_C_w(static_floe.C_w() * dist(gen));
     static_floe.set_thickness(parent_floe.static_floe().thickness() * dist(gen));
     base_class::get_floes().filter_on();

@@ -231,7 +231,7 @@ template < typename TStaticFloe, typename TState >
 std::vector<typename TStaticFloe::geometry_type>
 KinematicFloe<TStaticFloe,TState>::fracture_floe(){
 	// fracture floe (arbitrary fracture for now)
-	return this->static_floe().fracture_floe();
+	return this->static_floe().fracture_floe_2();
 }
 
 //! Update frame, geometry and mesh with respect to the current state.

@@ -20,6 +20,7 @@
 #include "floe/integration/integrate.hpp"
 #include "floe/integration/gauss_legendre.hpp"
 #include "floe/generator/mesh_generator.hpp"
+#include "floe/geometry/arithmetic/point_operators.hpp"
 
 namespace floe { namespace floes
 {
@@ -139,6 +140,7 @@ public:
 	// inline void generate_mesh(); 
 	inline point_type get_mass_center() ;
 	inline std::vector<TGeometry> fracture_floe();
+    inline std::vector<TGeometry> fracture_floe_2();
 
 private:
 
@@ -223,6 +225,41 @@ StaticFloe<T,TPoint,TGeometry,TMesh,TFrame,TDensity>::fracture_floe()
 	std::vector<TGeometry> new_border {border1,border2};
     return new_border;
 }
+
+
+template <typename T,typename TPoint,typename TGeometry,typename TMesh,typename TFrame ,typename TDensity>
+std::vector<TGeometry> 
+StaticFloe<T,TPoint,TGeometry,TMesh,TFrame,TDensity>::fracture_floe_2()
+{
+    // Better basic fracture : cutting floe according to crack geometry
+    auto& boundary = this->geometry().outer();
+    point_type middle_point = (boundary[0] + boundary[boundary.size() - 1]) / 2;
+    real_type min_dist = norm2(middle_point);
+    point_type crack_start = middle_point;
+    // crack_start will be the closest edge midpoint to floe's mass center ({0, 0})
+    for (std::size_t i = 0; i < this->geometry().outer().size() - 1; ++i){
+        middle_point = (boundary[i] + boundary[i + 1])  / 2;
+		if (norm2(middle_point) < min_dist) {
+            min_dist = norm2(middle_point);
+            crack_start = middle_point;
+        }
+	}
+	std::vector<TGeometry> new_borders;
+    // crack is a long and thin rectangle containing crack_start and floe's mass center
+    geometry_type crack;
+    real_type crack_width = std::sqrt(this->area()) * 0.02;
+    point_type crack_ortho = direct_orthogonal(crack_start) / norm2(crack_start);
+    point_type crack_delta = crack_ortho * crack_width / 2;
+    crack.outer().push_back(crack_start * 2 + crack_delta);
+    crack.outer().push_back(crack_start * 2 - crack_delta);
+    crack.outer().push_back(- crack_start * 10 - crack_delta);
+    crack.outer().push_back(- crack_start * 10 + crack_delta);
+    boost::geometry::correct(crack);
+    // remove crack from floe geometry
+    boost::geometry::difference(this->geometry().outer(), crack, new_borders);
+    return new_borders;
+}
+
 
 template <typename T,typename TPoint,typename TGeometry,typename TMesh,typename TFrame ,typename TDensity>
 void

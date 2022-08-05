@@ -230,8 +230,8 @@ void PROBLEM::solve(real_type end_time, real_type dt_default, real_type out_step
     while (this->m_domain.time() < end_time)
     {   
         // auto t_start = std::chrono::high_resolution_clock::now();
-        // arbritrary crack every 100 steps until 1000th step
-        bool do_fracture = (fracture && this->m_step_nb > 0 && this->m_step_nb < 2000 && this->m_step_nb % 100 == 0);
+        // arbritrary crack every N steps until Pth step : no physical meaning / only for demo
+        bool do_fracture = (fracture && this->m_step_nb > 0 && this->m_step_nb < 50000 && this->m_step_nb % 200 == 0);
         this->step_solve(do_fracture);
         // auto t_end = std::chrono::high_resolution_clock::now();
         // std::cout << "Chrono STEP : " << std::chrono::duration<double, std::milli>(t_end-t_start).count() << " ms" << std::endl;
