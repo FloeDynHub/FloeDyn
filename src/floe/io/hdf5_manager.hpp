@@ -4,10 +4,9 @@
  * \author Quentin Jouet
  */
 
-// #ifndef FLOE_IO_HDF5_MANAGER_DEF_HPP
-// #define FLOE_IO_HDF5_MANAGER_DEF_HPP
+#ifndef FLOE_IO_HDF5_MANAGER_DEF_HPP
+#define FLOE_IO_HDF5_MANAGER_DEF_HPP
 
-#include <mpi.h>
 #include "floe/io/hdf5_manager.h"
 #include "floe/utils/random.hpp"
 
@@ -169,14 +168,6 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::flush() {
     // catch failure caused by the H5File operations
     catch( FileIException error )
     {
-        #ifdef MULTIOUTPUT
-            char procname[MPI_MAX_PROCESSOR_NAME];
-            int resultlength;
-            int code = MPI_Get_processor_name(procname,&resultlength);
-            int rank;
-            MPI_Comm_rank( MPI_COMM_WORLD, &rank );
-            printf("je suis le processus de rang %d et je mexecute sur %s\n",rank,procname);
-        #endif
         error.printErrorStack();
     }
     // catch failure caused by the DataSet operations
@@ -797,4 +788,4 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::write_selected_floe_ids(std::vector<
 }} // namespace floe::io
 
 
-// #endif // FLOE_IO_HDF5_MANAGER_DEF_HPP
+#endif // FLOE_IO_HDF5_MANAGER_DEF_HPP
