@@ -201,15 +201,15 @@ protected:
     value_type              endtime;
     value_type              default_time_step       = 10;
     value_type              out_time_step           = 60;
-    std::vector<int>        force_modes             = std::vector<int>(2,0);
-    std::vector<value_type> force_speeds            = std::vector<value_type>(2,0);
+    std::vector<int>        force_modes             = std::vector<int> {1, 1};
+    std::vector<value_type> force_speeds            = std::vector<value_type> {0, 0};
     int                     OBL_status              = 0;
     value_type              epsilon                 = 0.4;
     value_type              mu_static               = 0.7;
     value_type              random_thickness_coeff  = 0.01;
     string                  matlab_topaz_filename   = "io/inputs/DataTopaz01.mat";
     value_type              max_size                = 250;
-    bool                    rand_speed_add          = 0;
+    bool                    rand_speed_add          = 1;
     value_type              rand_norm               = 1e-7;
     value_type              alpha                   = 1.5;
     int                     nbfpersize              = 1;
@@ -270,7 +270,7 @@ protected:
             "       air speed: 10     water speed: 0\n"
             "   or  air speed: 0      water speed: 1\n\n")
 
-        ("bustle", po::value<bool>(&rand_speed_add), "1 to active the additional random floe velocities.")
+        ("bustle", po::value<bool>(&rand_speed_add), "0 to disable the additional random floe velocities.")
         ("nbustle", po::value<value_type>(&rand_norm), "norm of the additional random floe velocities.")
 
         ("tend,t", po::value(&endtime)->required(), "simulation duration (seconds)")
