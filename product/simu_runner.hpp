@@ -62,6 +62,11 @@ public:
         if (!generate_floes){
             try {
                 P.load_config(input_file_name);
+                if (obstacles_indexes.size() > 0) {
+                    for (auto i: obstacles_indexes) {
+                        P.get_floe_group().get_floes()[i].is_obstacle() = true;
+                    }
+                }
             }
             catch(std::exception& e)
             {
@@ -103,7 +108,6 @@ public:
             P.get_dynamics_manager().get_external_forces().get_physical_data().set_vortexZoneSize(vortex_characs[2]*1e3);
             P.get_dynamics_manager().get_external_forces().get_physical_data().set_firstVortexZoneDistToOrigin(vortex_characs[3]*1e3);
         }
-
         P.get_dynamics_manager().get_external_forces().get_physical_data().set_modes(force_modes[0],force_modes[1]);
         P.get_dynamics_manager().get_external_forces().get_physical_data().set_speeds(force_speeds[0],force_speeds[1]);
         // P.get_dynamics_manager().get_external_forces().get_physical_data().set_storm_mode(); // for simu: with storm
@@ -214,6 +218,7 @@ protected:
     value_type              alpha                   = 1.5;
     int                     nbfpersize              = 1;
     std::vector<value_type> vortex_characs          = std::vector<value_type>(4,0);
+    std::vector<std::size_t> obstacles_indexes       = std::vector<std::size_t>{};
 
     void init_program_options( int argc, char* argv[] ){
         desc.add_options()
@@ -284,8 +289,8 @@ protected:
         ("concentration,c", po::value<value_type>(), "generator : floes concentration (between 0 and 1)")
         ("maxsize,m", po::value(&max_size)->default_value(
             max_size, std::to_string(max_size)), "generator : floe max size (radius)")
-        ("alpha,a", po::value<value_type>(&alpha), "fractal dimension for the distribution power law.")
-        ("nbfpersize", po::value<int>(&nbfpersize), "number of floes per size for the distribution power law.")
+        ("alpha,a", po::value<value_type>(&alpha), "generator : fractal dimension for the distribution power law.")
+        ("nbfpersize", po::value<int>(&nbfpersize), "generator : number of floes per size for the distribution power law.")
 
         ("epsilon,e", po::value(&epsilon)->default_value(
             epsilon, std::to_string(epsilon)), "collision restitution coeff")
@@ -303,6 +308,8 @@ protected:
             "   3/ the size of these rings (in [km]).\n"
 
             "   4/ the distance of the first ring to the ice field origin (in [km]).\n")
+        ("obstacles", po::value<std::vector<std::size_t>>(&obstacles_indexes)->multitoken(),
+            "Indexes of the floes to consider as obstacles (no move).")
         ;
         try {
             po::store(po::parse_command_line(argc, argv, desc), this->vm);
