@@ -247,8 +247,15 @@ void PROBLEM::step_solve(bool crack) {
     manage_collisions();
     // fracture
     if (crack) {
-    	std::cout << "nb floes before fracture " << m_floe_group.get_floes().size() << std::endl;
-    	m_floe_group.fracture_biggest_floe();
+    //	std::cout << "nb floes before fracture " << m_floe_group.get_floes().size() << std::endl;
+     //   std::vector<size_t> floe_idx;
+     //   for (size_t i=0; i<m_floe_group.get_floes().size();++i){
+     //       if (m_floe_group.get_floes()[i].area() >10.0){ 
+     //           floe_idx.push_back(i);
+     //       }
+     //   }
+    	//m_floe_group.fracture_floe(floe_idx);
+        m_floe_group.fracture_biggest_floe();
         this->update_optim_vars();
     	std::cout << "nb floes after fracture " << m_floe_group.get_floes().size() << std::endl;
     }

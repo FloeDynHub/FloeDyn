@@ -28,9 +28,41 @@ template <
 struct Triangle
     : std::array<TPoint, 3>
 {
+    using real_type = typename TPoint::value_type;
+
     Triangle( TPoint const& p1, TPoint const& p2, TPoint const& p3 )
         : std::template array<TPoint,3>{ { p1, p2, p3  }}
     {}
+
+
+    public:
+    inline real_type area()  { 
+        TPoint& p1 {(*this)[0]}, p2 {(*this)[1]}, p3 {(*this)[2]};
+        return abs((p3.x-p1.x)*(p2.y-p1.y)-(p2.x-p1.x)*(p3.y-p1.y)); 
+    }
+
+    inline bool is_fractured(TPoint crack_start,TPoint crack_stop)  { 
+        TPoint& p1 {(*this)[0]}, p2 {(*this)[1]}, p3 {(*this)[2]};
+        bool fract=false;
+        real_type det= (p2.x-p1.x)*(crack_start.y-crack_stop.y)-(p2.y-p1.y)*(crack_start.x-crack_stop.x);
+        real_type t1;
+        if (abs(det)<0.01*((crack_start.y-crack_stop.y)*(crack_start.y-crack_stop.y)+(crack_start.x-crack_stop.x)*(crack_start.x-crack_stop.x))){
+            t1=(crack_start.x-p1.x)*(crack_start.y-crack_stop.y)-(crack_start.x-crack_stop.x)*(crack_start.y-p1.y);
+            if (t1/abs(det) >=0 || t1/abs(det)<=1){ fract=true;}
+            t1=(p2.x-p1.x)*(crack_start.y-p1.y)-(crack_start.x-p1.x)*(p2.y-p1.y);
+            if (t1/abs(det) >=0 || t1/abs(det)<=1){ fract=true;}
+        }
+        det= (p2.x-p3.x)*(crack_start.y-crack_stop.y)-(p2.y-p3.y)*(crack_start.x-crack_stop.x);
+        if (abs(det)<0.01*((crack_start.y-crack_stop.y)*(crack_start.y-crack_stop.y)+(crack_start.x-crack_stop.x)*(crack_start.x-crack_stop.x))){
+            t1=(crack_start.x-p3.x)*(crack_start.y-crack_stop.y)-(crack_start.x-crack_stop.x)*(crack_start.y-p3.y);
+            if (t1/abs(det) >=0 || t1/abs(det)<=1){ fract=true;}
+            t1=(p2.x-p3.x)*(crack_start.y-p3.y)-(crack_start.x-p3.x)*(p2.y-p3.y);
+            if (t1/abs(det) >=0 || t1/abs(det)<=1){ fract=true;}
+        }
+        return fract; 
+    }
+
+
 };
 
 }} // namespace floe::geometry

@@ -67,6 +67,8 @@ public:
         : m_points{std::forward<TMP>(points)}, m_connect{std::forward<TC>(connect)}
     {}
 
+    inline std::size_t size() const  { return m_connect->size(); }
+
 private:
     class PolygonBuilder 
     {

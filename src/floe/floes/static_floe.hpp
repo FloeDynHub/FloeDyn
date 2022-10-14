@@ -65,10 +65,10 @@ public:
 
     //! Default constructor.
     StaticFloe() : m_frame{0,0,0}, m_geometry{nullptr}, m_mesh{nullptr}, m_density{917}, m_mu_static{0.7},
-                    m_thickness{1}, m_C_w{5 * 1e-3}, m_area{-1}, m_moment_cst{-1} {}
+                    m_thickness{1}, m_C_w{5 * 1e-3}, m_area{-1}, m_moment_cst{-1}, m_fracture{} {}
                     
     StaticFloe(geometry_type new_border) : m_frame{0,0,0}, m_geometry{new_border}, m_mesh{nullptr}, m_density{917}, m_mu_static{0.7},
-                    m_thickness{1}, m_C_w{5 * 1e-3}, m_area{-1}, m_moment_cst{-1} {}                    
+                    m_thickness{1}, m_C_w{5 * 1e-3}, m_area{-1}, m_moment_cst{-1}, m_fracture{} {}                    
                    
 
     //! Deleted copy-constructor.
@@ -121,6 +121,10 @@ public:
     inline real_type C_w() const { return m_C_w; }
     inline void set_C_w(real_type v){ m_C_w = v; }
 
+    //! fracture accessor
+    inline std::vector<point_type> get_fracture() const { return m_fracture; }
+    inline void set_fracture(std::vector<point_type> frac){ m_fracture=frac; }
+
     //! Area
     inline real_type area() const { return (m_area >= 0) ? m_area : calc_area(); }
 
@@ -141,6 +145,13 @@ public:
 	inline point_type get_mass_center() ;
 	inline std::vector<TGeometry> fracture_floe();
     inline std::vector<TGeometry> fracture_floe_2();
+    inline std::vector<TGeometry> fracture_floe_3();
+
+    // tools for calculate energy
+    inline real_type calculate_energy(real_type condition_de_bord);
+    inline real_type calculate_energy_fractured_floe(real_type condition_de_bord,std::vector<size_t> triangle_fracture,point_type crack_start,point_type crack_stop);
+    inline bool find_fracture(real_type condition_dirichlet,size_t edge_contact);
+
 
 private:
 
@@ -151,6 +162,7 @@ private:
     real_type m_mu_static;     //!< Static friction coefficient
     real_type m_thickness;     //!< Vertical thickness (constant over floe surface)
     real_type m_C_w;     //!< Oceanic skin drag coeff
+    std::vector<point_type> m_fracture;     //!< fracture (if floe has been fractured)
 
     mutable real_type m_area;  //!< Area (cached)
     // mutable density_type m_mass; //!< Mass (cached)
@@ -262,6 +274,30 @@ StaticFloe<T,TPoint,TGeometry,TMesh,TFrame,TDensity>::fracture_floe_2()
 
 
 template <typename T,typename TPoint,typename TGeometry,typename TMesh,typename TFrame ,typename TDensity>
+std::vector<TGeometry> 
+StaticFloe<T,TPoint,TGeometry,TMesh,TFrame,TDensity>::fracture_floe_3()
+{
+    // create two new floe
+    auto& boundary = this->geometry().outer();
+    std::vector<TGeometry> new_borders;
+    // crack is a long and thin rectangle containing crack_start and crack stop
+    geometry_type crack;
+    real_type crack_width = std::sqrt(this->area()) * 0.02;
+    point_type crack_ortho = direct_orthogonal(m_fracture[0]) / norm2(m_fracture[0]);
+    point_type crack_delta = crack_ortho * crack_width / 2;
+    crack.outer().push_back(m_fracture[0] + crack_delta);
+    crack.outer().push_back(m_fracture[0] - crack_delta);
+    crack.outer().push_back(m_fracture[-1] - crack_delta);
+    crack.outer().push_back(m_fracture[-1] + crack_delta);
+    boost::geometry::correct(crack);
+    // remove crack from floe geometry
+    boost::geometry::difference(this->geometry().outer(), crack, new_borders);
+    
+    return new_borders;
+}
+
+
+template <typename T,typename TPoint,typename TGeometry,typename TMesh,typename TFrame ,typename TDensity>
 void
 StaticFloe<T,TPoint,TGeometry,TMesh,TFrame,TDensity>::update_caracteristic(real_type init_density,real_type init_mu_static, real_type init_thickness, real_type init_C_w){
 	
@@ -274,27 +310,6 @@ StaticFloe<T,TPoint,TGeometry,TMesh,TFrame,TDensity>::update_caracteristic(real_
 	this->m_area=this->area();
 	this->m_moment_cst=this->moment_cst();
 }   
-
-
-
-// template <typename T,typename TPoint,typename TGeometry,typename TMesh,typename TFrame ,typename TDensity>
-// void
-// StaticFloe<T,TPoint,TGeometry,TMesh,TFrame,TDensity>::generate_mesh()
-// {
-// 		// suppose here border have around 25 vertex
-// 		TMesh mesh =floe::generator::generate_mesh_for_shape<TGeometry,TMesh>(this->geometry()); 
-// 		using integration_strategy = floe::integration::RefGaussLegendre<real_type,2,2>;		
-//         // Center mesh and shape on floe's center of mass
-//         TPoint mass_center=this->get_mass_center();
-//         // a faire !!
-//         //TGeometry shape_cpy = m_geometry();
-//         //Tframe new_frame  {-mass_center, 0};
-//         //geometry::transform( *shape_cpy, this->geometry(), geometry::frame::transformer( newframe));
-//         //TMesh mesh_cpy = mesh;
-//         //geometry::transform( mesh_cpy, mesh, geometry::frame::transformer( typename floe_type::frame_type{-mass_center, 0} ));
-//         this->set_mesh(mesh);     
-// } 
-
 
 
 
@@ -315,6 +330,134 @@ StaticFloe<T,TPoint,TGeometry,TMesh,TFrame,TDensity>::get_mass_center()
         //TPoint mass_center {0,0};
         
         return mass_center;
+}
+
+
+
+template <typename T,typename TPoint,typename TGeometry,typename TMesh,typename TFrame ,typename TDensity>
+bool
+StaticFloe<T,TPoint,TGeometry,TMesh,TFrame,TDensity>::find_fracture(real_type condition_dirichlet,size_t edge_contact)
+{
+    // first we suppose we suppose we have only 1 edge_contact
+
+    auto& boundary = this->geometry().outer(); 
+    int nb_border_edge=this->geometry().outer().size();
+
+    // initialize all border condition as zero neumann condition
+    std::vector<real_type> condition_bord(nb_border_edge,0.0); // initialize all border condition as zero neumann condition
+    // get dirichlet conditions around the contact point
+    condition_bord[edge_contact]=condition_dirichlet;
+    
+    // initial energy of the floe is energy without fracture
+    real_type floe_energy {calculate_energy(condition_dirichlet)};
+    real_type floe_fractured_energy {floe_energy};
+
+    // searche all possible fracture
+    point_type crack_start; // point fracture start
+    point_type crack_stop; // point fracture stop
+    std::size_t nb_crack_start=10; // nb of discretisation to initialise fracture
+    std::size_t nb_crack_stop=10; // nb of discretisation to end fracture on each edge
+    //std::vector<point_type> minimal_fract {crack_start,crack_start};
+
+    bool is_fractured {false};
+
+    // initialize crack starting point on the dirichlet edge
+    for (std::size_t i = 0; i < nb_crack_start; ++i){  
+    
+        if (edge_contact<nb_border_edge-1) {
+            crack_start = boundary[edge_contact]+(boundary[edge_contact+1]-boundary[edge_contact])*i/nb_crack_start;
+        }
+        else {// edge_contact=boundary.size()-1;
+            crack_start = boundary[edge_contact]+(boundary[0]-boundary[edge_contact])*i/nb_crack_start;
+        }
+        // initialize crack stoping on a neumann edge
+        for (std::size_t edge_stop = 0; edge_stop < nb_border_edge ; ++edge_stop){
+        
+            if (edge_stop != edge_contact) {
+                if (edge_stop<nb_border_edge-1){
+                    for (std::size_t j = 0; j < nb_crack_stop; ++j){
+                        crack_stop= boundary[edge_stop]+(boundary[edge_stop]+boundary[edge_stop+1])*j/nb_crack_stop;
+            // I have a fracture crack_start -> crack_stop
+            
+                        /// find fractured triangle
+                        std::vector<std::size_t> triangle_fract;
+                        for (std::size_t k=0;k< this->m_mesh->cells().size();++k){
+                            if (this->m_mesh->cells()[k].is_fractured(crack_start,crack_stop)) {
+                            triangle_fract.push_back(k);
+                            }
+                        }
+                        // ya surement moyen de faire mieux avec boost ??
+                        
+                        // calcul fractured floe energy
+                        floe_fractured_energy=calculate_energy_fractured_floe(condition_dirichlet,triangle_fract,crack_start,crack_stop);
+
+                        // if this energy is small, kinp in mind the fracture
+                        if (floe_fractured_energy< floe_energy) {
+                            is_fractured=true;
+                            floe_energy=floe_fractured_energy;
+                            this->set_fracture({crack_start,crack_stop});
+                        }
+                              
+                    }
+                }  
+                else {
+                    for (std::size_t j = 0; j < nb_crack_stop; ++j){
+                        crack_stop= boundary[edge_stop]+(boundary[edge_stop]+boundary[0])*j/nb_crack_stop;
+                        /// find fractured triangle
+                        std::vector<std::size_t> triangle_fract;
+                        for (std::size_t k=0;k< this->m_mesh->cells().size();++k){
+                            if (this->m_mesh->cells()[k].is_fractured(crack_start,crack_stop)) {
+                            triangle_fract.push_back(k);
+                            }
+                        }
+                        
+                        // calcul fractured floe energy
+                        floe_fractured_energy=calculate_energy_fractured_floe(condition_dirichlet,triangle_fract,crack_start,crack_stop);
+
+                        // if this energy is small, kinp in mind the fracture
+                        if (floe_fractured_energy< floe_energy) {
+                            is_fractured=true;
+                            floe_energy=floe_fractured_energy;
+                            this->set_fracture({crack_start,crack_stop});
+                        }
+                    }
+                }
+            }
+        }
+    }
+    // At this step, we check all the fracture, if there existe a fracture that minimise the total energy
+    // then minimal_fracture give to {crack_start,crack_stop};
+    
+    return is_fractured;
+}
+
+
+
+
+template <typename T,typename TPoint,typename TGeometry,typename TMesh,typename TFrame ,typename TDensity>
+typename StaticFloe<T,TPoint,TGeometry,TMesh,TFrame,TDensity>::real_type
+StaticFloe<T,TPoint,TGeometry,TMesh,TFrame,TDensity>::calculate_energy(real_type condition_bord){ // + edge_contact
+
+    real_type floe_energy {this->area()};
+
+    return floe_energy;
+}
+
+
+template <typename T,typename TPoint,typename TGeometry,typename TMesh,typename TFrame ,typename TDensity>
+typename StaticFloe<T,TPoint,TGeometry,TMesh,TFrame,TDensity>::real_type
+StaticFloe<T,TPoint,TGeometry,TMesh,TFrame,TDensity>::calculate_energy_fractured_floe(real_type condition_bord,std::vector<size_t> triangle_fracture,point_type crack_start,point_type crack_stop){
+
+    real_type floe_energy {this->area()};
+    real_type triangle_surface {0.0};
+
+    for (std::size_t k=0;k< triangle_fracture.size();k++) {
+       //triangle_surface = this->m_mesh->cells()[k].area();
+       //triangle_surface=abs((Tri[1].x-Tri[0].x)*(Tri[2].y-Tri[0].y)-(Tri[2].x-Tri[0].x)*(Tri[1].y-Tri[0].y));
+       floe_energy -= 2*(this->m_mesh->cells()[k].area());
+    }
+
+    return floe_energy/(condition_bord+0.00000001);
 }
 
 

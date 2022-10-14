@@ -152,6 +152,7 @@ public:
     
     //  std::vector<KinematicFloe<TStaticFloe,TState>> fracture_floe();
     std::vector<geometry_type> fracture_floe();
+    bool research_fracture();
     
     void update_after_fracture(const state_type init_state,const bool init_obstacle_m,const real_type init_total_impulse_received, point_type mass_center_floe_init);
     
@@ -211,28 +212,22 @@ KinematicFloe<TStaticFloe,TState>::kinetic_energy() const
 }
 
 
-// template < typename TStaticFloe, typename TState >
-// std::vector<KinematicFloe<TStaticFloe,TState>>
-// KinematicFloe<TStaticFloe,TState>::fracture_floe(){
-// 	// fracture floe, today arbitrary fracture
-// 	std::vector<TStaticFloe> new_static_floes {this->static_floe().fracture_floe()};
-// 	// create new kinematic floe from static floe
-// 	std::vector<KinematicFloe<TStaticFloe,TState>>  new_floes; // {KinematicFloe<TStaticFloe,TState>(new_static_floes[0]),KinematicFloe<TStaticFloe,TState>(new_static_floes[1])};
-// 	//KinematicFloe<TStaticFloe,TState> new_floes;
-// 	// update 
-// 	//point_type mass_center_floe_init {this->static_floe().get_mass_center()};
-// 	//new_floes[0].update_after_fracture(m_state,m_obstacle,m_total_impulse_received,mass_center_floe_init);
-// 	//new_floes[1].update_after_fracture(m_state,m_obstacle,m_total_impulse_received,mass_center_floe_init);
-// 	//this->m_state.desactivate();
-// 	return new_floes;
-// }
 
 template < typename TStaticFloe, typename TState >
 std::vector<typename TStaticFloe::geometry_type>
 KinematicFloe<TStaticFloe,TState>::fracture_floe(){
 	// fracture floe (arbitrary fracture for now)
-	return this->static_floe().fracture_floe_2();
+	return this->static_floe().fracture_floe_3();
 }
+
+
+template < typename TStaticFloe, typename TState >
+bool
+KinematicFloe<TStaticFloe,TState>::research_fracture(){
+	// fracture floe (depending of collision properties)
+	return this->static_floe().find_fracture(m_total_impulse_received,0);
+}
+
 
 //! Update frame, geometry and mesh with respect to the current state.
 template < typename TStaticFloe, typename TState >

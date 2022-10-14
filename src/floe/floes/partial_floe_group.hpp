@@ -51,10 +51,10 @@ public:
     virtual void recover_previous_step_states() override { base_class::recover_previous_step_states(); this->post_load_floe(); };
     
     // fracture !
-    // void apply_fracture_from_max_area(const real_type max_area_for_fracture);//{std::cout<<"test"<<std::endl;}
     void add_floe(geometry_type geometry, std::size_t parent_floe_idx);
     void fracture_biggest_floe();
     void update_list_ids_active();//{std::cout<<"test"<<std::endl;}
+    void fracture_floe(std::vector<size_t> floe_idx);
     
 private:
     std::vector<int> m_states_origin;
@@ -84,23 +84,7 @@ PartialFloeGroup<TFloe, TFloeList>::update_floe_states(message_type const& msg, 
 
 
 
-// template <typename TFloe, typename TFloeList>
-// void 
-// PartialFloeGroup<TFloe, TFloeList>::apply_fracture_from_max_area(const real_type max_area_for_fracture)
-// {
-// 	// doest it automatically consider only active floe ?
-// 	for (std::size_t i = 0; i < base_class::get_floes().size(); ++i){
-//     	if (this->m_list_floe[i].static_floe().area()>max_area_for_fracture) {
-//     	std::cout<<"test"<<std::endl;
-// 			auto new_floe=base_class::get_floes()[i].fracture_floe();
-//         	//for (std::size_t i = 0; i < new_floe.size(); ++i){
-//         	//	base_class::get_floes().push_back(new_floe[i]);// add new floes to floe group
-//         	//}
-        	
-//         }
-//     }
-    
-// } 
+
 
 template <typename TFloe, typename TFloeList>
 void 
@@ -131,6 +115,41 @@ PartialFloeGroup<TFloe, TFloeList>::fracture_biggest_floe()
         floe.update();
     }
 }
+
+
+template <typename TFloe, typename TFloeList>
+void 
+PartialFloeGroup<TFloe, TFloeList>::fracture_floe(std::vector<size_t> floe_idx)
+{
+    bool is_fractured;
+
+    // for each floe in floe_idx
+	for (std::size_t i = 0; i < floe_idx.size(); ++i){
+        // research of a fracture
+        is_fractured=base_class::get_floes()[i].research_fracture();
+        if (is_fractured) {
+            // if floe is fractured -> create new floes
+            auto new_geometries = base_class::get_floes()[i].fracture_floe();
+            for (std::size_t j = 0; j < new_geometries.size(); ++j){
+    	        this->add_floe(new_geometries[j], i);
+            }
+            // Desactivate cracked floe
+            base_class::get_floes()[i].state().desactivate();
+            base_class::get_floes()[i].static_floe().set_thickness(0);  
+            // update list active floe
+            this->update_list_ids_active();
+            // mesh new floes
+            for (auto & floe : this->get_floes()) { // TODO why is it needed ?
+                floe.static_floe().attach_mesh_ptr(&floe.get_floe_h().m_static_mesh);
+                floe.update();
+            } 
+        }
+
+
+    }
+
+}
+
 
 template <typename TFloe, typename TFloeList>
 void 
@@ -199,20 +218,7 @@ PartialFloeGroup<TFloe, TFloeList>::add_floe(geometry_type shape, std::size_t pa
     base_class::get_floes().filter_on();
 }
 
-/*
 
-template <typename TFloe, typename TFloeList>
-real_type 
-PartialFloeGroup<TFloe, TFloeList>::max_floe_area()
-{
-	real_type max_area {0.0};
-	for (std::size_t i = 0; i < base_class::get_floes().size(); ++i){
-    	max_floe_are = std::max(max_area, base_class::get_floes()[i].static_floe.area());
-    }	  
-    return max_area;
-} 
-
-*/
 
 // method which checks which floe is active or not and creates a filter
 // find a way to do that more efficiency
