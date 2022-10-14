@@ -204,8 +204,8 @@ PartialFloeGroup<TFloe, TFloeList>::add_floe(geometry_type shape, std::size_t pa
         parent_floe.state().pos + rotated_mc,
         parent_floe.state().theta,
         parent_floe.ice_speed(parent_floe.state().pos + rotated_mc),
-        0, // TODO : compute new floe's rot
-        {0,0} // TODO
+        parent_floe.state().rot,
+        parent_floe.state().trans
     });
     // FLoes's inherited caracteristics
     // static_floe.set_thickness(parent_floe.static_floe().thickness());
