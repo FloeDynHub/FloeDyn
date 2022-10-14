@@ -121,21 +121,22 @@ template <typename TFloe, typename TFloeList>
 void 
 PartialFloeGroup<TFloe, TFloeList>::fracture_floe(std::vector<size_t> floe_idx)
 {
-    bool is_fractured;
-
+    
+    std::vector<point_type> fracture;
     // for each floe in floe_idx
 	for (std::size_t i = 0; i < floe_idx.size(); ++i){
         // research of a fracture
-        is_fractured=base_class::get_floes()[i].research_fracture();
-        if (is_fractured) {
+        fracture=base_class::get_floes()[floe_idx[i]].research_fracture();
+        if (base_class::get_floes()[floe_idx[i]].static_floe().is_fractured()) {
             // if floe is fractured -> create new floes
-            auto new_geometries = base_class::get_floes()[i].fracture_floe();
+            auto new_geometries = base_class::get_floes()[floe_idx[i]].fracture_floe();
+            //auto new_geometries = base_class::get_floes()[i].fracture_floe_3(fracture);
             for (std::size_t j = 0; j < new_geometries.size(); ++j){
-    	        this->add_floe(new_geometries[j], i);
+    	        this->add_floe(new_geometries[j], floe_idx[i]);
             }
             // Desactivate cracked floe
-            base_class::get_floes()[i].state().desactivate();
-            base_class::get_floes()[i].static_floe().set_thickness(0);  
+            base_class::get_floes()[floe_idx[i]].state().desactivate();
+            base_class::get_floes()[floe_idx[i]].static_floe().set_thickness(0);  
             // update list active floe
             this->update_list_ids_active();
             // mesh new floes
@@ -144,8 +145,6 @@ PartialFloeGroup<TFloe, TFloeList>::fracture_floe(std::vector<size_t> floe_idx)
                 floe.update();
             } 
         }
-
-
     }
 
 }
