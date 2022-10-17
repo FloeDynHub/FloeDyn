@@ -70,7 +70,6 @@ public:
     inline connectivity_type&       connectivity()          { return m_connect; }
     inline connectivity_type const& connectivity() const    { return m_connect; }
 
-    inline std::size_t const& size() const    { return m_cells.size(); }
 
 private:
 

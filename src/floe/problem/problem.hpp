@@ -231,7 +231,8 @@ void PROBLEM::solve(real_type end_time, real_type dt_default, real_type out_step
     {   
         // auto t_start = std::chrono::high_resolution_clock::now();
         // arbritrary crack every N steps until Pth step : no physical meaning / only for demo
-        bool do_fracture = (fracture && this->m_step_nb > 0 && this->m_step_nb < 50000 && this->m_step_nb % 200 == 0);
+        //bool do_fracture = (fracture && this->m_step_nb > 0 && this->m_step_nb < 50000 && this->m_step_nb % 200 == 0);
+        bool do_fracture = (fracture && this->m_step_nb > 0);
         this->step_solve(do_fracture);
         // auto t_end = std::chrono::high_resolution_clock::now();
         // std::cout << "Chrono STEP : " << std::chrono::duration<double, std::milli>(t_end-t_start).count() << " ms" << std::endl;
@@ -248,14 +249,15 @@ void PROBLEM::step_solve(bool crack) {
     // fracture
     if (crack) {
     	std::cout << "nb floes before fracture " << m_floe_group.get_floes().size() << std::endl;
-        //std::vector<size_t> floe_idx;
-        //for (size_t i=0; i<m_floe_group.get_floes().size();++i){
-        //    if (m_floe_group.get_floes()[i].area() >50.0){ 
-        //        floe_idx.push_back(i);
-        //    }
-        //}
-        //m_floe_group.fracture_floe(floe_idx);
-        m_floe_group.fracture_biggest_floe();
+        std::vector<size_t> floe_idx;
+        for (size_t i=0; i<m_floe_group.get_floes().size();++i){
+            if (m_floe_group.get_floes()[i].area() >1000.0){ 
+                floe_idx.push_back(i);
+                //std::cout<<i<<"  "<<m_floe_group.get_floes()[i].area()<<std::endl;
+            }
+        }
+        m_floe_group.fracture_floe(floe_idx);
+        //m_floe_group.fracture_biggest_floe();
         this->update_optim_vars();
     	std::cout << "nb floes after fracture " << m_floe_group.get_floes().size() << std::endl;
     }
@@ -264,11 +266,9 @@ void PROBLEM::step_solve(bool crack) {
     auto t2 = std::chrono::high_resolution_clock::now();
     safe_move_floe_group();
     auto t3 = std::chrono::high_resolution_clock::now();
-    // if (this->m_dynamics_manager.get_external_forces().get_physical_data().get_air_mode()==5) { //!< only if the external forces is a vortex
-    //     std::cout << "the vortex wind speed is: " << 
-    //         this->m_dynamics_manager.get_external_forces().get_physical_data().get_vortex_wind_speed() 
-    //         << std::endl;
-    // }
+    //if (this->m_dynamics_manager.get_external_forces().get_physical_data().get_air_mode()==5) { //!< only if the external forces is a vortex
+    //     std::cout << "the vortex wind speed is: " <<this->m_dynamics_manager.get_external_forces().get_physical_data().get_vortex_wind_speed()<< std::endl;
+    //}
     std::cout << "Chrono : collisions " << std::chrono::duration<double, std::milli>(t1-t0).count() << " ms + "
     << "time_step " << std::chrono::duration<double, std::milli>(t2-t1).count() << " ms + "
     << "move " << std::chrono::duration<double, std::milli>(t3-t2).count() << " ms = "

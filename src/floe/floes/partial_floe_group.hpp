@@ -122,15 +122,15 @@ void
 PartialFloeGroup<TFloe, TFloeList>::fracture_floe(std::vector<size_t> floe_idx)
 {
     
-    std::vector<point_type> fracture;
+    bool is_fractured {false};
     // for each floe in floe_idx
 	for (std::size_t i = 0; i < floe_idx.size(); ++i){
         // research of a fracture
-        fracture=base_class::get_floes()[floe_idx[i]].research_fracture();
-        if (base_class::get_floes()[floe_idx[i]].static_floe().is_fractured()) {
+        is_fractured=base_class::get_floes()[floe_idx[i]].research_fracture();
+        if (is_fractured) {
             // if floe is fractured -> create new floes
             auto new_geometries = base_class::get_floes()[floe_idx[i]].fracture_floe();
-            //auto new_geometries = base_class::get_floes()[i].fracture_floe_3(fracture);
+            //auto new_geometries = base_class::get_floes()[i].fracture_floe_3();
             for (std::size_t j = 0; j < new_geometries.size(); ++j){
     	        this->add_floe(new_geometries[j], floe_idx[i]);
             }

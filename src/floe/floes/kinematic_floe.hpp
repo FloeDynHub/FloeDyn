@@ -152,8 +152,8 @@ public:
     
     //  std::vector<KinematicFloe<TStaticFloe,TState>> fracture_floe();
     std::vector<geometry_type> fracture_floe();
-    inline std::vector<point_type> research_fracture();
-    std::vector<geometry_type> fracture_floe_3(std::vector<point_type> fracture);
+    bool research_fracture();
+ //   std::vector<geometry_type> fracture_floe_3(std::vector<point_type> fracture);
     
     void update_after_fracture(const state_type init_state,const bool init_obstacle_m,const real_type init_total_impulse_received, point_type mass_center_floe_init);
     
@@ -223,22 +223,23 @@ KinematicFloe<TStaticFloe,TState>::fracture_floe(){
 }
 
 
-template < typename TStaticFloe, typename TState >
-std::vector<typename TStaticFloe::geometry_type>
-KinematicFloe<TStaticFloe,TState>::fracture_floe_3(std::vector<point_type> fracture){
-	// fracture floe (arbitrary fracture for now)
-	return this->static_floe().fracture_floe_3(fracture);
 
+template < typename TStaticFloe, typename TState >
+bool
+KinematicFloe<TStaticFloe,TState>::research_fracture(){
+	// fracture floe (depending of collision properties)
+    if (abs(m_total_impulse_received)>0.00001){   std::cout<<" impulse "<<m_total_impulse_received<<std::endl; }
+	return this->static_floe().find_fracture(m_total_impulse_received,3);
 }
 
-
+/*
 template < typename TStaticFloe, typename TState >
 std::vector<typename TStaticFloe::point_type>
 KinematicFloe<TStaticFloe,TState>::research_fracture(){
 	// fracture floe (depending of collision properties)
 	return this->static_floe().find_fracture(m_total_impulse_received,0);
 }
-
+*/
 
 //! Update frame, geometry and mesh with respect to the current state.
 template < typename TStaticFloe, typename TState >
