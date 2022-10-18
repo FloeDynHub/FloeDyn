@@ -130,7 +130,6 @@ PartialFloeGroup<TFloe, TFloeList>::fracture_floe(std::vector<size_t> floe_idx)
         if (is_fractured) {
             // if floe is fractured -> create new floes
             auto new_geometries = base_class::get_floes()[floe_idx[i]].fracture_floe();
-            //auto new_geometries = base_class::get_floes()[i].fracture_floe_3();
             for (std::size_t j = 0; j < new_geometries.size(); ++j){
     	        this->add_floe(new_geometries[j], floe_idx[i]);
             }

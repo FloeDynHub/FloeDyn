@@ -245,17 +245,18 @@ void PROBLEM::solve(real_type end_time, real_type dt_default, real_type out_step
 TEMPLATE_PB
 void PROBLEM::step_solve(bool crack) {
     auto t0 = std::chrono::high_resolution_clock::now();
-    manage_collisions();
     // fracture
+    manage_collisions();
     if (crack) {
     	std::cout << "nb floes before fracture " << m_floe_group.get_floes().size() << std::endl;
         std::vector<size_t> floe_idx;
         for (size_t i=0; i<m_floe_group.get_floes().size();++i){
-            if (m_floe_group.get_floes()[i].area() >1000.0){ 
+            if (m_floe_group.get_floes()[i].area() >3000.0){ 
                 floe_idx.push_back(i);
                 //std::cout<<i<<"  "<<m_floe_group.get_floes()[i].area()<<std::endl;
             }
         }
+        std::cout<<floe_idx.size()<<std::endl;
         m_floe_group.fracture_floe(floe_idx);
         //m_floe_group.fracture_biggest_floe();
         this->update_optim_vars();

@@ -265,7 +265,7 @@ StaticFloe<T,TPoint,TGeometry,TMesh,TFrame,TDensity>::fracture_floe_2()
 	std::vector<TGeometry> new_borders;
     // crack is a long and thin rectangle containing crack_start and floe's mass center
     geometry_type crack;
-    real_type crack_width = std::sqrt(this->area()) * 0.02;
+    real_type crack_width = 1.0; //std::sqrt(this->area()) * 0.02;
     point_type crack_ortho = direct_orthogonal(crack_start) / norm2(crack_start);
     point_type crack_delta = crack_ortho * crack_width / 2;
     crack.outer().push_back(crack_start * 2 + crack_delta);
@@ -289,7 +289,7 @@ StaticFloe<T,TPoint,TGeometry,TMesh,TFrame,TDensity>::fracture_floe_3()
     // crack is a long and thin rectangle containing crack_start and crack stop
     geometry_type crack;
 
-    real_type crack_width = std::sqrt(this->area()) * 0.02;
+    real_type crack_width = 0.1;//std::sqrt(this->area()) * 0.02;
     point_type crack_ortho;
     point_type crack_delta;
 
@@ -446,12 +446,12 @@ template <typename T,typename TPoint,typename TGeometry,typename TMesh,typename 
 typename StaticFloe<T,TPoint,TGeometry,TMesh,TFrame,TDensity>::real_type
 StaticFloe<T,TPoint,TGeometry,TMesh,TFrame,TDensity>::calculate_energy_fractured_floe(real_type condition_dirichlet,std::vector<size_t> triangle_fracture,point_type crack_start,point_type crack_stop){
     real_type floe_energy;
-    if (abs(condition_dirichlet)<0.00000001){
+    if (abs(condition_dirichlet)<1000.0){
         floe_energy=this->area();
     }
     else {
 
-    floe_energy=this->area(); ///abs(0.1*condition_dirichlet);
+    floe_energy=this->area()/abs(0.001*condition_dirichlet);
     //std::cout<<" debut "<<std::endl;
     //std::cout<<this->area()<<std::endl;
     //std::cout<<condition_dirichlet<<std::endl;
@@ -461,12 +461,12 @@ StaticFloe<T,TPoint,TGeometry,TMesh,TFrame,TDensity>::calculate_energy_fractured
     for (std::size_t k=0;k< triangle_fracture.size();k++) {
        //triangle_surface = this->m_mesh->cells()[k].area();
        //triangle_surface=abs((Tri[1].x-Tri[0].x)*(Tri[2].y-Tri[0].y)-(Tri[2].x-Tri[0].x)*(Tri[1].y-Tri[0].y));
-       floe_energy -= 0.1*(this->m_mesh->cells()[k].area()); ///abs(0.1*condition_dirichlet);
+       floe_energy -= (this->m_mesh->cells()[triangle_fracture[k]].area())/abs(0.001*condition_dirichlet);
     }
     
     }
 
-    return floe_energy; //+10*norm2(crack_stop-crack_start);
+    return floe_energy+0.1*norm2(crack_stop-crack_start);
 }
 
 

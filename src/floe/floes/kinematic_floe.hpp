@@ -228,8 +228,8 @@ template < typename TStaticFloe, typename TState >
 bool
 KinematicFloe<TStaticFloe,TState>::research_fracture(){
 	// fracture floe (depending of collision properties)
-    if (abs(m_total_impulse_received)>0.00001){   std::cout<<" impulse "<<m_total_impulse_received<<std::endl; }
-	return this->static_floe().find_fracture(m_total_impulse_received,3);
+    //if (abs(m_total_impulse_received)>0.00001){   std::cout<<" impulse "<<m_total_impulse_received<<std::endl; }
+	return this->static_floe().find_fracture(m_total_impulse_received,0);
 }
 
 /*
