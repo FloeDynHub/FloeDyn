@@ -119,7 +119,10 @@ public:
 
     //! State accessors
     inline state_type const&    get_state()     const   { return m_state; }
-    inline void                 set_state( state_type const& state )    { m_state = state; update(); }
+    inline void                 set_state( state_type const& state )    { 
+        m_state = state;
+        update();
+    }
     inline state_type&    state()         const   { return m_state; }
     inline state_type &         state()                 { return m_state; } //!< \warning needs to manually call update() after modification.
 
@@ -155,7 +158,7 @@ public:
     
     void update_after_fracture(const state_type init_state,const bool init_obstacle_m,const real_type init_total_impulse_received, point_type mass_center_floe_init);
     
-    bool is_active() {return this->m_state.is_active();}
+    bool is_active() const { return this->m_state.is_active(); }
 
     //! Ice speed at point p
     point_type ice_speed(point_type p) const {

@@ -122,7 +122,7 @@ PartialFloeGroup<TFloe, TFloeList>::fracture_biggest_floe()
     
     // Desactivate cracked floe
     base_class::get_floes()[biggest_floe_idx].state().desactivate();
-    base_class::get_floes()[biggest_floe_idx].static_floe().set_thickness(0);
+    // base_class::get_floes()[biggest_floe_idx].static_floe().set_thickness(0);
 
     this->update_list_ids_active();
 

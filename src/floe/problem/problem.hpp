@@ -186,9 +186,11 @@ void PROBLEM::load_h5_config(std::string const& filename) {
 
 TEMPLATE_PB
 void PROBLEM::recover_states_from_file(std::string const& filename, real_type t, bool keep_as_outfile){
+    m_out_manager.flush();
     real_type saved_time = m_out_manager.recover_states(filename, t, m_floe_group, m_dynamics_manager, keep_as_outfile);
     std::cout << "RECOVER : " << saved_time << std::endl;
     m_domain.set_time(saved_time);
+    this->update_optim_vars(); // needed in case of crack rewind
 }
 
 
@@ -231,7 +233,7 @@ void PROBLEM::solve(real_type end_time, real_type dt_default, real_type out_step
     {   
         // auto t_start = std::chrono::high_resolution_clock::now();
         // arbritrary crack every N steps until Pth step : no physical meaning / only for demo
-        bool do_fracture = (fracture && this->m_step_nb > 0 && this->m_step_nb < 50000 && this->m_step_nb % 200 == 0);
+        bool do_fracture = (fracture && this->m_step_nb > 0 && this->m_step_nb < 50000 && this->m_step_nb % 18 == 0);
         this->step_solve(do_fracture);
         // auto t_end = std::chrono::high_resolution_clock::now();
         // std::cout << "Chrono STEP : " << std::chrono::duration<double, std::milli>(t_end-t_start).count() << " ms" << std::endl;
@@ -284,9 +286,8 @@ void PROBLEM::safe_move_floe_group(){
         if (m_domain.time_step() < m_domain.default_time_step() / 1e5) // 1e8 from Q.Jouet
         {   
             // Hack to bypass repeating interpenetrations...
-            m_out_manager.flush();
-            recover_states_from_file(m_out_manager.out_file_name(), m_domain.time() + 1);
             std::cout << "dt too small -> RECOVER STATES FROM OUT FILE" << std::endl;
+            recover_states_from_file(m_out_manager.out_file_name(), m_domain.time() + 1);
             continue;
         }
         move_floe_group();
@@ -310,9 +311,8 @@ void PROBLEM::detect_proximity(){
     if (m_domain.time_step() < m_domain.default_time_step() / 1e8)
     {   
         // Hack to bypass repeating interpenetrations...
-        m_out_manager.flush();
-        recover_states_from_file(m_out_manager.out_file_name(), m_domain.time() + 1);
         std::cout << "dt too small -> RECOVER STATES FROM OUT FILE" << std::endl;
+        recover_states_from_file(m_out_manager.out_file_name(), m_domain.time() + 1);
     }
     if (!m_proximity_detector.update()) // we have a floe interpenetration
         m_domain.rewind_time();

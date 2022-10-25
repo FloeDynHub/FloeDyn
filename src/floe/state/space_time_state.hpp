@@ -57,6 +57,7 @@ struct SpaceTimeState
     //activate and desactivate floe
     inline void activate() { active=true; }
     inline void desactivate() { active=false; }
+    inline void set_active(bool val) { active = val; }
     inline bool is_active() const { return active; }
     
      //! real position ( ignoring periodic boundaries gaps )
