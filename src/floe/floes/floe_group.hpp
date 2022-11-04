@@ -89,7 +89,7 @@ public:
      * \return  an 4-array: min_x-margin, max_x+margin, min_y-margin, max_y+margin where
      *          min_x is the minimal abscisse of the floe pack
      */
-    std::array<real_type, 4> bounding_window(real_type margin = 1) const;
+    window_type bounding_window(real_type margin = 1) const;
 
     /*! bounding window area
      *
