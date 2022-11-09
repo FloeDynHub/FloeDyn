@@ -11,6 +11,8 @@
 #include "floe/arithmetic/filtered_container.hpp"
 #include "floe/io/inter_process_message.hpp"
 #include "floe/generator/mesh_generator.hpp"
+//#include "floe/collision/contact_graph.hpp"
+//#include "floe/collision/contact_point.hpp"
  
 namespace floe { namespace floes
 {
@@ -38,6 +40,9 @@ public:
     using static_floe_type = typename floe_type::static_floe_type;
     using mesh_type = typename floe_type::mesh_type;
     using message_type = io::InterProcessMessage<real_type>;
+    //using contact_type = ContactPoint<typename TFloeGroup::floe_type> ;
+    //using contact_graph_type = ContactGraph<contact_type>;
+    //using contact_list_type = typename contact_graph_type::edge_property_type::base_class;
 
     void update_partial_list(std::vector<std::size_t> floe_id_list){
         base_class::get_floes().update_ids(floe_id_list);
@@ -55,6 +60,7 @@ public:
     void fracture_biggest_floe();
     void update_list_ids_active();//{std::cout<<"test"<<std::endl;}
     void fracture_floe(std::vector<size_t> floe_idx);
+    bool fracture_floe_from_graph(std::vector<size_t> floe_idx);//contact_graph_type contact_graph);
     
 private:
     std::vector<int> m_states_origin;
@@ -146,6 +152,63 @@ PartialFloeGroup<TFloe, TFloeList>::fracture_floe(std::vector<size_t> floe_idx)
         }
     }
 
+}
+
+
+
+template <typename TFloe, typename TFloeList>
+bool 
+PartialFloeGroup<TFloe, TFloeList>::fracture_floe_from_graph(std::vector<size_t> floe_idx)//(contact_graph_type contact_graph)
+{
+    
+    bool is_fractured {false};
+/*
+    for ( auto const& vertice : make_iterator_range( vertices(contactgraph) ) ){
+        // take coordonate of each contact point and their "energy"
+        std::vector<TPoint> contact_point_coord;
+        std::vector<TPoint> contact_energy; // first idea : scalar_product((floe1.speed-floe2.speed),contact_point.frame());
+
+        // out_edge : contact such_that vertice=contact_point.floe1
+        std::tie(contact_point_in,contact_point_end) = out_edges(verticesdescirptor[verticies],contactgraph );
+        std::for_each(contact_point_in,contact_point_end,[&contactgraph](graph::edge_descriptor contact_point){ 
+            TPoint contact_coord=contact_point.frame().center();
+            contact_point_coord.push_back(contact_coord);
+            contact_energy.push_back(contact_coord.x*(floe1.speed.x-floe2.speed.x)+contact_coord.y*(floe1.speed.y-floe2.speed.y));
+        }
+
+        // in_edge : contact such_that vertices=contact_point.floe2
+        std::tie(contact_point_in,contact_point_end) = in_edges(verticesdescirptor[verticies],contactgraph );
+        std::for_each(contact_point_in,contact_point_end,[&contactgraph](graph::edge_descriptor contact_point){ 
+            TPoint contact_coord=contact_point.projection_on_floe2();
+            contact_point_coord.push_back(contact_coord);
+            contact_energy.push_back(contact_coord.x*(floe1.speed.x-floe2.speed.x)+contact_coord.y*(floe1.speed.y-floe2.speed.y));
+        }
+*/
+	for (std::size_t i = 0; i < floe_idx.size(); ++i){
+        // research of a fracture
+        is_fractured=base_class::get_floes()[floe_idx[i]].research_fracture();
+        //is_fractured=base_class::get_floes()[vertice].research_fracture_from_contact_point(contact_point_coord,contact_energy);
+
+        // plutôt faire une liste d'indice de floe qui se fracture.
+        if (is_fractured) {
+            // if floe is fractured -> create new floes
+            auto new_geometries = base_class::get_floes()[floe_idx[i]].fracture_floe();
+            for (std::size_t j = 0; j < new_geometries.size(); ++j){
+    	        this->add_floe(new_geometries[j], floe_idx[i]);
+            }
+            // Desactivate cracked floe
+            base_class::get_floes()[floe_idx[i]].state().desactivate();
+            base_class::get_floes()[floe_idx[i]].static_floe().set_thickness(0);  
+            // update list active floe
+            this->update_list_ids_active();
+            // mesh new floes
+            for (auto & floe : this->get_floes()) { // TODO why is it needed ?
+                floe.static_floe().attach_mesh_ptr(&floe.get_floe_h().m_static_mesh);
+                floe.update();
+            } 
+        }
+    }
+    return is_fractured;
 }
 
 

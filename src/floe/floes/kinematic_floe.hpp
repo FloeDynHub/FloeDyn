@@ -153,6 +153,8 @@ public:
     //  std::vector<KinematicFloe<TStaticFloe,TState>> fracture_floe();
     std::vector<geometry_type> fracture_floe();
     bool research_fracture();
+    bool research_fracture_from_contact_point(std::vector<point_type> contact_point_coord,std::vector<real_type> contact_energy);
+
  //   std::vector<geometry_type> fracture_floe_3(std::vector<point_type> fracture);
     
     void update_after_fracture(const state_type init_state,const bool init_obstacle_m,const real_type init_total_impulse_received, point_type mass_center_floe_init);
@@ -229,17 +231,27 @@ bool
 KinematicFloe<TStaticFloe,TState>::research_fracture(){
 	// fracture floe (depending of collision properties)
     //if (abs(m_total_impulse_received)>0.00001){   std::cout<<" impulse "<<m_total_impulse_received<<std::endl; }
-	return this->static_floe().find_fracture(m_total_impulse_received,0);
+    std::vector<real_type> condition_dirichlet={m_total_impulse_received};
+    std::vector<size_t> edge_contact={0};
+	return this->static_floe().find_fracture(condition_dirichlet,edge_contact);
 }
 
-/*
+
 template < typename TStaticFloe, typename TState >
-std::vector<typename TStaticFloe::point_type>
-KinematicFloe<TStaticFloe,TState>::research_fracture(){
+bool
+KinematicFloe<TStaticFloe,TState>::research_fracture_from_contact_point(std::vector<point_type> contact_point_coord,std::vector<real_type> contact_energy){
+
 	// fracture floe (depending of collision properties)
-	return this->static_floe().find_fracture(m_total_impulse_received,0);
+    for (std::size_t i = 1; i < contact_point_coord.size(); ++i){
+        contact_point_coord[i]-=this->state().pos(); 
+    }
+    //const auto trans = geometry::frame::transformer( reverse_frame  );
+    //frame_type reverse_frame { -state.pos, -state.theta };
+    // and rotation use geometries/frame/frame_transformers to do that
+	return this->static_floe().find_fracture_from_contact_point(contact_energy,contact_point_coord);
 }
-*/
+
+
 
 //! Update frame, geometry and mesh with respect to the current state.
 template < typename TStaticFloe, typename TState >

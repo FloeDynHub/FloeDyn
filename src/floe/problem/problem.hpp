@@ -56,6 +56,7 @@ public:
     using time_scale_manager_type = domain::TimeScaleManager<typename TProxymityDetector::proximity_data_type>;
     using proximity_detector_type = TProxymityDetector;
 
+
     //! Default constructor.
     Problem(real_type epsilon=0.4, int OBL_status=0);
 
@@ -246,7 +247,20 @@ TEMPLATE_PB
 void PROBLEM::step_solve(bool crack) {
     auto t0 = std::chrono::high_resolution_clock::now();
     // fracture
-    manage_collisions();
+ // how it should be !
+    if (crack) {
+       auto const subgraphs = collision_subgraphs(m_proximity_detector.contact_graph());
+        for ( auto& subgraph : subgraphs ){
+            // Active subgraph LCP strategy
+            auto asubgraphs = active_subgraphs( subgraph );
+            // problem in method m_floe_group.fracture_floe_from_graph
+            //m_floe_group.fracture_floe_from_graph(asubgraph);
+            
+        }
+    } 
+
+    manage_collisions();   
+    
     if (crack) {
     	std::cout << "nb floes before fracture " << m_floe_group.get_floes().size() << std::endl;
         std::vector<size_t> floe_idx;
@@ -262,14 +276,15 @@ void PROBLEM::step_solve(bool crack) {
         this->update_optim_vars();
     	std::cout << "nb floes after fracture " << m_floe_group.get_floes().size() << std::endl;
     }
+
     auto t1 = std::chrono::high_resolution_clock::now();
     compute_time_step();
     auto t2 = std::chrono::high_resolution_clock::now();
     safe_move_floe_group();
     auto t3 = std::chrono::high_resolution_clock::now();
-    //if (this->m_dynamics_manager.get_external_forces().get_physical_data().get_air_mode()==5) { //!< only if the external forces is a vortex
-    //     std::cout << "the vortex wind speed is: " <<this->m_dynamics_manager.get_external_forces().get_physical_data().get_vortex_wind_speed()<< std::endl;
-    //}
+    if (this->m_dynamics_manager.get_external_forces().get_physical_data().get_air_mode()==5) { //!< only if the external forces is a vortex
+         std::cout << "the vortex wind speed is: " <<this->m_dynamics_manager.get_external_forces().get_physical_data().get_vortex_wind_speed(0)<< std::endl;
+    }
     std::cout << "Chrono : collisions " << std::chrono::duration<double, std::milli>(t1-t0).count() << " ms + "
     << "time_step " << std::chrono::duration<double, std::milli>(t2-t1).count() << " ms + "
     << "move " << std::chrono::duration<double, std::milli>(t3-t2).count() << " ms = "
