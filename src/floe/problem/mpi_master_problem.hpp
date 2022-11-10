@@ -122,7 +122,7 @@ void MPIMasterProblem<TProblem>::step_solve(){
                 this->m_dynamics_manager.get_external_forces().get_physical_data().get_vortex_wind_speed(i) 
                 << std::endl;
         }
-
+	}
     // Output
     this->output_datas();
     if (this->m_step_nb % 10 == 0) this->m_proximity_detector.display_floe_distrib();
