@@ -56,9 +56,15 @@ DynamicsManager<TExternalForces, TFloeGroup>::move_floe(floe_type& floe, real_ty
         floe.mesh(),
         integration_strategy<real_type>()
     );
+    auto pressure_gradient_force = floe::integration::integrate(
+        m_external_forces.surface_tilt_floe(floe),
+        floe.mesh(),
+        integration_strategy<real_type>()
+    );    
     new_state.pos += delta_t * floe.state().speed;
     new_state.speed += ( delta_t / floe.mass() ) * drag_force
-                         + delta_t * m_external_forces.coriolis_effect(floe);
+                       + delta_t * m_external_forces.coriolis_effect(floe)
+                       + ( delta_t / floe.area() ) * pressure_gradient_force;
 
     // Rotation part
     auto rot_drag_force = floe::integration::integrate(
@@ -81,7 +87,7 @@ DynamicsManager<TExternalForces, TFloeGroup>::move_floe(floe_type& floe, real_ty
         auto dist_rot = std::uniform_real_distribution<real_type>{-m_rand_norm, m_rand_norm};
         auto dist_angle = std::uniform_real_distribution<real_type>{0, 2 * M_PI};
         auto rand_theta = dist_angle(this->m_random_generator);
-        auto rand_rot = dist_rot(this->m_random_generator);
+        auto rand_rot = (m_rand_norm)*dist_rot(this->m_random_generator);
         auto rand_speed = m_rand_norm * point_type{cos(rand_theta), sin(rand_theta)};
         new_state.speed += rand_speed;
         new_state.rot += rand_rot;

@@ -43,9 +43,9 @@ public:
     PhysicalData(real_type const& time_ref) :
         m_ocean_data_hours{}, m_air_data_hours{},
         m_ocean_data_minutes{}, m_air_data_minutes{},
-        m_data_mat_x{}, m_data_mat_y{}, m_data_mat_t{}, m_data_mat_u{}, m_data_mat_v{}, m_data_mat_size{},
+        m_data_mat_x{}, m_data_mat_y{}, m_data_mat_t{}, m_data_mat_u{}, m_data_mat_v{}, m_data_mat_ug{}, m_data_mat_vg{}, m_data_mat_size{},
         m_time_ref{time_ref},
-        m_geo_relative_water_speed{0, 0},
+        m_top_relative_water_speed{0, 0},
         m_window_width{1}, m_window_height{1},
         m_firstVortexZoneDistToOrigin{0}, m_vortexZoneSize{0}, m_nbVortexByZone{0}, m_nb_vortex{0},
         m_vortex_radius{}, m_vortex_origin{}, m_vortex_speed{}, m_vortex_max_norm{}, m_nb_time_step{}, m_dt{300},
@@ -54,13 +54,14 @@ public:
 
     //! water speed accessor (m/s)
     point_type water_speed(point_type pt = {0,0});
+    point_type geostrophic_water_speed(point_type pt = {0,0});
     //! air speed accessor (m/s)
     point_type air_speed(point_type pt = {0,0});
     //! OBL update speed (m/s)
     void update_water_speed(point_type diff_speed);
     //! OBL speed accessor for output (m/s)
-    inline point_type OBL_speed() const { return m_geo_relative_water_speed; }
-    void set_OBL_speed(point_type speed) { m_geo_relative_water_speed = speed; }
+    inline point_type OBL_speed() const { return m_top_relative_water_speed; }
+    void set_OBL_speed(point_type speed) { m_top_relative_water_speed = speed; }
     //! Load ocean and wind data from a topaz file
     void load_matlab_topaz_data(std::string const& filename);
     //! For modes depending on an artificial ocean window (generator)
@@ -127,10 +128,10 @@ public:
 
 private:
 
-    point_vector m_ocean_data_hours; //!< Geostrophic datas
-    point_vector m_air_data_hours; //!< Geostrophic datas
-    point_vector m_ocean_data_minutes; //!< Geostrophic datas
-    point_vector m_air_data_minutes; //!< Geostrophic datas
+    point_vector m_ocean_data_hours; //!< topaz datas
+    point_vector m_air_data_hours; //!< topaz datas
+    point_vector m_ocean_data_minutes; //!< topaz datas
+    point_vector m_air_data_minutes; //!< topaz datas
     real_type const& m_time_ref; //!< reference to time variable in second
 
     const double *m_data_mat_x; //
@@ -138,9 +139,11 @@ private:
     const double *m_data_mat_t;  //   
     const double *m_data_mat_u;  //   
     const double *m_data_mat_v;  //   
+    const double *m_data_mat_ug;  //   
+    const double *m_data_mat_vg;  //      
     int m_data_mat_size[3];  //   
 
-    point_type m_geo_relative_water_speed; //!< Water speed correction compared to geostrophic data
+    point_type m_top_relative_water_speed; //!< Water speed correction compared to topaz data
 
     // window dimension (for generator)
     real_type m_window_width;
@@ -169,8 +172,8 @@ private:
     void interpolate_hour_to_minute(point_vector const&, point_vector&);
     //! Get value in minute datas from time
     point_type minute_value(real_type t, point_vector const&);
-    //! Get geostrophic (topaz) water speed
-    point_type geostrophic_water_speed(point_type = {0,0});
+    //! Get topaz water speed
+    point_type topaz_water_speed(point_type = {0,0});
     //! Get topaz air speed
     point_type topaz_air_speed(point_type = {0,0});
     //! Mode router to get air or water speed
@@ -287,13 +290,13 @@ private:
     point_type custom_forcing_analytical(point_type pt = {0,0}, real_type speed=1)
     {
         real_type u{0}, v{0};
-        double W = 1000, H = 1000, T = 86400;
-        u =  speed*cos(2*pt.y*M_PI/H) * sin(2*pt.x*M_PI/W) * sin(2*m_time_ref*M_PI/T);
-        v = -speed*sin(2*pt.y*M_PI/H) * cos(2*pt.x*M_PI/W) * sin(2*m_time_ref*M_PI/T);
+        double W = 50000, H = 50000, T = 86400;
+        u =  speed*cos(2*pt.y*M_PI/H) * sin(2*pt.x*M_PI/W);
+        v = -speed*sin(2*pt.y*M_PI/H) * cos(2*pt.x*M_PI/W);
         return {u,v}; 
     }
 
-    point_type custom_forcing_fileread(point_type pt = {0,0}, real_type speed=1)
+    point_type custom_forcing_fileread_uv(point_type pt = {0,0}, real_type speed=1)
     {   
         real_type u{0}, v{0};
         constexpr int ni = 1;
@@ -311,6 +314,26 @@ private:
         v = speed*vi[0];
         return {u,v};
     }
+
+    point_type custom_forcing_fileread_geo(point_type pt = {0,0}, real_type speed=1)
+    {   
+        real_type u{0}, v{0};
+        constexpr int ni = 1;
+        double xi[ni], yi[ni], ti[ni], ui[ni], vi[ni];
+        xi[0] = pt.x;
+        yi[0] = pt.y;
+        ti[0] = m_time_ref;
+        interp<rnatord>( m_data_mat_size, ni, // Number of points
+                         m_data_mat_ug, ui,         // Output axis (z)
+                         m_data_mat_y, yi, m_data_mat_x, xi, m_data_mat_t, ti ); // Input axes (x and y)
+        interp<rnatord>( m_data_mat_size, ni, // Number of points
+                         m_data_mat_vg, vi,         // Output axis (z)
+                         m_data_mat_y, yi, m_data_mat_x, xi, m_data_mat_t, ti ); // Input axes (x and y)
+        u = ui[0]; 
+        v = vi[0];
+        return {u,v};
+    }
+
 /* ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲ */
 /* ===================================================================================================== */    
 
@@ -321,12 +344,27 @@ TPoint
 PhysicalData<TPoint>::water_speed(point_type pt) {
     point_type resp;
     if (m_water_mode == 1){
-        resp = geostrophic_water_speed();
+        resp = topaz_water_speed();
     } else {
         resp = get_speed(pt, m_water_mode, m_water_speed);
     }
-    return resp + m_geo_relative_water_speed;
+    return resp + m_top_relative_water_speed;
 }
+
+
+/* ==================== CUSTOM forcing data ============================================================ */
+/* ▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼▼ */
+template <typename TPoint>
+TPoint
+PhysicalData<TPoint>::geostrophic_water_speed(point_type pt) {
+    point_type resp;
+    resp = custom_forcing_fileread_geo(pt, m_water_speed); 
+    return resp;
+}
+/* ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲ */
+/* ===================================================================================================== */   
+
+
 
 template <typename TPoint>
 TPoint
@@ -345,7 +383,7 @@ PhysicalData<TPoint>::load_matlab_topaz_data(std::string const& filename){
     interpolate_hour_to_minute();
 
     // Hi-jack TOPAZ file read function to read in custom input forcing file
-    floe::io::matlab::read_forcing_from_file(m_data_mat_x,m_data_mat_y,m_data_mat_t,m_data_mat_u,m_data_mat_v,m_data_mat_size);
+    floe::io::matlab::read_forcing_from_file(m_data_mat_x,m_data_mat_y,m_data_mat_t,m_data_mat_u,m_data_mat_v,m_data_mat_ug,m_data_mat_vg,m_data_mat_size);
 }
 
 
@@ -367,7 +405,7 @@ PhysicalData<TPoint>::interpolate_hour_to_minute(point_vector const& data_hours,
     point_type p0, p1, P0, P1, pm, Pm;
 
     // init phase
-    const real_type init_hours = 12;
+    const real_type init_hours = 0;
     p0 = {0,0};
     P0 = {norm2(p0), atan2(p0.y, p0.x)}; // polar coordinates of P0.
     p1 = data_hours[0];
@@ -404,7 +442,7 @@ PhysicalData<TPoint>::interpolate_hour_to_minute(point_vector const& data_hours,
 
 template <typename TPoint>
 TPoint
-PhysicalData<TPoint>::geostrophic_water_speed(point_type p){
+PhysicalData<TPoint>::topaz_water_speed(point_type p){
     return minute_value(m_time_ref, m_ocean_data_minutes);
 }
 
@@ -431,7 +469,7 @@ template <typename TPoint>
 void
 PhysicalData<TPoint>::update_water_speed(point_type diff_speed)
 {
-    m_geo_relative_water_speed += diff_speed;
+    m_top_relative_water_speed += diff_speed;
 }
 
 
@@ -578,7 +616,7 @@ PhysicalData<TPoint>::get_speed(point_type pt, int mode, real_type speed){
         case 7:
             return custom_forcing_analytical(pt, speed);
         case 8:
-            return custom_forcing_fileread(pt, speed);           
+            return custom_forcing_fileread_uv(pt, speed);           
         default :  
             return {0,0};   
 
