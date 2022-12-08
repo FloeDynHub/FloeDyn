@@ -2,7 +2,7 @@
  * \file floe/io/matlab/forcing_import.hpp
  * \brief Import of ocean/wind speeds from an external Matlab file.
  * \author Samuel Brenner
- * \date 07/30/2022
+ * \date 07/30/2022 (updated 12/07/2022 to include ug,vg)
  * \ adapted from floe/io/matlab/topaz_import.hpp by Quentin Jouet
  */
 
@@ -37,6 +37,8 @@ void read_forcing_from_file( const T* &x,
                              const T* &t,
                              const T* &u,
                              const T* &v,
+                             const T* &ug,
+                             const T* &vg,                             
                              Index &nd)
 {
     // std::string file_name = "io/inputs/input_forcing.mat";
@@ -51,6 +53,8 @@ void read_forcing_from_file( const T* &x,
     matvar_t *tmat = Mat_VarRead(matfp,"t");
     matvar_t *umat = Mat_VarRead(matfp,"u");
     matvar_t *vmat = Mat_VarRead(matfp,"v");
+    matvar_t *ugmat = Mat_VarRead(matfp,"ug");
+    matvar_t *vgmat = Mat_VarRead(matfp,"vg");    
     Mat_Close(matfp);
 
     // Data read
@@ -59,6 +63,8 @@ void read_forcing_from_file( const T* &x,
     t = static_cast<const double*>(tmat->data);
     u = static_cast<const double*>(umat->data);
     v = static_cast<const double*>(vmat->data);
+    ug = static_cast<const double*>(ugmat->data);
+    vg = static_cast<const double*>(vgmat->data);   
 
     // Get input file dimensions
     int N = (xmat->dims[1]);
