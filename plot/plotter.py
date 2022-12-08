@@ -194,7 +194,7 @@ class FloePlotter(object):
             w_width, w_length = w[1] - w[0], w[3] - w[2]
             ghosts_trans = [(i * w_width, j * w_length) for i in range(-1, 2) for j in range(-1, 2) if not i==j==0]
             ghosts_verts = [v for trans in ghosts_trans for v in self.translate_group(verts, trans)]
-            # original line: ghosts_verts = [v for trans in d["ghosts_trans"] for v in translate_group(verts, trans)] 
+            # original line: ghosts_verts = [v for trans in d["ghosts_trans"] for v in translate_group(verts, trans)]
             # End of attempt
             ax_mgr.get_collection("floe_ghosts").set_verts(ghosts_verts)
 
@@ -265,7 +265,7 @@ class FloePlotter(object):
     def _transform_shapes(self, floe_shapes, floe_states, follow=False):
         resp = floe_shapes
         def rotation_mat(theta):
-            return np.array([[np.cos(theta), -np.sin(theta)], 
+            return np.array([[np.cos(theta), -np.sin(theta)],
                              [np.sin(theta),  np.cos(theta)]])
         rots = [rotation_mat(x[2]) for x in floe_states]
         resp = [np.transpose(np.dot(rot, np.transpose(shape))) for rot, shape in zip(rots, floe_shapes)]
@@ -290,6 +290,7 @@ class FloePlotter(object):
         # Read Usefull data from file
         data_global = self._get_useful_datas(data_file)
         fig, ax = plt.subplots()
+        ax.set_aspect(1)
         ax_mgr = AxeManager(ax)
         if getattr(self.OPTIONS, "hd", False):
             fig.set_size_inches(20, 15)
@@ -314,6 +315,7 @@ class FloePlotter(object):
         init, update = self.get_anim_fcts()
         file    = h5py.File(self.OPTIONS.filename, 'r')
         fig, ax = plt.subplots()
+        ax.set_aspect(1)
         ax_mgr = AxeManager(ax)
         if file.get("time") and len(file.get("time")):
             idx = int(input("Time index (-1 for last one) : "))
@@ -342,6 +344,7 @@ class FloePlotter(object):
         "creates video directly from data"
         # print(1)
         fig, ax = plt.subplots()
+        ax.set_aspect(1)
         # print(2)
         if getattr(self.OPTIONS, "hd", False):
             fig.set_size_inches(20, 15)
@@ -408,7 +411,7 @@ class FloePlotter(object):
         L = [( partial_file_names[i],
                self._get_useful_trunk_datas(data_global, trunk),
                 self.OPTIONS.version ) for i,trunk in enumerate(trunks)]
-        # Launch process pool 
+        # Launch process pool
         p = Pool(nb_process)
         partial_video_maker = self.make_partial_floe_video_helper if not dual else make_partial_floe_video_dual_plot_helper
         p.map(partial_video_maker, L)
@@ -456,7 +459,8 @@ class FloePlotter(object):
         w_width, w_length = w[1] - w[0], w[3] - w[2]
         d["static_axes"] = self.OPTIONS.static_axes
         if not d["static_axes"]:
-            d["static_axes"] = [w[0] - w_width/2, w[1] + w_width/2, w[2] - w_length/2, w[3] + w_length/2]
+            # d["static_axes"] = [w[0] - w_width/2, w[1] + w_width/2, w[2] - w_length/2, w[3] + w_length/2]
+            d["static_axes"] = [w[0], w[1], w[2], w[3]]
             # d["static_axes"] = [w[0] - w_width*2, w[1] + w_width*2, w[2] - w_length*2, w[3] + w_length*2] #MPI bigger domain
         d["window"] = list(data_file.get("window", None))
         if getattr(self.OPTIONS, "ghosts"):
@@ -503,7 +507,7 @@ class FloePlotter(object):
     def calc_shapes(self, data):
         "calculate floe shapes (in relative frame) from outline and state"
         def rotation_mat(self, theta):
-            return np.array([[np.cos(theta), -np.sin(theta)], 
+            return np.array([[np.cos(theta), -np.sin(theta)],
                              [np.sin(theta),  np.cos(theta)]])
         resp = [np.array(data.get("floe_outlines").get(k)[0]) for k  in sorted(list(data.get("floe_outlines")), key=int)]
         resp = [np.add(shape, np.repeat([[-x[0], -x[1]]], len(shape), axis=0)) for x, shape in zip(data.get("floe_states")[0], resp)]
