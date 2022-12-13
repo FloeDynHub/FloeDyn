@@ -207,7 +207,8 @@ protected:
     value_type              epsilon                 = 0.4;
     value_type              mu_static               = 0.7;
     value_type              random_thickness_coeff  = 0.01;
-    string                  matlab_topaz_filename   = "io/inputs/DataTopaz01.mat";
+    // string                  matlab_topaz_filename   = "io/inputs/DataTopaz01.mat";
+    string                  matlab_topaz_filename   = "io/inputs/_input_forcing.mat";
     value_type              max_size                = 250;
     bool                    rand_speed_add          = 0;
     value_type              rand_norm               = 1e-7;

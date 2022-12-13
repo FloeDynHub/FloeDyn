@@ -290,9 +290,11 @@ private:
     point_type custom_forcing_analytical(point_type pt = {0,0}, real_type speed=1)
     {
         real_type u{0}, v{0};
-        double W = 50000, H = 50000, T = 86400;
-        u =  speed*cos(2*pt.y*M_PI/H) * sin(2*pt.x*M_PI/W);
-        v = -speed*sin(2*pt.y*M_PI/H) * cos(2*pt.x*M_PI/W);
+        // double W = 50000, H = 50000, T = 86400;
+        // u =  speed*cos(2*pt.y*M_PI/H) * sin(2*pt.x*M_PI/W);
+        // v = -speed*sin(2*pt.y*M_PI/H) * cos(2*pt.x*M_PI/W);
+        u = -speed*tanh(pt.x/1000-25);
+        v = 0;
         return {u,v}; 
     }
 
@@ -379,11 +381,19 @@ PhysicalData<TPoint>::air_speed(point_type pt) {
 template <typename TPoint>
 void
 PhysicalData<TPoint>::load_matlab_topaz_data(std::string const& filename){
-    floe::io::matlab::read_topaz_from_file(filename, m_ocean_data_hours, m_air_data_hours);
-    interpolate_hour_to_minute();
+    // std::string const& topaz_filename = "io/inputs/DataTopaz01.mat";
+    // floe::io::matlab::read_topaz_from_file(topaz_filename, m_ocean_data_hours, m_air_data_hours);
+    // interpolate_hour_to_minute();
 
     // Hi-jack TOPAZ file read function to read in custom input forcing file
-    floe::io::matlab::read_forcing_from_file(m_data_mat_x,m_data_mat_y,m_data_mat_t,m_data_mat_u,m_data_mat_v,m_data_mat_ug,m_data_mat_vg,m_data_mat_size);
+    // std::string const& forcing_filename = "io/inputs/_input_forcing.mat";
+    floe::io::matlab::read_forcing_from_file(
+        filename,
+        m_data_mat_x,m_data_mat_y,m_data_mat_t,
+        m_data_mat_u,m_data_mat_v,
+        m_data_mat_ug,m_data_mat_vg,
+        m_data_mat_size
+        );
 }
 
 
