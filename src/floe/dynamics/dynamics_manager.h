@@ -50,6 +50,7 @@ public:
     inline void load_matlab_topaz_data(std::string const& filename) {
         m_external_forces.load_matlab_topaz_data(filename);
     }
+    inline void set_tilt(bool include_tilt) {m_include_tilt = include_tilt;}
 
     //! Load ocean window area (box surrounding floes)
     void load_matlab_ocean_window_data(std::string const& filename, floe_group_type const& floe_group);
@@ -78,6 +79,8 @@ protected:
 
     bool m_rand_speed_add; //!< extra random velocities 
     real_type m_rand_norm; //!< norm of these extra random velocities
+
+    bool m_include_tilt;
 
     //! Move one floe
     virtual void move_floe(floe_type& floe, real_type delta_t);

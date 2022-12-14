@@ -97,6 +97,7 @@ public:
         P.load_matlab_topaz_data(matlab_topaz_filename);
         P.get_dynamics_manager().set_rand_speed_add(rand_speed_add);
         P.get_dynamics_manager().set_norm_rand_speed(rand_norm);
+        P.get_dynamics_manager().set_tilt(include_tilt);
         if (vortex_characs[0]>0) {
             P.get_dynamics_manager().get_external_forces().get_physical_data().set_nb_vortex(vortex_characs[0]);
            P.get_dynamics_manager().get_external_forces().get_physical_data().set_nbVortexByZone(vortex_characs[1]);
@@ -215,6 +216,7 @@ protected:
     value_type              alpha                   = 1.5;
     int                     nbfpersize              = 1;
     std::vector<value_type> vortex_characs          = std::vector<value_type>(4,0);
+    bool                    include_tilt            = 0;
 
     void init_program_options( int argc, char* argv[] ){
         desc.add_options()
@@ -304,6 +306,7 @@ protected:
             "   3/ the size of these rings (in [km]).\n"
 
             "   4/ the distance of the first ring to the ice field origin (in [km]).\n")
+        ("ftilt",po::value<bool>(&include_tilt), "1 to include the pressure gradient force from sea surface tilt")
         ;
         try {
             po::store(po::parse_command_line(argc, argv, desc), this->vm);
