@@ -207,26 +207,41 @@ TimeScaleManager<TDetector>::delta_t_secu(
     // END Version 2
     
 
+    // // %%%%%%%%%% Cas obj1 %%%%%%%%%%
+    // real_type calc;
+    // if (dist1 < 1e-12)
+    //     calc = dt_default;
+    // else
+    //     calc = ((d - lambda) / 2) * (dt_default / dist1);
+    // real_type dt12 = std::min(dt_default, calc);
+    // // %%%%%%%%%% Fin %%%%%%%%%%
+    
+    // // %%%%%%%%%% Cas obj2 %%%%%%%%%%
+    // if (dist2 < 1e-12)
+    //     calc = dt_default;
+    // else
+    //     calc = ((d - lambda) / 2) * (dt_default / dist2);
+    // real_type dt21 = std::min(dt_default, calc);
+    // // %%%%%%%%%% Fin %%%%%%%%%%
+
+    // assert( std::min(dt12, dt21) > 0 );
+
+    // return std::min(dt12, dt21);
+
+
+    // [S.D.Brenner modification]
+    real_type eta = std::min(dc1, dc2);
     // %%%%%%%%%% Cas obj1 %%%%%%%%%%
     real_type calc;
-    if (dist1 < 1e-12)
-        calc = dt_default;
-    else
-        calc = ((d - lambda) / 2) * (dt_default / dist1);
+    calc = std::max(eta/2,d/2) * (dt_default / dist1);
     real_type dt12 = std::min(dt_default, calc);
-    // %%%%%%%%%% Fin %%%%%%%%%%
-    
     // %%%%%%%%%% Cas obj2 %%%%%%%%%%
-    if (dist2 < 1e-12)
-        calc = dt_default;
-    else
-        calc = ((d - lambda) / 2) * (dt_default / dist2);
+    calc = std::max(eta/2,d/2) * (dt_default / dist2);
     real_type dt21 = std::min(dt_default, calc);
-    // %%%%%%%%%% Fin %%%%%%%%%%
-
     assert( std::min(dt12, dt21) > 0 );
 
     return std::min(dt12, dt21);
+
 }
 
 template <typename TDetector>
@@ -244,8 +259,9 @@ TimeScaleManager<TDetector>::delta_t_secu_fast(
     real_type dc1 = optim1.cdist(), dc2 = optim2.cdist();
 
     // Calcul de la marge lambda
-    real_type lambda = std::min(dc1, dc2) / 2; // [S.D.Brenner]: corrected (maybe?) to be /2 instead of /20 (dc1,dc2 are "eta" from the paper) -- this still doesn't fix things if I think eta should be a fixed value or if (dist_sec-labda)<0
-    
+    real_type lambda = std::min(dc1, dc2) / 20; 
+    real_type eta = std::min(dc1, dc2);     // [S.D.Brenner]:dc1,dc2 are the values of "eta1, eta2" from the paper
+
     // Axe reliant chaque couple de floe
     point_type Axe = (C2 - C1) / distance(C1, C2);
 
@@ -259,7 +275,7 @@ TimeScaleManager<TDetector>::delta_t_secu_fast(
     {
         // Collision possible
         // delta_t = - ( dist_secu - lambda ) / VRel; //[S.D.Brenner]: I have a feeling that this /should/ be dist_secu + lambda (that would be the case if if dist_secu=0 when the threshold distances just touch)
-        delta_t = - std::max(dist_secu, lambda) / VRel; // If dist_secu<lambda, use lambda to compute the timestep (floes are actively colliding), otherwise use dist_secu
+        delta_t = - std::max(dist_secu, eta/2) / VRel; // If dist_secu<lambda, use lambda to compute the timestep (floes are actively colliding), otherwise use dist_secu
     } else
     {
         // Collision impossible
