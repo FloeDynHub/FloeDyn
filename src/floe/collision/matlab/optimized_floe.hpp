@@ -157,8 +157,8 @@ OptimizedFloe<TFloe>::init()
     using namespace floe::geometry;
 
     // Collision distance
-    // m_cdist = std::sqrt(m_floe.area()) / 100;
-    m_cdist = 5; // [S.D.Brenner]: constant value for all floes; 10% of grid-scale
+    m_cdist = std::sqrt(m_floe.area()) / 100;
+    // m_cdist = 250; // [S.D.Brenner]: constant value for all floes; 10% of grid-scale
 
     // Get boundary
     const auto boundary = exterior_ring(m_floe.geometry());
