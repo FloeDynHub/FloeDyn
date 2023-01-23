@@ -233,10 +233,10 @@ TimeScaleManager<TDetector>::delta_t_secu(
     real_type eta = std::min(dc1, dc2);
     // %%%%%%%%%% Cas obj1 %%%%%%%%%%
     real_type calc;
-    calc = std::max(eta/2,(d - lambda)/2) * (dt_default / dist1);
+    calc = std::max((eta - lambda)/2,(d - lambda)/2) * (dt_default / dist1);
     real_type dt12 = std::min(dt_default, calc);
     // %%%%%%%%%% Cas obj2 %%%%%%%%%%
-    calc = std::max(eta/2,(d - lambda)/2) * (dt_default / dist2);
+    calc = std::max((eta - lambda)/2,(d - lambda)/2) * (dt_default / dist2);
     real_type dt21 = std::min(dt_default, calc);
     assert( std::min(dt12, dt21) > 0 );
 
@@ -259,7 +259,7 @@ TimeScaleManager<TDetector>::delta_t_secu_fast(
     real_type dc1 = optim1.cdist(), dc2 = optim2.cdist();
 
     // Calcul de la marge lambda
-    real_type lambda = std::min(dc1, dc2) / 2; 
+    real_type lambda = std::min(dc1, dc2) / 20; 
     real_type eta = std::min(dc1, dc2);     // [S.D.Brenner]:dc1,dc2 are the values of "eta1, eta2" from the paper
 
     // Axe reliant chaque couple de floe
@@ -274,8 +274,8 @@ TimeScaleManager<TDetector>::delta_t_secu_fast(
     if (VRel < 0)
     {
         // Collision possible
-        // delta_t = - ( dist_secu - lambda ) / VRel; //[S.D.Brenner]: I have a feeling that this /should/ be dist_secu + lambda (that would be the case if if dist_secu=0 when the threshold distances just touch)
-        delta_t = - std::max(dist_secu-lambda, eta/2) / VRel; // If dist_secu<lambda, use lambda to compute the timestep (floes are actively colliding), otherwise use dist_secu
+        // delta_t = - ( dist_secu - lambda ) / VRel; 
+        delta_t = - std::max(dist_secu-lambda, (eta - lambda)/2) / VRel; // If dist_secu<eta, use eta to compute the timestep (floes are actively colliding), otherwise use dist_secu
     } else
     {
         // Collision impossible
