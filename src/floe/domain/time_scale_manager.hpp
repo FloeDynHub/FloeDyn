@@ -256,26 +256,33 @@ TimeScaleManager<TDetector>::delta_t_secu_fast(
 
     point_type Vg1 = floe1.state().speed, Vg2 = floe2.state().speed;
     point_type C1 = optim1.global_disk().center, C2 = optim2.global_disk().center;
+    real_type R1 = optim1.global_disk().radius, R2 = optim2.global_disk().radius;
+    real_type tau1 = optim1.tau(), tau2 = optim2.tau();
+    point_type G1 = floe1.state().pos, G2 = floe2.state().pos;
     real_type dc1 = optim1.cdist(), dc2 = optim2.cdist();
 
     // Calcul de la marge lambda
-    real_type lambda = std::min(dc1, dc2) / 20; 
-    real_type eta = std::min(dc1, dc2);     // [S.D.Brenner]:dc1,dc2 are the values of "eta1, eta2" from the paper
+    real_type lambda = std::min(dc1, dc2) / 20; // a.k.a., tol3 (see Rabatel thesis, pg. 88) 
+    real_type eta = std::min(dc1, dc2);     // [S.D.Brenner]: dc1,dc2 are the values of "eta1, eta2" from the paper
 
     // Axe reliant chaque couple de floe
-    point_type Axe = (C2 - C1) / distance(C1, C2);
+    // point_type Axe = (C2 - C1) / distance(C1, C2);
+    point_type Axe = (G2 - G1) / distance(G1, G2);
 
     // Vitesse relative projetee sur l'axe
     real_type VRel = geometry::dot_product(Vg2 - Vg1, Axe);
 
     // Calcul du dt max
     real_type delta_t;
-    
+    real_type dij = distance(G1, G2)-(R1-tau1+distance(G1,C1))-(R2-tau2+distance(G2,C2)); //doing this here without changing global_disk is likely to lead to issues... but ¯\_(ツ)_/¯
+
+    // [ *I think* This doesn't work properly because the centre of the disks (C1,C2) is not necessarily the same as the centroid of the floe. Thus there's some difference in the effective translation velocity]
+
     if (VRel < 0)
     {
         // Collision possible
-        // delta_t = - ( dist_secu - lambda ) / VRel; 
-        delta_t = - std::max(dist_secu-lambda, (eta - lambda)/2) / VRel; // If dist_secu<eta, use eta to compute the timestep (floes are actively colliding), otherwise use dist_secu
+        // delta_t = - ( dist_secu - lambda ) / VRel;
+        delta_t = - std::max(dij-lambda, (eta)/2) / VRel; // If dist_secu<eta, use eta to compute the timestep (floes are actively colliding), otherwise use dist_secu
     } else
     {
         // Collision impossible
