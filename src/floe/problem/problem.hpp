@@ -89,7 +89,7 @@ public:
     void create_optim_vars();
     //!< OutManager accessor
     inline out_manager_type& get_out_manager() {return m_out_manager;}
-    //!< LCP solver accessor
+    //!< solver accessor
     inline TCollisionManager& get_lcp_manager() { return m_collision_manager; }
 
     const std::atomic<bool>* QUIT; //!< Exit signal
@@ -277,11 +277,11 @@ void PROBLEM::safe_move_floe_group(){
     move_floe_group();
     while (!m_proximity_detector.update())
     {
-        std::cout << "INTER "; 
+        std::cout << "INTER " << std::endl;
         m_floe_group.recover_previous_step_states();
         m_domain.rewind_time();
         compute_time_step(); // will only divide previous time step
-        if (m_domain.time_step() < m_domain.default_time_step() / 1e5) // 1e8 from Q.Jouet
+        if (m_domain.time_step() < m_domain.default_time_step() / 1e8)
         {   
             // Hack to bypass repeating interpenetrations...
             m_out_manager.flush();
@@ -295,11 +295,16 @@ void PROBLEM::safe_move_floe_group(){
 
 TEMPLATE_PB
 void PROBLEM::output_datas(){
-    std::cout << "----" << std::endl;
-    std::cout << " Time : " << this->m_domain.time();
-    std::cout << " | delta_t : " << this->m_domain.time_step();
-    std::cout << " | Kinetic energy : " << this->m_floe_group.kinetic_energy() << std::endl;
+    // if( ((m_step_nb+1)%100)==0 ) {
+        std::cout << " Iteration step : " << m_step_nb+1;
+        std::cout << " Time : " << this->m_domain.time() << " s (" << this->m_domain.time()/86400 <<" day)";
+        std::cout << " | delta_t : " << this->m_domain.time_step() << std::endl;
+        std::cout << "----" << std::endl;
+        // std::cout << " | mean delta_t : " << this->m_domain.time()/(m_step_nb+1) << std::endl;
+        // std::cout << " | Kinetic energy : " << this->m_floe_group.kinetic_energy() << std::endl;
+    // }
     // ouput data
+    // std::cout << "check\n";
     m_out_manager.save_step_if_needed(this->m_domain.time(), this->m_dynamics_manager);
 }
 
