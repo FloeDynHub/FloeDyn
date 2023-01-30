@@ -158,7 +158,6 @@ OptimizedFloe<TFloe>::init()
 
     // Collision distance
     m_cdist = std::sqrt(m_floe.area()) / 100;
-    // m_cdist = 250; // [S.D.Brenner]: constant value for all floes; 10% of grid-scale
 
     // Get boundary
     const auto boundary = exterior_ring(m_floe.geometry());
@@ -205,8 +204,11 @@ OptimizedFloe<TFloe>::init()
         //points.push_back( disk.center );
         max_radius = std::max( max_radius, disk.radius );
     }
+    // real_type m_distCG = distance(m_global_disk.center, m_floe.state().pos);
+    // m_global_disk.center = m_floe.state().pos;
     m_tau = max_radius + max_radius/5; // ??? (see create_disk.m, l.16)
     //m_global_disk = return_buffer<circle_type>( circle_envelope<circle_type>(points), m_tau );
+    // m_global_disk = return_buffer<circle_type>( circle_envelope<circle_type>(boundary), m_tau+m_distCG );
     m_global_disk = return_buffer<circle_type>( circle_envelope<circle_type>(boundary), m_tau );
 }
 

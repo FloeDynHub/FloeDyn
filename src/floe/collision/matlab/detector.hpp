@@ -452,9 +452,12 @@ detect_step4(
     // Add edge in graph if there is any contact
     if (contact_list.size() != 0)
     {
+
         // pragma omp critical
         {add_edge(vertex(m_prox_data.real_floe_id(n1), m_contacts), vertex(m_prox_data.real_floe_id(n2), m_contacts), {contact_list, n1, n2}, m_contacts);}
-        m_prox_data.set_dist_opt(n1, n2, std::max(opt1.cdist(), opt2.cdist()));
+        m_prox_data.set_indic(n1, n2, 2); // std::cout<<"added contact for n1:"<<n1<<", n2:"<<n2<<std::endl; // [SDBRENNER ADD]
+        m_prox_data.set_dist_opt(n1, n2, std::min(opt1.cdist(), opt2.cdist()));
+        
     }
 
     // Return minimal distance between the 2 floes
@@ -491,12 +494,26 @@ MatlabDetector<TFloe, TData, TContact>::check_interpenetration()
     for (std::size_t n1 = 0; n1 < m_prox_data.size1(); ++n1)
         for (std::size_t n2 = n1 + 1; n2 < m_prox_data.size2(); ++n2)
         {
-            if (m_prox_data.get_indic(n1, n2) != 0)
+            auto const& opt1 = get_optim_itf(n1);
+            auto const& opt2 = get_optim_itf(n2);
+            if (m_prox_data.get_indic(n1, n2) != 0 && m_prox_data.get_dist_secu(n1,n2)>std::min(opt1.cdist(), opt2.cdist())  )
+            // if (m_prox_data.get_indic(n1, n2) == 1)
             {
+                auto P1 = get_floe_itf(n1).state().pos; 
+                auto P2 = get_floe_itf(n2).state().pos;
+                auto T1 = get_floe_itf(n1).state().theta; 
+                auto T2 = get_floe_itf(n2).state().theta;
                 auto I = boost::geometry::intersects(get_floe_itf(n1).geometry(), get_floe_itf(n2).geometry());
                 v.push_back(I);
                 if (I)
                 {
+                    // DIAGNOSTIC TESTING INFO:
+                    // std::cout << "n1=" << n1 << "; n2=" << n2 << ";" << std::endl;
+                    // std::cout << "X1=" << get_floe_itf(n1).state().pos << "; X2=" << get_floe_itf(n2).state().pos << ";" << std::endl;
+                    // std::cout << "T1=" << get_floe_itf(n1).state().theta << "; T2=" << get_floe_itf(n2).state().theta << ";" << std::endl;
+                    // std::cout << "U1=" << get_floe_itf(n1).state().speed << "; U2=" << get_floe_itf(n2).state().speed << ";" << std::endl;
+                    // std::cout << "O1=" << get_floe_itf(n1).state().rot << "; O2=" << get_floe_itf(n2).state().rot << ";" << std::endl; 
+                    // std::cout << "ds12=" << m_prox_data.get_dist_secu(n1,n2) << "m; do12=" << m_prox_data.get_dist_opt(n1,n2) << "m;" << std::endl<< std::endl;
                     if (m_prox_data.get_indic(n1, n2) == 1)
                         m_prox_data.set_indic(n1, n2, -1);
                     else if (m_prox_data.get_indic(n1, n2) < 0)
