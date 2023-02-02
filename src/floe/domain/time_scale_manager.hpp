@@ -155,10 +155,10 @@ TimeScaleManager<TDetector>::delta_t_secu(
     const point_type& G1 = floe1.state().pos, G2 = floe2.state().pos;
     const real_type& tau1 = optim1.tau(), tau2 = optim2.tau();
     const real_type& dc1 = optim1.cdist(), dc2 = optim2.cdist();
-    real_type lambda = std::min(dc1, dc2) / 20;
+    // real_type lambda = std::min(dc1, dc2) / 20;
 
-    real_type d = std::max(dist_opt, dist_secu);
-    lambda = std::min(lambda, d / 20);
+    // real_type d = std::max(dist_opt, dist_secu);
+    // lambda = std::min(lambda, d / 20);
 
     // // Calcul du deplacement d un point par rapport aux reperes en t+dt.
     // // repere a l'instant t+dt_default :
@@ -235,12 +235,14 @@ TimeScaleManager<TDetector>::delta_t_secu(
     point_type Axe = (G2 - G1) / distance(G1, G2);
     auto D1 = (distance(C1, G1) + R1 - tau1);
     auto D2 = (distance(C2,G2) + R2 - tau2);
-    // real_type VRel = abs(geometry::dot_product(Vg2 - Vg1, Axe)) + abs(Vt1)*D1 + abs(Vt2)*D2; // Absolute maximum possible point-point relative velocity
-    // auto VRel = distance(Vg1) + distance(Vg2) + abs(Vt1)*D1 + abs(Vt2)*D2; // Absolute maximum possible point-point relative velocity
-    real_type VRel = sqrt(geometry::dot_product(Vg1,Vg1)) +  sqrt(geometry::dot_product(Vg2,Vg2)) + abs(Vt1)*D1 + abs(Vt2)*D2; // Absolute maximum possible point-point relative velocity
-    
+    // Conservative guess for maximum point-point relative velocity (an abolutely max bound can also be written with ||Vg1|| + ||Vg2||, but I think this should be good enough)
+    real_type VRel = abs(geometry::dot_product(Vg2-Vg1, Axe)) + abs(Vt1)*D1 + abs(Vt2)*D2; 
 
-    real_type delta_t = std::max( abs(d-lambda), eta )/VRel; // in theory: in a contact, d_opt = eta, so it is guaranteed that d >= eta... but I'm not convinced it's working
+    real_type lambda = std::min(dc1, dc2) / 20;
+    real_type d = std::max(dist_opt, dist_secu);
+    real_type dijMax = std::max( abs(d-lambda), eta );
+    
+    real_type delta_t = dijMax/VRel; // in a contact, d_opt = eta (theoretically), so d>=eta
 
     // std::cout << "calc_slow; d/eta = " << d/eta << "; dt = " << delta_t << " s" << std::endl;
     // std::cout << "calc_slow; dt = " << delta_t << std::endl;
@@ -288,7 +290,7 @@ TimeScaleManager<TDetector>::delta_t_secu_fast(
     {
         // Collision possible
         // delta_t = - ( dist_secu - lambda ) / VRel;
-        delta_t = - std::max(dij-lambda, eta ) / VRel; // If dist_secu<eta, use eta to compute the timestep (floes are actively colliding), otherwise use dist_secu
+        delta_t = - std::max(dij-lambda, (eta)/2) / VRel; // If dij<eta/2, use eta/2 to compute the timestep (floes might be actively colliding), otherwise use dij
     } else
     {
         // Collision impossible
