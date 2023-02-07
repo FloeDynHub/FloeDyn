@@ -502,8 +502,6 @@ MatlabDetector<TFloe, TData, TContact>::check_interpenetration()
                 // v.push_back(I);
                 if (I)
                 {   
-                    m_prox_data.set_dist_secu(n1, n2, -m_prox_data.get_dist_secu(n1,n2) );
-                    m_prox_data.set_dist_opt(n1, n2, std::min(get_optim_itf(n1).cdist(), get_optim_itf(n2).cdist()) );
                     // DIAGNOSTIC TESTING INFO:
                     std::cout << "interpenetration:";
                     // std::cout << "n1=" << n1 << "; n2=" << n2 << ";" << std::endl;
@@ -511,11 +509,17 @@ MatlabDetector<TFloe, TData, TContact>::check_interpenetration()
                     // std::cout << "T1=" << get_floe_itf(n1).state().theta << "; T2=" << get_floe_itf(n2).state().theta << ";" << std::endl;
                     // std::cout << "U1=" << get_floe_itf(n1).state().speed << "; U2=" << get_floe_itf(n2).state().speed << ";" << std::endl;
                     // std::cout << "O1=" << get_floe_itf(n1).state().rot << "; O2=" << get_floe_itf(n2).state().rot << ";" << std::endl; 
-                    std::cout << " dist_secu"<<n1<<","<<n2<<"= "<< m_prox_data.get_dist_secu(n1,n2) << "m;";
-                    std::cout << " dist_opt" <<n1<<","<<n2<<"= "<< m_prox_data.get_dist_opt(n1,n2) <<  "m;"; 
-                    std::cout << " min(eta)= "<< std::min(get_optim_itf(n1).cdist(), get_optim_itf(n2).cdist()) << "m;"; 
-                    std::cout << " indic= " << m_prox_data.get_indic(n1, n2) << std::endl;
-                    if (  abs(m_prox_data.get_dist_secu(n1,n2))>=std::min(get_optim_itf(n1).cdist(), get_optim_itf(n2).cdist())  )
+                    // std::cout << " dist_secu"<<n1<<","<<n2<<"= "<< m_prox_data.get_dist_secu(n1,n2) << "m;";
+                    // std::cout << " dist_opt" <<n1<<","<<n2<<"= "<< m_prox_data.get_dist_opt(n1,n2) <<  "m;"; 
+                    // std::cout << " min(eta)= "<< std::min(get_optim_itf(n1).cdist(), get_optim_itf(n2).cdist()) << "m;"; 
+                    // std::cout << " indic= " << m_prox_data.get_indic(n1, n2) << std::endl;
+                    std::cout << "d/eta = " << m_prox_data.get_dist_secu(n1,n2)/std::min(get_optim_itf(n1).cdist(), get_optim_itf(n2).cdist()) << std::endl;
+                    // ADJUST DISTANCES
+                    m_prox_data.set_dist_secu(n1, n2, -m_prox_data.get_dist_secu(n1,n2) );
+                    m_prox_data.set_dist_opt(n1, n2, std::min(get_optim_itf(n1).cdist(), get_optim_itf(n2).cdist()) );    
+                    // DEFINE AS "INTERPENTRATING" if the distance is large enough
+                    real_type tol = std::min(get_optim_itf(n1).cdist(), get_optim_itf(n2).cdist());
+                    if (  abs(m_prox_data.get_dist_secu(n1,n2))>=tol  )
                     {
                         v.push_back(I);
                         if (m_prox_data.get_indic(n1, n2) == 1)
