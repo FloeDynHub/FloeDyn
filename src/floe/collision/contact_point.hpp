@@ -109,8 +109,8 @@ struct ContactPoint
     //! Return true if the contact is active (relative speed of the two contact points is negative)
     inline bool is_active() const
     {
-        return relative_speed() < - dist / 50; // 10 = DT_DEFAULT // get dt_defaut ?
-        // return relative_speed() < 0;
+        // return relative_speed() < - dist / 50; // 10 = DT_DEFAULT // get dt_defaut ?
+        return relative_speed() < 0;
     }
 
     TFloe const* floe1; //!< First floe in contact
