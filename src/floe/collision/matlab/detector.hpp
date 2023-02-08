@@ -519,7 +519,7 @@ MatlabDetector<TFloe, TData, TContact>::check_interpenetration()
                     m_prox_data.set_dist_opt(n1, n2, std::min(get_optim_itf(n1).cdist(), get_optim_itf(n2).cdist()) );    
                     // DEFINE AS "INTERPENTRATING" if the distance is large enough
                     real_type tol = std::min(get_optim_itf(n1).cdist(), get_optim_itf(n2).cdist());
-                    if (  abs(m_prox_data.get_dist_secu(n1,n2))>=tol  )
+                    if (  abs(m_prox_data.get_dist_secu(n1,n2))>tol  )
                     {
                         v.push_back(I);
                         if (m_prox_data.get_indic(n1, n2) == 1)
