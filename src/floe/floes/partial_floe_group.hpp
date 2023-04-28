@@ -109,8 +109,9 @@ PartialFloeGroup<TFloe, TFloeList>::fracture_biggest_floe()
 	real_type max_area = 0;
     int biggest_floe_idx = 0;
 	for (std::size_t i = 0; i < base_class::get_floes().size(); ++i){
-        if (base_class::get_floes()[i].area() > max_area){
-            max_area = base_class::get_floes()[i].area();
+        auto& floe = base_class::get_floes()[i];
+        if (!floe.is_obstacle() && floe.area() > max_area){
+            max_area = floe.area();
             biggest_floe_idx = i;
         }
     }
@@ -122,7 +123,6 @@ PartialFloeGroup<TFloe, TFloeList>::fracture_biggest_floe()
     
     // Desactivate cracked floe
     base_class::get_floes()[biggest_floe_idx].state().desactivate();
-    // base_class::get_floes()[biggest_floe_idx].static_floe().set_thickness(0);
 
     this->update_list_ids_active();
 
@@ -189,7 +189,6 @@ PartialFloeGroup<TFloe, TFloeList>::add_floe(geometry_type shape, std::size_t pa
         parent_floe.state().trans
     });
     // FLoes's inherited caracteristics
-    // static_floe.set_thickness(parent_floe.static_floe().thickness());
     // Random floe oceanic skin drag variation
     auto dist = std::normal_distribution<real_type>{1, 0.02};
     auto gen = std::default_random_engine{};
