@@ -109,6 +109,10 @@ public:
         m_prox_data.set_floe_group(floe_group);
     }
 
+    virtual void rescan_floe_group() {
+        m_prox_data.update_optim_vars();
+    }
+
     //!Empty floe and optim lists
     virtual void reset() { m_prox_data.reset(); }
 

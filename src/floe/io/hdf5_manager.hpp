@@ -17,14 +17,15 @@ namespace floe { namespace io
 template <typename TFloeGroup, typename TDynamicsMgr>
 HDF5Manager<TFloeGroup, TDynamicsMgr>::HDF5Manager(floe_group_type const& floe_group) :
     m_out_file_name{"io/outputs/out_" + floe::random::gen_random(5) + ".h5"},
-    m_out_file{nullptr}, m_step_count{0}, m_chunk_step_count{0}, m_flush_max_step{2},
+    m_out_file{nullptr}, m_step_count{0}, m_chunk_step_count{0},
+    m_flush_max_step{2}, // min val = 2
     m_floe_group{&floe_group},
     m_data_chunk_states(boost::extents[0][0][0]),
     m_data_chunk_time{new real_type[m_flush_max_step]},
     m_data_chunk_mass_center(boost::extents[m_flush_max_step][2]),
     m_data_chunk_OBL_speed(boost::extents[m_flush_max_step][2]),
     m_data_chunk_kinE{new real_type[m_flush_max_step]},
-    m_out_step{0}, m_next_out_limit{0}
+    m_out_step{0}, m_next_out_limit{0}, m_nb_floe_shapes_written{0}, m_shapes_group{nullptr}
     {}
 
 //! Definition of the destructor:
@@ -71,8 +72,15 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::save_step(real_type time, const dyna
         floe_id++;
     }
     */
+    // Handle fracture
+    if (m_data_chunk_states.size() > 0 && m_data_chunk_states[0].size() != this->nb_considered_floes()) {
+        flush();
+        m_chunk_step_count = 0;
+        m_data_chunk_states.resize(boost::extents[m_flush_max_step][this->nb_considered_floes()][10]);
+        write_shapes();
+    }
     // save states
-    if (m_data_chunk_states.size() == 0) m_data_chunk_states.resize(boost::extents[m_flush_max_step][this->nb_considered_floes()][9]);
+    if (m_data_chunk_states.size() == 0) m_data_chunk_states.resize(boost::extents[m_flush_max_step][this->nb_considered_floes()][10]);
     for(std::size_t id = 0; id < this->nb_considered_floes(); id++)
     {
         auto const& floe = this->get_floe(id);
@@ -86,7 +94,8 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::save_step(real_type time, const dyna
             floe.state().rot,
             floe.total_received_impulse(),
             floe.state().pos.x,
-            floe.state().pos.y
+            floe.state().pos.y,
+            (floe.state().is_active()) ? 1. : 0.
         }){
             m_data_chunk_states[m_chunk_step_count][id][k++] = val;
         }
@@ -149,7 +158,10 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::flush() {
         }
 
         try { m_out_file->openGroup("floe_shapes"); }
-        catch (...) { write_shapes(); }
+        catch (...) {
+            m_shapes_group = new Group( m_out_file->createGroup("floe_shapes") );
+            write_shapes();
+        }
 
         try { m_out_file->openDataSet("window"); }
         catch (...) { write_window(); }
@@ -269,7 +281,7 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::write_states() {
     } catch (...) {
         FloatType datatype( PredType::NATIVE_DOUBLE );
         datatype.setOrder( H5T_ORDER_LE );
-        hsize_t maxdims[RANK] = {H5S_UNLIMITED, dims[1], dims[2]}; 
+        hsize_t maxdims[RANK] = {H5S_UNLIMITED, H5S_UNLIMITED, dims[2]}; 
         DataSpace dataspace( RANK, dims, maxdims );
         // Modify dataset creation property to enable chunking
         DSetCreatPropList prop;
@@ -505,18 +517,26 @@ double HDF5Manager<TFloeGroup, TDynamicsMgr>::recover_states(
     boost::multi_array<real_type, 2> data_out(boost::extents[dims_out[1]][dims_out[2]]);
     dataset.read( data_out.data(), PredType::NATIVE_DOUBLE, memspace, dataspace );
 
-    std::size_t floe_id = 0;
-    for (auto& floe : floe_group.get_floes())
+    floe_group.get_floes().filter_off(); // crack version
+    floe_group.get_floes().resize(dims_out[1]); // Resize for crack version
+    floe_group.get_floe_group_h().m_list_floe_h.resize(dims_out[1]);
+    for (std::size_t floe_id = 0; floe_id < floe_group.get_floes().size(); floe_id++)
     {
-        floe.set_state({
-            {data_out[floe_id][0], data_out[floe_id][1]}, data_out[floe_id][2],
-            {data_out[floe_id][3], data_out[floe_id][4]}, data_out[floe_id][5],
-            {0,0}
-        });
-        floe.reset_impulse(data_out[floe_id][6]);
-        floe_id++;
+        auto& floe = floe_group.get_floes()[floe_id];
+        // auto& new_state = floe.state();
+        bool active = (data_out[floe_id][9] == 1.) ? true : false; // crack version
+        floe.state().set_active(active); // crack version
+        if (active) {
+            floe.set_state({
+                {data_out[floe_id][0], data_out[floe_id][1]}, data_out[floe_id][2],
+                {data_out[floe_id][3], data_out[floe_id][4]}, data_out[floe_id][5],
+                {0,0}
+            });
+            floe.reset_impulse(data_out[floe_id][6]);
+        }
     }
-
+    floe_group.update_list_ids_active(); // crack version
+    
     {
     // Load OBL speed
     DataSet dataset = file.openDataSet( "OBL_speed" );
@@ -558,42 +578,36 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::write_shapes() {
     H5File& file( *m_out_file );
     const int   SPACE_DIM = 2;
 
-    /* write shapes */
-    try {
-        Group floe_shape_group = file.openGroup("floe_shapes");
-    } catch (...) {
-        /* Create group for floe shapes */
-        Group floe_shape_group(file.createGroup("floe_shapes"));
-
-        const int   RANK = 2;
-        FloatType datatype( PredType::NATIVE_DOUBLE );
-        datatype.setOrder( H5T_ORDER_LE );
-        hsize_t     dimsf[2];              // dataset dimensions
-        dimsf[1] = SPACE_DIM;
-        for (std::size_t i=0; i!=this->nb_considered_floes(); ++i)
+    const int   RANK = 2;
+    FloatType datatype( PredType::NATIVE_DOUBLE );
+    datatype.setOrder( H5T_ORDER_LE );
+    hsize_t     dimsf[2];              // dataset dimensions
+    dimsf[1] = SPACE_DIM;
+    for (std::size_t i=m_nb_floe_shapes_written; i!=this->nb_considered_floes(); ++i)
+    {
+        auto& boundary = this->get_floe(i).get_static_floe().geometry().outer();
+        dimsf[0] = boundary.size();
+        DataSpace dataspace( RANK, dimsf );
+        /*
+            * Create a nFew dataset within the file using defined dataspace and
+            * datatype and default dataset creation properties.
+            */
+        DataSet dataset = m_shapes_group->createDataSet(H5std_string{std::to_string(i)},datatype, dataspace);
+        // auto data = new real_type[dimsf[0] * dimsf[1]];
+        boost::multi_array<real_type, 2> data(boost::extents[dimsf[0]][dimsf[1]]);
+        for (std::size_t j = 0; j!= dimsf[0]; ++j)
         {
-            auto& boundary = this->get_floe(i).get_static_floe().geometry().outer();
-            dimsf[0] = boundary.size();
-            DataSpace dataspace( RANK, dimsf );
-            /*
-             * Create a nFew dataset within the file using defined dataspace and
-             * datatype and default dataset creation properties.
-             */
-            DataSet dataset = floe_shape_group.createDataSet(H5std_string{std::to_string(i)},datatype, dataspace);
-            // auto data = new real_type[dimsf[0] * dimsf[1]];
-            boost::multi_array<real_type, 2> data(boost::extents[dimsf[0]][dimsf[1]]);
-            for (std::size_t j = 0; j!= dimsf[0]; ++j)
-            {
-                data[j][0] = boundary[j].x;
-                data[j][1] = boundary[j].y;
-            }
-            /*
-             * Write the data to the dataset using default memory space, file
-             * space, and transfer properties.
-             */
-            dataset.write( data.data(), PredType::NATIVE_DOUBLE );
+            data[j][0] = boundary[j].x;
+            data[j][1] = boundary[j].y;
         }
+        /*
+            * Write the data to the dataset using default memory space, file
+            * space, and transfer properties.
+            */
+        dataset.write( data.data(), PredType::NATIVE_DOUBLE );
     }
+
+    m_nb_floe_shapes_written = this->nb_considered_floes();
 
 };
 
@@ -638,6 +652,7 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::make_input_file(const dynamics_mgr_t
         const H5std_string  FILE_NAME( m_out_file_name );
 
         m_out_file = new H5File( FILE_NAME.c_str(), H5F_ACC_TRUNC );
+        m_shapes_group = new Group( m_out_file->createGroup("floe_shapes") );
     
         write_shapes();
         write_window();

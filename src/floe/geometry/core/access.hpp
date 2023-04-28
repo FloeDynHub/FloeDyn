@@ -47,12 +47,12 @@ struct access_pointer
 {
     static inline TCoordinate get( TGeometry const* geometry )
     {
-        return traits::access<typename boost::remove_pointer<TGeometry>::type, Dimension>::get( *geometry );
+        return traits::access<typename std::remove_pointer<TGeometry>::type, Dimension>::get( *geometry );
     }
 
     static inline void set( TGeometry* geometry, TCoordinate const& value )
     {
-        traits::access<typename boost::remove_pointer<TGeometry>::type, Dimension>::set( *geometry, value );
+        traits::access<typename std::remove_pointer<TGeometry>::type, Dimension>::set( *geometry, value );
     }
 };
 

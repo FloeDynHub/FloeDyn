@@ -89,7 +89,7 @@ public:
      * \return  an 4-array: min_x-margin, max_x+margin, min_y-margin, max_y+margin where
      *          min_x is the minimal abscisse of the floe pack
      */
-    std::array<real_type, 4> bounding_window(real_type margin = 1) const;
+    window_type bounding_window(real_type margin = 1) const;
 
     /*! bounding window area
      *
@@ -195,7 +195,11 @@ FloeGroup<TFloe, TFloeList>::total_mass() const
 {
     return std::accumulate(
         get_floes().begin(), get_floes().end(), 0. , 
-        [](real_type partial_sum, floe_type const& floe) { return partial_sum + floe.mass(); }
+        [](real_type partial_sum, floe_type const& floe) {
+            real_type resp = partial_sum;
+            if (floe.is_active()) resp += floe.mass();
+            return resp;
+        }
     );
 }
 
@@ -205,7 +209,11 @@ FloeGroup<TFloe, TFloeList>::mass_center() const
 {
     return std::accumulate(
         get_floes().begin(), get_floes().end(), point_type{0,0} , 
-        [](point_type partial_sum, floe_type const& floe) { return partial_sum + floe.mass() * floe.state().real_position(); }
+        [](point_type partial_sum, floe_type const& floe) {
+            point_type resp = partial_sum;
+            if (floe.is_active()) resp += + floe.mass() * floe.state().real_position();
+            return resp;
+        }
     ) / total_mass();
 }
 

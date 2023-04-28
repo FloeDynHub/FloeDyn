@@ -86,10 +86,11 @@ template <
     typename TContact
 >
 void
-MatlabDetector<TFloe, TData, TContact>::prepare_optims()
-{
-    for ( auto optim_ptr : m_prox_data.get_optims() )
-        optim_ptr->update();
+MatlabDetector<TFloe, TData, TContact>::prepare_optims() {
+    //    for ( auto optim_ptr : m_prox_data.get_optims() )
+    //        optim_ptr->update(); // TODO restore with condition on floe.is_active()
+    for (std::size_t i=0; i< this->data().nb_floes(); ++i)
+        this->get_optim(i).update();
 }
 
 //! Initializing contact graph

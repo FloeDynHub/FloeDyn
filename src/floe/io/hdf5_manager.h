@@ -57,7 +57,7 @@ public:
     using dynamics_mgr_type = TDynamicsMgr;
     using real_type = typename TFloeGroup::real_type;
     using point_type = typename TFloeGroup::point_type; 
-    using saved_state_type = std::array<real_type, 9>;
+    using saved_state_type = std::array<real_type, 10>;
 
     //! Default constructor.
     HDF5Manager(floe_group_type const& floe_group);
@@ -77,12 +77,12 @@ public:
                           dynamics_mgr_type&, bool keep_as_outfile);
     void set_floe_group(floe_group_type const& floe_group) {
         m_floe_group = &floe_group; 
-        m_data_chunk_states.resize(boost::extents[m_flush_max_step][this->nb_considered_floes()][9]);
+        m_data_chunk_states.resize(boost::extents[m_flush_max_step][this->nb_considered_floes()][10]);
     };
     //! Do not consider all floes in floe group, /!\ only do this at the begining (resizes out states dataset)
     void restrain_floe_ids(std::vector<std::size_t> id_list) {
         m_floe_ids = id_list; 
-        m_data_chunk_states.resize(boost::extents[m_flush_max_step][m_floe_ids.size()][9]);
+        m_data_chunk_states.resize(boost::extents[m_flush_max_step][m_floe_ids.size()][10]);
     };
     inline bool is_restrained() const { return m_floe_ids.size(); }
     inline std::string const& out_file_name() const { return m_out_file_name; }
@@ -107,6 +107,7 @@ private:
 
     std::string m_out_file_name; //!< output file name
     H5File* m_out_file; //!< output file
+    Group* m_shapes_group;
     hsize_t m_step_count; //!< Total nb of outputted simulation states
     hsize_t m_chunk_step_count; //!< Nb of temporarily saved steps (to flush in out file)
     const hsize_t m_flush_max_step; //!< Max nb of temporarily saved steps (chunk size)
@@ -123,6 +124,8 @@ private:
     // output
     real_type m_out_step; //!< Time step between simulation state outputs
     real_type m_next_out_limit; //!< Next time limit for state ouput
+    //! Number of floe shapes written to file (fracture creates new ones)
+    hsize_t m_nb_floe_shapes_written;
 
     //! out floe shapes (boundary in relative frame)
     void write_shapes();

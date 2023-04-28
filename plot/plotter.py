@@ -55,6 +55,11 @@ class AxeManager(object):
     def get_collection(self, key):
         return self.ax.collections[self.collections[key]]
 
+    def replace_collection(self, key, obj):
+        idx = self.collections[key]
+        del self.ax.collections[idx]
+        self.set_collection(key, obj)
+
 
 class FloePlotter(object):
     """ Drawing floes from simulation output files """
@@ -181,11 +186,15 @@ class FloePlotter(object):
         ax = ax_mgr.ax
         begin, step = 0, 1
         indic = begin + step * num
-        opt_ghosts, opt_color, opt_follow = (
-            getattr(self.OPTIONS, opt) for opt in ["ghosts", "color", "follow"]
+        opt_ghosts, opt_color, opt_follow, opt_fracture = (
+            getattr(self.OPTIONS, opt) for opt in ["ghosts", "color", "follow", "fracture"]
         )
 
-        verts = self._transform_shapes(data.get("floe_shapes"), data.get("floe_states")[indic], opt_follow)
+        nb_floes = len(data.get("floe_shapes"))
+        verts = self._transform_shapes(data.get("floe_shapes"), data.get("floe_states")[indic], opt_follow) # [0:min(num,nb_floes)]
+        if opt_fracture:
+            # Filter floe_shapes according to floe_state "alive" because nb of floes may have change
+            verts = [v for i, v in enumerate(verts) if data.get("floe_states")[indic][i][9] == 1]
         ax_mgr.get_collection("floes").set_verts(verts)
 
         if opt_ghosts:
@@ -323,13 +332,16 @@ class FloePlotter(object):
 
         data_global = self._get_useful_datas(file, num, img=True)
         init(data_global, ax_mgr)
-        ax.axis('equal')
+        if not data_global.get("static_axes"):
+            ax.axis('equal') # automatic scale
+        else:
+            ax.axis(data_global.get("static_axes"))
         update(0, data_global, ax_mgr)
         if getattr(self.OPTIONS, "hd", False):
-            # fig.set_size_inches(60, 45)
-            # fig.set_dpi(100)
-            # plt.savefig('{}.png'.format(self.OPTIONS.filename))
-            plt.savefig('{}.eps'.format(self.OPTIONS.filename), format='eps')#, dpi=1000)
+            fig.set_size_inches(60, 45)
+            fig.set_dpi(100)
+            plt.savefig('{}.png'.format(self.OPTIONS.filename))
+            # plt.savefig('{}.eps'.format(self.OPTIONS.filename), format='eps')#, dpi=1000)
         else:
             plt.show()
 
