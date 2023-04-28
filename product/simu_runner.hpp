@@ -36,7 +36,7 @@ void handle_exception(std::exception& e){
 
 class SimuRunner{
 public:
-    SimuRunner( int argc, char* argv[] ) : desc("Allowed options"){
+    SimuRunner( int argc, char* argv[] ) : desc("Allowed options", 128) {
         this->init_program_options(argc, argv);
         this->init_interruption();
     }
@@ -246,11 +246,11 @@ protected:
             "       air mode: 1      water mode: 1\n\n"
 
             "   For a storm (as a vortex): \n"
-            "       air mode: 5      water mode: 0\n\n"
+            "       air mode: 5      water mode: 0\n"
             "   or  air mode: 6      water mode: 0\n\n"
 
             "   For the initial floe pack generation: \n"
-            "       air mode: 2      water mode: 0\n\n"
+            "       air mode: 2      water mode: 0\n"
             "   or  air mode: 0     water mode: 2\n\n"
 
             "   For the simulation of percution against an obstacle: \n"
@@ -269,7 +269,7 @@ protected:
             "       air speed: 0      water speed: 0\n\n"
 
             "   For the initial floe pack generation: \n"
-            "       air speed >=10    water speed: 0\n\n"
+            "       air speed >=10    water speed: 0\n"
             "   or  air speed: 0  1<= water speed <=4\n\n"
 
             "   For the simulation of percution against an obstacle: \n"
