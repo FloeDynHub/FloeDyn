@@ -133,6 +133,20 @@ void import_floes_from_hdf5(H5std_string filename, TFloeGroup& floe_group)
                 {states_data_out[floe_id][3], states_data_out[floe_id][4]}, states_data_out[floe_id][5],
                 {0,0}
             });
+            try {
+                // read thickness and oceanic skin drag attributes
+                Attribute attr = dataset.openAttribute("thickness");
+                real_type val;
+                DataType type = attr.getDataType();
+                attr.read(type, &val);
+                floe.static_floe().set_thickness(val);
+                attr = dataset.openAttribute("C_w");
+                attr.read(type, &val);
+                floe.static_floe().set_C_w(val);
+            }
+            catch(AttributeIException) {
+                // do nothing, thickness and oceanic skin drag attributes will be set randomly
+            }
         }
         catch( GroupIException not_found_error ) {
             std::cout << "Erreur d'importation" << std::endl;
@@ -147,6 +161,45 @@ void import_floes_from_hdf5(H5std_string filename, TFloeGroup& floe_group)
     floe_group.set_initial_window({{win_data[0], win_data[1], win_data[2], win_data[3]}});
 
     std::cout << nb_floes << " Floes, concentration : " << (int)(floe_group.initial_concentration() * 100) << "%" << std::endl;
+};
+
+template <typename TFloeGroup>
+bool floes_characs_in_hdf5(H5std_string filename, TFloeGroup& floe_group)
+{
+    using namespace H5;
+    
+    // using floe_type = typename TFloeList::real_type;
+    using floe_type = typename TFloeGroup::floe_type;
+    using geometry_type = typename floe_type::geometry_type;
+    using mesh_type = typename floe_type::mesh_type;
+    using point_type = typename floe_type::point_type;
+    using real_type = typename floe_type::real_type;
+    using static_floe_type = typename floe_type::static_floe_type;
+    using array_2d_type = boost::multi_array<real_type, 2>;
+
+    auto& floe_list = floe_group.get_floes();
+    /*
+     * Open the specified file and the specified dataset in the file.
+     */
+    H5File file( filename, H5F_ACC_RDONLY );
+    Group floe_shape_group = file.openGroup("floe_shapes");
+    auto dataset = floe_shape_group.openDataSet(std::to_string(0));
+    bool resp;
+    try {
+        // read thickness and oceanic skin drag attributes
+        Attribute attr = dataset.openAttribute("thickness");
+        real_type val;
+        DataType type = attr.getDataType();
+        attr.read(type, &val);
+        attr = dataset.openAttribute("C_w");
+        attr.read(type, &val);
+        resp = true;
+    }
+    catch(AttributeIException) {
+        std::cout << "no thickness or C_w attribute in input file" << std::endl;
+        resp = false;
+    }
+    return resp;
 };
 
 

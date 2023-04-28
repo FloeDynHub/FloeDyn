@@ -52,6 +52,7 @@ public:
     void load_matlab_config(std::string filename);
     //! Load floes and initial states from hdf5 file
     void load_h5_config(std::string filename);
+    bool h5_contains_floes_characs(std::string filename);
     virtual void post_load_floe(){;}
 
     // Accessors
@@ -168,6 +169,12 @@ void FloeGroup<TFloe, TFloeList>::load_h5_config(std::string filename) {
     floe::io::import_floes_from_hdf5(filename, *this);
     this->post_load_floe();
 };
+
+template <typename TFloe, typename TFloeList>
+bool FloeGroup<TFloe, TFloeList>::h5_contains_floes_characs(std::string filename) {
+    return floe::io::floes_characs_in_hdf5(filename, *this);
+};
+
 
 template <typename TFloe, typename TFloeList>
 typename FloeGroup<TFloe, TFloeList>::real_type

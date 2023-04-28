@@ -605,6 +605,14 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::write_shapes() {
             * space, and transfer properties.
             */
         dataset.write( data.data(), PredType::NATIVE_DOUBLE );
+        // add atributes for thickness and oceanic skin drag
+        DataSpace att_space(H5S_SCALAR);
+        Attribute att = dataset.createAttribute("thickness", datatype, att_space );
+        auto val = this->get_floe(i).get_static_floe().thickness();
+        att.write( datatype, &val );
+        val = this->get_floe(i).get_static_floe().C_w();
+        Attribute att2 = dataset.createAttribute("C_w", datatype, att_space );
+        att2.write( datatype, &val );
     }
 
     m_nb_floe_shapes_written = this->nb_considered_floes();

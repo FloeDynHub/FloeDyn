@@ -62,6 +62,11 @@ public:
         if (!generate_floes){
             try {
                 P.load_config(input_file_name);
+                if (!P.get_floe_group().h5_contains_floes_characs(input_file_name)) {
+                    P.get_floe_group().randomize_floes_thickness(random_thickness_coeff);
+                    // adding a random ocean drag coefficient for simulating the heterogeneity of the floe bottom surface:
+                    P.get_floe_group().randomize_floes_oceanic_skin_drag(0.01);
+                }
                 if (obstacles_indexes.size() > 0) {
                     for (auto i: obstacles_indexes) {
                         P.get_floe_group().get_floes()[i].is_obstacle() = true;
@@ -95,6 +100,9 @@ public:
             auto win = P.get_floe_group().get_initial_window();
             P.set_topology(topology_type(win[0], win[1], win[2], win[3]));
             #endif
+            // randomize created floes' characteristics and create input file
+            P.get_floe_group().randomize_floes_thickness(random_thickness_coeff);
+            P.get_floe_group().randomize_floes_oceanic_skin_drag(0.01);
             P.make_input_file();
         }
 
@@ -182,9 +190,6 @@ public:
         P.get_floe_group().set_mu_static(mu_static);
         if (mu_static!=0.7) {std::cout << "Warning: the ice/ice static friction coefficient is fixed to: " << mu_static << std::endl;}
         if (epsilon!=0.4) {std::cout << "Warning: the restitution coefficient is fixed to: " << epsilon << std::endl;}
-        P.get_floe_group().randomize_floes_thickness(random_thickness_coeff);
-        // adding a random ocean drag coefficient for simulating the heterogeneity of the floe bottom surface:
-        P.get_floe_group().randomize_floes_oceanic_skin_drag(0.01);
         P.solve(endtime, default_time_step, out_time_step, true, fracture);
         return 0;
     }
