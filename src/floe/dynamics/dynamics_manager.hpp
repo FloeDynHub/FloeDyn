@@ -56,12 +56,12 @@ DynamicsManager<TExternalForces, TFloeGroup>::move_floe(floe_type& floe, real_ty
         floe.mesh(),
         integration_strategy<real_type>()
     );
-    // Make this an 'if' statment somehow: if "--ftilt==true", include pressure_gradient_force; otherwise don't
+    // Make this an 'if' statment somehow: if "--ftilt==true", include surface_tilt_force; otherwise don't
     // Pressure gradient force
-    auto pressure_gradient_force = 0*drag_force; // should get datatype rights
+    auto surface_tilt_force = 0*drag_force; // cheat to get datatype correct
     if (m_include_tilt){
         // std::cout << "pgh check " << std::endl;
-        pressure_gradient_force = floe::integration::integrate(
+        surface_tilt_force = floe::integration::integrate(
             m_external_forces.surface_tilt_floe(floe),
             floe.mesh(),
             integration_strategy<real_type>()
@@ -70,7 +70,7 @@ DynamicsManager<TExternalForces, TFloeGroup>::move_floe(floe_type& floe, real_ty
     new_state.pos += delta_t * floe.state().speed;
     new_state.speed += ( delta_t / floe.mass() ) * drag_force
                        + delta_t * m_external_forces.coriolis_effect(floe)
-                       + ( delta_t / floe.area() ) * pressure_gradient_force;
+                       + ( delta_t / floe.area() ) * surface_tilt_force;
 
     // Rotation part
     auto rot_drag_force = floe::integration::integrate(
