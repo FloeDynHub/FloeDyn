@@ -146,7 +146,7 @@ void import_floes_from_hdf5(H5std_string filename, TFloeGroup& floe_group)
     window_dataset.read( win_data, PredType::NATIVE_DOUBLE );
     floe_group.set_initial_window({{win_data[0], win_data[1], win_data[2], win_data[3]}});
 
-    std::cout << nb_floes << " Floes, concentration : " << (int)(floe_group.initial_concentration() * 100) << "%" << std::endl;
+    std::cout << nb_floes << " Floes, concentration : " << (double)(floe_group.initial_concentration() * 100) << "%" << std::endl;
 };
 
 
