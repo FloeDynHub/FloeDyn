@@ -216,7 +216,7 @@ protected:
     value_type              alpha                   = 1.5;
     int                     nbfpersize              = 1;
     std::vector<value_type> vortex_characs          = std::vector<value_type>(4,0);
-    bool                    include_tilt            = 0;
+    bool                    include_tilt            = 1;
 
     void init_program_options( int argc, char* argv[] ){
         desc.add_options()
