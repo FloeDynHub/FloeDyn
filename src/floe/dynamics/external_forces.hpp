@@ -97,7 +97,7 @@ private:
 
     //! Water speed accessor
     inline point_type water_speed(point_type p){ return m_physical_data.water_speed(p); }
-    inline point_type geostrophic_water_speed(point_type p){ return m_physical_data.water_speed(p); }
+    inline point_type geostrophic_water_speed(point_type p){ return m_physical_data.geostrophic_water_speed(p); }
     //! Air speed accessor
     inline point_type air_speed(point_type p){ return m_physical_data.air_speed(p); }
 

@@ -247,7 +247,7 @@ private:
     point_type vortex(point_type pt) {
         point_type totalAirVelocityAppliedToPoint{0,0};
 
-        bool display=false;
+        // bool display=false;
 
         for (std::size_t i=0; i<m_nb_vortex; ++i) {
             point_type vortex_center_to_pt = pt - vortex_center(i);
@@ -290,15 +290,16 @@ private:
     point_type custom_forcing_analytical(point_type pt = {0,0}, real_type speed=1)
     {
         real_type u{0}, v{0};
-        // double W = 50000, H = 50000, T = 86400;
-        // u =  speed*cos(2*pt.y*M_PI/H) * sin(2*pt.x*M_PI/W);
-        // v = -speed*sin(2*pt.y*M_PI/H) * cos(2*pt.x*M_PI/W);
-        u = -speed*tanh(pt.x/1000-25);
-        v = 0;
+        double W = 30000, H = 30000;
+        u =  0.5*speed*cos(2*pt.y*M_PI/H) * sin(2*pt.x*M_PI/W) + speed;
+        v = -0.5*speed*sin(2*pt.y*M_PI/H) * cos(2*pt.x*M_PI/W);
+        // u = -speed*tanh(pt.x/1000-25);
+        // u = speed;
+        // v = 0;
         return {u,v}; 
     }
 
-    point_type custom_forcing_fileread_uv(point_type pt = {0,0}, real_type speed=1)
+    point_type custom_forcing_fileread_uv(point_type pt = {0,0})
     {   
         real_type u{0}, v{0};
         constexpr int ni = 1;
@@ -312,14 +313,14 @@ private:
         interp<rnatord>( m_data_mat_size, ni, // Number of points
                          m_data_mat_v, vi,         // Output axis (z)
                          m_data_mat_y, yi, m_data_mat_x, xi, m_data_mat_t, ti ); // Input axes (x and y)
-        u = speed*ui[0]; 
-        v = speed*vi[0];
+        u = ui[0]; 
+        v = vi[0];
         return {u,v};
     }
 
-    point_type custom_forcing_fileread_geo(point_type pt = {0,0}, real_type speed=1)
+    point_type custom_forcing_fileread_geo(point_type pt = {0,0})
     {   
-        real_type u{0}, v{0};
+        real_type ug{0}, vg{0};
         constexpr int ni = 1;
         double xi[ni], yi[ni], ti[ni], ui[ni], vi[ni];
         xi[0] = pt.x;
@@ -331,9 +332,9 @@ private:
         interp<rnatord>( m_data_mat_size, ni, // Number of points
                          m_data_mat_vg, vi,         // Output axis (z)
                          m_data_mat_y, yi, m_data_mat_x, xi, m_data_mat_t, ti ); // Input axes (x and y)
-        u = ui[0]; 
-        v = vi[0];
-        return {u,v};
+        ug = ui[0]; 
+        vg = vi[0];
+        return {ug,vg};
     }
 
 /* ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲ */
@@ -360,7 +361,7 @@ template <typename TPoint>
 TPoint
 PhysicalData<TPoint>::geostrophic_water_speed(point_type pt) {
     point_type resp;
-    resp = custom_forcing_fileread_geo(pt, m_water_speed); 
+    resp = custom_forcing_fileread_geo(pt); 
     return resp;
 }
 /* ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲ */
@@ -626,7 +627,7 @@ PhysicalData<TPoint>::get_speed(point_type pt, int mode, real_type speed){
         case 7:
             return custom_forcing_analytical(pt, speed);
         case 8:
-            return custom_forcing_fileread_uv(pt, speed);           
+            return custom_forcing_fileread_uv(pt);           
         default :  
             return {0,0};   
 
