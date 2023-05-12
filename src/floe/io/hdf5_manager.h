@@ -57,7 +57,7 @@ public:
     using dynamics_mgr_type = TDynamicsMgr;
     using real_type = typename TFloeGroup::real_type;
     using point_type = typename TFloeGroup::point_type; 
-    using saved_state_type = std::array<real_type, 10>;
+    using saved_state_type = std::array<real_type, 11>; //!< state dataset chunk size for each floe / time step
 
     //! Default constructor.
     HDF5Manager(floe_group_type const& floe_group);
@@ -77,12 +77,12 @@ public:
                           dynamics_mgr_type&, bool keep_as_outfile);
     void set_floe_group(floe_group_type const& floe_group) {
         m_floe_group = &floe_group; 
-        m_data_chunk_states.resize(boost::extents[m_flush_max_step][this->nb_considered_floes()][10]);
+        m_data_chunk_states.resize(boost::extents[m_flush_max_step][this->nb_considered_floes()][array_size<saved_state_type>::size]);
     };
     //! Do not consider all floes in floe group, /!\ only do this at the begining (resizes out states dataset)
     void restrain_floe_ids(std::vector<std::size_t> id_list) {
         m_floe_ids = id_list; 
-        m_data_chunk_states.resize(boost::extents[m_flush_max_step][m_floe_ids.size()][10]);
+        m_data_chunk_states.resize(boost::extents[m_flush_max_step][m_floe_ids.size()][array_size<saved_state_type>::size]);
     };
     inline bool is_restrained() const { return m_floe_ids.size(); }
     inline std::string const& out_file_name() const { return m_out_file_name; }

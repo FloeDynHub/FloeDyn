@@ -133,14 +133,14 @@ void import_floes_from_hdf5(H5std_string filename, TFloeGroup& floe_group)
                 {states_data_out[floe_id][3], states_data_out[floe_id][4]}, states_data_out[floe_id][5],
                 {0,0}
             });
+            if (states_data_out[floe_id].size() >= 11) { // thickness (11th value) was not present before 2023
+                floe.static_floe().set_thickness(states_data_out[floe_id][10]);
+            }
             try {
-                // read thickness and oceanic skin drag attributes
-                Attribute attr = dataset.openAttribute("thickness");
-                real_type val;
+                // read oceanic skin drag attributes
+                Attribute attr = dataset.openAttribute("C_w");
                 DataType type = attr.getDataType();
-                attr.read(type, &val);
-                floe.static_floe().set_thickness(val);
-                attr = dataset.openAttribute("C_w");
+                real_type val;
                 attr.read(type, &val);
                 floe.static_floe().set_C_w(val);
             }
@@ -186,12 +186,10 @@ bool floes_characs_in_hdf5(H5std_string filename, TFloeGroup& floe_group)
     auto dataset = floe_shape_group.openDataSet(std::to_string(0));
     bool resp;
     try {
-        // read thickness and oceanic skin drag attributes
-        Attribute attr = dataset.openAttribute("thickness");
+        // read oceanic skin drag attribute
+        Attribute attr = dataset.openAttribute("C_w");
         real_type val;
         DataType type = attr.getDataType();
-        attr.read(type, &val);
-        attr = dataset.openAttribute("C_w");
         attr.read(type, &val);
         resp = true;
     }
@@ -199,6 +197,9 @@ bool floes_characs_in_hdf5(H5std_string filename, TFloeGroup& floe_group)
         std::cout << "no thickness or C_w attribute in input file" << std::endl;
         resp = false;
     }
+    // We could also check for floe_states size to see if thickness (11th value) is there
+    // but both C_w and thickness appear in input files on the same version,
+    // so either both or none will be present in existing input files
     return resp;
 };
 

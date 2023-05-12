@@ -53,34 +53,15 @@ template <typename TFloeGroup, typename TDynamicsMgr>
 void HDF5Manager<TFloeGroup, TDynamicsMgr>::save_step(real_type time, const dynamics_mgr_type& dynamics_manager)
 {
     floe_group_type const& floe_group = *m_floe_group;
-    // auto const& floe_list = floe_group.get_floes();
-    /*
-    if (m_data_chunk_boundaries.size() == 0)
-    {   
-        m_data_chunk_boundaries.resize(floe_list.size());
-    }
-    */
-    // save boundaries
-    // std::size_t floe_id = 0;
-    /*
-    for (auto const& floe : floe_list)
-    {
-        vector<vector<real_type>> floe_step_data;
-        for (auto const& pt : floe.geometry().outer())
-            floe_step_data.push_back({pt.x + floe.state().trans.x, pt.y + floe.state().trans.y});
-        m_data_chunk_boundaries[floe_id].push_back(floe_step_data);
-        floe_id++;
-    }
-    */
     // Handle fracture
     if (m_data_chunk_states.size() > 0 && m_data_chunk_states[0].size() != this->nb_considered_floes()) {
         flush();
         m_chunk_step_count = 0;
-        m_data_chunk_states.resize(boost::extents[m_flush_max_step][this->nb_considered_floes()][10]);
+        m_data_chunk_states.resize(boost::extents[m_flush_max_step][this->nb_considered_floes()][array_size<saved_state_type>::size]);
         write_shapes();
     }
     // save states
-    if (m_data_chunk_states.size() == 0) m_data_chunk_states.resize(boost::extents[m_flush_max_step][this->nb_considered_floes()][10]);
+    if (m_data_chunk_states.size() == 0) m_data_chunk_states.resize(boost::extents[m_flush_max_step][this->nb_considered_floes()][array_size<saved_state_type>::size]);
     for(std::size_t id = 0; id < this->nb_considered_floes(); id++)
     {
         auto const& floe = this->get_floe(id);
@@ -95,7 +76,9 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::save_step(real_type time, const dyna
             floe.total_received_impulse(),
             floe.state().pos.x,
             floe.state().pos.y,
-            (floe.state().is_active()) ? 1. : 0.
+            (floe.state().is_active()) ? 1. : 0.,
+            floe.static_floe().thickness()
+            
         }){
             m_data_chunk_states[m_chunk_step_count][id][k++] = val;
         }
@@ -274,7 +257,7 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::write_states() {
     /* saving time */
     DataSet states_dataset;
     const hsize_t nb_floes = m_data_chunk_states[0].size();
-    hsize_t     dims[RANK] = {m_step_count - m_chunk_step_count, nb_floes, array_size<saved_state_type>::size };
+    hsize_t     dims[RANK] = {m_step_count - m_chunk_step_count, nb_floes, array_size<saved_state_type>::size};
     const hsize_t     chunk_dims[RANK] = {m_chunk_step_count, dims[1], dims[2]};
     try {
         states_dataset = file.openDataSet("floe_states");
@@ -533,6 +516,7 @@ double HDF5Manager<TFloeGroup, TDynamicsMgr>::recover_states(
                 {0,0}
             });
             floe.reset_impulse(data_out[floe_id][6]);
+            floe.static_floe().set_thickness(data_out[floe_id][10]);
         }
     }
     floe_group.update_list_ids_active(); // crack version
@@ -605,14 +589,11 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::write_shapes() {
             * space, and transfer properties.
             */
         dataset.write( data.data(), PredType::NATIVE_DOUBLE );
-        // add atributes for thickness and oceanic skin drag
+        // add atribute for oceanic skin drag
         DataSpace att_space(H5S_SCALAR);
-        Attribute att = dataset.createAttribute("thickness", datatype, att_space );
-        auto val = this->get_floe(i).get_static_floe().thickness();
+        auto val = this->get_floe(i).get_static_floe().C_w();
+        Attribute att = dataset.createAttribute("C_w", datatype, att_space );
         att.write( datatype, &val );
-        val = this->get_floe(i).get_static_floe().C_w();
-        Attribute att2 = dataset.createAttribute("C_w", datatype, att_space );
-        att2.write( datatype, &val );
     }
 
     m_nb_floe_shapes_written = this->nb_considered_floes();
