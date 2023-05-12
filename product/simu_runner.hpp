@@ -63,9 +63,12 @@ public:
             try {
                 P.load_config(input_file_name);
                 if (!P.get_floe_group().h5_contains_floes_characs(input_file_name)) {
+                    std::cout << "Randomizing floes thickness and oceanic skin drag coeff" << std::endl;
                     P.get_floe_group().randomize_floes_thickness(random_thickness_coeff);
                     // adding a random ocean drag coefficient for simulating the heterogeneity of the floe bottom surface:
                     P.get_floe_group().randomize_floes_oceanic_skin_drag(0.01);
+                } else {
+                    std::cout << "Reading floes thickness and oceanic skin drag coeff from input file" << std::endl;
                 }
                 if (obstacles_indexes.size() > 0) {
                     for (auto i: obstacles_indexes) {

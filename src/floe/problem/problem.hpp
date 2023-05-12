@@ -249,10 +249,10 @@ void PROBLEM::step_solve(bool crack) {
     manage_collisions();
     // fracture
     if (crack) {
-    	std::cout << "nb floes before fracture " << m_floe_group.get_floes().size() << std::endl;
+    	std::size_t nb_before = m_floe_group.get_floes().size();
     	m_floe_group.fracture_biggest_floe();
         this->update_optim_vars();
-    	std::cout << "nb floes after fracture " << m_floe_group.get_floes().size() << std::endl;
+    	std::cout << "Fracture - nb floes : " << nb_before << " -> " << m_floe_group.get_floes().size() << std::endl;
     }
     auto t1 = std::chrono::high_resolution_clock::now();
     compute_time_step();
