@@ -178,7 +178,7 @@ public:
             else {desired_conc = P.get_floe_group().initial_concentration();}
             std::cout << "The desired concentration is: " << desired_conc << "\n";
 
-            value_type des_area = P.get_floe_group().total_area()/desired_conc;
+            value_type des_area = P.get_floe_group().total_area() / desired_conc;
             decltype(wc) wd;
             wd[0] = -std::sqrt(des_area)/2; wd[1] = -wd[0]; wd[2] = wd[0]; wd[3] = wd[1];
             std::cout << "desired windows is: " << wd[0] << ", " << wd[1] << ", " << wd[2] << ", " << wd[3] << "\n";
@@ -191,9 +191,10 @@ public:
         // cout.precision(17);
         // std::cout << P.get_floe_group().total_area();
         P.get_floe_group().set_mu_static(mu_static);
+        P.get_floe_group().set_min_thickness(min_thickness);
         if (mu_static!=0.7) {std::cout << "Warning: the ice/ice static friction coefficient is fixed to: " << mu_static << std::endl;}
         if (epsilon!=0.4) {std::cout << "Warning: the restitution coefficient is fixed to: " << epsilon << std::endl;}
-        P.solve(endtime, default_time_step, out_time_step, true, fracture);
+        P.solve(endtime, default_time_step, out_time_step, true, fracture, melting);
         return 0;
     }
 
@@ -219,15 +220,18 @@ protected:
     value_type              epsilon                 = 0.4;
     value_type              mu_static               = 0.7;
     value_type              random_thickness_coeff  = 0.01;
+    value_type              min_thickness           = 0.01;
     string                  matlab_topaz_filename   = "io/inputs/DataTopaz01.mat";
     value_type              max_size                = 250;
     bool                    fracture                = 0;
+    bool                    melting                 = 0;
     bool                    rand_speed_add          = 1;
     value_type              rand_norm               = 1e-7;
     value_type              alpha                   = 1.5;
     int                     nbfpersize              = 1;
     std::vector<value_type> vortex_characs          = std::vector<value_type>(4,0);
     std::vector<std::size_t> obstacles_indexes       = std::vector<std::size_t>{};
+
 
     void init_program_options( int argc, char* argv[] ){
         desc.add_options()
@@ -307,7 +311,6 @@ protected:
         ("sigma", po::value(&random_thickness_coeff)->default_value(
             random_thickness_coeff, std::to_string(random_thickness_coeff)),
             "Normal distribution coeff (sigma) for random ice thickness variation around 1m")
-
         ("vortexCharacs,v", po::value< std::vector<value_type> >(&vortex_characs)->multitoken(),
             "vortex characteristics (for mode 6) as a vector of size 4:\n"
             "   1/ the total number of vortex: \n"
@@ -318,6 +321,10 @@ protected:
 
             "   4/ the distance of the first ring to the ice field origin (in [km]).\n")
         ("crack", po::value<bool>(&fracture), "1 to activate floe cracking model.\n")
+        ("melting", po::value<bool>(&melting), "1 to activate floe melting model.\n")
+        ("minthick", po::value(&min_thickness)->default_value(
+            min_thickness, std::to_string(min_thickness)),
+            "Minimum floe thickness : considered molten and disappears under this value")
         ("obstacles", po::value<std::vector<std::size_t>>(&obstacles_indexes)->multitoken(),
             "Indexes of the floes to consider as obstacles (no move).")
         ;

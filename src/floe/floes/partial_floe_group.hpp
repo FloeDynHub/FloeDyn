@@ -54,6 +54,7 @@ public:
     // void apply_fracture_from_max_area(const real_type max_area_for_fracture);//{std::cout<<"test"<<std::endl;}
     void add_floe(geometry_type geometry, std::size_t parent_floe_idx);
     void fracture_biggest_floe();
+    void melt_floes();
     void update_list_ids_active();//{std::cout<<"test"<<std::endl;}
     
 private:
@@ -81,26 +82,6 @@ PartialFloeGroup<TFloe, TFloeList>::update_floe_states(message_type const& msg, 
         m_states_origin[iter.first] = msg.mpi_source();
     }
 }
-
-
-
-// template <typename TFloe, typename TFloeList>
-// void 
-// PartialFloeGroup<TFloe, TFloeList>::apply_fracture_from_max_area(const real_type max_area_for_fracture)
-// {
-// 	// doest it automatically consider only active floe ?
-// 	for (std::size_t i = 0; i < base_class::get_floes().size(); ++i){
-//     	if (this->m_list_floe[i].static_floe().area()>max_area_for_fracture) {
-//     	std::cout<<"test"<<std::endl;
-// 			auto new_floe=base_class::get_floes()[i].fracture_floe();
-//         	//for (std::size_t i = 0; i < new_floe.size(); ++i){
-//         	//	base_class::get_floes().push_back(new_floe[i]);// add new floes to floe group
-//         	//}
-        	
-//         }
-//     }
-    
-// } 
 
 template <typename TFloe, typename TFloeList>
 void 
@@ -130,6 +111,27 @@ PartialFloeGroup<TFloe, TFloeList>::fracture_biggest_floe()
         floe.static_floe().attach_mesh_ptr(&floe.get_floe_h().m_static_mesh);
         floe.update();
     }
+}
+
+template <typename TFloe, typename TFloeList>
+void 
+PartialFloeGroup<TFloe, TFloeList>::melt_floes()
+{
+    // Dumb melting model for feature testing :
+    // each floe looses random thickness ~ 0.3mm / time step
+    auto dist = std::normal_distribution<real_type>{1, 0.1};
+    auto gen = std::default_random_engine{};
+	for (auto& floe : base_class::get_floes()){
+        auto& static_floe = floe.static_floe();
+        static_floe.set_thickness(static_floe.thickness() - 0.0003 * dist(gen));
+        // Desactivate molten floes
+        if (static_floe.thickness() < base_class::m_min_thickness) {
+            std::cout << "MOLTEN !" << std::endl;
+            static_floe.set_thickness(0);
+            floe.state().desactivate();
+        }
+    }
+    this->update_list_ids_active();
 }
 
 template <typename TFloe, typename TFloeList>

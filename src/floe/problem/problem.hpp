@@ -60,7 +60,7 @@ public:
     Problem(real_type epsilon=0.4, int OBL_status=0);
 
     //! Solver of the problem (main method)
-    virtual void solve(real_type end_time, real_type dt_default, real_type out_step = 0, bool reset = true, bool fracture = false);
+    virtual void solve(real_type end_time, real_type dt_default, real_type out_step = 0, bool reset = true, bool fracture = false, bool melting = false);
 
     virtual void load_config(std::string const& filename);
     //! Load ocean and wind data from a topaz file
@@ -93,6 +93,7 @@ public:
     inline out_manager_type& get_out_manager() {return m_out_manager;}
     //!< LCP solver accessor
     inline TCollisionManager& get_lcp_manager() { return m_collision_manager; }
+    bool variable_nb_of_floes () { return (m_fracture || m_melting); }
 
     const std::atomic<bool>* QUIT; //!< Exit signal
 
@@ -113,13 +114,14 @@ protected:
     int m_step_nb; //!< Total number of steps from beginning
     out_manager_type m_out_manager; //!< Object managing simulation output
     bool m_fracture; //!< Fracture activated ?
+    bool m_melting; //!< Melting model activated ?
 
     //! Load floes set and initial states from matlab file
     virtual void load_matlab_config(std::string const& filename);
     //! Load floes set and initial states from hdf5 file
     virtual void load_h5_config(std::string const& filename);
     //! Move one time step forward
-    virtual void step_solve(bool crack);
+    virtual void step_solve(bool crack, bool melt);
     //! Proximity detection (inter-floe distance and eventual collisions)
     void detect_proximity();
     //! Collision solving
@@ -216,10 +218,11 @@ void PROBLEM::update_optim_vars() {
 
 
 TEMPLATE_PB
-void PROBLEM::solve(real_type end_time, real_type dt_default, real_type out_step, bool reset, bool fracture){
+void PROBLEM::solve(real_type end_time, real_type dt_default, real_type out_step, bool reset, bool fracture, bool melting){
     if (reset) this->create_optim_vars();
     m_fracture = fracture;
-    if (fracture) {
+    m_melting = melting;
+    if (this->variable_nb_of_floes()) {
         this->m_floe_group.update_list_ids_active();
     }
     this->m_domain.set_default_time_step(dt_default);
@@ -229,12 +232,15 @@ void PROBLEM::solve(real_type end_time, real_type dt_default, real_type out_step
         // condition for fracture :
     // real_type max_area_for_fracture = 0.8*m_floe_group.max_floe_area();
     // auto t00 = std::chrono::high_resolution_clock::now();
+    double last_frac_time = 0;
     while (this->m_domain.time() < end_time)
     {   
         // auto t_start = std::chrono::high_resolution_clock::now();
         // arbritrary crack every N steps until Pth step : no physical meaning / only for demo
-        bool do_fracture = (fracture && this->m_step_nb > 0 && this->m_step_nb < 50000 && this->m_step_nb % 18 == 0);
-        this->step_solve(do_fracture);
+        // bool do_fracture = (fracture && this->m_step_nb > 0 && this->m_step_nb < 50000 && this->m_step_nb % 18 == 0);
+        bool do_fracture = (fracture && m_domain.time() > 22000 && m_domain.time() - last_frac_time > 1000);
+        if (do_fracture) last_frac_time = m_domain.time();
+        this->step_solve(do_fracture, melting);
         // auto t_end = std::chrono::high_resolution_clock::now();
         // std::cout << "Chrono STEP : " << std::chrono::duration<double, std::milli>(t_end-t_start).count() << " ms" << std::endl;
         if (*this->QUIT) break; // exit normally after SIGINT
@@ -244,7 +250,7 @@ void PROBLEM::solve(real_type end_time, real_type dt_default, real_type out_step
 
 
 TEMPLATE_PB
-void PROBLEM::step_solve(bool crack) {
+void PROBLEM::step_solve(bool crack, bool melt) {
     auto t0 = std::chrono::high_resolution_clock::now();
     manage_collisions();
     // fracture
@@ -259,6 +265,10 @@ void PROBLEM::step_solve(bool crack) {
     auto t2 = std::chrono::high_resolution_clock::now();
     safe_move_floe_group();
     auto t3 = std::chrono::high_resolution_clock::now();
+    if (melt) {
+        m_floe_group.melt_floes();
+        this->update_optim_vars();
+    }
     // if (this->m_dynamics_manager.get_external_forces().get_physical_data().get_air_mode()==5) { //!< only if the external forces is a vortex
     //     std::cout << "the vortex wind speed is: " << 
     //         this->m_dynamics_manager.get_external_forces().get_physical_data().get_vortex_wind_speed() 
@@ -301,9 +311,9 @@ void PROBLEM::output_datas(){
     std::cout << " | delta_t : " << this->m_domain.time_step();
     std::cout << " | Kinetic energy : " << this->m_floe_group.kinetic_energy() << std::endl;
     // ouput data
-    if (m_fracture) m_floe_group.get_floes().filter_off();
+    if (this->variable_nb_of_floes()) m_floe_group.get_floes().filter_off();
     m_out_manager.save_step_if_needed(this->m_domain.time(), this->m_dynamics_manager);
-    if (m_fracture) m_floe_group.get_floes().filter_on();
+    if (this->variable_nb_of_floes()) m_floe_group.get_floes().filter_on();
 }
 
 TEMPLATE_PB

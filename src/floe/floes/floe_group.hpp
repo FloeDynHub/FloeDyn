@@ -133,6 +133,7 @@ public:
     void randomize_floes_oceanic_skin_drag(real_type coeff);
 
     virtual inline int absolute_id(int id) const { return id; }
+    void set_min_thickness(real_type val) { m_min_thickness = val; }
     
     std::vector<real_type> get_KinematicFloeWithMaxKineticEnergy();
 
@@ -142,6 +143,7 @@ protected:
     floe_group_h_type m_floe_group_h; //!< Discrete floe group (access to floes discretisation)
     //! initial reference window (min_x, max_x, min_y, max_y)
     window_type m_window; //!< determined during the generation phase.
+    real_type m_min_thickness; //!< Minimal floe thickness (used with melting model)
     //! floes previous states backup
     std::vector<typename floe_type::state_type> m_previous_step_states;
 
@@ -336,7 +338,7 @@ FloeGroup<TFloe, TFloeList>::randomize_floes_oceanic_skin_drag(real_type coeff)
     auto dist = std::normal_distribution<real_type>{1, coeff};
     auto gen = std::default_random_engine{};
     gen.seed(1); // to get a different set of values than for floes thickness
-    for (auto& floe : get_floes()){
+    for (auto& floe : get_floes()) {
         auto& static_floe = floe.static_floe();
         static_floe.set_C_w(static_floe.C_w() * dist(gen));
     }
