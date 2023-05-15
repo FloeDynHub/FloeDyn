@@ -46,47 +46,48 @@ template <typename TExternalForces, typename TFloeGroup>
 void
 DynamicsManager<TExternalForces, TFloeGroup>::move_floe(floe_type& floe, real_type delta_t)
 {
-    if (floe.is_obstacle()) return; // Obstacles don't move
-
     state_type new_state = floe.state();
-
-    // Translation part
-    auto drag_force = floe::integration::integrate(
-        m_external_forces.total_drag(floe),
-        floe.mesh(),
-        integration_strategy<real_type>()
-    );
+    // Inertic motion
     new_state.pos += delta_t * floe.state().speed;
-    new_state.speed += ( delta_t / floe.mass() ) * drag_force
-                         + delta_t * m_external_forces.coriolis_effect(floe);
-
-    // Rotation part
-    auto rot_drag_force = floe::integration::integrate(
-        m_external_forces.total_rot_drag(floe),
-        floe.mesh(),
-        integration_strategy<real_type>()
-    );
     new_state.theta += delta_t * floe.state().rot;
-    new_state.rot += ( delta_t / floe.moment_cst() ) * rot_drag_force;
 
-    /* Adding random perturbation to speed and rot
-       (improve collision computing, physically justifiable) */
-    if (m_rand_speed_add) {
-        static bool w_advice = true;
-        if (w_advice) {
-            std::cout << "Warning: additional random velocities are setted with the norm fixed to: " 
-                << m_rand_norm << std::endl;
-                w_advice = false;
+    if (!floe.is_obstacle()) { // Obstacles do not react to external forces
+        // Translation part
+        auto drag_force = floe::integration::integrate(
+            m_external_forces.total_drag(floe),
+            floe.mesh(),
+            integration_strategy<real_type>()
+        );
+        new_state.speed += ( delta_t / floe.mass() ) * drag_force
+                            + delta_t * m_external_forces.coriolis_effect(floe);
+
+        // Rotation part
+        auto rot_drag_force = floe::integration::integrate(
+            m_external_forces.total_rot_drag(floe),
+            floe.mesh(),
+            integration_strategy<real_type>()
+        );
+        new_state.rot += ( delta_t / floe.moment_cst() ) * rot_drag_force;
+
+        /* Adding random perturbation to speed and rot
+        (improve collision computing, physically justifiable) */
+        if (m_rand_speed_add) {
+            static bool w_advice = true;
+            if (w_advice) {
+                std::cout << "Warning: additional random velocities are setted with the norm fixed to: " 
+                    << m_rand_norm << std::endl;
+                    w_advice = false;
+            }
+            auto dist_rot = std::uniform_real_distribution<real_type>{-m_rand_norm, m_rand_norm};
+            auto dist_angle = std::uniform_real_distribution<real_type>{0, 2 * M_PI};
+            auto rand_theta = dist_angle(this->m_random_generator);
+            auto rand_rot = dist_rot(this->m_random_generator);
+            auto rand_speed = m_rand_norm * point_type{cos(rand_theta), sin(rand_theta)};
+            new_state.speed += rand_speed;
+            new_state.rot += rand_rot;
         }
-        auto dist_rot = std::uniform_real_distribution<real_type>{-m_rand_norm, m_rand_norm};
-        auto dist_angle = std::uniform_real_distribution<real_type>{0, 2 * M_PI};
-        auto rand_theta = dist_angle(this->m_random_generator);
-        auto rand_rot = dist_rot(this->m_random_generator);
-        auto rand_speed = m_rand_norm * point_type{cos(rand_theta), sin(rand_theta)};
-        new_state.speed += rand_speed;
-        new_state.rot += rand_rot;
     }
-
+    
     // Floe update
     floe.set_state(new_state);
 }
