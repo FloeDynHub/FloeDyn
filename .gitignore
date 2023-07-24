@@ -38,6 +38,7 @@ NODE_FILE_TEST
 doxygen_original.cfg
 html/
 latex/
+docs/
 
 ### Quentin's files ###
 TODO-quentin
@@ -57,7 +58,6 @@ log.*
 res.*
 plotKinEnergy.py
 replotGenerator.py
-
 .vscode/
 compile.sh
 configure.sh
