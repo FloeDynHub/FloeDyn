@@ -11,6 +11,7 @@ FloeCpp.xcodeproj/
 io/outputs
 io/stdout
 io/videos
+io/inputs 
 
 ### macOS ###
 *.DS_Store
@@ -48,6 +49,26 @@ test_play
 Untitled.ipynb
 pb-simus.txt
 .ipynb_checkpoints/
+
+### Silouane's files 
+results/
+wscript_original
+log.*
+res.*
+plotKinEnergy.py
+replotGenerator.py
+
+.vscode/
+compile.sh
+configure.sh
+generatorTest.sh
+getRank.py
+go.sh
+killCBatardDeQuickTime.scpt
+
+
+
+
 
 ### other files ###
 data_simu.txt

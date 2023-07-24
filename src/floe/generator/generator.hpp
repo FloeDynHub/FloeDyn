@@ -54,6 +54,12 @@ void
 Generator<TProblem>::generate_floe_set(std::size_t nb_floes, real_type concentration, real_type max_size, std::vector<int> force_modes,
     std::vector<real_type> force_speeds)
 {   
+    // basic process : 
+    // * floes are generated in spiral, blablabla 
+    // regularly, all floes within a subwindow are stopped to reduce the kinetic energy
+    // the number of floes outside is looked at to decide wether it is time to exit the loop 
+    double shrinkFactor(0.85);
+    // double shrinkFactor(1);
     std::cout << "Generate " << nb_floes << " floes..." << std::endl;
     std::cout << "the restitution coefficient is fixed to: " << 
     m_problem.get_lcp_manager().get_solver().get_epsilon() << std::endl;
@@ -85,7 +91,8 @@ Generator<TProblem>::generate_floe_set(std::size_t nb_floes, real_type concentra
     m_window = {{-win_width / 2, win_width / 2, -win_width / 2, win_width / 2}};
     m_problem.get_floe_group().set_initial_window(m_window);
     auto& physical_data = m_problem.get_dynamics_manager().get_external_forces().get_physical_data();
-    physical_data.set_window_size(win_width * 0.99, win_width * 0.99);
+    // physical_data.set_window_size(win_width * 0.99, win_width * 0.99);
+    physical_data.set_window_size(win_width * shrinkFactor, win_width * shrinkFactor);
 
     assert( (force_modes[0]==2 && force_modes[1]==0) || (force_modes[0]==0 && force_modes[1]==2) 
         && "Error : The Atmospheric or/and Oceanic currents are not suitable for initial ice pack generation.\n" 
@@ -97,21 +104,27 @@ Generator<TProblem>::generate_floe_set(std::size_t nb_floes, real_type concentra
         floe.static_floe().set_thickness(floe.static_floe().thickness() * max_size / 250);
     }
     real_type end_time = 20;
-    real_type time_to_stop_floe_in_target_window = 1000;
+    real_type time_to_stop_floe_in_target_window = 50*end_time;//1000;
+    // real_type time_to_stop_floe_in_target_window = 1000;//1000;
     bool init = true;
+    
     do {
         m_problem.solve(end_time, 10, 10, init);
-        //!<  Trick for helping floe to stay within the target area 
+        // Trick for helping floe to stay within the target area 
         if (end_time>time_to_stop_floe_in_target_window) {
             std::cout << "It is time to stop floes within the target area." << std::endl;
-            m_problem.get_floe_group().stop_floes_in_window(win_width, win_width);
-            time_to_stop_floe_in_target_window += 500; //500
+            m_problem.get_floe_group().stop_floes_in_window(win_width * shrinkFactor, win_width * shrinkFactor);
+            // time_to_stop_floe_in_target_window += 500; //500
+            time_to_stop_floe_in_target_window += 5*end_time; //500
         }
         std::cout << " Concentration : " << m_problem.floe_concentration() << std::endl;
         end_time += 20; init = false;
         if (*m_problem.QUIT) break; // exit normally after SIGINT
     } 
-    while (m_problem.get_floe_group().kinetic_energy() != 0 && end_time < 1e6 );
+    // while (m_problem.get_floe_group().kinetic_energy() != 0 && end_time < 1e6 );
+    while (m_problem.get_floe_group().count_floes_outside_window(win_width*0.999, win_width*0.999) > 0 && end_time < 1e6 );
+    // m_problem.get_floe_group().stop_floes_in_window(win_width, win_width); // not sure that's useful, just in case the velocities are written in the input file 
+
     //!< \remark    It is better do not use the while condition below since for building a big floe packs as
     //!<            an assembly of generated 2000-floe packs one need for exact inclusion within a box, otherwise
     //!<            interpenetrations may occur at the border!
@@ -200,6 +213,9 @@ template<typename TProblem>
 std::vector<typename Generator<TProblem>::real_type>
 Generator<TProblem>::exp_size_repartition(std::size_t n, real_type R_max)
 {
+    std::random_device rd;
+    std::mt19937 g(rd());
+
     std::cout << "The exponent of the power law is: " << m_alpha << " and the floe number per size is: " << m_nbfpersize << std::endl;
     std::vector<real_type> v;
     real_type R_min = 0; // no min (resize if min floe too small)
@@ -214,8 +230,9 @@ Generator<TProblem>::exp_size_repartition(std::size_t n, real_type R_max)
             v.push_back(R);
         }
     }
-    std::srand ( unsigned ( std::time(0) ) ); // seed for not having pseudorandom
-    std::random_shuffle ( v.begin() + 1, v.end() ); // first floe(biggest) stays first (-> initially at center)
+    // std::srand ( unsigned ( std::time(0) ) ); // seed for not having pseudorandom
+    std::shuffle ( v.begin() + 1, v.end(), g); // first floe(biggest) stays first (-> initially at center)
+    // std::random_shuffle ( v.begin() + 1, v.end() ); // first floe(biggest) stays first (-> initially at center)
     return v;
 }
 
