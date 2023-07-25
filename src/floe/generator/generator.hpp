@@ -108,6 +108,7 @@ Generator<TProblem>::generate_floe_set(std::size_t nb_floes, real_type concentra
     // real_type time_to_stop_floe_in_target_window = 1000;//1000;
     bool init = true;
     
+    m_problem.set_isGenerator();
     do {
         m_problem.solve(end_time, 10, 10, init);
         // Trick for helping floe to stay within the target area 

@@ -4,6 +4,7 @@
  * \author Quentin Jouet
  */
 
+
 #ifndef PROBLEM_PROBLEM_HPP
 #define PROBLEM_PROBLEM_HPP
 
@@ -94,6 +95,10 @@ public:
 
     const std::atomic<bool>* QUIT; //!< Exit signal
 
+    // to be used in generation mode, to allow different behaviour
+    bool set_isGenerator();
+
+
 protected:
     // domain
     TDomain m_domain; //!< Domain (time manager at the moment)
@@ -129,6 +134,9 @@ protected:
     point_type move_floe_group();
     //! Handle output_datas (console + out file)
     void output_datas();
+
+    // to allow different behaviour in the generation phase
+    bool m_isGenerator;
 };
 
 
@@ -152,7 +160,8 @@ PROBLEM::Problem(real_type epsilon, int OBL_status) :
         m_dynamics_manager{m_domain.time(), OBL_status},
         m_floe_group{},
         m_step_nb{0},
-        m_out_manager{m_floe_group}
+        m_out_manager{m_floe_group},
+        m_isGenerator{false}
     {
         m_time_scale_manager.set_prox_data_ptr( &(m_proximity_detector.data()) );
     }
@@ -275,21 +284,44 @@ TEMPLATE_PB
 void PROBLEM::safe_move_floe_group(){
     m_floe_group.backup_step_states();
     move_floe_group();
+    real_type norm_rand_speed(0);
     while (!m_proximity_detector.update())
     {
         std::cout << "INTER "; 
         m_floe_group.recover_previous_step_states();
         m_domain.rewind_time();
         compute_time_step(); // will only divide previous time step
+        m_dynamics_manager.set_norm_rand_speed(1e-7); 
         if (m_domain.time_step() < m_domain.default_time_step() / 1e5) // 1e8 from Q.Jouet
         {   
             // Hack to bypass repeating interpenetrations...
             m_out_manager.flush();
             recover_states_from_file(m_out_manager.out_file_name(), m_domain.time() + 1);
             std::cout << "dt too small -> RECOVER STATES FROM OUT FILE" << std::endl;
+
+            // adding a random velocity component to avoid infinite loops
+            // in generator mode the value is between 0 and 1. 
+            // in physical run mode the value is chosen smaller in order not to impair the physical sense of the solution :
+            // this epsilon is chosen depending on the mean velocity, the maximum floe size and the current time step.   
+            if (m_isGenerator) 
+            {
+                norm_rand_speed = static_cast <real_type> (std::rand()) / static_cast <real_type> (RAND_MAX);
+                std::cout << "Adding a random component to velocities of " << norm_rand_speed << std::endl;
+                m_dynamics_manager.set_rand_speed_add(true);
+                m_dynamics_manager.set_norm_rand_speed(norm_rand_speed); 
+            }
+            // else
+            // {
+            //     std::cout << "Adding a random epsilon to velocities to all floes " << std::endl;
+            //     norm_rand_speed = static_cast <real_type> (std::rand()) / static_cast <real_type> (RAND_MAX);
+            //     m_dynamics_manager.set_rand_speed_add(true);
+            //     m_dynamics_manager.set_norm_rand_speed(norm_rand_speed); 
+            // } 
             continue;
         }
         move_floe_group();
+        m_dynamics_manager.set_norm_rand_speed(1e-7); 
+        // m_dynamics_manager.set_rand_speed_add(false); // it seems SimuRunner sets it to true by default 
     }    
 }
 
@@ -344,6 +376,11 @@ void PROBLEM::make_input_file(){
     m_out_manager.make_input_file(m_dynamics_manager);
 }
 
+TEMPLATE_PB
+bool PROBLEM::set_isGenerator(){
+    m_isGenerator = true;
+    return true;
+}
 
 }} // namespace floe::problem
 
