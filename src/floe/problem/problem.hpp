@@ -137,6 +137,10 @@ protected:
 
     // to allow different behaviour in the generation phase
     bool m_isGenerator;
+    // run time breakdown  
+    std::chrono::duration<double, std::nano> m_collisionTime;
+    std::chrono::duration<double, std::nano> m_timeStepTime;
+    std::chrono::duration<double, std::nano> m_moveTime;
 };
 
 
@@ -161,7 +165,10 @@ PROBLEM::Problem(real_type epsilon, int OBL_status) :
         m_floe_group{},
         m_step_nb{0},
         m_out_manager{m_floe_group},
-        m_isGenerator{false}
+        m_isGenerator{false},
+        m_collisionTime{},
+        m_timeStepTime{},
+        m_moveTime{}
     {
         m_time_scale_manager.set_prox_data_ptr( &(m_proximity_detector.data()) );
     }
@@ -229,6 +236,10 @@ void PROBLEM::solve(real_type end_time, real_type dt_default, real_type out_step
         if (*this->QUIT) break; // exit normally after SIGINT
     }
     std::cout << " NB STEPS : " << this->m_step_nb << std::endl;
+    double time_taken = std::chrono::duration_cast<std::chrono::nanoseconds>(m_collisionTime).count();
+    std::cout << " total collision time : " << time_taken*1e-9 << " s" << std::endl;
+    std::cout << " total time step time : " << std::chrono::duration_cast<std::chrono::nanoseconds>(m_timeStepTime).count()*1e-9 << " s" << std::endl;
+    std::cout << " total move time : " << std::chrono::duration_cast<std::chrono::nanoseconds>(m_moveTime).count()*1e-9 << " s" << std::endl;
 }
 
 
@@ -275,6 +286,10 @@ void PROBLEM::step_solve(){
     << "time_step " << std::chrono::duration<double, std::milli>(t2-t1).count() << " ms + "
     << "move " << std::chrono::duration<double, std::milli>(t3-t2).count() << " ms = "
     << std::chrono::duration<double, std::milli>(t3-t0).count() << " ms" << std::endl;
+
+    m_collisionTime+=std::chrono::duration<double, std::nano>(t1-t0);
+    m_timeStepTime+=std::chrono::duration<double, std::nano>(t2-t1);
+    m_moveTime+=std::chrono::duration<double, std::nano>(t3-t2);
 
     output_datas();
     m_step_nb++;
