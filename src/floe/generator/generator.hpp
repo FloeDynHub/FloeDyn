@@ -124,6 +124,7 @@ Generator<TProblem>::generate_floe_set(std::size_t nb_floes, real_type concentra
     } 
     // while (m_problem.get_floe_group().kinetic_energy() != 0 && end_time < 1e6 );
     while (m_problem.get_floe_group().count_floes_outside_window(win_width*0.999, win_width*0.999) > 0 && end_time < 1e6 );
+    m_problem.get_floe_group().stop_floes_in_window(win_width, win_width);
     // m_problem.get_floe_group().stop_floes_in_window(win_width, win_width); // not sure that's useful, just in case the velocities are written in the input file 
 
     //!< \remark    It is better do not use the while condition below since for building a big floe packs as
