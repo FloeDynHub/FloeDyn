@@ -36,7 +36,13 @@ public:
     }
 
     //! Solver of the problem (main method)
-    virtual void solve(real_type end_time, real_type dt_default, real_type out_step = 0, bool reset = true) override = 0;
+    virtual void solve(
+        real_type end_time,
+        real_type dt_default,
+        real_type out_step = 0,
+        bool reset = true,
+        bool fracture = false,
+        bool melting = false) override = 0;
     virtual mpi_terminal_type& mpi() { return m_mpi_term; }
 
 private:

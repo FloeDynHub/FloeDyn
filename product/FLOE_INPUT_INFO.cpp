@@ -3,7 +3,7 @@
 #include "../product/config/config.hpp"
 #include <limits>
 #include <math.h>
-
+#include <boost/version.hpp>
 
 /*
 Reads an input file and gives some informations on the floe pack
@@ -13,6 +13,12 @@ int main( int argc, char* argv[] )
 {   
     using namespace std;
     using namespace types;
+
+    std::cout << "Using Boost "     
+          << BOOST_VERSION / 100000     << "."  // major version
+          << BOOST_VERSION / 100 % 1000 << "."  // minor version
+          << BOOST_VERSION % 100                // patch level
+          << std::endl;
 
     if ( argc < 2 )
     {

@@ -47,14 +47,14 @@ public:
     }
 
     //! Solver of the problem (main method)
-    virtual void solve(real_type end_time, real_type dt_default, real_type out_step = 0, bool reset = true) override;
+    virtual void solve(real_type end_time, real_type dt_default, real_type out_step = 0, bool reset = true, bool fracture = false, bool melting = false) override;
     virtual void recover_states_from_file(std::string const& filename, real_type t, bool keep_as_outfile=true) override;
 
 private:
     //! last message id (increment for unicity)
     int msg_pk = 0; // TOD
     //! Move one time step forward
-    virtual void step_solve() override;
+    virtual void step_solve(bool crack = false, bool melt = false) override;
      //! Collision solving
     virtual int manage_collisions() override;
     //! Compute next time step
@@ -73,7 +73,7 @@ private:
 
 
 template<typename TProblem>
-void MPIMasterProblem<TProblem>::solve(real_type end_time, real_type dt_default, real_type out_step, bool reset) {
+void MPIMasterProblem<TProblem>::solve(real_type end_time, real_type dt_default, real_type out_step, bool reset, bool fracture, bool melting) {
     if (reset) this->create_optim_vars();
     this->m_domain.set_default_time_step(dt_default);
     this->m_out_manager.set_out_step(out_step, this->m_domain.time());
@@ -94,7 +94,7 @@ void MPIMasterProblem<TProblem>::solve(real_type end_time, real_type dt_default,
 }
 
 template<typename TProblem>
-void MPIMasterProblem<TProblem>::step_solve()
+void MPIMasterProblem<TProblem>::step_solve(bool crack, bool melt) {
     auto t_start = std::chrono::high_resolution_clock::now();
     this->m_proximity_detector.distribute_floes();
     auto t_end = std::chrono::high_resolution_clock::now();
@@ -117,7 +117,7 @@ void MPIMasterProblem<TProblem>::step_solve()
     t_end = std::chrono::high_resolution_clock::now();
     std::cout << "Chrono Move job : " << std::chrono::duration<double, std::milli>(t_end-t_start).count() << " ms" << std::endl;
     if (this->m_dynamics_manager.get_external_forces().get_physical_data().get_air_mode()==5 || this->m_dynamics_manager.get_external_forces().get_physical_data().get_air_mode()==6) { //!< only if the external forces is a vortex
-        for (size_t i=0; i<m_dynamics_manager.get_external_forces().get_physical_data().get_nb_vortex(); ++i) {
+        for (size_t i=0; i<this->m_dynamics_manager.get_external_forces().get_physical_data().get_nb_vortex(); ++i) {
             std::cout << "the vortex wind speed is: " << 
                 this->m_dynamics_manager.get_external_forces().get_physical_data().get_vortex_wind_speed(i) 
                 << std::endl;
@@ -128,7 +128,7 @@ void MPIMasterProblem<TProblem>::step_solve()
     if (this->m_step_nb % 10 == 0) this->m_proximity_detector.display_floe_distrib();
 
     this->m_step_nb++;
-
+}
 
 template<typename TProblem>
 void MPIMasterProblem<TProblem>::test_perf(){
