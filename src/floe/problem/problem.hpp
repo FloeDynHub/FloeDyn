@@ -315,9 +315,7 @@ void PROBLEM::safe_move_floe_group(){
             std::cout << "dt too small -> RECOVER STATES FROM OUT FILE" << std::endl;
 
             // adding a random velocity component to avoid infinite loops
-            // in generator mode the value is between 0 and 1. 
-            // in physical run mode the value is chosen smaller in order not to impair the physical sense of the solution :
-            // this epsilon is chosen depending on the mean velocity, the maximum floe size and the current time step.   
+            // used only in generator mode. 
             if (m_is_generator) 
             {
                 norm_rand_speed = static_cast <real_type> (std::rand()) / static_cast <real_type> (RAND_MAX);
@@ -326,7 +324,7 @@ void PROBLEM::safe_move_floe_group(){
                 m_dynamics_manager.set_norm_rand_speed(norm_rand_speed); 
             }
             // else
-            // {
+            // { // trying to do the same in un mode, but it does not solve the problem. There is work to be done to find a correct epsilon value for the random component  
             //     std::cout << "Adding a random epsilon to velocities to all floes " << std::endl;
             //     norm_rand_speed = static_cast <real_type> (std::rand()) / static_cast <real_type> (RAND_MAX);
             //     m_dynamics_manager.set_rand_speed_add(true);
@@ -357,8 +355,8 @@ void PROBLEM::detect_proximity(){
     {   
         // Hack to bypass repeating interpenetrations...
         m_out_manager.flush();
-        recover_states_from_file(m_out_manager.out_file_name(), m_domain.time() + 1);
         std::cout << "dt too small -> RECOVER STATES FROM OUT FILE" << std::endl;
+        recover_states_from_file(m_out_manager.out_file_name(), m_domain.time() + 1);
     }
     if (!m_proximity_detector.update()) // we have a floe interpenetration
         m_domain.rewind_time();
