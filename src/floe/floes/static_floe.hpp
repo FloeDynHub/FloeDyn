@@ -250,10 +250,10 @@ StaticFloe<T,TPoint,TGeometry,TMesh,TFrame,TDensity>::fracture_floe_2()
     real_type crack_width = std::sqrt(this->area()) * 0.02;
     point_type crack_ortho = direct_orthogonal(crack_start) / norm2(crack_start);
     point_type crack_delta = crack_ortho * crack_width / 2;
-    crack.outer().push_back(crack_start * 2 + crack_delta);
-    crack.outer().push_back(crack_start * 2 - crack_delta);
-    crack.outer().push_back(- crack_start * 10 - crack_delta);
-    crack.outer().push_back(- crack_start * 10 + crack_delta);
+    crack.outer().push_back(crack_start * 1e6 + crack_delta);
+    crack.outer().push_back(crack_start * 1e6 - crack_delta);
+    crack.outer().push_back(- crack_start * 1e6 - crack_delta);
+    crack.outer().push_back(- crack_start * 1e6 + crack_delta);
     boost::geometry::correct(crack);
     // remove crack from floe geometry
     boost::geometry::difference(this->geometry().outer(), crack, new_borders);
