@@ -96,7 +96,7 @@ public:
     const std::atomic<bool>* QUIT; //!< Exit signal
 
     // to be used in generation mode, to allow different behaviour
-    bool set_isGenerator();
+    inline void set_is_generator() {m_is_generator = true;};
 
 
 protected:
@@ -136,7 +136,7 @@ protected:
     void output_datas();
 
     // to allow different behaviour in the generation phase
-    bool m_isGenerator;
+    bool m_is_generator;
     // run time breakdown  
     std::chrono::duration<double, std::nano> m_collisionTime;
     std::chrono::duration<double, std::nano> m_timeStepTime;
@@ -165,7 +165,7 @@ PROBLEM::Problem(real_type epsilon, int OBL_status) :
         m_floe_group{},
         m_step_nb{0},
         m_out_manager{m_floe_group},
-        m_isGenerator{false},
+        m_is_generator{false},
         m_collisionTime{},
         m_timeStepTime{},
         m_moveTime{}
@@ -318,7 +318,7 @@ void PROBLEM::safe_move_floe_group(){
             // in generator mode the value is between 0 and 1. 
             // in physical run mode the value is chosen smaller in order not to impair the physical sense of the solution :
             // this epsilon is chosen depending on the mean velocity, the maximum floe size and the current time step.   
-            if (m_isGenerator) 
+            if (m_is_generator) 
             {
                 norm_rand_speed = static_cast <real_type> (std::rand()) / static_cast <real_type> (RAND_MAX);
                 std::cout << "Adding a random component to velocities of " << norm_rand_speed << std::endl;
@@ -389,12 +389,6 @@ typename TFloeGroup::point_type PROBLEM::move_floe_group(){
 TEMPLATE_PB
 void PROBLEM::make_input_file(){
     m_out_manager.make_input_file(m_dynamics_manager);
-}
-
-TEMPLATE_PB
-bool PROBLEM::set_isGenerator(){
-    m_isGenerator = true;
-    return true;
 }
 
 }} // namespace floe::problem
