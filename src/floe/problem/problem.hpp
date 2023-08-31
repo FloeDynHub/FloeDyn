@@ -4,6 +4,7 @@
  * \author Quentin Jouet
  */
 
+
 #ifndef PROBLEM_PROBLEM_HPP
 #define PROBLEM_PROBLEM_HPP
 
@@ -97,6 +98,10 @@ public:
 
     const std::atomic<bool>* QUIT; //!< Exit signal
 
+    // to be used in generation mode, to allow different behaviour
+    inline void set_is_generator() {m_is_generator = true;};
+
+
 protected:
     // domain
     TDomain m_domain; //!< Domain (time manager at the moment)
@@ -134,6 +139,13 @@ protected:
     point_type move_floe_group();
     //! Handle output_datas (console + out file)
     void output_datas();
+
+    // to allow different behaviour in the generation phase
+    bool m_is_generator;
+    // run time breakdown  
+    std::chrono::duration<double, std::nano> m_collisionTime;
+    std::chrono::duration<double, std::nano> m_timeStepTime;
+    std::chrono::duration<double, std::nano> m_moveTime;
 };
 
 
@@ -157,7 +169,11 @@ PROBLEM::Problem(real_type epsilon, int OBL_status) :
         m_dynamics_manager{m_domain.time(), OBL_status},
         m_floe_group{},
         m_step_nb{0},
-        m_out_manager{m_floe_group}
+        m_out_manager{m_floe_group},
+        m_is_generator{false},
+        m_collisionTime{},
+        m_timeStepTime{},
+        m_moveTime{}
     {
         m_time_scale_manager.set_prox_data_ptr( &(m_proximity_detector.data()) );
     }
@@ -246,6 +262,10 @@ void PROBLEM::solve(real_type end_time, real_type dt_default, real_type out_step
         if (*this->QUIT) break; // exit normally after SIGINT
     }
     std::cout << " NB STEPS : " << this->m_step_nb << std::endl;
+    double time_taken = std::chrono::duration_cast<std::chrono::nanoseconds>(m_collisionTime).count();
+    std::cout << " total collision time : " << time_taken*1e-9 << " s" << std::endl;
+    std::cout << " total time step time : " << std::chrono::duration_cast<std::chrono::nanoseconds>(m_timeStepTime).count()*1e-9 << " s" << std::endl;
+    std::cout << " total move time : " << std::chrono::duration_cast<std::chrono::nanoseconds>(m_moveTime).count()*1e-9 << " s" << std::endl;
 }
 
 
@@ -279,6 +299,10 @@ void PROBLEM::step_solve(bool crack, bool melt) {
     << "move " << std::chrono::duration<double, std::milli>(t3-t2).count() << " ms = "
     << std::chrono::duration<double, std::milli>(t3-t0).count() << " ms" << std::endl;
 
+    m_collisionTime+=std::chrono::duration<double, std::nano>(t1-t0);
+    m_timeStepTime+=std::chrono::duration<double, std::nano>(t2-t1);
+    m_moveTime+=std::chrono::duration<double, std::nano>(t3-t2);
+
     output_datas();
     m_step_nb++;
 }
@@ -287,20 +311,40 @@ TEMPLATE_PB
 void PROBLEM::safe_move_floe_group(){
     m_floe_group.backup_step_states();
     move_floe_group();
+    real_type norm_rand_speed(0);
     while (!m_proximity_detector.update())
     {
         std::cout << "INTER "; 
         m_floe_group.recover_previous_step_states();
         m_domain.rewind_time();
         compute_time_step(); // will only divide previous time step
+        m_dynamics_manager.set_norm_rand_speed(1e-7); 
         if (m_domain.time_step() < m_domain.default_time_step() / 1e5) // 1e8 from Q.Jouet
         {   
             // Hack to bypass repeating interpenetrations...
             std::cout << "dt too small -> RECOVER STATES FROM OUT FILE" << std::endl;
             recover_states_from_file(m_out_manager.out_file_name(), m_domain.time() + 1);
+            // adding a random velocity component to avoid infinite loops
+            // used only in generator mode. 
+            if (m_is_generator) 
+            {
+                norm_rand_speed = static_cast <real_type> (std::rand()) / static_cast <real_type> (RAND_MAX);
+                std::cout << "Adding a random component to velocities of " << norm_rand_speed << std::endl;
+                m_dynamics_manager.set_rand_speed_add(true);
+                m_dynamics_manager.set_norm_rand_speed(norm_rand_speed); 
+            }
+            // else
+            // { // trying to do the same in un mode, but it does not solve the problem. There is work to be done to find a correct epsilon value for the random component  
+            //     std::cout << "Adding a random epsilon to velocities to all floes " << std::endl;
+            //     norm_rand_speed = static_cast <real_type> (std::rand()) / static_cast <real_type> (RAND_MAX);
+            //     m_dynamics_manager.set_rand_speed_add(true);
+            //     m_dynamics_manager.set_norm_rand_speed(norm_rand_speed); 
+            // } 
             continue;
         }
         move_floe_group();
+        m_dynamics_manager.set_norm_rand_speed(1e-7); 
+        // m_dynamics_manager.set_rand_speed_add(false); // it seems SimuRunner sets it to true by default 
     }    
 }
 
@@ -321,6 +365,7 @@ void PROBLEM::detect_proximity(){
     if (m_domain.time_step() < m_domain.default_time_step() / 1e8)
     {   
         // Hack to bypass repeating interpenetrations...
+        m_out_manager.flush();
         std::cout << "dt too small -> RECOVER STATES FROM OUT FILE" << std::endl;
         recover_states_from_file(m_out_manager.out_file_name(), m_domain.time() + 1);
     }
@@ -354,7 +399,6 @@ TEMPLATE_PB
 void PROBLEM::make_input_file(){
     m_out_manager.make_input_file(m_dynamics_manager);
 }
-
 
 }} // namespace floe::problem
 

@@ -137,6 +137,9 @@ public:
     
     std::vector<real_type> get_KinematicFloeWithMaxKineticEnergy();
 
+    // returns the number of floes which are out of the window 
+    size_t count_floes_outside_window(real_type width, real_type height);
+
 protected:
 
     floe_list_type m_list_floe; //!< List of floes
@@ -370,6 +373,22 @@ FloeGroup<TFloe, TFloeList>::get_KinematicFloeWithMaxKineticEnergy()
 
     return v;
 }
+
+template <typename TFloe, typename TFloeList>
+size_t FloeGroup<TFloe, TFloeList>::count_floes_outside_window(real_type width, real_type height)
+{
+    size_t count(0);
+    for (auto& floe : get_floes())
+    {
+        auto const& out = floe.geometry().outer();
+        if (!std::all_of(out.begin(), out.end(), [&](point_type const& pt){ return (std::abs(pt.x) < width / 2 && std::abs(pt.y) < height / 2); }))
+        {
+            count++;
+        }
+    }
+    return count;
+}
+
 
 }} // namespace floe::floes
 

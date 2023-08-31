@@ -453,7 +453,9 @@ PhysicalData<TPoint>::init_random_vortex(){
 
     //!< warning    with MPI simulation, std::time(0) may be different from workers!!
     // std::cout << "RANDOM SEED " << std::time(0);
-    gen.seed(90839527656);
+    // gen.seed(90839527656);
+     
+    gen.seed(645214440);
     real_type theta_base = dist_angle(gen);
     real_type theta_total = theta_base;
     std::cout << "angle de base: " << theta_base << std::endl;
