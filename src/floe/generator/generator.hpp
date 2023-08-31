@@ -55,11 +55,12 @@ Generator<TProblem>::generate_floe_set(std::size_t nb_floes, real_type concentra
     std::vector<real_type> force_speeds)
 {   
     // basic process : 
-    // * floes are generated in spiral, blablabla 
-    // regularly, all floes within a subwindow are stopped to reduce the kinetic energy
-    // the number of floes outside is looked at to decide wether it is time to exit the loop 
+    // * floes are generated in spiral, with the biggest at the center. Convergent wind/current are applied to gather the floes  
+    // * regularly, all floes within a subwindow are stopped to reduce the kinetic energy
+    // * the size of this subwindow is determined by the shrinkFactor 
+    // * the number of floes outside the window is looked at to decide wether it is time to exit the loop 
+    // * all floes are stopped at the end 
     double shrinkFactor(0.85);
-    // double shrinkFactor(1);
     std::cout << "Generate " << nb_floes << " floes..." << std::endl;
     std::cout << "the restitution coefficient is fixed to: " << 
     m_problem.get_lcp_manager().get_solver().get_epsilon() << std::endl;
