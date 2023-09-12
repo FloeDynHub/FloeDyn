@@ -24,6 +24,7 @@ def run():
     parser.add_argument('--hd', action="store_true", default=False, help="Make HD video")
     parser.add_argument('-c', '--codec', dest="codec", default=None, help='Video codec')
     parser.add_argument('-a', '--axes', dest="static_axes", type=str, help='Initial Axes (xmin,xmax,ymin,ymax)', default=None)
+    parser.add_argument('-m', '--mesh', action="store_true", dest="disp_mesh", default=False, help='Display mesh')
     OPTIONS = parser.parse_args()
     if OPTIONS.static_axes:
         try:

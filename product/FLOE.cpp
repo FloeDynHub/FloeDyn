@@ -1,3 +1,5 @@
+#define WHEREAMI std::cout << std::endl << "no crash until line " << __LINE__ << " in the file " __FILE__ << std::endl;
+
 #include "../product/simu_runner.hpp"
 #include "../product/config/config_runner.hpp"
 #include <iostream>
@@ -8,7 +10,7 @@ using namespace std::chrono;
 int main( int argc, char* argv[] )
 {
 	auto t_start = high_resolution_clock::now();
-    simulation_runner_type simu(argc, argv);
+    simulation_runner_type simu(argc, argv); //SimuRunner ou MPISimuRunner 
     simu.run();
 	auto t_end = high_resolution_clock::now();
 
@@ -18,5 +20,6 @@ int main( int argc, char* argv[] )
 	seconds ss = duration_cast<seconds> (simu_time % minutes(1));
 	std::cout 	<< "Chrono : Total simulation: " << hh.count() << "h " 
 				<< mm.count() << "m " << ss.count() << "s \n";
-    return 0;
+    // WHEREAMI
+	return 0; 
 }

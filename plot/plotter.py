@@ -126,6 +126,40 @@ class FloePlotter(object):
                 ((w[0], w[2]), (w[0], w[3]), (w[1], w[3]), (w[1], w[2])),
                 # True, facecolor=None, alpha=0.2, edgecolor="white", linewidth=0.2))
                 True, facecolor="none", edgecolor=self.colors["window"], linewidth=1.5))
+    
+    def _display_mesh(self, data, ax_mgr):
+        # Display mesh
+        meshes = data.get("floe_meshes")
+        if meshes:
+            print('trying to add {} meshes'.format(len(meshes)))
+            ax = ax_mgr.ax
+            # ax_mgr.set_patch("window",Polygon(
+            #     ((w[0], w[2]), (w[0], w[3]), (w[1], w[3]), (w[1], w[2])),
+            #     # True, facecolor=None, alpha=0.2, edgecolor="white", linewidth=0.2))
+            #     True, facecolor="none", edgecolor=self.colors["window"], linewidth=1.5))
+
+
+            ax = ax_mgr.ax
+            # print(np.array([[0,0],[1,1]]))
+            # print(len(data.get("floe_meshes")[2]))
+            elements = []
+            # for iElem in np.arange(2)
+            elements.append(np.array([[0,0],[100,100], [0,100]]))
+            elements.append(np.array([[200,0],[200, 150],[500,100]]))
+
+            meshes_collec = PolyCollection(
+                elements,
+                # data.get("floe_meshes"),
+                linewidths=0.5,
+                edgecolors="black",
+                # edgecolors="red", facecolors="none") # no facecolor mode
+                cmap=cm.YlOrRd, norm=colors.PowerNorm(gamma=0.3))
+            # meshes_collec.set_array(np.zeros(len(data.get("floe_shapes"))))
+            meshes_collec.set_array(range(len(data.get("floe_shapes"))))
+            meshes_collec.set_clim([0, len(elements)])
+            plt.colorbar(meshes_collec, ax = ax, fraction = 0.05)
+            ax_mgr.set_collection("meshes", meshes_collec)
+
 
     def _init_floes(self, data, ax_mgr):
         "initializes floes (Polygon creation) for matplotlib animation creation (v3 : shapes)"
@@ -177,7 +211,8 @@ class FloePlotter(object):
             self._init_circles(data, ax_mgr)
         if getattr(self.OPTIONS, "disp_window"):
             self._display_window(data, ax_mgr)
-
+        if getattr(self.OPTIONS, "disp_mesh"):
+            self._display_mesh(data, ax_mgr)
         # return ax
 
     def _update_floes(self, num, data, ax_mgr):
@@ -186,8 +221,8 @@ class FloePlotter(object):
         ax = ax_mgr.ax
         begin, step = 0, 1
         indic = begin + step * num
-        opt_ghosts, opt_color, opt_follow, opt_fracture = (
-            getattr(self.OPTIONS, opt) for opt in ["ghosts", "color", "follow", "fracture"]
+        opt_ghosts, opt_color, opt_follow, opt_fracture, opt_mesh = (
+            getattr(self.OPTIONS, opt) for opt in ["ghosts", "color", "follow", "fracture", "disp_mesh"]
         )
 
         nb_floes = len(data.get("floe_shapes"))
@@ -211,6 +246,12 @@ class FloePlotter(object):
             ax_mgr.get_collection("floes").set_array(data.get("impulses")[indic])
             if opt_ghosts:
                 ax_mgr.get_collection("floe_ghosts").set_array(np.tile(data.get("impulses")[indic], 8))
+        
+        if opt_mesh:
+            ax_mgr.get_collection("meshes").set_array(range(len(data.get("floe_shapes"))))
+            # print('updating les meshes mon gros')
+
+
         ax.set_title("t = {}".format(str(datetime.timedelta(seconds=int(data.get("time")[indic])))))
         if not data.get("static_axes"):
             # ax.axis('equal')
@@ -456,6 +497,8 @@ class FloePlotter(object):
         elif self.OPTIONS.version >= 2:
             if data_file.get("floe_shapes") is not None:
                 d["floe_shapes"] = [np.array(data_file.get("floe_shapes").get(k)) for k  in sorted(list(data_file.get("floe_shapes")), key=int)]
+                d["floe_meshes"] = [np.array(data_file.get("floe_meshes").get(k)) for k  in sorted(list(data_file.get("floe_meshes")), key=int)]
+                print('Hello bonjourhein')
             else:
                 d["floe_shapes"] = self.calc_shapes(data_file)
         # Other datas

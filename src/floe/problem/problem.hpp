@@ -8,7 +8,11 @@
 #ifndef PROBLEM_PROBLEM_HPP
 #define PROBLEM_PROBLEM_HPP
 
-#include "floe/io/hdf5_manager.h"
+#define WHEREAMI std::cout << std::endl << "no crash until line " << __LINE__ << " in the file " __FILE__ << std::endl;
+
+
+// #include "floe/io/hdf5_manager.h"
+#include "floe/io/hdf5_manager_mesh.h"
 // #include "floe/io/false_hdf5_manager.hpp"
 #include "floe/io/multi_out_manager.hpp"
 
@@ -48,7 +52,8 @@ public:
     #ifdef MULTIOUTPUT
         using out_manager_type = io::MultiOutManager<io::HDF5Manager<TFloeGroup, TDynamicsManager>>;
     #else
-        using out_manager_type = io::HDF5Manager<TFloeGroup, TDynamicsManager>;
+        // using out_manager_type = io::HDF5Manager<TFloeGroup, TDynamicsManager>;
+        using out_manager_type = io::HDF5ManagerWithMesh<TFloeGroup, TDynamicsManager>;
     #endif
 
     using real_type = typename TFloeGroup::real_type;
@@ -274,12 +279,22 @@ void PROBLEM::step_solve(bool crack, bool melt) {
     auto t0 = std::chrono::high_resolution_clock::now();
     manage_collisions();
     // fracture
-    if (crack) {
-    	std::size_t nb_before = m_floe_group.get_floes().size();
-    	m_floe_group.fracture_biggest_floe();
+    // if (crack) {
+    // 	std::size_t nb_before = m_floe_group.get_floes().size();
+    // 	m_floe_group.fracture_biggest_floe();
+    //     this->update_optim_vars();
+    // 	std::cout << "Fracture - nb floes : " << nb_before << " -> " << m_floe_group.get_floes().size() << std::endl;
+    // }
+
+    // instead of fracturing the biggest floe at regular intervals, you may choose to fracture it only if the floe impulses exceed a predefined threshold 
+    std::size_t nb_before = m_floe_group.get_floes().size();    
+    if (m_floe_group.fracture_above_threshold(6e6) > 0)
+    {
         this->update_optim_vars();
-    	std::cout << "Fracture - nb floes : " << nb_before << " -> " << m_floe_group.get_floes().size() << std::endl;
+        std::cout << "Fracture on threshold - nb floes : " << nb_before << " -> " << m_floe_group.get_floes().size() << std::endl;
     }
+
+    
     auto t1 = std::chrono::high_resolution_clock::now();
     compute_time_step();
     auto t2 = std::chrono::high_resolution_clock::now();
