@@ -130,7 +130,8 @@ private:
 
     //! out floe shapes (boundary in relative frame)
     void write_shapes();
-    void write_meshes();
+    void write_meshes_coord();
+    void write_meshes_connect();
     //! Partial writings :
     void write_boundaries();
     void write_states();

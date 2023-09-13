@@ -146,10 +146,15 @@ void HDF5ManagerWithMesh<TFloeGroup, TDynamicsMgr>::flush() {
             m_shapes_group = new Group( m_out_file->createGroup("floe_shapes") );
             write_shapes();
         }
-        try { m_out_file->openGroup("floe_meshes"); }
+        try { m_out_file->openGroup("floe_meshes_coord"); }
         catch (...) {
-            m_meshes_group = new Group( m_out_file->createGroup("floe_meshes") );
-            write_meshes();
+            m_meshes_group = new Group( m_out_file->createGroup("floe_meshes_coord") );
+            write_meshes_coord();
+        }
+        try { m_out_file->openGroup("floe_meshes_connect"); }
+        catch (...) {
+            m_meshes_group = new Group( m_out_file->createGroup("floe_meshes_connect") );
+            write_meshes_connect();
         }
 
         try { m_out_file->openDataSet("window"); }
@@ -611,7 +616,7 @@ template <
     typename TFloeGroup,
     typename TDynamicsMgr
 >
-void HDF5ManagerWithMesh<TFloeGroup, TDynamicsMgr>::write_meshes() {
+void HDF5ManagerWithMesh<TFloeGroup, TDynamicsMgr>::write_meshes_coord() {
     
     H5File& file( *m_out_file );
     const int   SPACE_DIM = 2;
@@ -623,11 +628,8 @@ void HDF5ManagerWithMesh<TFloeGroup, TDynamicsMgr>::write_meshes() {
     dimsf[1] = SPACE_DIM;
     for (std::size_t iFloe=0; iFloe < this->nb_considered_floes(); ++iFloe)
     {
-        auto& boundary = this->get_floe(iFloe).get_static_floe().geometry().outer();
-        dimsf[0] = boundary.size();
-
+        // exporting the coordinate table 
         boost::geometry::model::multi_point<point_type> coord = this->get_floe(iFloe).get_mesh().points();
-        std::vector<std::array<std::size_t,3>> connect =this->get_floe(iFloe).get_mesh().connectivity(); 
 
         dimsf[0] = coord.size();
         DataSpace dataspace( RANK, dimsf );
@@ -636,15 +638,14 @@ void HDF5ManagerWithMesh<TFloeGroup, TDynamicsMgr>::write_meshes() {
             * datatype and default dataset creation properties.
             */
         DataSet dataset = m_meshes_group->createDataSet(H5std_string{std::to_string(iFloe)},datatype, dataspace);
-        // auto data = new real_type[dimsf[0] * dimsf[1]];
-
         boost::multi_array<real_type, 2> data(boost::extents[dimsf[0]][dimsf[1]]);
         for (std::size_t iPoint = 0; iPoint < dimsf[0]; ++iPoint)
         {
-            // data[iPoint][0] = boundary[iPoint].x;
-            // data[iPoint][1] = boundary[iPoint].y;
-            data[iPoint][0] = coord[iPoint][0];
-            data[iPoint][1] = coord[iPoint][1];
+            // data[iPoint][0] = coord[iPoint][0];
+            // data[iPoint][1] = coord[iPoint][1];
+            // li'l improvement : exporting coordinates in the floe coordinate system. ça rend grave easier le postprocessing sinon je m'en sors not at all
+            data[iPoint][0] = coord[iPoint][0] - this->get_floe(iFloe).state().pos.x;
+            data[iPoint][1] = coord[iPoint][1] - this->get_floe(iFloe).state().pos.y;
         }
         /*
             * Write the data to the dataset using default memory space, file
@@ -657,9 +658,47 @@ void HDF5ManagerWithMesh<TFloeGroup, TDynamicsMgr>::write_meshes() {
         Attribute att = dataset.createAttribute("index", datatype, att_space );
         att.write( datatype, &val );
     }
+};
 
-    // m_nb_floe_shapes_written = this->nb_considered_floes();
 
+template <
+    typename TFloeGroup,
+    typename TDynamicsMgr
+>
+void HDF5ManagerWithMesh<TFloeGroup, TDynamicsMgr>::write_meshes_connect() {
+    
+    H5File& file( *m_out_file );
+    // const int   SPACE_DIM = 2;
+    const int   RANK = 2;
+    FloatType datatype( PredType::NATIVE_DOUBLE );
+    datatype.setOrder( H5T_ORDER_LE );
+    hsize_t     dimsf[2];              // dataset dimensions
+    dimsf[1] = 3; // we're supposed to have only linear triangles. Would'nt it be nice, to, add, a check here... 
+    for (std::size_t iFloe=0; iFloe < this->nb_considered_floes(); ++iFloe)
+    {
+        // exporting the connectivity table 
+        std::vector<std::array<std::size_t,3>> connect =this->get_floe(iFloe).get_mesh().connectivity(); 
+        dimsf[0] = connect.size();
+        DataSpace dataspace( RANK, dimsf );
+        DataSet dataset = m_meshes_group->createDataSet(H5std_string{std::to_string(iFloe)},datatype, dataspace);
+        boost::multi_array<int, 2> data(boost::extents[dimsf[0]][dimsf[1]]);
+        for (std::size_t iElem = 0; iElem < dimsf[0]; ++iElem)
+        {
+            data[iElem][0] = (int)connect[iElem][0];
+            data[iElem][1] = (int)connect[iElem][1];
+            data[iElem][2] = (int)connect[iElem][2];
+        }
+        /*
+            * Write the data to the dataset using default memory space, file
+            * space, and transfer properties.
+            */
+        dataset.write( data.data(), PredType::NATIVE_INT );
+        // add attribute for floe id
+        DataSpace att_space(H5S_SCALAR);
+        auto val = (double)iFloe ;
+        Attribute att = dataset.createAttribute("index", datatype, att_space );
+        att.write( datatype, &val );
+    }
 };
 
 template <
