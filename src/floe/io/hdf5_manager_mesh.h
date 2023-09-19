@@ -108,7 +108,8 @@ private:
     std::string m_out_file_name; //!< output file name
     H5File* m_out_file; //!< output file
     Group* m_shapes_group;
-    Group* m_meshes_group;
+    Group* m_meshes_coord_group;
+    Group* m_meshes_connect_group;
     hsize_t m_step_count; //!< Total nb of outputted simulation states
     hsize_t m_chunk_step_count; //!< Nb of temporarily saved steps (to flush in out file)
     const hsize_t m_flush_max_step; //!< Max nb of temporarily saved steps (chunk size)
@@ -127,6 +128,8 @@ private:
     real_type m_next_out_limit; //!< Next time limit for state ouput
     //! Number of floe shapes written to file (fracture creates new ones)
     hsize_t m_nb_floe_shapes_written;
+    hsize_t m_nb_floe_meshes_connect_written;
+    hsize_t m_nb_floe_meshes_coord_written;
 
     //! out floe shapes (boundary in relative frame)
     void write_shapes();

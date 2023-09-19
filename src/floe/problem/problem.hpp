@@ -285,15 +285,15 @@ void PROBLEM::step_solve(bool crack, bool melt) {
     //     this->update_optim_vars();
     // 	std::cout << "Fracture - nb floes : " << nb_before << " -> " << m_floe_group.get_floes().size() << std::endl;
     // }
-
-    // instead of fracturing the biggest floe at regular intervals, you may choose to fracture it only if the floe impulses exceed a predefined threshold 
-    std::size_t nb_before = m_floe_group.get_floes().size();    
-    if (m_floe_group.fracture_above_threshold(6e6) > 0)
-    {
-        this->update_optim_vars();
-        std::cout << "Fracture on threshold - nb floes : " << nb_before << " -> " << m_floe_group.get_floes().size() << std::endl;
+    if (crack) {
+        // instead of fracturing the biggest floe at regular intervals, you may choose to fracture it only if the floe impulses exceed a predefined threshold 
+        std::size_t nb_before = m_floe_group.get_floes().size();    
+        if (m_floe_group.fracture_above_threshold(6e6) > 0)
+        {
+            this->update_optim_vars();
+            std::cout << "Fracture on threshold - nb floes : " << nb_before << " -> " << m_floe_group.get_floes().size() << std::endl;
+        }
     }
-
     
     auto t1 = std::chrono::high_resolution_clock::now();
     compute_time_step();
