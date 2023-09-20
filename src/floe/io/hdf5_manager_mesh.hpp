@@ -638,7 +638,7 @@ void HDF5ManagerWithMesh<TFloeGroup, TDynamicsMgr>::write_meshes_coord() {
     std::cout << "write_shapes : from " << m_nb_floe_meshes_coord_written << " to " << this->nb_considered_floes() << std::endl;
     for (std::size_t iFloe=m_nb_floe_meshes_coord_written; iFloe != this->nb_considered_floes(); ++iFloe)
     {
-        // exporting the coordinate table (in the floe coordinate system evidemmently) 
+        // exporting the coordinate table 
         boost::geometry::model::multi_point<point_type> coord = this->get_floe(iFloe).get_mesh().points();
 
         dimsf[0] = coord.size();
@@ -651,8 +651,13 @@ void HDF5ManagerWithMesh<TFloeGroup, TDynamicsMgr>::write_meshes_coord() {
         boost::multi_array<real_type, 2> data(boost::extents[dimsf[0]][dimsf[1]]);
         for (std::size_t iPoint = 0; iPoint < dimsf[0]; ++iPoint)
         {
-            data[iPoint][0] = coord[iPoint][0] - this->get_floe(iFloe).state().pos.x;
-            data[iPoint][1] = coord[iPoint][1] - this->get_floe(iFloe).state().pos.y;
+            // coordinates are first put in the floe coordinate system evidemmently. (<-pos.x -pos.y> translation, and -theta rotation)
+            real_type x = coord[iPoint][0] - this->get_floe(iFloe).state().pos.x;
+            real_type y = coord[iPoint][1] - this->get_floe(iFloe).state().pos.y;
+            real_type theta = this->get_floe(iFloe).state().theta;
+
+            data[iPoint][0] = x*cos(theta) + y*sin(theta);
+            data[iPoint][1] = -x*sin(theta) + y*cos(theta);
         }
         /*
             * Write the data to the dataset using default memory space, file
