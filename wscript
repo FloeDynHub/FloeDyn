@@ -53,7 +53,7 @@ def timeit(func):
 
 floedyn_deps = {
     'gmp' : ['gmp'],
-    'boost' : ['boost_system', 'boost_program_options'],
+    'boost' : ['boost_system', 'boost_program_options', 'boost_thread'],
     'eigen' : [], # header only
     'matio' : ['matio'],
     'hdf5'  : ['hdf5_cpp'],
@@ -165,7 +165,7 @@ def configure(conf):
 
 
     conf.env.default_search_path = conf.options.default_search_path.split()
-    
+
     for dep in floedyn_deps:
         value = getattr(conf.options, dep,
                         conf.options.default_search_path)
@@ -330,13 +330,16 @@ def get_option_dict(debug=True):
                 '-std=c++14',
                  "-O3",
                  # "-march=native", # g++ fails with this
-                 "-mtune=native",
-                 "-Wall", "-Wextra", #"-Wshadow",
-                 "-Wno-unused-parameter", "-Wno-unused-local-typedef",
-                 "-Wno-gnu-anonymous-struct", "-Wno-nested-anon-types", # floe/geometry/geometries/point.hpp
-                 "-Wno-redeclared-class-member",
-                 #"-isystem /usr/local/include/boost/",
-                 # "-pedantic"
+                #  "-mtune=native",
+                #  "-Wall", "-Wextra", 
+                #  "-Wno-unused-parameter", 
+                #  "-Wno-unused-local-typedef",
+                #  "-Wno-gnu-anonymous-struct", "-Wno-nested-anon-types", # floe/geometry/geometries/point.hpp
+                #  "-Wno-redeclared-class-member",
+                #  "-isystem /usr/local/include/boost/",
+                "-Wno-deprecated",
+                "-Wno-enum-constexpr-conversion",
+                 # "-pedantic",
              ],
             "defines": ["NDEBUG"]
         })

@@ -1,6 +1,6 @@
 /*!
  * \file floes/hdf5_manager.hpp
- * \brief HDF5 manager for io which outputs the mesh as well and node data 
+ * \brief HDF5 manager for io which outputs the mesh as well and elem data 
  * \author Quentin Jouet
  */
 
@@ -25,11 +25,15 @@ HDF5ManagerWithMesh<TFloeGroup, TDynamicsMgr>::HDF5ManagerWithMesh(floe_group_ty
     m_flush_max_step{2}, // min val = 2
     m_floe_group{&floe_group},
     m_data_chunk_states(boost::extents[0][0][0]),
+    m_data_chunk_elem_data(boost::extents[0][0][0]),
+    m_data_chunk_node_data(boost::extents[0][0][0]),
     m_data_chunk_time{new real_type[m_flush_max_step]},
     m_data_chunk_mass_center(boost::extents[m_flush_max_step][2]),
     m_data_chunk_OBL_speed(boost::extents[m_flush_max_step][2]),
     m_data_chunk_kinE{new real_type[m_flush_max_step]},
-    m_out_step{0}, m_next_out_limit{0}, m_nb_floe_shapes_written{0}, m_nb_floe_meshes_coord_written{0}, m_nb_floe_meshes_connect_written{0}, m_shapes_group{nullptr}, m_meshes_coord_group{nullptr}, m_meshes_connect_group{nullptr}
+    m_out_step{0}, m_next_out_limit{0}, m_nb_floe_shapes_written{0}, m_nb_floe_meshes_coord_written{0}, m_nb_floe_meshes_connect_written{0}, m_shapes_group{nullptr}, m_meshes_coord_group{nullptr}, m_meshes_connect_group{nullptr},
+    m_max_elem{0},
+    m_max_nodes{0}
     {}
 
 //! Definition of the destructor:
@@ -57,17 +61,19 @@ template <typename TFloeGroup, typename TDynamicsMgr>
 void HDF5ManagerWithMesh<TFloeGroup, TDynamicsMgr>::save_step(real_type time, const dynamics_mgr_type& dynamics_manager)
 {
     floe_group_type const& floe_group = *m_floe_group;
+    m_max_elem = m_floe_group->get_max_elem();
+    m_max_nodes = m_floe_group->get_max_nodes();
+            
     // Handle fracture
     if (m_data_chunk_states.size() > 0 && m_data_chunk_states[0].size() != this->nb_considered_floes()) {
         flush();
         m_chunk_step_count = 0;
         m_data_chunk_states.resize(boost::extents[m_flush_max_step][this->nb_considered_floes()][array_size<saved_state_type>::size]);
+        m_data_chunk_elem_data.resize(boost::extents[m_flush_max_step][this->nb_considered_floes()][m_max_elem]);
+        m_data_chunk_node_data.resize(boost::extents[m_flush_max_step][this->nb_considered_floes()][m_max_nodes]);
         write_shapes();
-        WHEREAMI
         write_meshes_coord();
-        WHEREAMI
         write_meshes_connect();
-        WHEREAMI
     }
     // save states
     if (m_data_chunk_states.size() == 0) m_data_chunk_states.resize(boost::extents[m_flush_max_step][this->nb_considered_floes()][array_size<saved_state_type>::size]);
@@ -90,6 +96,38 @@ void HDF5ManagerWithMesh<TFloeGroup, TDynamicsMgr>::save_step(real_type time, co
             
         }){
             m_data_chunk_states[m_chunk_step_count][id][k++] = val;
+        }
+    }
+    // save elem data
+    if (m_data_chunk_elem_data.size() == 0) m_data_chunk_elem_data.resize(boost::extents[m_flush_max_step][this->nb_considered_floes()][m_max_elem]); // le 4 a terme pourra etre mis salement dans le dur dans le .h, bien cache mais tout aussi moche
+    for(std::size_t iFloe = 0; iFloe < this->nb_considered_floes(); ++iFloe)
+    {
+        auto const& floe = this->get_floe(iFloe);
+        for (std::size_t iElem = 0 ; iElem < floe.mesh().get_n_cells() ; ++iElem)
+        {
+            // int k{0};
+            // for (auto& val: {
+            //     (real_type)iElem,
+            //     floe.state().speed.x, // c'est un ptit peu con là je mets la même vitesse à tout le monde, pas hyper hyper utile. 
+            //     floe.state().speed.y,
+            //     sqrt(pow(floe.state().speed.y,2)+pow(floe.state().speed.x,2)),
+            // }){
+            //     m_data_chunk_elem_data[m_chunk_step_count][iFloe][iElem][k++] = val;
+            // }
+            m_data_chunk_elem_data[m_chunk_step_count][iFloe][iElem] = (real_type)iElem;
+            // m_data_chunk_elem_data[m_chunk_step_count][iFloe][iElem] = sqrt(pow(floe.state().pos.y,2)+pow(floe.state().pos.x,2));
+            // std::cout << "Floe " << iFloe << " element " << iElem << " should display color " <<  sqrt(pow(floe.state().speed.y,2)+pow(floe.state().speed.x,2)) << std::endl;
+        }
+    }
+    // saving nodal data 
+    if (m_data_chunk_node_data.size() == 0) m_data_chunk_node_data.resize(boost::extents[m_flush_max_step][this->nb_considered_floes()][m_max_nodes]); // le 4 a terme pourra etre mis salement dans le dur dans le .h, bien cache mais tout aussi moche
+    for(std::size_t iFloe = 0; iFloe < this->nb_considered_floes(); ++iFloe)
+    {
+        auto const& floe = this->get_floe(iFloe);
+        for (std::size_t iNode = 0 ; iNode < floe.mesh().get_n_nodes() ; ++iNode)
+        {
+            m_data_chunk_node_data[m_chunk_step_count][iFloe][iNode] = (real_type)iNode;
+            // std::cout << "Floe " << iFloe << " element " << iNode << " should display color " <<  sqrt(pow(floe.state().speed.y,2)+pow(floe.state().speed.x,2)) << std::endl;
         }
     }
 
@@ -170,6 +208,8 @@ void HDF5ManagerWithMesh<TFloeGroup, TDynamicsMgr>::flush() {
 
         // write_boundaries();
         write_states();
+        write_elem_data();
+        write_node_data();
         write_time();
         write_mass_center();
         write_OBL_speed();
@@ -303,6 +343,101 @@ void HDF5ManagerWithMesh<TFloeGroup, TDynamicsMgr>::write_states() {
 
     states_dataset.write(m_data_chunk_states.data(), PredType::NATIVE_DOUBLE, memspace, filespace);
 };
+
+
+template <typename TFloeGroup, typename TDynamicsMgr>
+void HDF5ManagerWithMesh<TFloeGroup, TDynamicsMgr>::write_elem_data() {
+    
+    H5File& file( *m_out_file );
+    // const int   RANK = 4;
+    const int   RANK = 3;
+
+    /* saving time */
+    DataSet elem_data_dataset;
+    const hsize_t nb_floes = m_data_chunk_elem_data[0].size();
+    // const hsize_t nb_data = array_size<saved_elem_data_type>::size;
+
+    m_max_elem = m_floe_group->get_max_elem();
+
+    hsize_t     dims[RANK] = {m_step_count - m_chunk_step_count, nb_floes, m_max_elem};
+    // hsize_t     dims[RANK] = {m_step_count - m_chunk_step_count, nb_floes, m_max_elem, nb_data};
+    // hsize_t     dims[RANK] = {m_step_count - m_chunk_step_count, nb_floes, array_size<saved_state_type>::size};
+    const hsize_t     chunk_dims[RANK] = {m_chunk_step_count, dims[1], dims[2]};
+    // const hsize_t     chunk_dims[RANK] = {m_chunk_step_count, dims[1], dims[2], dims[3]};
+    try {
+        elem_data_dataset = file.openDataSet("floe_elem_data");
+    } catch (...) {
+        FloatType datatype( PredType::NATIVE_DOUBLE );
+        datatype.setOrder( H5T_ORDER_LE );
+        hsize_t maxdims[RANK] = {H5S_UNLIMITED, H5S_UNLIMITED, H5S_UNLIMITED}; 
+        // hsize_t maxdims[RANK] = {H5S_UNLIMITED, H5S_UNLIMITED, H5S_UNLIMITED, dims[2]}; 
+        DataSpace dataspace( RANK, dims, maxdims );
+        // Modify dataset creation property to enable chunking
+        DSetCreatPropList prop;
+        prop.setChunk(RANK, chunk_dims);
+
+        elem_data_dataset = file.createDataSet("floe_elem_data", datatype, dataspace, prop);
+    }
+    // Extend the dataset.
+    dims[0] += chunk_dims[0];
+    elem_data_dataset.extend(dims); 
+    // std::cout << "dataset size : " << dims[0] << " " << dims[1] << " " << dims[2] << " " << dims[3] << " " << std::endl;
+
+    DataSpace filespace = elem_data_dataset.getSpace();
+    hsize_t offset[RANK] = {m_step_count - m_chunk_step_count, 0, 0};
+    filespace.selectHyperslab(H5S_SELECT_SET, chunk_dims, offset);
+    // Define memory space.
+    DataSpace memspace{RANK, chunk_dims, NULL};
+
+    elem_data_dataset.write(m_data_chunk_elem_data.data(), PredType::NATIVE_DOUBLE, memspace, filespace);
+};
+
+
+template <typename TFloeGroup, typename TDynamicsMgr>
+void HDF5ManagerWithMesh<TFloeGroup, TDynamicsMgr>::write_node_data() {
+    
+    H5File& file( *m_out_file );
+    // const int   RANK = 4;
+    const int   RANK = 3;
+    std::cout << "HELLOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO" << std::endl;
+    std::cout << "HELLOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO" << std::endl;
+    std::cout << "HELLOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO" << std::endl;
+    std::cout << "HELLOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO" << std::endl;
+
+    /* saving time */
+    DataSet node_data_dataset;
+    const hsize_t nb_floes = m_data_chunk_elem_data[0].size();
+    // const hsize_t nb_data = array_size<saved_elem_data_type>::size;
+
+    m_max_nodes = m_floe_group->get_max_nodes();
+
+    hsize_t     dims[RANK] = {m_step_count - m_chunk_step_count, nb_floes, m_max_nodes};
+    const hsize_t     chunk_dims[RANK] = {m_chunk_step_count, dims[1], dims[2]};
+    try {
+        node_data_dataset = file.openDataSet("floe_node_data");
+    } catch (...) {
+        FloatType datatype( PredType::NATIVE_DOUBLE );
+        datatype.setOrder( H5T_ORDER_LE );
+        hsize_t maxdims[RANK] = {H5S_UNLIMITED, H5S_UNLIMITED, H5S_UNLIMITED}; 
+        DataSpace dataspace( RANK, dims, maxdims );
+        // Modify dataset creation property to enable chunking
+        DSetCreatPropList prop;
+        prop.setChunk(RANK, chunk_dims);
+        node_data_dataset = file.createDataSet("floe_node_data", datatype, dataspace, prop);
+    }
+    // Extend the dataset.
+    dims[0] += chunk_dims[0];
+    node_data_dataset.extend(dims); 
+
+    DataSpace filespace = node_data_dataset.getSpace();
+    hsize_t offset[RANK] = {m_step_count - m_chunk_step_count, 0, 0};
+    filespace.selectHyperslab(H5S_SELECT_SET, chunk_dims, offset);
+    // Define memory space.
+    DataSpace memspace{RANK, chunk_dims, NULL};
+
+    node_data_dataset.write(m_data_chunk_node_data.data(), PredType::NATIVE_DOUBLE, memspace, filespace);
+};
+
 
 template <typename TFloeGroup, typename TDynamicsMgr>
 void HDF5ManagerWithMesh<TFloeGroup, TDynamicsMgr>::write_time() {
@@ -586,7 +721,7 @@ void HDF5ManagerWithMesh<TFloeGroup, TDynamicsMgr>::write_shapes() {
     datatype.setOrder( H5T_ORDER_LE );
     hsize_t     dimsf[2];              // dataset dimensions
     dimsf[1] = SPACE_DIM;
-    std::cout << "write_shapes : from " << m_nb_floe_shapes_written << " to " << this->nb_considered_floes() << std::endl;
+    // std::cout << "write_shapes : from " << m_nb_floe_shapes_written << " to " << this->nb_considered_floes() << std::endl;
     for (std::size_t i=m_nb_floe_shapes_written; i!=this->nb_considered_floes(); ++i)
     {
         auto& boundary = this->get_floe(i).get_static_floe().geometry().outer();
@@ -635,7 +770,7 @@ void HDF5ManagerWithMesh<TFloeGroup, TDynamicsMgr>::write_meshes_coord() {
     datatype.setOrder( H5T_ORDER_LE );
     hsize_t     dimsf[2];              // dataset dimensions
     dimsf[1] = SPACE_DIM;
-    std::cout << "write_shapes : from " << m_nb_floe_meshes_coord_written << " to " << this->nb_considered_floes() << std::endl;
+    // std::cout << "write_shapes : from " << m_nb_floe_meshes_coord_written << " to " << this->nb_considered_floes() << std::endl;
     for (std::size_t iFloe=m_nb_floe_meshes_coord_written; iFloe != this->nb_considered_floes(); ++iFloe)
     {
         // exporting the coordinate table 
@@ -687,7 +822,7 @@ void HDF5ManagerWithMesh<TFloeGroup, TDynamicsMgr>::write_meshes_connect() {
     datatype.setOrder( H5T_ORDER_LE );
     hsize_t     dimsf[2];              // dataset dimensions
     dimsf[1] = 3; // we're supposed to have only linear triangles. Would'nt it be nice, to, add, a check here... 
-    std::cout << "write_shapes : from " << m_nb_floe_meshes_connect_written << " to " << this->nb_considered_floes() << std::endl;
+    // std::cout << "write_shapes : from " << m_nb_floe_meshes_connect_written << " to " << this->nb_considered_floes() << std::endl;
     for (std::size_t iFloe=m_nb_floe_meshes_connect_written; iFloe != this->nb_considered_floes(); ++iFloe)
     {
         // exporting the connectivity table 
@@ -762,6 +897,8 @@ void HDF5ManagerWithMesh<TFloeGroup, TDynamicsMgr>::make_input_file(const dynami
         write_shapes();
         write_window();
         write_states();
+        write_elem_data();
+        write_node_data();
 
         // Close the file after each flush to keep a valid ouput even if program crashes
         delete m_out_file;

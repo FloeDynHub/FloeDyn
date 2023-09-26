@@ -143,12 +143,15 @@ class FloePlotter(object):
                     # if data.get("floe_states")[0][iFloe][9] == 0:
                     #     displayedData.append(1000)
                     # else:
-                    displayedData.append(np.mean([coord[iFloe][int(connect[iFloe][iElem][0])][0], coord[iFloe][int(connect[iFloe][iElem][1])][0], coord[iFloe][int(connect[iFloe][iElem][2])][0]]))
+                    # displayedData.append(np.mean([coord[iFloe][int(connect[iFloe][iElem][0])][0], coord[iFloe][int(connect[iFloe][iElem][1])][0], coord[iFloe][int(connect[iFloe][iElem][2])][0]]))
+                    displayedData.append(0)
             meshes_collec = PolyCollection(
                 elements,
                 linewidths=0.5,
                 edgecolors="black",
-                cmap=cm.YlOrRd, norm=colors.PowerNorm(gamma=0.3))
+                cmap=cm.YlOrRd, 
+                # norm=colors.PowerNorm(gamma=0.3)
+                )
             meshes_collec.set_array(displayedData)
             meshes_collec.set_clim([0, max(displayedData)])
             plt.colorbar(meshes_collec, ax = ax, fraction = 0.05)
@@ -167,14 +170,23 @@ class FloePlotter(object):
             cmap=cm.YlOrRd, norm=colors.PowerNorm(gamma=0.3))
             # cmap=cm.Paired)#MPI
         if getattr(self.OPTIONS, "color", True):
+        # if getattr(self.OPTIONS, "color", True) and getattr(self.OPTIONS, "colorby", 'None'):
             floes_collec.set_array(data.get("impulses")[0])
             floes_collec.set_clim([0, data["MAX_IMPULSE"]])
             plt.colorbar(floes_collec, ax = ax, fraction = 0.05) # display color bar
         else:
             floes_collec.set_array(np.zeros(len(data.get("floe_shapes")))) # comment for no facecolor mode
         # ax.axes.get_yaxis().set_visible(False) # remove x axis informations
-        if getattr(self.OPTIONS, "mesh", False):
+        # if getattr(self.OPTIONS, "mesh", False):
+        if not getattr(self.OPTIONS, "disp_mesh"):
             ax_mgr.set_collection("floes", floes_collec)
+            # print('chuppose que mesh est a false')
+        # else:
+            # print('chuppose que mesh est a true')
+        # if getattr(self.OPTIONS, "img", True):
+        #     ax_mgr.set_collection("floes", floes_collec)
+
+        # ax_mgr.set_collection("floes", floes_collec)
 
         if getattr(self.OPTIONS, "ghosts", False):
             ghosts_collec = PolyCollection(data.get("floe_shapes") * 8, linewidths=0.2, alpha=0.4,
@@ -219,25 +231,104 @@ class FloePlotter(object):
         opt_ghosts, opt_color, opt_follow, opt_fracture, opt_mesh = (
             getattr(self.OPTIONS, opt) for opt in ["ghosts", "color", "follow", "fracture", "disp_mesh"]
         )
+        # if opt_colorby != 'None': 
+        #     avail_data_list = ['Ux', 'Uy', 'U', 'index']
+        #     avail_data_list = ['index', 'Ux', 'Uy', 'U']
+        #     # this list should match the one in void HDF5ManagerWithMesh<TFloeGroup, TDynamicsMgr>::save_step(real_type time, const dynamics_mgr_type& dynamics_manager)
+        #     if (opt_colorby not in avail_data_list):
+        #         if indic == 1:
+        #             print("No {} color data available".format(opt_colorby))
+        #             print("please use one of {}".format(avail_data_list))
+        #         opt_colorby = 'None'
+        #     else:
+        #         opt_mesh = True
+        #         color_data_id = avail_data_list.index(opt_colorby)
 
         nb_floes = len(data.get("floe_shapes"))
         verts = self._transform_shapes(data.get("floe_shapes"), data.get("floe_states")[indic], opt_follow) # [0:min(num,nb_floes)]
 
-        # display a warning if there are disabled floes but no -c / --crack option 
+        # display a warning if there are disabled floes in the database but no -c / --crack option is provided (not critical, but a bunch of weird floes may appear as well)
         if (not opt_fracture) and (indic == 1) and (abs(np.sum(data.get("floe_states")[indic,:,9]) - len(data.get("floe_states")[indic,:,9])) > 0.1):
-            print('There are {} disabled floes at the beginning, did you forget the --crack option mon grand ?'.format(int(len(data.get("floe_states")[indic,:,9]) - np.sum(data.get("floe_states")[indic,:,9]))))
+            print('There are {} disabled floes at the beginning, did you forget the --crack option?'.format(int(len(data.get("floe_states")[indic,:,9]) - np.sum(data.get("floe_states")[indic,:,9]))))
 
         if not opt_mesh:
-            # en vrai on s'en fout, normalement les maillages sont superposés c'est tout... 
+            # displaying floe shapes
             if opt_fracture:
                 # Filter floe_shapes according to floe_state "alive" because nb of floes may have change
                 verts = [v for i, v in enumerate(verts) if data.get("floe_states")[indic][i][9] == 1]
             ax_mgr.get_collection("floes").set_verts(verts)
-
+            # coloring floe shapes
             if opt_color:
                 ax_mgr.get_collection("floes").set_array(data.get("impulses")[indic])
                 if opt_ghosts:
                     ax_mgr.get_collection("floe_ghosts").set_verts(verts)
+        else:
+            # displaying floe meshes and possibly colors 
+            connect = data.get("floe_meshes_connect")
+            coord = self._transform_meshes(data.get("floe_meshes_coord"), data.get("floe_states")[indic], data.get("mass_center")[indic], opt_follow)
+            if opt_fracture:
+                # filtering disabled floes 
+                connect = [v for i, v in enumerate(connect) if data.get("floe_states")[indic][i][9] == 1]
+                coord = [v for i, v in enumerate(coord) if data.get("floe_states")[indic][i][9] == 1]            
+            elements = []
+
+            displayedData = []
+            if data.get("floe_elem_data") is not None: 
+            # if opt_colorby != 'None': 
+                color_data = data.get("floe_elem_data")
+                color_data_indic = indic 
+                cdTemp = np.zeros(np.array(color_data).shape)
+                k = 0
+                for iFloe in range(0, nb_floes):
+                    if data.get("floe_states")[indic][iFloe][9] == 1:
+                        cdTemp[:,k,:] = color_data[:,iFloe,:]
+                        k = k+1
+                color_data = cdTemp
+            else:
+                nElem = max([len(c) for i,c in enumerate(connect)])
+                color_data = np.zeros([1, len(coord), 1, nElem])
+                # color_data_id=0
+                color_data_indic=0
+
+
+            for iFloe in np.arange(len(coord)):
+                for iElem in np.arange(len(connect[iFloe])):
+                    elements.append(np.array([coord[iFloe][int(connect[iFloe][iElem][0])], coord[iFloe][int(connect[iFloe][iElem][1])], coord[iFloe][int(connect[iFloe][iElem][2])]]))
+                    displayedData.append(color_data[color_data_indic, iFloe, iElem])
+                    # displayedData.append(color_data[color_data_indic, iFloe, iElem, color_data_id])
+                    # displayedData.append(color_data[color_data_indic, iFloe, color_data_id, iElem])
+                    # print('Floe {} element {}, should display color {}'.format(iFloe, iElem,color_data[color_data_indic, iFloe, color_data_id, iElem] )) 
+                    # strange bug here : some color_data do not match what should be written in the hdf5 file 
+
+            globalMin = np.min(np.min(np.min(color_data[:, :, :])))
+            # globalMin = np.min(np.min(np.min(color_data[:, :, color_data_id, :])))
+            globalMax = np.max(np.max(np.max(color_data[:, :, :])))
+            
+            ax_mgr.get_collection("meshes").set_verts(elements)
+            ax_mgr.get_collection("meshes").set_clim([globalMin, globalMax])
+            ax_mgr.get_collection("meshes").set_array(displayedData)
+
+        ###########################
+        ###########################
+        ###########################
+        ###########################
+        ###########################
+        ###########################
+        ###########################
+        ###########################
+        ###########################
+        ###########################
+        ###########################
+        ###########################
+        ###########################
+        ###########################
+        ###########################
+        ###########################
+        ###########################
+        ###########################
+        ###########################
+        ###########################
+        ###########################
 
         if opt_ghosts:
             # attempt to fix bug: Matthias
@@ -248,30 +339,6 @@ class FloePlotter(object):
             # original line: ghosts_verts = [v for trans in d["ghosts_trans"] for v in translate_group(verts, trans)] 
             # End of attempt
             ax_mgr.get_collection("floe_ghosts").set_verts(ghosts_verts)
-
-        
-        if opt_mesh:
-            connect = data.get("floe_meshes_connect")
-            coord = self._transform_meshes(data.get("floe_meshes_coord"), data.get("floe_states")[indic], data.get("mass_center")[indic], opt_follow)
-            
-            if opt_fracture:
-                # filtering disabled floes 
-                # print('size before : {}'.format(len(coord)))
-                connect = [v for i, v in enumerate(connect) if data.get("floe_states")[indic][i][9] == 1]
-                coord = [v for i, v in enumerate(coord) if data.get("floe_states")[indic][i][9] == 1]
-                # print('size after : {}'.format(len(coord)))
-            
-            elements = []
-            nDisp = 0
-            for iFloe in np.arange(len(coord)):
-                # if data.get("floe_states")[indic][iFloe][9] == 1:
-                #     nDisp = nDisp + 1
-                for iElem in np.arange(len(connect[iFloe])):
-                    elements.append(np.array([coord[iFloe][int(connect[iFloe][iElem][0])], coord[iFloe][int(connect[iFloe][iElem][1])], coord[iFloe][int(connect[iFloe][iElem][2])]]))
-            ax_mgr.get_collection("meshes").set_verts(elements)
-            # print('nDisplayed : {}'.format(nDisp))
-
-
 
         ax.set_title("t = {}".format(str(datetime.timedelta(seconds=int(data.get("time")[indic])))))
         if not data.get("static_axes"):
@@ -513,7 +580,7 @@ class FloePlotter(object):
         d = {}
         # File datas
         if not img:
-            file_time_dependant_keys =["time", "floe_states", "mass_center"]
+            file_time_dependant_keys =["time", "floe_states", "mass_center", "floe_elem_data"]
         else:
             file_time_dependant_keys =["time", "floe_states"] # allow input files to be plotted
         if single_step == "OFF":

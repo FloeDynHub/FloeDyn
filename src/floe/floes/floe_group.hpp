@@ -140,6 +140,10 @@ public:
     // returns the number of floes which are out of the window 
     size_t count_floes_outside_window(real_type width, real_type height);
 
+    // returns the maximum number of elements in the floe meshes 
+    size_t get_max_elem() const;
+    size_t get_max_nodes() const;
+
 protected:
 
     floe_list_type m_list_floe; //!< List of floes
@@ -387,6 +391,34 @@ size_t FloeGroup<TFloe, TFloeList>::count_floes_outside_window(real_type width, 
         }
     }
     return count;
+}
+
+template <typename TFloe, typename TFloeList>
+size_t FloeGroup<TFloe, TFloeList>::get_max_elem() const
+{
+    size_t max_elem(0);
+    for (auto& floe : get_floes())
+    {
+        if (floe.mesh().get_n_cells() > max_elem)
+        {
+            max_elem = floe.mesh().get_n_cells();
+        }
+    }
+    return max_elem;
+}
+
+template <typename TFloe, typename TFloeList>
+size_t FloeGroup<TFloe, TFloeList>::get_max_nodes() const
+{
+    size_t max_elem(0);
+    for (auto& floe : get_floes())
+    {
+        if (floe.mesh().get_n_nodes() > max_elem)
+        {
+            max_elem = floe.mesh().get_n_nodes();
+        }
+    }
+    return max_elem;
 }
 
 

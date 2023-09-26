@@ -58,6 +58,7 @@ public:
     using real_type = typename TFloeGroup::real_type;
     using point_type = typename TFloeGroup::point_type; 
     using saved_state_type = std::array<real_type, 11>; //!< state dataset chunk size for each floe / time step
+    // using saved_elem_data_type = std::array<real_type, 4>; //!< elem data dataset chunk size for each floe / time step / element 
 
     //! Default constructor.
     HDF5ManagerWithMesh(floe_group_type const& floe_group);
@@ -78,11 +79,17 @@ public:
     void set_floe_group(floe_group_type const& floe_group) {
         m_floe_group = &floe_group; 
         m_data_chunk_states.resize(boost::extents[m_flush_max_step][this->nb_considered_floes()][array_size<saved_state_type>::size]);
+        // m_data_chunk_elem_data.resize(boost::extents[m_flush_max_step][this->nb_considered_floes()][array_size<saved_elem_data_type>::size][1]);  
+        m_data_chunk_elem_data.resize(boost::extents[m_flush_max_step][this->nb_considered_floes()][m_floe_group->get_max_elem()]);  
+        m_data_chunk_node_data.resize(boost::extents[m_flush_max_step][this->nb_considered_floes()][m_floe_group->get_max_nodes()]);  
     };
     //! Do not consider all floes in floe group, /!\ only do this at the begining (resizes out states dataset)
     void restrain_floe_ids(std::vector<std::size_t> id_list) {
         m_floe_ids = id_list; 
         m_data_chunk_states.resize(boost::extents[m_flush_max_step][m_floe_ids.size()][array_size<saved_state_type>::size]);
+        // m_data_chunk_elem_data.resize(boost::extents[m_flush_max_step][m_floe_ids.size()][array_size<saved_elem_data_type>::size][1]);
+        m_data_chunk_elem_data.resize(boost::extents[m_flush_max_step][m_floe_ids.size()][m_floe_group->get_max_elem()]);
+        m_data_chunk_node_data.resize(boost::extents[m_flush_max_step][m_floe_ids.size()][m_floe_group->get_max_nodes()]);
     };
     inline bool is_restrained() const { return m_floe_ids.size(); }
     inline std::string const& out_file_name() const { return m_out_file_name; }
@@ -118,6 +125,9 @@ private:
 
     vector<vector<vector<vector<real_type>>>> m_data_chunk_boundaries; //!< Temp saved floe boundaries
     boost::multi_array<real_type, 3> m_data_chunk_states; //!< Temp saved floe states
+    // boost::multi_array<real_type, 4> m_data_chunk_elem_data; //!< Temp saved data at mesh elems 
+    boost::multi_array<real_type, 3> m_data_chunk_elem_data; //!< Temp saved data at mesh elems 
+    boost::multi_array<real_type, 3> m_data_chunk_node_data; //!< Temp saved data at mesh nodes 
     real_type* m_data_chunk_time; //!< Temp saved times
     boost::multi_array<real_type, 2> m_data_chunk_mass_center; //!< Temp saved floe group mass centers
     boost::multi_array<real_type, 2> m_data_chunk_OBL_speed; //!< Temp saved ocean datas
@@ -138,6 +148,8 @@ private:
     //! Partial writings :
     void write_boundaries();
     void write_states();
+    void write_elem_data();
+    void write_node_data();
     void write_time();
     void write_mass_center();
     void write_OBL_speed();
@@ -152,6 +164,8 @@ private:
     inline void update_next_out_limit() { m_next_out_limit += m_out_step; }
     inline bool need_step_output(real_type time) { return (m_out_step && time >= m_next_out_limit); }
 
+    size_t m_max_elem; // contains the highest number of elements among all floe meshes, among all time steps 
+    size_t m_max_nodes; // contains the highest number of elements among all floe meshes, among all time steps 
 };
 
 

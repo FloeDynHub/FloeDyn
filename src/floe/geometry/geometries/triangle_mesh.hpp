@@ -70,11 +70,17 @@ public:
     inline connectivity_type&       connectivity()          { return m_connect; }
     inline connectivity_type const& connectivity() const    { return m_connect; }
 
+    //! Return the mesh sizes
+    inline size_t get_n_cells() const { return m_connect.size(); }
+    inline size_t get_n_nodes() const { return boost::geometry::num_points(m_points); }
+
 private:
 
     multi_point_type m_points;
     connectivity_type m_connect;
     mutable multi_cell_type m_cells;
+    // size_t m_n_cells;
+    // size_t m_n_nodes;
 };
 
 }} // namespace floe::geometry

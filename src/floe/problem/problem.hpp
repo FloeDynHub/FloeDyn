@@ -287,8 +287,10 @@ void PROBLEM::step_solve(bool crack, bool melt) {
     // }
     if (crack) {
         // instead of fracturing the biggest floe at regular intervals, you may choose to fracture it only if the floe impulses exceed a predefined threshold 
-        std::size_t nb_before = m_floe_group.get_floes().size();    
-        if (m_floe_group.fracture_above_threshold(6e6) > 0)
+        std::size_t nb_before = m_floe_group.get_floes().size();  
+        real_type fract_threshold(6e6);  
+        // real_type fract_threshold(6e6);  
+        if (m_floe_group.fracture_above_threshold(fract_threshold) > 0)
         {
             this->update_optim_vars();
             std::cout << "Fracture on threshold - nb floes : " << nb_before << " -> " << m_floe_group.get_floes().size() << std::endl;
