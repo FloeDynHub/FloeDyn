@@ -1,7 +1,8 @@
 import math
 import h5py
 from shapely.geometry import Polygon
-
+import scipy.io
+import numpy as np
 
 class State:
     def __init__(self, pos=[0, 0], theta=0, speed=[0, 0], rot=0):
@@ -86,3 +87,22 @@ def translate_floe_group(floes, x, y):
     for floe in floes:
         floe.state.pos[0] += x
         floe.state.pos[1] += y
+
+
+
+def get_floes_from_bdd(filename, nPoints=25):
+    biblio_floes = discretize_biblio_floes(scipy.io.loadmat('../../../Floe/Floe_Cpp/io/inputs/Biblio_Floes.mat'), nPoints)
+    return biblio_floes 
+
+def discretize_biblio_floes(mat , nMax=25):
+    disc_biblio_floe = []
+    for iFloe in np.arange(0, len(mat['G'])):
+        floe = []
+        n_max = min(nMax, len(mat['G'][iFloe][0]))
+        for iPoint in np.arange(0,n_max):
+            point = int(np.floor(len(mat['G'][iFloe][0])*iPoint/n_max)) 
+            floe.append(mat['G'][iFloe][0][point])
+        disc_biblio_floe.append(floe)
+    return disc_biblio_floe 
+
+
