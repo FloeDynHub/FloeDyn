@@ -11,8 +11,8 @@
 #define WHEREAMI std::cout << std::endl << "no crash until line " << __LINE__ << " in the file " __FILE__ << std::endl;
 
 
-// #include "floe/io/hdf5_manager.h"
-#include "floe/io/hdf5_manager_mesh.h"
+#include "floe/io/hdf5_manager.h"
+// #include "floe/io/hdf5_manager_mesh.h"
 // #include "floe/io/false_hdf5_manager.hpp"
 #include "floe/io/multi_out_manager.hpp"
 
@@ -52,8 +52,8 @@ public:
     #ifdef MULTIOUTPUT
         using out_manager_type = io::MultiOutManager<io::HDF5Manager<TFloeGroup, TDynamicsManager>>;
     #else
-        // using out_manager_type = io::HDF5Manager<TFloeGroup, TDynamicsManager>;
-        using out_manager_type = io::HDF5ManagerWithMesh<TFloeGroup, TDynamicsManager>;
+        using out_manager_type = io::HDF5Manager<TFloeGroup, TDynamicsManager>;
+        // using out_manager_type = io::HDF5ManagerWithMesh<TFloeGroup, TDynamicsManager>;
     #endif
 
     using real_type = typename TFloeGroup::real_type;
@@ -63,7 +63,7 @@ public:
     using proximity_detector_type = TProxymityDetector;
 
     //! Default constructor.
-    Problem(real_type epsilon=0.4, int OBL_status=0);
+    Problem(real_type epsilon=0.4, int OBL_status=0, bool export_mesh=false);
 
     //! Solver of the problem (main method)
     virtual void solve(real_type end_time, real_type dt_default, real_type out_step = 0, bool reset = true, bool fracture = false, bool melting = false);
@@ -166,7 +166,7 @@ protected:
 
 
 TEMPLATE_PB
-PROBLEM::Problem(real_type epsilon, int OBL_status) :
+PROBLEM::Problem(real_type epsilon, int OBL_status, bool export_mesh) :
         QUIT{nullptr},
         m_domain{},
         m_proximity_detector{},
@@ -174,7 +174,7 @@ PROBLEM::Problem(real_type epsilon, int OBL_status) :
         m_dynamics_manager{m_domain.time(), OBL_status},
         m_floe_group{},
         m_step_nb{0},
-        m_out_manager{m_floe_group},
+        m_out_manager{m_floe_group, export_mesh},
         m_is_generator{false},
         m_collisionTime{},
         m_timeStepTime{},
@@ -288,12 +288,13 @@ void PROBLEM::step_solve(bool crack, bool melt) {
     if (crack) {
         // instead of fracturing the biggest floe at regular intervals, you may choose to fracture it only if the floe impulses exceed a predefined threshold 
         std::size_t nb_before = m_floe_group.get_floes().size();  
-        real_type fract_threshold(6e6);  
         // real_type fract_threshold(6e6);  
+        real_type fract_threshold(6e7);  
         if (m_floe_group.fracture_above_threshold(fract_threshold) > 0)
         {
             this->update_optim_vars();
-            std::cout << "Fracture on threshold - nb floes : " << nb_before << " -> " << m_floe_group.get_floes().size() << std::endl;
+            // std::cout << "Fracture on threshold at time : " << this->m_domain.time() << " - nb floes : " << nb_before << " -> " << m_floe_group.get_floes().size() << std::endl;
+            std::cout << "Fracture on threshold at time : " << this->m_domain.time() << " - nb floes : " << nb_before << " -> " << m_floe_group.get_floes().size() << std::endl;
         }
     }
     

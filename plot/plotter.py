@@ -128,7 +128,7 @@ class FloePlotter(object):
                 True, facecolor="none", edgecolor=self.colors["window"], linewidth=1.5))
     
     def _display_mesh(self, data, ax_mgr):
-        # Display mesh. Super, ça c'est du commentaire utile. 
+        # Display mesh. Vous noterez au passage l'utilite de ce commentaire. 
         coord = data.get("floe_meshes_coord")
         connect = data.get("floe_meshes_connect")
         displayedData = []
@@ -140,10 +140,6 @@ class FloePlotter(object):
             for iFloe in np.arange(len(coord)):
                 for iElem in np.arange(len(connect[iFloe])):
                     elements.append(np.array([coord[iFloe][int(connect[iFloe][iElem][0])], coord[iFloe][int(connect[iFloe][iElem][1])], coord[iFloe][int(connect[iFloe][iElem][2])]]))
-                    # if data.get("floe_states")[0][iFloe][9] == 0:
-                    #     displayedData.append(1000)
-                    # else:
-                    # displayedData.append(np.mean([coord[iFloe][int(connect[iFloe][iElem][0])][0], coord[iFloe][int(connect[iFloe][iElem][1])][0], coord[iFloe][int(connect[iFloe][iElem][2])][0]]))
                     displayedData.append(0)
             meshes_collec = PolyCollection(
                 elements,
@@ -177,16 +173,16 @@ class FloePlotter(object):
         else:
             floes_collec.set_array(np.zeros(len(data.get("floe_shapes")))) # comment for no facecolor mode
         # ax.axes.get_yaxis().set_visible(False) # remove x axis informations
-        # if getattr(self.OPTIONS, "mesh", False):
-        if not getattr(self.OPTIONS, "disp_mesh"):
-            ax_mgr.set_collection("floes", floes_collec)
-            # print('chuppose que mesh est a false')
-        # else:
-            # print('chuppose que mesh est a true')
-        # if getattr(self.OPTIONS, "img", True):
-        #     ax_mgr.set_collection("floes", floes_collec)
 
-        # ax_mgr.set_collection("floes", floes_collec)
+        # if --disp_mesh is asked, we first check that a mesh is actually given in the output file         
+        opt_mesh = (getattr(self.OPTIONS, "disp_mesh"))
+        if data.get("floe_meshes_connect") is None:
+            if opt_mesh:
+                print('No mesh found in the output file, unable to plot it.')
+            opt_mesh = False 
+        # the floe shapes are plotted only if no mesh is shown. 
+        if not opt_mesh:
+            ax_mgr.set_collection("floes", floes_collec)
 
         if getattr(self.OPTIONS, "ghosts", False):
             ghosts_collec = PolyCollection(data.get("floe_shapes") * 8, linewidths=0.2, alpha=0.4,
@@ -231,6 +227,10 @@ class FloePlotter(object):
         opt_ghosts, opt_color, opt_follow, opt_fracture, opt_mesh = (
             getattr(self.OPTIONS, opt) for opt in ["ghosts", "color", "follow", "fracture", "disp_mesh"]
         )
+        if data.get("floe_meshes_connect") is None:
+            # if opt_mesh:
+            #     print('No mesh found in the output file, unable to plot it.') # should already have been displayed in _init_floes  
+            opt_mesh = False 
         # if opt_colorby != 'None': 
         #     avail_data_list = ['Ux', 'Uy', 'U', 'index']
         #     avail_data_list = ['index', 'Ux', 'Uy', 'U']
@@ -263,7 +263,7 @@ class FloePlotter(object):
                 if opt_ghosts:
                     ax_mgr.get_collection("floe_ghosts").set_verts(verts)
         else:
-            # displaying floe meshes and possibly colors 
+            # displaying floe meshes and colors when appropriate
             connect = data.get("floe_meshes_connect")
             coord = self._transform_meshes(data.get("floe_meshes_coord"), data.get("floe_states")[indic], data.get("mass_center")[indic], opt_follow)
             if opt_fracture:
@@ -274,7 +274,6 @@ class FloePlotter(object):
 
             displayedData = []
             if data.get("floe_elem_data") is not None: 
-            # if opt_colorby != 'None': 
                 color_data = data.get("floe_elem_data")
                 color_data_indic = indic 
                 cdTemp = np.zeros(np.array(color_data).shape)
@@ -297,38 +296,13 @@ class FloePlotter(object):
                     displayedData.append(color_data[color_data_indic, iFloe, iElem])
                     # displayedData.append(color_data[color_data_indic, iFloe, iElem, color_data_id])
                     # displayedData.append(color_data[color_data_indic, iFloe, color_data_id, iElem])
-                    # print('Floe {} element {}, should display color {}'.format(iFloe, iElem,color_data[color_data_indic, iFloe, color_data_id, iElem] )) 
-                    # strange bug here : some color_data do not match what should be written in the hdf5 file 
 
             globalMin = np.min(np.min(np.min(color_data[:, :, :])))
-            # globalMin = np.min(np.min(np.min(color_data[:, :, color_data_id, :])))
             globalMax = np.max(np.max(np.max(color_data[:, :, :])))
             
             ax_mgr.get_collection("meshes").set_verts(elements)
             ax_mgr.get_collection("meshes").set_clim([globalMin, globalMax])
             ax_mgr.get_collection("meshes").set_array(displayedData)
-
-        ###########################
-        ###########################
-        ###########################
-        ###########################
-        ###########################
-        ###########################
-        ###########################
-        ###########################
-        ###########################
-        ###########################
-        ###########################
-        ###########################
-        ###########################
-        ###########################
-        ###########################
-        ###########################
-        ###########################
-        ###########################
-        ###########################
-        ###########################
-        ###########################
 
         if opt_ghosts:
             # attempt to fix bug: Matthias
@@ -585,7 +559,8 @@ class FloePlotter(object):
             file_time_dependant_keys =["time", "floe_states"] # allow input files to be plotted
         if single_step == "OFF":
             for key in file_time_dependant_keys:
-                d[key] = data_file.get(key)[::self.OPTIONS.step]
+                if data_file.get(key) is not None:
+                    d[key] = data_file.get(key)[::self.OPTIONS.step]
         else:
             for key in file_time_dependant_keys:
                 if img and key == "time" and not "time" in data_file: # plot input files

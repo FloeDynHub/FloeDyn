@@ -123,7 +123,7 @@ PartialFloeGroup<TFloe, TFloeList>::fracture_above_threshold(real_type threshold
 	for (std::size_t iFloe = 0; iFloe < base_class::get_floes().size(); ++iFloe){
         auto& floe = base_class::get_floes()[iFloe];
         if (!floe.is_obstacle() && floe.total_received_impulse() > threshold){
-            // if the impulse is greater than a treshold, flow is fractured
+            // if the impulse is greater than a threshold, flow is fractured
             auto new_geometries = floe.fracture_floe();
             std::cout << "fracturing floe " << iFloe << " whose impulse reaches " << floe.total_received_impulse()<< " replaced by " << new_geometries.size() << " new geometries" << std::endl;
             for (std::size_t i = 0; i < new_geometries.size(); ++i){
@@ -142,10 +142,6 @@ PartialFloeGroup<TFloe, TFloeList>::fracture_above_threshold(real_type threshold
             }
         }
     }
-
-    
-
-    
     return nCracked;
 }
 

@@ -57,7 +57,7 @@ public:
         bool generate_floes = false;
         if (input_file_name == "generator") generate_floes = true; 
 
-        problem_type P(epsilon, OBL_status);
+        problem_type P(epsilon, OBL_status, export_mesh);
         P.QUIT = &QUIT;
         if (!generate_floes){
             try {
@@ -225,6 +225,7 @@ protected:
     value_type              max_size                = 250;
     bool                    fracture                = 0;
     bool                    melting                 = 0;
+    bool                    export_mesh             = 0;
     bool                    rand_speed_add          = 1;
     value_type              rand_norm               = 1e-7;
     value_type              alpha                   = 1.5;
@@ -321,6 +322,7 @@ protected:
 
             "   4/ the distance of the first ring to the ice field origin (in [km]).\n")
         ("crack", po::value<bool>(&fracture), "1 to activate floe cracking model.\n")
+        ("exportmesh", po::value<bool>(&export_mesh), "1 to activate mesh export in the output file.\n")
         ("melting", po::value<bool>(&melting), "1 to activate floe melting model.\n")
         ("minthick", po::value(&min_thickness)->default_value(
             min_thickness, std::to_string(min_thickness)),
