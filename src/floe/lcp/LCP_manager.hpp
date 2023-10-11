@@ -137,6 +137,7 @@ int LCPManager<T>::solve_contacts(TContactGraph& contact_graph)
     // max_chrono_active_subgraph = 0; // test perf
     // int nb_active_subgraph_loop = 0;// test
     // auto t_start = std::chrono::high_resolution_clock::now(); // test perf
+    size_t n_collisions (0);
     for ( auto& subgraph : subgraphs )
     {
         //  // Big LCP solving
@@ -162,6 +163,7 @@ int LCPManager<T>::solve_contacts(TContactGraph& contact_graph)
         int contact_loop_stats[2]={0,0};    // number of contact points, indicator for be out of loop due to all success (1) or no success (0) 
                                             // or no enough iteration (2)
         contact_loop_stats[0] = static_cast<int>(num_contacts(subgraph));
+        n_collisions += num_contacts(subgraph);
         contact_loop_stats[1] = 1;
 
         while (asubgraphs.size() != 0
@@ -281,7 +283,10 @@ int LCPManager<T>::solve_contacts(TContactGraph& contact_graph)
 
     #ifndef MPIRUN
     if (LCP_count)
+    {
         std::cout << " #LCP solve: "<< nb_success << " / " << LCP_count << std::endl;
+        std::cout << " #contacts: " << n_collisions << std::endl;
+    }
     #endif
     return nb_success;
 }

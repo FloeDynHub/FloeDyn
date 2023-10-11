@@ -54,6 +54,7 @@ public:
     // void apply_fracture_from_max_area(const real_type max_area_for_fracture);//{std::cout<<"test"<<std::endl;}
     void add_floe(geometry_type geometry, std::size_t parent_floe_idx);
     void fracture_biggest_floe();
+    size_t fracture_above_threshold(real_type threshold);
     void melt_floes();
     void update_list_ids_active();//{std::cout<<"test"<<std::endl;}
     
@@ -111,6 +112,37 @@ PartialFloeGroup<TFloe, TFloeList>::fracture_biggest_floe()
         floe.static_floe().attach_mesh_ptr(&floe.get_floe_h().m_static_mesh);
         floe.update();
     }
+}
+
+template <typename TFloe, typename TFloeList>
+size_t 
+PartialFloeGroup<TFloe, TFloeList>::fracture_above_threshold(real_type threshold)
+{
+	// returns the number of cracked floes ``
+    size_t nCracked(0);
+	for (std::size_t iFloe = 0; iFloe < base_class::get_floes().size(); ++iFloe){
+        auto& floe = base_class::get_floes()[iFloe];
+        if (!floe.is_obstacle() && floe.total_received_impulse() > threshold){
+            // if the impulse is greater than a threshold, flow is fractured
+            auto new_geometries = floe.fracture_floe();
+            std::cout << "fracturing floe " << iFloe << " whose impulse reaches " << floe.total_received_impulse()<< " replaced by " << new_geometries.size() << " new geometries" << std::endl;
+            for (std::size_t i = 0; i < new_geometries.size(); ++i){
+                // new geometries are added to the floe list.
+                // note : iFloe is needed to initialize correctly the new floes states  
+                this->add_floe(new_geometries[i], iFloe); 
+            }
+            // previous flow is deactivated 
+            base_class::get_floes()[iFloe].state().desactivate(); // floe.state().desactivate(); does not work 
+            nCracked++;
+            this->update_list_ids_active();
+
+            for (auto & floe : this->get_floes()) { // TODO why is it needed ?
+                floe.static_floe().attach_mesh_ptr(&floe.get_floe_h().m_static_mesh);
+                floe.update();
+            }
+        }
+    }
+    return nCracked;
 }
 
 template <typename TFloe, typename TFloeList>

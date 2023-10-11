@@ -106,6 +106,10 @@ public:
     //     }
     //     return true;
     // }
+    //! Return the mesh sizes
+    inline size_t get_n_cells() const { return m_connect.size(); }
+    inline size_t get_n_nodes() const { return boost::geometry::num_points(m_points); }
+
 private:
 
     multi_point_type m_points;
@@ -147,6 +151,8 @@ private:
     //     }
     //     return N;
     // }
+    // size_t m_n_cells;
+    // size_t m_n_nodes;
 };
 
 }} // namespace floe::geometry

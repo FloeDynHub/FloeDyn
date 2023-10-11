@@ -31,6 +31,8 @@ namespace floe { namespace io
  * Handles :
  *   Floe outlines, floe states, ocean state, and time output
  *   Floe states input
+ *   Floe meshes (coordinates and connectivities) if --exportmesh 1 is given 
+ *   In addition, nodal and element data are exported too
  *
  * Internally saves a fixed number of states before writing it to the file.
  *
@@ -58,9 +60,10 @@ public:
     using real_type = typename TFloeGroup::real_type;
     using point_type = typename TFloeGroup::point_type; 
     using saved_state_type = std::array<real_type, 11>; //!< state dataset chunk size for each floe / time step
+    // using saved_elem_data_type = std::array<real_type, 4>; //!< elem data dataset chunk size for each floe / time step / element 
 
     //! Default constructor.
-    HDF5Manager(floe_group_type const& floe_group);
+    HDF5Manager(floe_group_type const& floe_group,  bool export_mesh=false);
     //! Destructor
     ~HDF5Manager();
 
@@ -78,11 +81,17 @@ public:
     void set_floe_group(floe_group_type const& floe_group) {
         m_floe_group = &floe_group; 
         m_data_chunk_states.resize(boost::extents[m_flush_max_step][this->nb_considered_floes()][array_size<saved_state_type>::size]);
+        // m_data_chunk_elem_data.resize(boost::extents[m_flush_max_step][this->nb_considered_floes()][array_size<saved_elem_data_type>::size][1]);  
+        m_data_chunk_elem_data.resize(boost::extents[m_flush_max_step][this->nb_considered_floes()][m_floe_group->get_max_elem()]);  
+        m_data_chunk_node_data.resize(boost::extents[m_flush_max_step][this->nb_considered_floes()][m_floe_group->get_max_nodes()]);  
     };
     //! Do not consider all floes in floe group, /!\ only do this at the begining (resizes out states dataset)
     void restrain_floe_ids(std::vector<std::size_t> id_list) {
         m_floe_ids = id_list; 
         m_data_chunk_states.resize(boost::extents[m_flush_max_step][m_floe_ids.size()][array_size<saved_state_type>::size]);
+        // m_data_chunk_elem_data.resize(boost::extents[m_flush_max_step][m_floe_ids.size()][array_size<saved_elem_data_type>::size][1]);
+        m_data_chunk_elem_data.resize(boost::extents[m_flush_max_step][m_floe_ids.size()][m_floe_group->get_max_elem()]);
+        m_data_chunk_node_data.resize(boost::extents[m_flush_max_step][m_floe_ids.size()][m_floe_group->get_max_nodes()]);
     };
     inline bool is_restrained() const { return m_floe_ids.size(); }
     inline std::string const& out_file_name() const { return m_out_file_name; }
@@ -108,6 +117,8 @@ private:
     std::string m_out_file_name; //!< output file name
     H5File* m_out_file; //!< output file
     Group* m_shapes_group;
+    Group* m_meshes_coord_group;
+    Group* m_meshes_connect_group;
     hsize_t m_step_count; //!< Total nb of outputted simulation states
     hsize_t m_chunk_step_count; //!< Nb of temporarily saved steps (to flush in out file)
     const hsize_t m_flush_max_step; //!< Max nb of temporarily saved steps (chunk size)
@@ -116,6 +127,9 @@ private:
 
     vector<vector<vector<vector<real_type>>>> m_data_chunk_boundaries; //!< Temp saved floe boundaries
     boost::multi_array<real_type, 3> m_data_chunk_states; //!< Temp saved floe states
+    // boost::multi_array<real_type, 4> m_data_chunk_elem_data; //!< Temp saved data at mesh elems 
+    boost::multi_array<real_type, 3> m_data_chunk_elem_data; //!< Temp saved data at mesh elems 
+    boost::multi_array<real_type, 3> m_data_chunk_node_data; //!< Temp saved data at mesh nodes 
     real_type* m_data_chunk_time; //!< Temp saved times
     boost::multi_array<real_type, 2> m_data_chunk_mass_center; //!< Temp saved floe group mass centers
     boost::multi_array<real_type, 2> m_data_chunk_OBL_speed; //!< Temp saved ocean datas
@@ -126,12 +140,18 @@ private:
     real_type m_next_out_limit; //!< Next time limit for state ouput
     //! Number of floe shapes written to file (fracture creates new ones)
     hsize_t m_nb_floe_shapes_written;
+    hsize_t m_nb_floe_meshes_connect_written;
+    hsize_t m_nb_floe_meshes_coord_written;
 
     //! out floe shapes (boundary in relative frame)
     void write_shapes();
+    void write_meshes_coord();
+    void write_meshes_connect();
     //! Partial writings :
     void write_boundaries();
     void write_states();
+    void write_elem_data();
+    void write_node_data();
     void write_time();
     void write_mass_center();
     void write_OBL_speed();
@@ -146,6 +166,9 @@ private:
     inline void update_next_out_limit() { m_next_out_limit += m_out_step; }
     inline bool need_step_output(real_type time) { return (m_out_step && time >= m_next_out_limit); }
 
+    size_t m_max_elem; // contains the highest number of elements among all floe meshes, among all time steps 
+    size_t m_max_nodes; // contains the highest number of nodes among all floe meshes, among all time steps 
+    bool m_export_mesh;
 };
 
 

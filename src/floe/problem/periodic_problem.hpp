@@ -44,7 +44,7 @@ public:
     using point_type = typename TFloeGroup::floe_type::point_type;
 
     //! Default constructor
-    PeriodicProblem(real_type epsilon, int OBL_status) : base_class(epsilon, OBL_status) {}
+    PeriodicProblem(real_type epsilon, int OBL_status, bool export_mesh=false) : base_class(epsilon, OBL_status, export_mesh) {}
     //! Constructor from topology
     PeriodicProblem(TSpaceTopology& topology) : base_class(), m_space_topology{topology} {}
 
