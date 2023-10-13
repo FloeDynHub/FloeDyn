@@ -19,6 +19,7 @@
 #include "floe/geometry/arithmetic/arithmetic.hpp"
 
 #include "floe/floes/floe_interface.hpp"
+#include "floe/fem/fem_problem.hpp"
 
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
