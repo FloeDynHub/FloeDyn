@@ -4,8 +4,8 @@
 #include <cstddef>
 #include <vector>
 #include <array>
-// #include <Eigen/Dense>
-// #include <Eigen/Sparse>
+#include <Eigen/Dense>
+#include <Eigen/Sparse>
 
 
 
@@ -19,6 +19,7 @@
 #include "floe/geometry/core/cells_type.hpp"
 #include "floe/geometry/core/cells.hpp"
 #include "floe/geometry/core/point_type.hpp"
+#include "floe/integration/gauss_legendre.hpp"
 
 namespace floe { namespace geometry {
 
@@ -74,38 +75,38 @@ public:
     inline connectivity_type&       connectivity()          { return m_connect; }
     inline connectivity_type const& connectivity() const    { return m_connect; }
 
-    // // integration functions 
-    // inline Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> get_integrationMatrix() const {return m_integrationMatrix;};    
-    // inline Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> get_jacobians() const {return m_jacobians;};    
-    // inline Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> get_weightAndJac() const {return m_weightAndJac;};    
-    // inline Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> get_shapeFunAtGP() const {return m_shapeFunAtGP;};    
-    // bool prepare()
-    // {
-    //     floe::integration::RefGaussLegendre<double,2,2> i;
-    //     Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> trianglePoints = i.pointsAndWeights();
-    //     Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> N;
+    // integration functions 
+    inline Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> get_integrationMatrix() const {return m_integrationMatrix;};    
+    inline Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> get_jacobians() const {return m_jacobians;};    
+    inline Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> get_weightAndJac() const {return m_weightAndJac;};    
+    inline Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> get_shapeFunAtGP() const {return m_shapeFunAtGP;};    
+    bool prepare()
+    {
+        floe::integration::RefGaussLegendre<double,2,2> i;
+        Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> trianglePoints = i.pointsAndWeights();
+        Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> N;
         
-    //     size_t nIntegrationPoints(trianglePoints.rows());
-    //     m_integrationPointsAndWeights.resize(m_connect.size()*nIntegrationPoints, 3);
-    //     m_integrationMatrix.resize(1, m_connect.size()*3);
-    //     m_jacobians.resize(m_connect.size(), 1);
-    //     N.resize(nIntegrationPoints, 3);
-    //     m_shapeFunAtGP.resize(m_connect.size()*nIntegrationPoints,3);
-    //     m_weightAndJac.resize(1, m_connect.size()*nIntegrationPoints);
+        size_t nIntegrationPoints(trianglePoints.rows());
+        m_integrationPointsAndWeights.resize(m_connect.size()*nIntegrationPoints, 3);
+        m_integrationMatrix.resize(1, m_connect.size()*3);
+        m_jacobians.resize(m_connect.size(), 1);
+        N.resize(nIntegrationPoints, 3);
+        m_shapeFunAtGP.resize(m_connect.size()*nIntegrationPoints,3);
+        m_weightAndJac.resize(1, m_connect.size()*nIntegrationPoints);
 
-    //     for(size_t iElem = 0 ; iElem < m_connect.size() ; ++iElem)
-    //     {
-    //         N.setZero();
-    //         m_integrationPointsAndWeights.block((iElem)*nIntegrationPoints, 0, nIntegrationPoints, 3) = trianglePoints;
-    //         m_jacobians(iElem, 0) = triangle_det_jac(iElem);
-    //         N = buildN(m_integrationPointsAndWeights.block((iElem)*nIntegrationPoints, 0, nIntegrationPoints, 2));
-    //         m_integrationMatrix.block(0, (iElem)*nIntegrationPoints, 1, 3) = m_jacobians(iElem, 0)*m_integrationPointsAndWeights.block((iElem)*nIntegrationPoints, 2, nIntegrationPoints, 1).transpose()*N;
-    //         // the integration vector for one element contains the jacobian, the weights, the fem shape functions. It can be multiplied by the nodal values of a function to integrate it 
-    //         m_shapeFunAtGP.block((iElem)*nIntegrationPoints, 0, nIntegrationPoints, 3) = N;
-    //         m_weightAndJac.block(0, (iElem)*nIntegrationPoints, 1, nIntegrationPoints) = m_jacobians(iElem, 0)*trianglePoints.block(0,2, 3,1).transpose();
-    //     }
-    //     return true;
-    // }
+        for(size_t iElem = 0 ; iElem < m_connect.size() ; ++iElem)
+        {
+            N.setZero();
+            m_integrationPointsAndWeights.block((iElem)*nIntegrationPoints, 0, nIntegrationPoints, 3) = trianglePoints;
+            m_jacobians(iElem, 0) = triangle_det_jac(iElem);
+            N = buildN(m_integrationPointsAndWeights.block((iElem)*nIntegrationPoints, 0, nIntegrationPoints, 2));
+            m_integrationMatrix.block(0, (iElem)*nIntegrationPoints, 1, 3) = m_jacobians(iElem, 0)*m_integrationPointsAndWeights.block((iElem)*nIntegrationPoints, 2, nIntegrationPoints, 1).transpose()*N;
+            // the integration vector for one element contains the jacobian, the weights, the fem shape functions. It can be multiplied by the nodal values of a function to integrate it 
+            m_shapeFunAtGP.block((iElem)*nIntegrationPoints, 0, nIntegrationPoints, 3) = N;
+            m_weightAndJac.block(0, (iElem)*nIntegrationPoints, 1, nIntegrationPoints) = m_jacobians(iElem, 0)*trianglePoints.block(0,2, 3,1).transpose();
+        }
+        return true;
+    }
     //! Return the mesh sizes
     inline size_t get_n_cells() const { return m_connect.size(); }
     inline size_t get_n_nodes() const { return boost::geometry::num_points(m_points); }
@@ -116,41 +117,41 @@ private:
     connectivity_type m_connect;
     mutable multi_cell_type m_cells;
 
-    // // il faudrait faire rentrer le template real_type 
-    // Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> m_integrationPointsAndWeights;
-    // Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> m_shapeFunAtGP; 
-    // Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> m_weightAndJac; 
-    // Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> m_integrationMatrix;
-    // Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> m_jacobians;
+    // il faudrait faire rentrer le template real_type 
+    Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> m_integrationPointsAndWeights;
+    Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> m_shapeFunAtGP; 
+    Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> m_weightAndJac; 
+    Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> m_integrationMatrix;
+    Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> m_jacobians;
 
     
-    // double triangle_det_jac(size_t iElem)
-    // {
-    //     double x0 = m_points[m_connect[iElem][0]][0];
-    //     double x1 = m_points[m_connect[iElem][1]][0];
-    //     double x2 = m_points[m_connect[iElem][2]][0];
-    //     double y0 = m_points[m_connect[iElem][0]][1];
-    //     double y1 = m_points[m_connect[iElem][1]][1];
-    //     double y2 = m_points[m_connect[iElem][2]][1];
-    //     return ((x1-x0)*(y2-y0) - (x2-x0)*(y1-y0));
-    // }
+    double triangle_det_jac(size_t iElem)
+    {
+        double x0 = m_points[m_connect[iElem][0]][0];
+        double x1 = m_points[m_connect[iElem][1]][0];
+        double x2 = m_points[m_connect[iElem][2]][0];
+        double y0 = m_points[m_connect[iElem][0]][1];
+        double y1 = m_points[m_connect[iElem][1]][1];
+        double y2 = m_points[m_connect[iElem][2]][1];
+        return ((x1-x0)*(y2-y0) - (x2-x0)*(y1-y0));
+    }
 
-    // Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> buildN(Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> points)
-    // {
-    //     Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> N;
-    //     size_t nPoints = points.rows();
-    //     N.resize(nPoints, 3);
-    //     if (points.cols() !=2)
-    //         std::cout << "Unexpected matrix size, line " << __LINE__ << " in file " << __FILE__ << ". I got " << points.cols() << " instead of 2" << std::endl;
+    Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> buildN(Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> points)
+    {
+        Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> N;
+        size_t nPoints = points.rows();
+        N.resize(nPoints, 3);
+        if (points.cols() !=2)
+            std::cout << "Unexpected matrix size, line " << __LINE__ << " in file " << __FILE__ << ". I got " << points.cols() << " instead of 2" << std::endl;
 
-    //     for(size_t iPoint = 0; iPoint < nPoints ; ++iPoint)
-    //     {
-    //         N(iPoint, 0) = 1 - points(iPoint, 0) - points(iPoint, 1);
-    //         N(iPoint, 1) = points(iPoint, 0);
-    //         N(iPoint, 2) = points(iPoint, 1);
-    //     }
-    //     return N;
-    // }
+        for(size_t iPoint = 0; iPoint < nPoints ; ++iPoint)
+        {
+            N(iPoint, 0) = 1 - points(iPoint, 0) - points(iPoint, 1);
+            N(iPoint, 1) = points(iPoint, 0);
+            N(iPoint, 2) = points(iPoint, 1);
+        }
+        return N;
+    }
     // size_t m_n_cells;
     // size_t m_n_nodes;
 };

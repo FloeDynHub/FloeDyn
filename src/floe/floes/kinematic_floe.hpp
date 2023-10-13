@@ -20,6 +20,10 @@
 
 #include "floe/floes/floe_interface.hpp"
 
+#include <Eigen/Dense>
+#include <Eigen/Sparse>
+
+
 namespace floe { namespace floes
 {
 
