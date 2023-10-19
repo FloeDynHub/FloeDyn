@@ -261,7 +261,8 @@ void PROBLEM::solve(real_type end_time, real_type dt_default, real_type out_step
         // bool do_fracture = (fracture && this->m_step_nb > 0 && this->m_step_nb < 50000 && this->m_step_nb % 18 == 0);
         bool do_fracture = (fracture && m_domain.time() > 22000 && m_domain.time() - last_frac_time > 1000);
         if (do_fracture) last_frac_time = m_domain.time();
-        this->step_solve(do_fracture, melting);
+        // this->step_solve(do_fracture, melting);
+        this->step_solve(true, melting);
         // auto t_end = std::chrono::high_resolution_clock::now();
         // std::cout << "Chrono STEP : " << std::chrono::duration<double, std::milli>(t_end-t_start).count() << " ms" << std::endl;
         if (*this->QUIT) break; // exit normally after SIGINT
@@ -288,8 +289,10 @@ void PROBLEM::step_solve(bool crack, bool melt) {
     if (crack) {
         // instead of fracturing the biggest floe at regular intervals, you may choose to fracture it only if the floe impulses exceed a predefined threshold 
         std::size_t nb_before = m_floe_group.get_floes().size();  
+        // real_type fract_threshold(6e5);  
         // real_type fract_threshold(6e6);  
-        real_type fract_threshold(6e7);  
+        // real_type fract_threshold(6e7);  
+        real_type fract_threshold(1e5);  
         if (m_floe_group.fracture_above_threshold(fract_threshold) > 0)
         {
             this->update_optim_vars();

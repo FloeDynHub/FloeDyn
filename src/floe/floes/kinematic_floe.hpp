@@ -7,6 +7,9 @@
 #ifndef FLOE_FLOES_KINEMATIC_FLOE_HPP
 #define FLOE_FLOES_KINEMATIC_FLOE_HPP
 
+#define WHEREAMI std::cout << std::endl << "no crash until line " << __LINE__ << " in the file " __FILE__ << std::endl;
+
+
 
 #include "floe/floes/static_floe.hpp"
 #include "floe/floes/floe_exception.hpp"
@@ -66,12 +69,19 @@ public:
     using floe_h_type = floe::floes::Floe_h<mesh_type>;
     using Uptr_geometry_type = std::unique_ptr<geometry_type>;
     using floe_interface_type = FloeInterface<TStaticFloe, TState>;
+    using fem_problem_type = floe::fem::FemProblem<floe::floes::KinematicFloe<floe::floes::StaticFloe<real_type>>>;
+    // using fem_problem_type = floe::fem::FemProblem;
+
+
+
+
 
     KinematicFloe() : m_geometry{nullptr}, m_floe{nullptr}, m_state{ {0,0}, 0, {0,0}, 0, {0,0}, true},
-                      m_obstacle{false}, m_floe_h{}, m_total_impulse_received{0} {}
+                      m_obstacle{false}, m_floe_h{}, m_total_impulse_received{0}, m_fem_problem{this} {}
                       
     KinematicFloe(static_floe_type new_static_floe) : m_geometry{nullptr}, m_floe{new_static_floe}, m_state{ {0,0}, 0, {0,0}, 0, {0,0}, true},
-                      m_obstacle{false}, m_floe_h{}, m_total_impulse_received{0} {} //comment je fais avec floe_h ????
+                    //   m_obstacle{false}, m_floe_h{}, m_total_impulse_received{0} {} //comment je fais avec floe_h ????
+                      m_obstacle{false}, m_floe_h{}, m_total_impulse_received{0}, m_fem_problem{this} {} //comment je fais avec floe_h ????
 
     //! Deleted copy constructor
     KinematicFloe( KinematicFloe<TStaticFloe,TState> const& ) = delete;
@@ -170,6 +180,11 @@ public:
         return m_state.speed + m_state.rot * fg::direct_orthogonal(p - m_state.pos);
     }
 
+    bool prepare_elasticity(); 
+    bool solve_elasticity(); 
+    inline std::vector<real_type> get_fem_solution() const {return m_fem_problem.get_solution_vector();};
+    inline std::vector<std::vector<real_type>> get_fem_stress() const {return m_fem_problem.get_stress_vector();};
+
 private:
 
     Uptr_geometry_type m_geometry;  //!< Geometry (border)
@@ -181,6 +196,7 @@ private:
     floe_h_type m_floe_h; //!< Discretisation of the Floe
     mutable real_type m_total_impulse_received; //!< Sum all collision impulses this floe received
 
+    fem_problem_type m_fem_problem;
 };
 
 
@@ -253,6 +269,28 @@ KinematicFloe<TStaticFloe,TState>::update_after_fracture(const state_type init_s
 	this->set_obstacle(init_obstacle);
 	this->set_total_impulse_received(init_total_impulse_received);
 	this->update(); // update frame ect.. 
+}
+
+
+
+
+template < typename TStaticFloe, typename TState >
+bool
+KinematicFloe<TStaticFloe,TState>::prepare_elasticity()
+{
+	m_fem_problem.prepare();
+    return true; 
+}
+template < typename TStaticFloe, typename TState >
+bool
+KinematicFloe<TStaticFloe,TState>::solve_elasticity()
+{
+    std::vector<size_t> merdouilles = {1, 12};
+    point_type a(1,0);
+    point_type b(1,0);
+    std::vector<point_type> merdouillesValues = {a, b};
+	m_fem_problem.performComputation(merdouilles, merdouillesValues);
+    return true; 
 }
 
 

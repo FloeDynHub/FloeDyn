@@ -7,6 +7,10 @@
 #ifndef FLOES_PARTIAL_FLOE_GROUP_HPP
 #define FLOES_PARTIAL_FLOE_GROUP_HPP
 
+#define WHEREAMI std::cout << std::endl << "no crash until line " << __LINE__ << " in the file " __FILE__ << std::endl;
+
+
+
 #include "floe/floes/floe_group.hpp"
 #include "floe/arithmetic/filtered_container.hpp"
 #include "floe/io/inter_process_message.hpp"
@@ -122,6 +126,12 @@ PartialFloeGroup<TFloe, TFloeList>::fracture_above_threshold(real_type threshold
     size_t nCracked(0);
 	for (std::size_t iFloe = 0; iFloe < base_class::get_floes().size(); ++iFloe){
         auto& floe = base_class::get_floes()[iFloe];
+        floe.prepare_elasticity();
+        if (!floe.is_obstacle() && floe.total_received_impulse() > 0) 
+        {
+            if (!floe.solve_elasticity())
+                std::cout << "Solve on floe " << iFloe << " has failed." << std::endl;
+        }
         if (!floe.is_obstacle() && floe.total_received_impulse() > threshold){
             // if the impulse is greater than a threshold, flow is fractured
             auto new_geometries = floe.fracture_floe();

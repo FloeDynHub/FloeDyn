@@ -10,6 +10,9 @@
 #include "floe/io/hdf5_manager.h"
 #include "floe/utils/random.hpp"
 
+#define WHEREAMI std::cout << std::endl << "no crash until line " << __LINE__ << " in the file " __FILE__ << std::endl;
+
+
 namespace floe { namespace io
 {
 
@@ -106,9 +109,20 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::save_step(real_type time, const dyna
         for(std::size_t iFloe = 0; iFloe < this->nb_considered_floes(); ++iFloe)
         {
             auto const& floe = this->get_floe(iFloe);
+            std::vector<std::vector<real_type>> femSolStress = floe.get_fem_stress();
             for (std::size_t iElem = 0 ; iElem < floe.mesh().get_n_cells() ; ++iElem)
             {
-                m_data_chunk_elem_data[m_chunk_step_count][iFloe][iElem] = floe.total_received_impulse();
+                if (femSolStress.size() == floe.mesh().get_n_cells())
+                {
+                    // std::cout << "Writing stress to hdf5 output file" << std::endl ;
+                    m_data_chunk_elem_data[m_chunk_step_count][iFloe][iElem] = (real_type)sqrt(pow(femSolStress[iElem][0], 2) + pow(femSolStress[iElem][1], 2) - femSolStress[iElem][0]*femSolStress[iElem][1] + 3*pow(femSolStress[iElem][2], 2));
+                }
+                else
+                {
+                    // std::cout << "Nope." << std::endl ;
+                    m_data_chunk_elem_data[m_chunk_step_count][iFloe][iElem] = (real_type)iElem;
+                    // m_data_chunk_elem_data[m_chunk_step_count][iFloe][iElem] = floe.total_received_impulse();
+                }
             }
         }
         // saving nodal data 
@@ -116,9 +130,23 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::save_step(real_type time, const dyna
         for(std::size_t iFloe = 0; iFloe < this->nb_considered_floes(); ++iFloe)
         {
             auto const& floe = this->get_floe(iFloe);
+            std::vector<real_type> femSol = floe.get_fem_solution();
+            if (femSol.size() != floe.mesh().get_n_nodes())
+            {
+                std::cout << "Incoherent size. Size of femSol : " << femSol.size() << " instead of " << floe.mesh().get_n_nodes() << std::endl;
+            }
+
             for (std::size_t iNode = 0 ; iNode < floe.mesh().get_n_nodes() ; ++iNode)
             {
-                m_data_chunk_node_data[m_chunk_step_count][iFloe][iNode] = (real_type)iNode;
+                // m_data_chunk_node_data[m_chunk_step_count][iFloe][iNode] = (real_type)iNode;
+                if (femSol.size() == floe.mesh().get_n_nodes())
+                {
+                    // std::cout << "I got something interesting to write !! " << std::endl;
+                    m_data_chunk_node_data[m_chunk_step_count][iFloe][iNode] = (real_type)femSol[iNode];
+                }
+                else 
+                    m_data_chunk_node_data[m_chunk_step_count][iFloe][iNode] = (real_type)iNode;
+
             }
         }
     }

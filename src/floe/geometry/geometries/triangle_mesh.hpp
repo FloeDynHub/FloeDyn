@@ -45,7 +45,7 @@ public:
     using cell_type        = typename floe::geometry::Triangle<point_type, true>;
     using connectivity_type = std::vector< std::array<std::size_t,3> >;
     using multi_cell_type  = typename floe::geometry::MultiSSPPointCloud<cell_type, multi_point_type const*, connectivity_type const*>;
-
+    using real_type = typename TPoint::value_type; 
     TriangleMesh() : m_points{}, m_connect{}, m_cells{nullptr, nullptr} {}
 
     //! Return the points list
@@ -78,6 +78,13 @@ public:
     // integration functions 
     inline Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> get_integrationMatrix() const {return m_integrationMatrix;};    
     inline Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> get_jacobians() const {return m_jacobians;};    
+    inline real_type get_jacobian(size_t iElem) const 
+    {
+        if (iElem < m_connect.size())
+            return triangle_det_jac(iElem);
+        else 
+            return 0.0 ;
+    };    
     inline Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> get_weightAndJac() const {return m_weightAndJac;};    
     inline Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> get_shapeFunAtGP() const {return m_shapeFunAtGP;};    
     bool prepare()
@@ -125,7 +132,7 @@ private:
     Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> m_jacobians;
 
     
-    double triangle_det_jac(size_t iElem)
+    real_type triangle_det_jac(size_t iElem) const
     {
         double x0 = m_points[m_connect[iElem][0]][0];
         double x1 = m_points[m_connect[iElem][1]][0];
