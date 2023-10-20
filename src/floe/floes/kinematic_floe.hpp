@@ -183,7 +183,8 @@ public:
     bool prepare_elasticity(); 
     bool solve_elasticity(); 
     inline std::vector<real_type> get_fem_solution() const {return m_fem_problem.get_solution_vector();};
-    inline std::vector<std::vector<real_type>> get_fem_stress() const {return m_fem_problem.get_stress_vector();};
+    // inline std::vector<std::vector<real_type>> get_fem_stress() const {return m_fem_problem.get_stress_vector();};
+    inline std::vector<real_type> get_fem_stress() const {return m_fem_problem.get_stress_vector();};
 
 private:
 

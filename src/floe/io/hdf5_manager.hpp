@@ -104,18 +104,22 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::save_step(real_type time, const dyna
     }
     if (m_export_mesh)
     {
+        // WHEREAMI
         // save elem data
         if (m_data_chunk_elem_data.size() == 0) m_data_chunk_elem_data.resize(boost::extents[m_flush_max_step][this->nb_considered_floes()][m_max_elem]); 
         for(std::size_t iFloe = 0; iFloe < this->nb_considered_floes(); ++iFloe)
         {
             auto const& floe = this->get_floe(iFloe);
-            std::vector<std::vector<real_type>> femSolStress = floe.get_fem_stress();
-            for (std::size_t iElem = 0 ; iElem < floe.mesh().get_n_cells() ; ++iElem)
+            size_t nElem(floe.mesh().get_n_cells());
+            // std::vector<std::vector<real_type>> femSolStress = floe.get_fem_stress();
+            std::vector<real_type> femSolStress = floe.get_fem_stress();
+            for (std::size_t iElem = 0 ; iElem < nElem ; ++iElem)
             {
-                if (femSolStress.size() == floe.mesh().get_n_cells())
+                if (femSolStress.size() == nElem*3)
                 {
                     // std::cout << "Writing stress to hdf5 output file" << std::endl ;
-                    m_data_chunk_elem_data[m_chunk_step_count][iFloe][iElem] = (real_type)sqrt(pow(femSolStress[iElem][0], 2) + pow(femSolStress[iElem][1], 2) - femSolStress[iElem][0]*femSolStress[iElem][1] + 3*pow(femSolStress[iElem][2], 2));
+                    real_type sigma_von_mises = sqrt(pow(femSolStress[iElem], 2) + pow(femSolStress[iElem+nElem], 2) - femSolStress[iElem]*femSolStress[iElem+nElem] + 3*pow(femSolStress[iElem+2*nElem], 2));
+                    m_data_chunk_elem_data[m_chunk_step_count][iFloe][iElem] = sigma_von_mises;
                 }
                 else
                 {
@@ -123,8 +127,10 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::save_step(real_type time, const dyna
                     m_data_chunk_elem_data[m_chunk_step_count][iFloe][iElem] = (real_type)iElem;
                     // m_data_chunk_elem_data[m_chunk_step_count][iFloe][iElem] = floe.total_received_impulse();
                 }
+                // m_data_chunk_elem_data[m_chunk_step_count][iFloe][iElem] = (real_type)iElem;
             }
         }
+        // WHEREAMI
         // saving nodal data 
         if (m_data_chunk_node_data.size() == 0) m_data_chunk_node_data.resize(boost::extents[m_flush_max_step][this->nb_considered_floes()][m_max_nodes]); 
         for(std::size_t iFloe = 0; iFloe < this->nb_considered_floes(); ++iFloe)
@@ -142,6 +148,7 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::save_step(real_type time, const dyna
                 if (femSol.size() == floe.mesh().get_n_nodes())
                 {
                     // std::cout << "I got something interesting to write !! " << std::endl;
+                    std::cout << "writing " << (real_type)femSol[iNode] << " at point " << iNode << std::endl;
                     m_data_chunk_node_data[m_chunk_step_count][iFloe][iNode] = (real_type)femSol[iNode];
                 }
                 else 

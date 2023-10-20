@@ -241,8 +241,8 @@ for iTime in range(0, nTime):
     nElem = data["connect"].shape[0]
     export_vtk(filename, data["coord"], data["connect"], np.zeros((nNodes, 1)), dataname)
     # add_vtk_node_data(filename, data["coord"], data["connect"], np.arange((nNodes, 1)), 'trucTrucNoeuds')
-    add_vtk_node_data(filename, data["coord"], data["connect"], data["node_field"], 'iNode')
-    add_vtk_elem_data(filename, data["coord"], data["connect"], data["elem_field"], 'iElem')
+    add_vtk_node_data(filename, data["coord"], data["connect"], data["node_field"], 'displacement_x')
+    add_vtk_elem_data(filename, data["coord"], data["connect"], data["elem_field"], 'sigma_von_mises')
     # add_vtk_elem_data(filename, data["coord"], data["connect"], np.zeros((nElem, 1)), 'trucTrucElem')
 
 # print(data.get("time") )

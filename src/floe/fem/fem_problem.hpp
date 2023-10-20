@@ -118,24 +118,29 @@ public :
         return v;
     };
 
-    std::vector<std::vector<real_type>> get_stress_vector() const 
+    // std::vector<std::vector<real_type>> get_stress_vector() const 
+    std::vector<real_type> get_stress_vector() const 
+    // nouvelle tentative : on met bout à bout les trois composantes, donc le vecteur est de taille 3*nE par 1. 
     {
-
         // returns a vector of stress components. 
-        std::vector<std::vector<real_type>> v;
+        // std::vector<std::vector<real_type>> v;
+        std::vector<real_type> v;
         if (m_Sol.rows() != 2*m_nN)
             return v;
-        v.resize(m_nE);
+        v.resize(m_nE*3);
         Eigen::Matrix<real_type, 3,1> sigma;
         Eigen::Matrix<real_type, 6,1> sol_elem;
         connectivity_type connect; 
         connect = m_floe->mesh().connectivity();
+        Eigen::Matrix<real_type, 3, 3> H = computeH(); 
+        Eigen::Matrix<real_type, 3, 6> B;
         for (size_t iElem = 0 ; iElem < m_nE ; ++iElem)
         {
             WHEREAMI
             // v[iElem].resize(3); // bad malloc, chais pas pourquoi... replacing this by calls to push_back
-            Eigen::Matrix<real_type, 3, 6> B = computeB(iElem); 
-            Eigen::Matrix<real_type, 3, 3> H = computeH(); 
+            B = computeB(iElem); 
+            // WHEREAMI
+            // v[iElem].clear();
             sol_elem(0,0) = m_Sol.coeff(connect[iElem][0]*2, 0);
             sol_elem(1,0) = m_Sol.coeff(connect[iElem][0]*2+1, 0);
             sol_elem(2,0) = m_Sol.coeff(connect[iElem][1]*2, 0);
@@ -143,15 +148,25 @@ public :
             sol_elem(4,0) = m_Sol.coeff(connect[iElem][2]*2, 0);
             sol_elem(5,0) = m_Sol.coeff(connect[iElem][2]*2+1, 0);
             sigma = H*B*sol_elem;
-            WHEREAMI
-            v[iElem].push_back(sigma(0,0));
-            WHEREAMI
-            v[iElem].push_back(sigma(1,0));
-            WHEREAMI
-            v[iElem].push_back(sigma(2,0));
-            WHEREAMI
+            // WHEREAMI
+            // v[iElem].push_back(sigma(0,0));
+            // WHEREAMI
+            // v[iElem].push_back(sigma(1,0));
+            // WHEREAMI
+            // std::cout << "là j'essaie d'écrire " << sigma(2,0) << " à l'emplacement " << iElem << " de taille " << v[iElem].size()<< std::endl;
+            // WHEREAMI
+            // v[iElem].push_back(sigma(2,0));
+            // WHEREAMI
+            v[iElem] = sigma(0,0);
+            // WHEREAMI
+            v[iElem+m_nE] = sigma(1,0);
+            // WHEREAMI 
+            v[iElem+2*m_nE] = sigma(2,0);
+            // WHEREAMI
             // v[iElem][0] = sigma(0,0);
+            // WHEREAMI
             // v[iElem][1] = sigma(1,0);
+            // WHEREAMI 
             // v[iElem][2] = sigma(2,0);
             // std::cout << "At elem " << iElem << " sigma = " << sigma << std::endl;
         }    
@@ -313,7 +328,9 @@ FemProblem<TFloe>::addDirichlet(std::vector<size_t> gamma_d, std::vector<point_t
 
     real_type very_big_stuff=10000*m_largest_value;
 
-    m_FTriplet.resize(n_dirichlet);
+    m_FTriplet.clear();
+    m_FTriplet.resize(n_dirichlet*2);
+    m_DirichletTriplet.clear();
     m_DirichletTriplet.resize(n_dirichlet*2);
 
     for (size_t iDir = 0; iDir < n_dirichlet ; ++iDir)
@@ -447,14 +464,16 @@ bool
 FemProblem<TFloe>::prepare()
 // FemProblem::prepare()
 {
-    WHEREAMI
+    // WHEREAMI
     if ( m_floe == nullptr ) 
     {
         std::cerr << "In FemProblem::prepare, m_floe has not been set to an initialized floe" << std::endl;
         return false; 
     }
+    // WHEREAMI
     if (m_is_prepared)
         return true;
+    // WHEREAMI
     m_nE = m_floe->mesh().get_n_cells();
     m_nN = m_floe->mesh().get_n_nodes();
     m_nDof = 2; // 2 displacements on each node. 
@@ -477,7 +496,7 @@ FemProblem<TFloe>::prepare()
     }
     std::cout << "-> RHS successful" << std::endl;
     m_is_prepared = true; 
-    WHEREAMI
+    // WHEREAMI
     return true; 
 };
 
@@ -486,9 +505,9 @@ template < typename TFloe>
 bool
 FemProblem<TFloe>::performComputation(std::vector<size_t> gamma_d, std::vector<point_type> values)
 {
-    WHEREAMI
-    std::vector<size_t> merdouilles = gamma_d;
-    std::vector<point_type> merdouillesValues = values;
+    // WHEREAMI
+    // std::vector<size_t> merdouilles = gamma_d;
+    // std::vector<point_type> merdouillesValues = values;
 
     if (m_floe->total_received_impulse() == m_last_total_impulse)
     {
@@ -499,15 +518,14 @@ FemProblem<TFloe>::performComputation(std::vector<size_t> gamma_d, std::vector<p
     m_last_total_impulse = m_floe->total_received_impulse();
     std::cout << "Performing computation with amplitude = " << amplitude << std::endl;
 
-    for (size_t iDir = 0; iDir < merdouillesValues.size() ; ++iDir)
+    for (size_t iDir = 0; iDir < values.size() ; ++iDir)
     {
         amplitude = 1; // pour l'instant, pour s'assurer que la condition est bien respectée. 
-        point_type a(amplitude*merdouillesValues[iDir].x, amplitude*merdouillesValues[iDir].y);
-        merdouillesValues[iDir] = a;
-        // merdouillesValues[iDir] = merdouillesValues[iDir]*amplitude;
+        point_type a(amplitude*values[iDir].x, amplitude*values[iDir].y);
+        values[iDir] = a;
     }
 
-    if (!addDirichlet(merdouilles, merdouillesValues))
+    if (!addDirichlet(gamma_d, values))
     {
         std::cerr << "In FemProblem::performComputation, could not build dirichlet condition" << std::endl;
         return false; 
@@ -519,7 +537,7 @@ FemProblem<TFloe>::performComputation(std::vector<size_t> gamma_d, std::vector<p
         return false; 
     }
     std::cout << "-> Solve successful" << std::endl;
-    WHEREAMI
+    // WHEREAMI
     return true; 
 };
 

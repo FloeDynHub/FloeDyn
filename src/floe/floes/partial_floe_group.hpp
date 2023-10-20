@@ -126,9 +126,13 @@ PartialFloeGroup<TFloe, TFloeList>::fracture_above_threshold(real_type threshold
     size_t nCracked(0);
 	for (std::size_t iFloe = 0; iFloe < base_class::get_floes().size(); ++iFloe){
         auto& floe = base_class::get_floes()[iFloe];
-        floe.prepare_elasticity();
+        if (!floe.prepare_elasticity())
+            std::cout << "FEM computation initialization failed" << std::endl;
+        // WHEREAMI
         if (!floe.is_obstacle() && floe.total_received_impulse() > 0) 
         {
+            // WHEREAMI
+            std::cout << "trying to solve elasticity " << std::endl;
             if (!floe.solve_elasticity())
                 std::cout << "Solve on floe " << iFloe << " has failed." << std::endl;
         }

@@ -299,6 +299,7 @@ void PROBLEM::step_solve(bool crack, bool melt) {
             // std::cout << "Fracture on threshold at time : " << this->m_domain.time() << " - nb floes : " << nb_before << " -> " << m_floe_group.get_floes().size() << std::endl;
             std::cout << "Fracture on threshold at time : " << this->m_domain.time() << " - nb floes : " << nb_before << " -> " << m_floe_group.get_floes().size() << std::endl;
         }
+        // WHEREAMI
     }
     
     auto t1 = std::chrono::high_resolution_clock::now();
@@ -324,7 +325,9 @@ void PROBLEM::step_solve(bool crack, bool melt) {
     m_timeStepTime+=std::chrono::duration<double, std::nano>(t2-t1);
     m_moveTime+=std::chrono::duration<double, std::nano>(t3-t2);
 
+    // WHEREAMI
     output_datas();
+    // WHEREAMI
     m_step_nb++;
 }
 
