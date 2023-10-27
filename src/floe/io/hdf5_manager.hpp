@@ -71,7 +71,7 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::save_step(real_type time, const dyna
         m_chunk_step_count = 0;
         m_data_chunk_states.resize(boost::extents[m_flush_max_step][this->nb_considered_floes()][array_size<saved_state_type>::size]);
         m_data_chunk_elem_data.resize(boost::extents[m_flush_max_step][this->nb_considered_floes()][m_max_elem]);
-        m_data_chunk_node_data.resize(boost::extents[m_flush_max_step][this->nb_considered_floes()][m_max_nodes]);
+        m_data_chunk_node_data.resize(boost::extents[m_flush_max_step][this->nb_considered_floes()][m_max_nodes*2]);
         write_shapes();
         if (m_export_mesh)
         {
@@ -132,27 +132,39 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::save_step(real_type time, const dyna
         }
         // WHEREAMI
         // saving nodal data 
-        if (m_data_chunk_node_data.size() == 0) m_data_chunk_node_data.resize(boost::extents[m_flush_max_step][this->nb_considered_floes()][m_max_nodes]); 
+        if (m_data_chunk_node_data.size() == 0) m_data_chunk_node_data.resize(boost::extents[m_flush_max_step][this->nb_considered_floes()][m_max_nodes*2]); 
         for(std::size_t iFloe = 0; iFloe < this->nb_considered_floes(); ++iFloe)
         {
             auto const& floe = this->get_floe(iFloe);
             std::vector<real_type> femSol = floe.get_fem_solution();
-            if (femSol.size() != floe.mesh().get_n_nodes())
+            size_t nNodes (floe.mesh().get_n_nodes());
+            // just making sure... 
+            if (nNodes > m_max_nodes)
             {
-                std::cout << "Incoherent size. Size of femSol : " << femSol.size() << " instead of " << floe.mesh().get_n_nodes() << std::endl;
+                WHEREAMI
+                std::cerr << "Size mismatch during hdf5 export" << std::endl;
+            }
+            if (femSol.size() != nNodes*2)
+            {
+                std::cout << "Incoherent size. Size of femSol : " << femSol.size() << " instead of " << nNodes*2 << std::endl;
             }
 
-            for (std::size_t iNode = 0 ; iNode < floe.mesh().get_n_nodes() ; ++iNode)
+            for (std::size_t iNode = 0 ; iNode < nNodes*2 ; ++iNode)
             {
-                // m_data_chunk_node_data[m_chunk_step_count][iFloe][iNode] = (real_type)iNode;
-                if (femSol.size() == floe.mesh().get_n_nodes())
+                if (femSol.size() == 2*nNodes)
                 {
-                    // std::cout << "I got something interesting to write !! " << std::endl;
-                    std::cout << "writing " << (real_type)femSol[iNode] << " at point " << iNode << std::endl;
+                    // std::cout << "writing " << (real_type)femSol[iNode] << " at location " << iNode << std::endl;
                     m_data_chunk_node_data[m_chunk_step_count][iFloe][iNode] = (real_type)femSol[iNode];
+                    // m_data_chunk_node_data[m_chunk_step_count][iFloe][iNode+nNodes] = (real_type)femSol[iNode+nNodes];
                 }
                 else 
-                    m_data_chunk_node_data[m_chunk_step_count][iFloe][iNode] = (real_type)iNode;
+                {
+                    m_data_chunk_node_data[m_chunk_step_count][iFloe][iNode] = (real_type)(std::floor(iNode/2));
+                    // m_data_chunk_node_data[m_chunk_step_count][iFloe][iNode] = (real_type)(iNode % nNodes);
+                    std::cout << "writing " << (real_type)(std::floor(iNode/2)) << " at location " << iNode << std::endl;
+                    // m_data_chunk_node_data[m_chunk_step_count][iFloe][iNode+nNodes] = 0;
+                }
+                
 
             }
         }
@@ -432,7 +444,7 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::write_node_data() {
 
     m_max_nodes = m_floe_group->get_max_nodes();
 
-    hsize_t     dims[RANK] = {m_step_count - m_chunk_step_count, nb_floes, m_max_nodes};
+    hsize_t     dims[RANK] = {m_step_count - m_chunk_step_count, nb_floes, m_max_nodes*2};
     const hsize_t     chunk_dims[RANK] = {m_chunk_step_count, dims[1], dims[2]};
     try {
         node_data_dataset = file.openDataSet("floe_node_data");

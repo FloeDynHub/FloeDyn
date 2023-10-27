@@ -77,6 +77,7 @@ def transform_meshes(data_file, floe_coords, floe_states, floe_mass_centers, fol
     coord = [np.add(mesh, np.repeat([[x[pos_ids[0]], x[pos_ids[1]]]], len(mesh), axis=0)) for x, mesh in zip(floe_states, coord)]
     return coord
 
+
 def read_data(data_file):
     d = {}
     file_time_dependant_keys =["time", "floe_states", "mass_center", "floe_elem_data", "floe_node_data"]
@@ -138,31 +139,42 @@ def add_vtk_elem_data(filename, coord, connect, data, dataname):
     #     print('Dimension mismatch, I got {} instead of {}'.format(data.shape[0], nElem))
     f = open(filename, "a")
     f.write("\nCELL_DATA {}\n".format(nElem))
-    f.write("SCALARS {} float 1\nLOOKUP_TABLE default\n".format(dataname))
-    np.savetxt(f, data, fmt='%d', delimiter=' ',)
+    f.write("SCALARS {} float 1\nLOOKUP_TABLE default\n".format(dataname)) 
+    np.savetxt(f, data, fmt='%f', delimiter=' ',)
     # # f.write("SCALARS {} float 1\nLOOKUP_TABLE default\n".format(dataname2))
     # # np.savetxt(f, data, fmt='%d', delimiter=' ',)
     f.close()
     return True 
 
 def add_vtk_node_data(filename, coord, connect, data, dataname):
-    nNodes = data.shape[0]
+    # nNodes = data.shape[0]
+    nNodes = coord.shape[0]
+    # print('est ce que la taille ce serait pas {} par hasard ?'.format(coord.shape[0]))
     # nElem = connect.shape[0]
     # if connect.shape[1] != 3:
     #     print('I did not expect the second dimension of connect to be {}'.format(connect.shape[1]))
-    # if data.shape[0] != nNodes:
-    #     print('Dimension mismatch, I got {} instead of {}'.format(data.shape[0], nNodes))
-
-    f = open(filename, "a")
-    f.write("\nPOINT_DATA {}\n".format(nNodes))
-    f.write("SCALARS {} float 1\nLOOKUP_TABLE default\n".format(dataname))
-    np.savetxt(f, data, fmt='%d', delimiter=' ',)
-    # # f.write("SCALARS {} float 1\nLOOKUP_TABLE default\n".format(dataname2))
-    # # np.savetxt(f, data, fmt='%d', delimiter=' ',)
-    f.close()
+    if data.shape[0] == nNodes:
+        f = open(filename, "a")
+        f.write("\nPOINT_DATA {}\n".format(nNodes))
+        f.write("SCALARS {} float 1\nLOOKUP_TABLE default\n".format(dataname))
+        np.savetxt(f, data, fmt='%f', delimiter=' ',)
+        # # f.write("SCALARS {} float 1\nLOOKUP_TABLE default\n".format(dataname2))
+        # # np.savetxt(f, data, fmt='%d', delimiter=' ',)
+        # print("Writing scalar data, shape is {}".format(data.shape))
+        f.close()
+    elif data.shape[0] == nNodes*2:
+        f = open(filename, "a")
+        f.write("\nPOINT_DATA {}\n".format(nNodes))
+        # f.write("SCALARS {} float 2\nLOOKUP_TABLE default\n".format(dataname)) # VECTORS would take three components, but we're in 2D 
+        f.write("VECTORS {} float\n".format(dataname)) # VECTORS take three components, but we're in 2D 
+        # np.savetxt(f, data.reshape([nNodes, 2]), fmt='%f %f', delimiter=' ',)
+        np.savetxt(f, np.concatenate((data.reshape([nNodes, 2]), np.zeros([nNodes,1])), axis=1), fmt='%f %f %f', delimiter=' ',)
+        f.close()
+    else:
+        print('Dimension mismatch, I got {} instead of {}'.format(data.shape[0], nNodes))
     return True 
 
-def data_at_t(data, t):
+def data_at_t(data, t, displacement=False):
     
     def rotation_mat(theta):
         return np.array([[np.cos(theta), -np.sin(theta)], [np.sin(theta),  np.cos(theta)]])
@@ -191,9 +203,15 @@ def data_at_t(data, t):
             dataTemp = np.zeros((nElem, 1))
             dataTemp[:nElem,0] = data.get("floe_elem_data")[t, iFloe, :nElem]
             elem_field = np.concatenate((elem_field, dataTemp))
-            dataTempNode = np.zeros((nNodes, 1))
-            dataTempNode[:nNodes,0] = data.get("floe_node_data")[t, iFloe, :nNodes]
+            dataTempNode = np.zeros((nNodes*2, 1))
+            dataTempNode[:nNodes*2,0] = data.get("floe_node_data")[t, iFloe, :nNodes*2]
+            # the solution is computed in the reference frame of the floe, so it has to be rotated as well 
+            dataTempNode = dataTempNode.reshape([nNodes, 2])
+            dataTempNode = np.transpose(np.dot(r, np.transpose(dataTempNode)))
+            dataTempNode = dataTempNode.reshape([2*nNodes, 1])
+            
             node_field = np.concatenate((node_field, dataTempNode))
+            
                 
     d = {}
     d["coord"] = coord
@@ -227,12 +245,13 @@ data = rawData
 # print(data.get("floe_meshes_connect")[0].shape)
 # print(data.get("floe_elem_data")[0].shape)
 # export_vtk(filename, data.get("floe_meshes_coord")[0], data.get("floe_meshes_connect")[0], np.zeros((nNodes, 1)), dataname)
+print('the mesh contains {} elements and {} nodes.'.format(nElem, nNodes))
 print('size de node data : {}'.format(data["floe_node_data"].shape))
 print('size de elem data : {}'.format(data["floe_elem_data"].shape))
 
 # loop over the time steps, faut translate/rotate puis extract only useful floes at give time step 
 for iTime in range(0, nTime):
-    data = data_at_t(rawData, iTime)
+    data = data_at_t(rawData, iTime, iTime > 0)
     timing = time[iTime]
     # print('exporting time {} '.format(timing))
     filename = '../io/outputs/vtk/test_{}.vtk'.format(iTime)
@@ -241,7 +260,9 @@ for iTime in range(0, nTime):
     nElem = data["connect"].shape[0]
     export_vtk(filename, data["coord"], data["connect"], np.zeros((nNodes, 1)), dataname)
     # add_vtk_node_data(filename, data["coord"], data["connect"], np.arange((nNodes, 1)), 'trucTrucNoeuds')
+    # add_vtk_node_data(filename, data["coord"], data["connect"], data["node_field"], 'displacement_x')
     add_vtk_node_data(filename, data["coord"], data["connect"], data["node_field"], 'displacement_x')
+    # print(data["node_field"])
     add_vtk_elem_data(filename, data["coord"], data["connect"], data["elem_field"], 'sigma_von_mises')
     # add_vtk_elem_data(filename, data["coord"], data["connect"], np.zeros((nElem, 1)), 'trucTrucElem')
 

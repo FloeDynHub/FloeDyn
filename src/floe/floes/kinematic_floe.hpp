@@ -286,11 +286,22 @@ template < typename TStaticFloe, typename TState >
 bool
 KinematicFloe<TStaticFloe,TState>::solve_elasticity()
 {
-    std::vector<size_t> merdouilles = {1, 12};
-    point_type a(1,0);
-    point_type b(1,0);
-    std::vector<point_type> merdouillesValues = {a, b};
-	m_fem_problem.performComputation(merdouilles, merdouillesValues);
+    // deuxPtitsRectangles : à gauche c'est 2 3 41
+    // deuxPtitsRectangles : à droite c'est 0 1 49
+    // std::vector<size_t> dirichletPoints = {2, 3, 41, 0, 1, 49};
+    // std::vector<size_t> dirichletPoints = {2, 3, 41, 0, 1, 49, 63};
+    // std::vector<size_t> dirichletPoints = {0};
+    std::vector<size_t> dirichletPoints = {2, 122, 41, 114, 3};
+    point_type a(0,0);
+    point_type b(0,1);
+    point_type c(2,0);
+    point_type d(3,0);
+    // std::vector<point_type> dirichletValues = {b, a};
+    // std::vector<point_type> dirichletValues = {a, a, a, b, b, b};
+    // std::vector<point_type> dirichletValues = {a, a, a, a, a, a, b};
+    std::vector<point_type> dirichletValues = {a, a, a, a, a};
+    // std::vector<point_type> dirichletValues = {b};
+	m_fem_problem.performComputation(dirichletPoints, dirichletValues);
     return true; 
 }
 

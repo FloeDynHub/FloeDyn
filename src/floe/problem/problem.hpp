@@ -149,6 +149,7 @@ protected:
     bool m_is_generator;
     // run time breakdown  
     std::chrono::duration<double, std::nano> m_collisionTime;
+    std::chrono::duration<double, std::nano> m_fractureTime;
     std::chrono::duration<double, std::nano> m_timeStepTime;
     std::chrono::duration<double, std::nano> m_moveTime;
 };
@@ -259,7 +260,8 @@ void PROBLEM::solve(real_type end_time, real_type dt_default, real_type out_step
         // auto t_start = std::chrono::high_resolution_clock::now();
         // arbritrary crack every N steps until Pth step : no physical meaning / only for demo
         // bool do_fracture = (fracture && this->m_step_nb > 0 && this->m_step_nb < 50000 && this->m_step_nb % 18 == 0);
-        bool do_fracture = (fracture && m_domain.time() > 22000 && m_domain.time() - last_frac_time > 1000);
+        // bool do_fracture = (fracture && m_domain.time() > 22000 && m_domain.time() - last_frac_time > 1000);
+        bool do_fracture = true;
         if (do_fracture) last_frac_time = m_domain.time();
         // this->step_solve(do_fracture, melting);
         this->step_solve(true, melting);
@@ -272,6 +274,7 @@ void PROBLEM::solve(real_type end_time, real_type dt_default, real_type out_step
     std::cout << " total collision time : " << time_taken*1e-9 << " s" << std::endl;
     std::cout << " total time step time : " << std::chrono::duration_cast<std::chrono::nanoseconds>(m_timeStepTime).count()*1e-9 << " s" << std::endl;
     std::cout << " total move time : " << std::chrono::duration_cast<std::chrono::nanoseconds>(m_moveTime).count()*1e-9 << " s" << std::endl;
+    std::cout << " total fracture time : " << std::chrono::duration_cast<std::chrono::nanoseconds>(m_fractureTime).count()*1e-9 << " s" << std::endl;
 }
 
 
@@ -286,13 +289,14 @@ void PROBLEM::step_solve(bool crack, bool melt) {
     //     this->update_optim_vars();
     // 	std::cout << "Fracture - nb floes : " << nb_before << " -> " << m_floe_group.get_floes().size() << std::endl;
     // }
+    auto t1 = std::chrono::high_resolution_clock::now();
     if (crack) {
         // instead of fracturing the biggest floe at regular intervals, you may choose to fracture it only if the floe impulses exceed a predefined threshold 
         std::size_t nb_before = m_floe_group.get_floes().size();  
         // real_type fract_threshold(6e5);  
         // real_type fract_threshold(6e6);  
         // real_type fract_threshold(6e7);  
-        real_type fract_threshold(1e5);  
+        real_type fract_threshold(1e5);
         if (m_floe_group.fracture_above_threshold(fract_threshold) > 0)
         {
             this->update_optim_vars();
@@ -302,11 +306,11 @@ void PROBLEM::step_solve(bool crack, bool melt) {
         // WHEREAMI
     }
     
-    auto t1 = std::chrono::high_resolution_clock::now();
-    compute_time_step();
     auto t2 = std::chrono::high_resolution_clock::now();
-    safe_move_floe_group();
+    compute_time_step();
     auto t3 = std::chrono::high_resolution_clock::now();
+    safe_move_floe_group();
+    auto t4 = std::chrono::high_resolution_clock::now();
     if (melt) {
         m_floe_group.melt_floes();
         this->update_optim_vars();
@@ -317,13 +321,15 @@ void PROBLEM::step_solve(bool crack, bool melt) {
     //         << std::endl;
     // }
     std::cout << "Chrono : collisions " << std::chrono::duration<double, std::milli>(t1-t0).count() << " ms + "
-    << "time_step " << std::chrono::duration<double, std::milli>(t2-t1).count() << " ms + "
-    << "move " << std::chrono::duration<double, std::milli>(t3-t2).count() << " ms = "
-    << std::chrono::duration<double, std::milli>(t3-t0).count() << " ms" << std::endl;
+    << "fracture " << std::chrono::duration<double, std::milli>(t2-t1).count() << " ms + "
+    << "time_step " << std::chrono::duration<double, std::milli>(t3-t2).count() << " ms + "
+    << "move " << std::chrono::duration<double, std::milli>(t4-t3).count() << " ms = "
+    << std::chrono::duration<double, std::milli>(t4-t0).count() << " ms" << std::endl;
 
     m_collisionTime+=std::chrono::duration<double, std::nano>(t1-t0);
-    m_timeStepTime+=std::chrono::duration<double, std::nano>(t2-t1);
-    m_moveTime+=std::chrono::duration<double, std::nano>(t3-t2);
+    m_fractureTime+=std::chrono::duration<double, std::nano>(t2-t1);
+    m_timeStepTime+=std::chrono::duration<double, std::nano>(t3-t2);
+    m_moveTime+=std::chrono::duration<double, std::nano>(t4-t3);
 
     // WHEREAMI
     output_datas();
