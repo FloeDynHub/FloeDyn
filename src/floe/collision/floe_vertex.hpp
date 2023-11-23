@@ -21,11 +21,17 @@ template <
 >
 struct FloeVertex
 {
+	using real_type = typename TFloe::real_type;
 	FloeVertex() : floe{nullptr} {}
 	FloeVertex(TFloe const* floe_ptr) : floe{floe_ptr} {}
+	//! Get received impulse
+	inline real_type impulse() const { return m_impulse_received; }
+	//! Set received impulse
+	inline void set_impulse_received(real_type impulse) const { m_impulse_received = impulse; }
 	TFloe const* floe;
 	//! vertex id in parent graph (used with subgraphs)
-    mutable std::size_t parent_descriptor;
+	mutable std::size_t parent_descriptor;
+	mutable real_type m_impulse_received = 0;
 };
 
 

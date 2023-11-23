@@ -376,7 +376,7 @@ void PROBLEM::detect_proximity(){
 
 TEMPLATE_PB
 int PROBLEM::manage_collisions(){
-    int nb_lcp = m_collision_manager.solve_contacts(m_proximity_detector.contact_graph());
+    int nb_lcp = m_collision_manager.solve_contacts(m_proximity_detector.contact_graph(), this->m_domain.time());
     m_proximity_detector.clean_dist_opt();
     return nb_lcp;
 }

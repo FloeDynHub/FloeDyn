@@ -70,9 +70,9 @@ public:
     //! Kinetic energy born sup for decompression phase
     T born_sup_d(lcp_type const& lcp_c, T epsilon = 0) const;
     //! Impulse vector in case of compression and decompression LCP solving success
-    ublas::vector<T> impulse_vector(lcp_type const& lcp_c, lcp_type const& lcp_d, T epsilon) const;
+    ublas::vector<T> compute_impulses(lcp_type const& lcp_c, lcp_type const& lcp_d, T epsilon) const;
     //! Impulse vector in case of decompression LCP solving fail
-    ublas::vector<T> impulse_vector(lcp_type const& lcp_c, T epsilon = 0) const;
+    ublas::vector<T> compute_impulses(lcp_type const& lcp_c, T epsilon = 0) const;
 
 
     ublas::diagonal_matrix<T>   M;   //!< Mass and momentum matrix.
@@ -88,6 +88,7 @@ public:
 
 private:
     TGraph const& m_graph; //<! The contact graph.
+    //! Compute floe impulses from solution of LCP and store them in contact graph
     ublas::vector<T> calc_floe_impulses(ublas::vector<T> const& normal, ublas::vector<T> const& tangential) const;
 };
 
@@ -323,13 +324,18 @@ calc_floe_impulses(ublas::vector<T> const& normal, ublas::vector<T> const& tange
             ++j;
         }
     }
+    // Test adding impulses to floes directly
+    for (auto const& v : boost::make_iterator_range(vertices(m_graph)))
+    {
+        m_graph[v].set_impulse_received(floe_impulses[v]);
+    }
     return floe_impulses;
 }
 
 template <typename T, typename TGraph>
 ublas::vector<T>
 GraphLCP<T, TGraph>::
-impulse_vector(lcp_type const& lcp_c, lcp_type const& lcp_d, T epsilon) const {
+compute_impulses(lcp_type const& lcp_c, lcp_type const& lcp_d, T epsilon) const {
     auto const& z_c = lcp_c.z;
     auto const& z_d = lcp_d.z;
     std::size_t m= J.size2();
@@ -341,7 +347,7 @@ impulse_vector(lcp_type const& lcp_c, lcp_type const& lcp_d, T epsilon) const {
 template <typename T, typename TGraph>
 ublas::vector<T>
 GraphLCP<T, TGraph>::
-impulse_vector(lcp_type const& lcp_c, T epsilon) const {
+compute_impulses(lcp_type const& lcp_c, T epsilon) const {
     auto const& z_c = lcp_c.z;
     std::size_t m = nb_contacts;
     auto normal = (1 + epsilon) * subrange(z_c, 0, m);

@@ -312,52 +312,6 @@ active_subgraphs( TGraph const& graph )
     return subgraphs;
 }
 
-/*! Return components with active contacts.
- *
- * \tparam TGraph   Type of the graph (auto-deduced).
- * \param graph     The contact graph.
- * \return          A vector of subgraphs extracted from the active contacts.
- */
-// template < typename TGraph >
-// std::vector<TGraph>
-// active_subgraphs( TGraph const& graph )
-// {
-//     // Filtered graph with only active edges
-//     const auto active_graph = active_contact_graph( graph );
-
-//     // Connected components of this filtered graph
-//     std::vector<int> components( num_vertices(graph) ); //! \warning clang 3.5.0 induced a bug while freeing this vector if constructed with {n} syntax. 
-//     const std::size_t num = connected_components( active_graph, &components[0] );
-
-//     // Initialization of the collision list
-//     std::vector<TGraph> subgraphs;
-//     subgraphs.reserve(num);
-
-//     // Foreach component (can be optimized ...)
-//     for ( std::size_t comp_id = 0; comp_id < num; ++comp_id )
-//     {
-//         // Ids of floes within this component
-//         std::vector<std::size_t> ids;
-//         for ( std::size_t i = 0; i < size(components); ++i )
-//             if ( components[i] == comp_id )
-//                 ids.push_back(i);
-
-//         // Creating sub graph if the component contains more than 1 floe|obstacle
-//         if ( ids.size() >= 2 )
-//         {
-//             subgraphs.push_back({});
-
-//             // This version keeps all contacts between floes that have at least one active contact (even if it is with other floe)
-//             copy_graph( graph_from_ids( graph, ids ), subgraphs[subgraphs.size()-1]);
-
-//             // This version only keeps all contacts between two floes that have at least one active contact in common.
-//             //copy_graph( graph_from_ids( active_graph, ids ), subgraphs[subgraphs.size()-1]);
-//         }
-//     }
-    
-//     return subgraphs;
-// }
-
 
 template < typename TGraph >
 std::vector<TGraph>
