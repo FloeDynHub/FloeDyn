@@ -212,7 +212,7 @@ collision_subgraphs( TGraph const& graph )
     {
         // Ids of floes within this component
         std::vector<std::size_t> ids;
-        for ( std::size_t i = 0; i < size(components); ++i )
+        for ( std::size_t i = 0; i < components.size(); ++i )
             if ( components[i] == comp_id )
                 ids.push_back(i);
 

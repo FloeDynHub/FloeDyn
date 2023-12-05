@@ -25,13 +25,15 @@ struct FloeVertex
 	FloeVertex() : floe{nullptr} {}
 	FloeVertex(TFloe const* floe_ptr) : floe{floe_ptr} {}
 	//! Get received impulse
-	inline real_type impulse() const { return m_impulse_received; }
+	inline real_type impulse() const { return *m_impulse_received; }
 	//! Set received impulse
-	inline void set_impulse_received(real_type impulse) const { m_impulse_received = impulse; }
+	inline void add_impulse_received(real_type impulse) const { *m_impulse_received += impulse; }
+	//! The floe
 	TFloe const* floe;
 	//! vertex id in parent graph (used with subgraphs)
 	mutable std::size_t parent_descriptor;
-	mutable real_type m_impulse_received = 0;
+	// mutable real_type m_impulse_received{0};
+	mutable std::shared_ptr<real_type> m_impulse_received{std::make_shared<real_type>(0)};
 };
 
 

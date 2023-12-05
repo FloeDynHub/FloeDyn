@@ -12,6 +12,7 @@
 // #include <memory>
 
 #include "floe/geometry/frame/uv_frame.hpp"
+#include "floe/geometry/frame/frame_transformers.hpp"
 #include "floe/geometry/core/access.hpp"
 #include "floe/geometry/core/coordinate_type.hpp"
 
@@ -113,6 +114,23 @@ struct ContactPoint
         // return relative_speed() < 0;
     }
 
+    //! set received impulse
+    inline void add_impulse_received(point_type const& impulse) const { *m_impulse_received += impulse; }
+    //! get received impulse
+    inline point_type impulse() const { return *m_impulse_received; }
+    //! reset received impulse in absolute frame
+    inline point_type impulse_abs_frame() const {
+        point_type resp;
+        geometry::transform(
+            this->impulse(),
+            resp,
+            geometry::frame::transformer(
+                typename floe_type::frame_type{{0, 0}, this->frame.theta()}
+            )
+        );
+        return resp;
+    }
+
     TFloe const* floe1; //!< First floe in contact
     TFloe const* floe2; //!< Second floe in contact
     TFrame       frame; //!< Frame of contact
@@ -120,6 +138,8 @@ struct ContactPoint
     mutable std::shared_ptr<real_type> m_relative_speed{std::make_shared<real_type>(-1)}; //!< Relative speed cash (for performances)
     //! Floe states changed (Need new relative speed calculation), shared pointer to be shared with subgraphs.
     mutable std::shared_ptr<bool> floe_states_changed{std::make_shared<bool> (true)};
+    //! impulse applied at this contact point during collision resolution
+    mutable std::shared_ptr<point_type> m_impulse_received{std::make_shared<point_type>(0,0)};
 };
 
 //! Exterior function to test if a contact is active (should be the only place ...)

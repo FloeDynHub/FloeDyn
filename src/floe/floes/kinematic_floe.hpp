@@ -17,6 +17,7 @@
 #include "floe/floes/floe_h.hpp"
 #include "floe/geometry/arithmetic/dot_product.hpp"
 #include "floe/geometry/arithmetic/arithmetic.hpp"
+// #include "floe/geometry/arithmetic/point_operators.hpp"
 
 #include "floe/floes/floe_interface.hpp"
 
@@ -50,14 +51,13 @@ class KinematicFloe : public FloeInterface<
 public:
     
     // Type traits
-    typedef typename TStaticFloe::real_type     real_type;
-    typedef typename TStaticFloe::point_type    point_type;
-    typedef typename TStaticFloe::geometry_type geometry_type;
-    typedef typename TStaticFloe::mesh_type     mesh_type;
-    typedef typename TStaticFloe::frame_type    frame_type;
-    typedef TStaticFloe                         static_floe_type;
-    typedef TState                              state_type;
-
+    using real_type = typename TStaticFloe::real_type;
+    using point_type = typename TStaticFloe::point_type;
+    using geometry_type = typename TStaticFloe::geometry_type;
+    using mesh_type = typename TStaticFloe::mesh_type;
+    using frame_type = typename TStaticFloe::frame_type;
+    using static_floe_type = TStaticFloe;
+    using state_type = TState;
     using floe_h_type = floe::floes::Floe_h<mesh_type>;
     using Uptr_geometry_type = std::unique_ptr<geometry_type>;
     using floe_interface_type = FloeInterface<TStaticFloe, TState>;
@@ -165,6 +165,55 @@ public:
         return m_state.speed + m_state.rot * fg::direct_orthogonal(p - m_state.pos);
     }
 
+    std::size_t boundary_nb_points() const {
+        return this->geometry().outer().size();
+    }
+
+    void add_contact_impulse(point_type contact_point, point_type impulse, real_type time) const {
+        // round time to 1e-1
+        real_type t = std::round(time * 10) / 10;
+        if (m_detailed_impulse_received.find(t) == m_detailed_impulse_received.end()) {
+            // not found
+            std::size_t nb_points = this->boundary_nb_points();
+            m_detailed_impulse_received[t] = std::vector<point_type>(nb_points, {0,0});
+        }
+        // find closest boundary point to contact_point
+        std::size_t closest_point = 0;
+        real_type min_dist = norm2(contact_point - this->geometry().outer()[0]);
+        for (std::size_t i = 1; i < this->boundary_nb_points(); ++i) {
+            real_type dist = norm2(contact_point - this->geometry().outer()[i]);
+            if (dist < min_dist) {
+                min_dist = dist;
+                closest_point = i;
+            }
+        }
+        // Add impulses at closest_point to m_detailed_impulse_received[t]
+        m_detailed_impulse_received[t][closest_point] += impulse;
+        // Remove old entries from m_detailed_impulse_received (keep only 1s)
+        for (auto it = m_detailed_impulse_received.begin(); it != m_detailed_impulse_received.end(); ) {
+            if (it->first < t - 1) {
+                it = m_detailed_impulse_received.erase(it);
+            } else {
+                ++it;
+            }
+        }
+        // TODO smart method for filtering keys ?
+    }
+
+    void get_dirichlet_condition(real_type time) const {
+        auto nb_points = this->boundary_nb_points();
+        std::vector<point_type> resp(nb_points, {0,0});
+        // iter over m_detailed_impulse_received and add impulses to resp c++14 way
+        for (const auto t : m_detailed_impulse_received) {
+            if (t.first > time - 1) {
+                for (int i = 0; i < nb_points; ++i) {
+                    resp[i] += t.second[i];
+                }
+            }
+        }
+        // return resp;
+    }
+
 private:
 
     Uptr_geometry_type m_geometry;  //!< Geometry (border)
@@ -176,6 +225,11 @@ private:
     floe_h_type m_floe_h; //!< Discretisation of the Floe
     mutable real_type m_total_impulse_received; //!< Sum all collision impulses this floe received
 
+    /*! keep track of recent collisions
+     *  accumulate projected impulses on floe's boundary edges for discretized time
+     *  m_recent_impulse_received will keep only recent time informations
+     */
+    mutable std::map<real_type, std::vector<point_type>> m_detailed_impulse_received;
 };
 
 
