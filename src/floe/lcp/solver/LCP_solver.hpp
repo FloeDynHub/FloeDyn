@@ -218,7 +218,8 @@ LCPSolver<T>::solve( TContactGraph& graph, bool& success, int lcp_failed_stats[]
                 if (ECd > 1) {
                     // std::cout << "Oops I'm with an exceed of kinetic energy!\n";
                     lcp_failed_stats[2] += 1;
-                    Sold = (1 + epsilon) * Solc - epsilon * graph_lcp.W; // return this instead of Sold
+                    real_type coeff = 1 + epsilon;
+                    Sold = coeff * Solc - epsilon * graph_lcp.W; // return this instead of Sold
                     graph_lcp.compute_impulses(lcp_orig, epsilon);
                 } else {
                     // Impulse calculation

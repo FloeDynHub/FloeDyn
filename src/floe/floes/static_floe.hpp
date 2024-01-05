@@ -135,12 +135,26 @@ public:
     inline void         set_density( real_type const& density ) { m_density = density; m_moment_cst = -1; }
     inline real_type const&    density()   const { return m_density; }
     
-	// inline std::vector<StaticFloe> fracture_floe(); //{point_type mass_center {0,0};}
 	inline void update_caracteristic(real_type init_density,real_type init_mu_static, real_type init_thickness, real_type init_C_w);
 	// inline void generate_mesh(); 
 	inline point_type get_mass_center() ;
 	inline std::vector<TGeometry> fracture_floe();
-    inline std::vector<TGeometry> fracture_floe_2();
+
+    real_type min_radius() const
+    {
+        real_type min_radius = std::numeric_limits<real_type>::max();
+        for (size_t i = 0; i < m_geometry->outer().size(); ++i)
+        {
+            auto const& p = m_geometry->outer()[i];
+            for (size_t j = 0; j < m_geometry->outer().size(); ++j) {
+                auto const& q = m_geometry->outer()[j];
+                if ((i - j) % m_geometry->outer().size() < m_geometry->outer().size() / 3) // TODO : improve this logic
+                    continue; // Too close to be a valid radius
+                min_radius = std::min(min_radius, norm2(p - q));
+            }
+        }
+        return min_radius;
+    }
 
 private:
 
@@ -193,43 +207,10 @@ private:
 
 };
 
+
 template <typename T,typename TPoint,typename TGeometry,typename TMesh,typename TFrame ,typename TDensity>
 std::vector<TGeometry> 
 StaticFloe<T,TPoint,TGeometry,TMesh,TFrame,TDensity>::fracture_floe()
-{
-	// arbitrary choice, there is 24 edges so I choose to have the fracture
-    // crossed on the opposite edge
-    std::size_t crack_it = std::size_t(this->geometry().outer().size() / 2);
-    point_type border1_begin {this->geometry().outer()[0] + (this->geometry().outer()[1] - this->geometry().outer()[0]) * 0.6};
-    point_type border1_end {this->geometry().outer()[crack_it] + (this->geometry().outer()[crack_it + 1] - this->geometry().outer()[crack_it]) * 0.4};
-    point_type border2_begin {this->geometry().outer()[crack_it] + (this->geometry().outer()[crack_it + 1] - this->geometry().outer()[crack_it]) * 0.6};
-    point_type border2_end {this->geometry().outer()[0] + (this->geometry().outer()[1] - this->geometry().outer()[0]) * 0.4};
-	// create geometry type...
-	geometry_type border1;
-	// rajouter des point entre les deux !
-	border1.outer().push_back(border1_begin);
-	for (std::size_t i = 1; i <= crack_it ; ++i){
-		border1.outer().push_back(this->geometry().outer()[i]);
-	}
-	border1.outer().push_back(border1_end);
-	
-	geometry_type border2;
-	border2.outer().push_back(border2_begin);
-	for (std::size_t i = crack_it + 1; i < this->geometry().outer().size() ; ++i){
-		border2.outer().push_back(this->geometry().outer()[i]);
-	}
-    border2.outer().push_back(this->geometry().outer()[0]);
-	border2.outer().push_back(border2_end);
-	
-	// create two floe, generate by the border and caracteristic of the initial floe ?
-	std::vector<TGeometry> new_border {border1,border2};
-    return new_border;
-}
-
-
-template <typename T,typename TPoint,typename TGeometry,typename TMesh,typename TFrame ,typename TDensity>
-std::vector<TGeometry> 
-StaticFloe<T,TPoint,TGeometry,TMesh,TFrame,TDensity>::fracture_floe_2()
 {
     // Better basic fracture : cutting floe according to crack geometry
     auto& boundary = this->geometry().outer();
@@ -311,9 +292,6 @@ StaticFloe<T,TPoint,TGeometry,TMesh,TFrame,TDensity>::get_mass_center()
             [] (real_type x, real_type y) { return 1.; },
             m_mesh,integration_strategy()
         );
-        
-        //TPoint mass_center {0,0};
-        
         return mass_center;
 }
 

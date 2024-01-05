@@ -200,10 +200,10 @@ public:
         // TODO smart method for filtering keys ?
     }
 
-    void get_dirichlet_condition(real_type time) const {
+    std::vector<point_type> get_dirichlet_condition(real_type time) const {
         auto nb_points = this->boundary_nb_points();
         std::vector<point_type> resp(nb_points, {0,0});
-        // iter over m_detailed_impulse_received and add impulses to resp c++14 way
+        // iter over m_detailed_impulse_received and cumul impulses
         for (const auto t : m_detailed_impulse_received) {
             if (t.first > time - 1) {
                 for (int i = 0; i < nb_points; ++i) {
@@ -211,7 +211,11 @@ public:
                 }
             }
         }
-        // return resp;
+        return resp;
+    }
+
+    real_type min_radius() const {
+        return this->static_floe().min_radius();
     }
 
 private:
@@ -268,27 +272,11 @@ KinematicFloe<TStaticFloe,TState>::kinetic_energy() const
 }
 
 
-// template < typename TStaticFloe, typename TState >
-// std::vector<KinematicFloe<TStaticFloe,TState>>
-// KinematicFloe<TStaticFloe,TState>::fracture_floe(){
-// 	// fracture floe, today arbitrary fracture
-// 	std::vector<TStaticFloe> new_static_floes {this->static_floe().fracture_floe()};
-// 	// create new kinematic floe from static floe
-// 	std::vector<KinematicFloe<TStaticFloe,TState>>  new_floes; // {KinematicFloe<TStaticFloe,TState>(new_static_floes[0]),KinematicFloe<TStaticFloe,TState>(new_static_floes[1])};
-// 	//KinematicFloe<TStaticFloe,TState> new_floes;
-// 	// update 
-// 	//point_type mass_center_floe_init {this->static_floe().get_mass_center()};
-// 	//new_floes[0].update_after_fracture(m_state,m_obstacle,m_total_impulse_received,mass_center_floe_init);
-// 	//new_floes[1].update_after_fracture(m_state,m_obstacle,m_total_impulse_received,mass_center_floe_init);
-// 	//this->m_state.desactivate();
-// 	return new_floes;
-// }
-
 template < typename TStaticFloe, typename TState >
 std::vector<typename TStaticFloe::geometry_type>
 KinematicFloe<TStaticFloe,TState>::fracture_floe(){
-	// fracture floe (arbitrary fracture for now)
-	return this->static_floe().fracture_floe_2();
+	// fracture floe (almost arbitrary fracture for now)
+	return this->static_floe().fracture_floe();
 }
 
 //! Update frame, geometry and mesh with respect to the current state.
