@@ -206,11 +206,11 @@ OptimizedFloe<TFloe>::init()
         max_radius = std::max( max_radius, disk.radius );
     }
     m_tau = max_radius + max_radius/5; // ??? (see create_disk.m, l.16)
-    //m_global_disk = return_buffer<circle_type>( circle_envelope<circle_type>(points), m_tau );
     m_global_disk = return_buffer<circle_type>( circle_envelope<circle_type>(boundary), m_tau );
 
     // Minimum crack energy
-    real_type ice_crack_coeff = 1;
+    // Source coeff : MODÉLISATION DE LA FRACTURE DE LA GLACE DE MER PAR LA HOULE, Alexandre TLILI, 2022
+    real_type ice_crack_coeff = 1.5; // Gc entre 1,5 J m−2 et 3,5 J m−2
     m_min_crack_energy = ice_crack_coeff * m_floe.thickness() * m_floe.min_radius();
 }
 
