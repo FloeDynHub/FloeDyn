@@ -63,7 +63,7 @@ public:
      *
      * \param floe Optimized floe.
      */
-    OptimizedFloe( floe_type const& floe ) 
+    OptimizedFloe( floe_type const& floe )
         : m_floe(floe), m_frame(floe.frame())
     {
         init();
@@ -74,7 +74,7 @@ public:
 
     //! Default destructor
     virtual ~OptimizedFloe() = default;
-    
+
     /*! Update optimizer
      *
      * Detects frame change of the floe and update optimization datas.
@@ -117,7 +117,7 @@ private:
 /*! Return circle envelope of a geometry
  * \TODO: put that elsewhere !
  */
-template < 
+template <
     typename TCircle,
     typename TMultiPoint
 >
@@ -126,7 +126,7 @@ TCircle circle_envelope ( TMultiPoint const& points )
     using namespace floe::geometry;
     typedef typename point_type<TMultiPoint>::type point_type;
     typedef typename coordinate_type<TCircle>::type real_type;
-    
+
     // Circle center
     const auto center = return_centroid<point_type>(points);
 
@@ -166,7 +166,7 @@ OptimizedFloe<TFloe>::init()
 
     // Points count per disk
     const std::size_t n_pts_disk = (n_points < 50 ) ? 2 : ( (n_points < 120) ? 4 : 6 );
-        
+
     // Initialization
     m_local_disks.resize(0);
     m_local_points.resize(0);
