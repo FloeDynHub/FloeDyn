@@ -211,7 +211,7 @@ OptimizedFloe<TFloe>::init()
     // Minimum crack energy
     // Source coeff : MODÉLISATION DE LA FRACTURE DE LA GLACE DE MER PAR LA HOULE, Alexandre TLILI, 2022
     real_type ice_crack_coeff = 1.5; // Gc entre 1,5 J m−2 et 3,5 J m−2
-    m_min_crack_energy = ice_crack_coeff * m_floe.thickness() * m_floe.min_radius();
+    m_min_crack_energy = ice_crack_coeff * m_floe.static_floe().thickness() * m_floe.min_radius();
 }
 
 //! Update optimization datas.
