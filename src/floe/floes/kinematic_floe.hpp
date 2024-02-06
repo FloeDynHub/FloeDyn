@@ -169,50 +169,9 @@ public:
         return this->geometry().outer().size();
     }
 
-    void add_contact_impulse(point_type contact_point, point_type impulse, real_type time) const {
-        // round time to 1e-1
-        real_type t = std::round(time * 10) / 10;
-        if (m_detailed_impulse_received.find(t) == m_detailed_impulse_received.end()) {
-            // not found
-            std::size_t nb_points = this->boundary_nb_points();
-            m_detailed_impulse_received[t] = std::vector<point_type>(nb_points, {0,0});
-        }
-        // find closest boundary point to contact_point
-        std::size_t closest_point = 0;
-        real_type min_dist = norm2(contact_point - this->geometry().outer()[0]);
-        for (std::size_t i = 1; i < this->boundary_nb_points(); ++i) {
-            real_type dist = norm2(contact_point - this->geometry().outer()[i]);
-            if (dist < min_dist) {
-                min_dist = dist;
-                closest_point = i;
-            }
-        }
-        // Add impulses at closest_point to m_detailed_impulse_received[t]
-        m_detailed_impulse_received[t][closest_point] += impulse;
-        // Remove old entries from m_detailed_impulse_received (keep only 1s)
-        for (auto it = m_detailed_impulse_received.begin(); it != m_detailed_impulse_received.end(); ) {
-            if (it->first < t - 1) {
-                it = m_detailed_impulse_received.erase(it);
-            } else {
-                ++it;
-            }
-        }
-        // TODO smart method for filtering keys ?
-    }
+    void add_contact_impulse(point_type contact_point, point_type impulse, real_type time) const;
 
-    std::vector<point_type> get_dirichlet_condition(real_type time) const {
-        auto nb_points = this->boundary_nb_points();
-        std::vector<point_type> resp(nb_points, {0,0});
-        // iter over m_detailed_impulse_received and cumul impulses
-        for (const auto t : m_detailed_impulse_received) {
-            if (t.first > time - 1) {
-                for (int i = 0; i < nb_points; ++i) {
-                    resp[i] += t.second[i];
-                }
-            }
-        }
-        return resp;
-    }
+    std::vector<point_type> get_dirichlet_condition(real_type time) const;
 
     real_type min_radius() const {
         return this->static_floe().min_radius();
@@ -235,6 +194,53 @@ private:
      */
     mutable std::map<real_type, std::vector<point_type>> m_detailed_impulse_received;
 };
+
+template < typename TStaticFloe, typename TState >
+void KinematicFloe<TStaticFloe,TState>::add_contact_impulse(point_type contact_point, point_type impulse, real_type time) const {
+    // round time to 1e-1
+    real_type t = std::round(time * 10) / 10;
+    if (m_detailed_impulse_received.find(t) == m_detailed_impulse_received.end()) {
+        // not found
+        std::size_t nb_points = this->boundary_nb_points();
+        m_detailed_impulse_received[t] = std::vector<point_type>(nb_points, {0,0});
+    }
+    // find closest boundary point to contact_point
+    std::size_t closest_point = 0;
+    real_type min_dist = norm2(contact_point - this->geometry().outer()[0]);
+    for (std::size_t i = 1; i < this->boundary_nb_points(); ++i) {
+        real_type dist = norm2(contact_point - this->geometry().outer()[i]);
+        if (dist < min_dist) {
+            min_dist = dist;
+            closest_point = i;
+        }
+    }
+    // Add impulses at closest_point to m_detailed_impulse_received[t]
+    m_detailed_impulse_received[t][closest_point] += impulse;
+    // Remove old entries from m_detailed_impulse_received (keep only 1s)
+    for (auto it = m_detailed_impulse_received.begin(); it != m_detailed_impulse_received.end(); ) {
+        if (it->first < t - 1) {
+            it = m_detailed_impulse_received.erase(it);
+        } else {
+            ++it;
+        }
+    }
+    // TODO smart method for filtering keys ?
+}
+
+template < typename TStaticFloe, typename TState >
+std::vector<typename TStaticFloe::point_type> KinematicFloe<TStaticFloe,TState>::get_dirichlet_condition(real_type time) const {
+    auto nb_points = this->boundary_nb_points();
+    std::vector<point_type> resp(nb_points, {0,0});
+    // iter over m_detailed_impulse_received and cumul impulses
+    for (const auto t : m_detailed_impulse_received) {
+        if (t.first > time - 1) {
+            for (int i = 0; i < nb_points; ++i) {
+                resp[i] += t.second[i];
+            }
+        }
+    }
+    return resp;
+}
 
 
 //! Update frame, geometry and mesh with respect to the current state.
