@@ -146,6 +146,9 @@ public:
     //! Kinetic energy
     real_type kinetic_energy() const;
 
+    //! Impluse energy
+    real_type impulse_energy() const;
+
     //! Get total received impulse
     real_type total_received_impulse() const { return m_total_impulse_received; }
     //! Add received impulse
@@ -194,6 +197,19 @@ private:
      */
     mutable std::map<real_type, std::vector<point_type>> m_detailed_impulse_received;
 };
+
+template < typename TStaticFloe, typename TState >
+typename KinematicFloe<TStaticFloe,TState>::real_type
+KinematicFloe<TStaticFloe,TState>::impulse_energy() const {
+    auto impulsive_energy = 0;
+    for (auto it = m_detailed_impulse_received.begin(); it != m_detailed_impulse_received.end(); it++) {
+      auto timed_impulse = it->second;
+      for (auto i = 0; i < timed_impulse.size(); i++) {
+        impulsive_energy += 0.5*norm2(timed_impulse[i])^2 / m_floe->mass();
+      }
+    }
+    return impulsive_energy;
+}
 
 template < typename TStaticFloe, typename TState >
 void KinematicFloe<TStaticFloe,TState>::add_contact_impulse(point_type contact_point, point_type impulse, real_type time) const {
