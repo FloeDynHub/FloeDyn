@@ -232,15 +232,13 @@ void KinematicFloe<TStaticFloe,TState>::add_contact_impulse(point_type contact_p
     }
     // Add impulses at closest_point to m_detailed_impulse_received[t]
     m_detailed_impulse_received[t][closest_point] += impulse;
+
     // Remove old entries from m_detailed_impulse_received (keep only 1s)
-    for (auto it = m_detailed_impulse_received.begin(); it != m_detailed_impulse_received.end(); ) {
-        if (it->first < t - 1) {
-            it = m_detailed_impulse_received.erase(it);
-        } else {
-            ++it;
-        }
+    // (std::map is ordered ...)
+    auto it = m_detailed_impulse_received.begin();
+    while (it != m_detailed_impulse_received.end() && it->first < t - 1) {
+        it = m_detailed_impulse_received.erase(it);
     }
-    // TODO smart method for filtering keys ?
 }
 
 template < typename TStaticFloe, typename TState >
