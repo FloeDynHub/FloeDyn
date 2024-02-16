@@ -1,0 +1,12 @@
+version: '3.7'
+
+services:
+  floedyn:
+    # platform: linux/x86_64
+    build: .
+    command: tail -f /dev/null
+    expose:
+      - 22
+    volumes:
+      - ..:/usr/src/app/floedyn
+    restart: always
