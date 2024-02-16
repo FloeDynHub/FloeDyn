@@ -73,10 +73,6 @@ floedyn_includes = {
     'cereal' : [],
     }
 
-#import find_package as fp
-
-
-
 
 def options(opt):
     opt.load('compiler_cxx gxx')
@@ -108,9 +104,6 @@ def options(opt):
 def configure_package(conf, name, required_libs=None, includes_suffix=None):
     print(f'---> Start conf for package {name} ...')
     searchpath = getattr(conf.env, name, conf.env.default_search_path)
-    #setattr(conf.env, name.upper(), searchpath)
-    # if len(searchpath.Value) < 1:
-    #     setattr(conf.env, name.upper(), conf.env.default_search_path)
     libpath_name = 'LIBPATH_' + name.upper()
     includespath_name = 'INCLUDES_' + name.upper()
     if isinstance(searchpath, list):
@@ -244,59 +237,6 @@ def run_tests(ctx):
     call("%s/%s" % (out, test_target))
 
 
-# def get_option_dict(debug=True):
-#     OPTION_DICT = {
-#         "includes": [ '../src',
-#                       '/usr/local/include',
-#                       '/usr/include',
-#                       '/usr/local/include/eigen3',
-#                       # '/usr/local/include/siconos',
-#                     ], #+ [path for path in os.environ["PATH"].split(":") if not "bin" in path],
-#         "lib": ['boost_system',
-#                 'boost_program_options',
-#                 'matio',
-#                 "hdf5",
-#                 "hdf5_cpp",
-#                 "gmp", "mpfr", "boost_thread",
-#                 # "siconos_numerics"
-#                 ],
-#         "libpath": ["/usr/local/lib", "/usr/lib"], # + os.environ.get("LD_LIBRARY_PATH", "/").split(":"),
-#         "framework": ["Accelerate"],
-#         "frameworkpath" : ["/System/Library/Frameworks"]
-        
-#     }
-#     if debug:
-#         OPTION_DICT.update({
-#             "linkflags": ['-g'],
-#             "cxxflags": [
-#                 '-std=c++11',
-#                  '-O0',
-#                  "-Wall", #"-Wextra",
-#             ],
-#             "defines": []
-#         })
-#     else:
-#         OPTION_DICT.update({
-#             "linkflags": [],
-#             "cxxflags": [
-#                 '-std=c++11',
-#                  "-O3",
-#                  # "-march=native", # g++ fails with this
-#                  "-mtune=native",
-#                  "-Wall", "-Wextra", #"-Wshadow",
-#                  "-Wno-unused-parameter", "-Wno-unused-local-typedef",
-#                  "-Wno-gnu-anonymous-struct", "-Wno-nested-anon-types", # floe/geometry/geometries/point.hpp
-#                  "-Wno-redeclared-class-member",
-#                  "-isystem /usr/local/include/boost/",
-#                  # "-pedantic"
-#              ],
-#             "defines": ["NDEBUG"]
-#         })
-#     OPTION_DICT["cxxflags"].extend(os.environ.get("CFLAGS", "").split(" "))
-#     OPTION_DICT["linkflags"].extend(os.environ.get("LDFLAGS", "").split(" "))
-#     return OPTION_DICT
-
-
 def get_option_dict(debug=True):
     OPTION_DICT = {
         "includes": ['../src'
@@ -306,10 +246,8 @@ def get_option_dict(debug=True):
                 'matio',
                 "hdf5",
                 "hdf5_cpp",
-                "gmp", "mpfr", "boost_thread",
-                # "siconos_numerics"
+                "gmp", "mpfr", "boost_thread"
                 ],
-        #"libpath": ["/home/perignon/.nix-profiles"], # + os.environ.get("LD_LIBRARY_PATH", "/").split(":"),
         "framework": ["Accelerate"],
         "frameworkpath" : ["/System/Library/Frameworks"]
     }
@@ -367,7 +305,6 @@ def build(bld):
         opts["defines"].append('MPIRUN')
         opts["cxxflags"].extend(subprocess.check_output(["mpicc", "--showme:compile"]).strip().split(b" "))
         opts["linkflags"].extend(subprocess.check_output(["mpicc", "--showme:link"]).strip().split(b" "))
-        # print opts["linkflags"]
     if bld.options.target in ["FLOE", "FLOE_PBC", "FLOE_MPI"]:
         opts["source"] = ["product/FLOE.cpp"] + recursive_file_finder("src/floe", "*.cpp")
         opts["target"] = bld.options.target

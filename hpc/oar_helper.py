@@ -1,9 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
- 
-""" Print froggy job commands """
+"""
+Prints command for submitting a job on froggy/dahu or any cluster running OAR with OpenMPI.
+This helper can calculate the number of cores needed for a given number of ocean parcels.
+--nbside : number of ocean parcels per side = 5 for a 5x5 grid
+"""
 
-def print_froggy_commands(**opts):
+def print_oar_commands(**opts):
     N = opts.get("nbside")
     nb_proc = 4 * N * (N-1) + 2
     nb_core_per_node = 16
@@ -35,7 +38,7 @@ def run():
     parser.add_argument('-n', '--nbside', type=int, default=1, help='number of ocean parcels per side')
     OPTIONS = parser.parse_args()
 
-    print_froggy_commands(**vars(OPTIONS))
+    print_oar_commands(**vars(OPTIONS))
 
 if __name__ == "__main__":
     run()

@@ -1,6 +1,0 @@
-#! /usr/bin/env python
-# encoding: utf-8
-
-def hello(ctx):
-    print('→ hello from ' + ctx.path.abspath())
-    print "hello world"

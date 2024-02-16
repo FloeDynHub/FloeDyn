@@ -1,0 +1,5 @@
+# plot module's python requirements
+# for video creation, you need to install ffmpeg too
+h5py==2.7.0
+numpy==1.11.2
+matplotlib==3.8.2
