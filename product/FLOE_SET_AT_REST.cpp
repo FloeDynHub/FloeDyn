@@ -6,7 +6,7 @@
 
 
 /*
-Create an hdf5 input file from output file
+Loads an input file, stops floes in the defined window, and writes a new input file.
 */
 
 
@@ -35,7 +35,7 @@ int main( int argc, char* argv[] )
 
     std::string input_list_floe_filename = argv[1];
     // bool generate_floes = false;
-    std::string matlab_topaz_filename = "io/inputs/DataTopaz01.mat";
+    std::string matlab_topaz_filename = "io/library/DataTopaz01.mat";
 
     problem_type P;
     P.QUIT = &QUIT;

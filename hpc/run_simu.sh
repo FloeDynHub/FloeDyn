@@ -9,7 +9,7 @@ nb_time_steps=$2
 # Absolute path to floedyn runner 
 EXE=$HOME/Floe_Cpp/build/FLOE_MPI
 # Absolute path to input files 
-INPUTDIR=$HOME/Floe_Cpp/io/inputs
+INPUTDIR=$HOME/Floe_Cpp/io/library
 
 nbcores=`cat $OAR_NODE_FILE|wc -l`
 rundir=/bettik/$USER/floedyn/F_${OAR_JOB_ID}
@@ -17,7 +17,7 @@ echo ${OAR_JOB_ID} ${HOSTNAME} $input_file $nb_time_steps ${OAR_JOB_NAME}>> jobs
 
 mkdir -p $rundir/io/inputs
 mkdir -p $rundir/io/outputs
-cp $INPUTDIR/DataTopaz01.mat $rundir/io/inputs/
+cp $INPUTDIR/DataTopaz01.mat $rundir/io/library/
 cd $rundir
 source /applis/site/guix-start.sh
 refresh_guix floedyn

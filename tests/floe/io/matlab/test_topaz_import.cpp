@@ -9,7 +9,7 @@ TEST_CASE( "Test matlab topaz data import", "[ope]" ) {
 	using namespace floe::io::matlab;
 	using point_vector_type = std::vector<floe::geometry::Point<double>>;
 
-    std::string file_name = "tests/floe/io/matlab/DataTopaz01.mat";
+    std::string file_name = "tests/floe/io/library/DataTopaz01.mat";
     point_vector_type ocean_data;
     point_vector_type air_data;
     read_topaz_from_file(file_name, ocean_data, air_data);

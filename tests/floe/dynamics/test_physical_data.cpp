@@ -10,7 +10,7 @@ TEST_CASE( "Test physical data manager", "[ope]" ) {
     using namespace std;
     using point_type = floe::geometry::Point<double>;
 
-    std::string file_name = "tests/floe/io/matlab/DataTopaz01.mat";
+    std::string file_name = "tests/floe/io/library/DataTopaz01.mat";
 
     double Time = 0;
     PhysicalData<point_type> P{Time};

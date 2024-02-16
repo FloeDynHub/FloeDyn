@@ -21,15 +21,10 @@ int main( int argc, char* argv[] )
     sigfillset(&sa.sa_mask);
     sigaction(SIGINT,&sa,NULL); 
 
-    #ifdef _OPENMP
-    // omp_set_num_threads(1);
-    Eigen::initParallel();
-    #endif
-
     std::string matlab_list_floe_filename = argv[1];
     bool generate_floes = false;
     if (matlab_list_floe_filename == "generator") generate_floes = true; 
-    std::string matlab_topaz_filename = "io/inputs/DataTopaz01.mat";
+    std::string matlab_topaz_filename = "io/library/DataTopaz01.mat";
 
     types::problem_type P;
     {
