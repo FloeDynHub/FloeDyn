@@ -5,13 +5,14 @@
 
 ### folders ###
 build/
+build_docker/
 doxygen-1.8.13/
 External_Libraries/
 FloeCpp.xcodeproj/
 io/outputs
 io/stdout
 io/videos
-io/inputs 
+io/inputs
 
 ### macOS ###
 *.DS_Store
@@ -25,6 +26,7 @@ OAR.*
 *.pyc
 
 ### waf files ###
+.lock-waf_linux_build
 .lock-waf_linux2_build
 .lock-waf_darwin_build
 .waf*
