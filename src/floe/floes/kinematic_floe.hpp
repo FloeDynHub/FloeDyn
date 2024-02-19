@@ -156,8 +156,8 @@ public:
     //! Reset received impulse
     void reset_impulse(real_type new_impulse = 0) const { m_total_impulse_received = new_impulse; }
 
-    //  std::vector<KinematicFloe<TStaticFloe,TState>> fracture_floe();
     std::vector<geometry_type> fracture_floe();
+    std::vector<geometry_type> fracture_floe_from_collisions();
 
     void update_after_fracture(const state_type init_state,const bool init_obstacle_m,const real_type init_total_impulse_received, point_type mass_center_floe_init);
 
@@ -205,7 +205,8 @@ KinematicFloe<TStaticFloe,TState>::impulse_energy() const {
     for (auto it = m_detailed_impulse_received.begin(); it != m_detailed_impulse_received.end(); it++) {
       auto timed_impulse = it->second;
       for (auto i = 0; i < timed_impulse.size(); i++) {
-        impulsive_energy += 0.5*norm2(timed_impulse[i])^2 / m_floe->mass();
+        auto impulse_norm = norm2(timed_impulse[i]);
+        impulsive_energy += 0.5 * impulse_norm * impulse_norm / m_floe->mass();
       }
     }
     return impulsive_energy;
@@ -280,8 +281,9 @@ KinematicFloe<TStaticFloe,TState>::update()
     // Update Mesh (if any)
     if ( m_floe->has_mesh() )
     {
-        geometry::transform( m_floe->get_mesh(), mesh(), trans );
+        geometry::transform( m_floe->get_mesh(), mesh(), trans ); // TODO bad_array_new_length PB HERE
     }
+    // std::cout << "KinematicFloe::update() 6" << std::endl;
 }
 
 template < typename TStaticFloe, typename TState >
@@ -297,6 +299,17 @@ std::vector<typename TStaticFloe::geometry_type>
 KinematicFloe<TStaticFloe,TState>::fracture_floe(){
     // fracture floe (almost arbitrary fracture for now)
     return this->static_floe().fracture_floe();
+}
+
+template < typename TStaticFloe, typename TState >
+std::vector<typename TStaticFloe::geometry_type>
+KinematicFloe<TStaticFloe,TState>::fracture_floe_from_collisions(){
+    if (this->is_obstacle()) return {}; // no fracture for obstacles
+    if (this->impulse_energy() > this->static_floe().min_crack_energy()) {
+        std::cout << "Floe fractured because " << this->impulse_energy() << " >= " << this->static_floe().min_crack_energy() << std::endl;
+        return this->static_floe().fracture_floe();
+    }
+    return {};
 }
 
 //! Update frame, geometry and mesh with respect to the current state.

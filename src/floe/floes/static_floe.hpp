@@ -65,10 +65,10 @@ public:
 
     //! Default constructor.
     StaticFloe() : m_frame{0,0,0}, m_geometry{nullptr}, m_mesh{nullptr}, m_density{917}, m_mu_static{0.7},
-                    m_thickness{1}, m_C_w{5 * 1e-3}, m_area{-1}, m_moment_cst{-1} {}
+                    m_thickness{1}, m_C_w{5 * 1e-3}, m_area{-1}, m_moment_cst{-1}, m_min_crack_energy{0} {}
 
     StaticFloe(geometry_type new_border) : m_frame{0,0,0}, m_geometry{new_border}, m_mesh{nullptr}, m_density{917}, m_mu_static{0.7},
-                    m_thickness{1}, m_C_w{5 * 1e-3}, m_area{-1}, m_moment_cst{-1} {}
+                    m_thickness{1}, m_C_w{5 * 1e-3}, m_area{-1}, m_moment_cst{-1}, m_min_crack_energy{0} {}
 
 
     //! Deleted copy-constructor.
@@ -156,6 +156,9 @@ public:
         return min_radius;
     }
 
+    //! Area
+    inline real_type min_crack_energy() const { return (m_min_crack_energy > 0) ? m_min_crack_energy : calc_min_crack_energy(); }
+
 private:
 
     frame_type m_frame;         //!< Frame
@@ -169,6 +172,7 @@ private:
     mutable real_type m_area;  //!< Area (cached)
     // mutable density_type m_mass; //!< Mass (cached)
     mutable real_type m_moment_cst; //!< Momentum constant (cached)
+    mutable real_type m_min_crack_energy; //!< Minimum crack energy
 
     //! Calculate area, if not already done.
     inline
@@ -204,6 +208,16 @@ private:
         }
     }
 
+    //! Calculate min crack energy
+    real_type calc_min_crack_energy() const
+    {   
+        // Minimum crack energy
+        // Source coeff : MODÉLISATION DE LA FRACTURE DE LA GLACE DE MER PAR LA HOULE, Alexandre TLILI, 2022
+        real_type ice_crack_coeff = 1.5 * 1000; // Gc entre 1,5 J m−2 et 3,5 J m−2
+        m_min_crack_energy = ice_crack_coeff * m_thickness * this->min_radius();
+        return m_min_crack_energy;
+    }
+
 
 };
 
@@ -228,7 +242,7 @@ StaticFloe<T,TPoint,TGeometry,TMesh,TFrame,TDensity>::fracture_floe()
     std::vector<TGeometry> new_borders;
     // crack is a long and thin rectangle containing crack_start and floe's mass center
     geometry_type crack;
-    real_type crack_width = std::sqrt(this->area()) * 0.02;
+    real_type crack_width = std::sqrt(this->area()) * 0.002;
     point_type crack_ortho = direct_orthogonal(crack_start) / norm2(crack_start);
     point_type crack_delta = crack_ortho * crack_width / 2;
     crack.outer().push_back(crack_start * 1e6 + crack_delta);

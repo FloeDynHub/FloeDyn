@@ -104,7 +104,6 @@ private:
     circle_type         m_global_disk;  //!< The surrounding disk
     multi_circle_type   m_local_disks;  //!< The local disks (surrounding the border)
     local_points_type   m_local_points; //!< Index of first point of the border that is in the corresponding local disk
-    real_type           m_min_crack_energy; //!< Minimum crack energy
 
     /*! Optimizer initialization
      *
@@ -207,11 +206,6 @@ OptimizedFloe<TFloe>::init()
     }
     m_tau = max_radius + max_radius/5; // ??? (see create_disk.m, l.16)
     m_global_disk = return_buffer<circle_type>( circle_envelope<circle_type>(boundary), m_tau );
-
-    // Minimum crack energy
-    // Source coeff : MODÉLISATION DE LA FRACTURE DE LA GLACE DE MER PAR LA HOULE, Alexandre TLILI, 2022
-    real_type ice_crack_coeff = 1.5; // Gc entre 1,5 J m−2 et 3,5 J m−2
-    m_min_crack_energy = ice_crack_coeff * m_floe.static_floe().thickness() * m_floe.min_radius();
 }
 
 //! Update optimization datas.
