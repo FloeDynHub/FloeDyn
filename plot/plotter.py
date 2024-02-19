@@ -1,20 +1,19 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import numpy as np
-# import matplotlib
-# matplotlib.use("GTKAgg")
-from matplotlib import transforms, cm, animation, colors, gridspec
+from matplotlib import cm, animation, colors, gridspec
 import matplotlib.pyplot as plt
 from matplotlib.patches import Circle, Polygon
-from matplotlib.collections import PatchCollection, PolyCollection, CircleCollection
+from matplotlib.collections import PolyCollection
 
-from multiprocessing import Pool, Process, cpu_count
+from multiprocessing import Pool, cpu_count
 from subprocess import call
 
 from utils import filename_without_extension, get_unused_path, check_path_existence, mkdir_path
 import h5py
 import datetime
 import math
+import os
 
 
 class AxeManager(object):
@@ -86,8 +85,8 @@ class FloePlotter(object):
             self.writer.extra_args = ['-profile:v', 'high444', '-tune:v', 'animation', '-preset:v', 'slow', '-level', '4.0']
         funcs[self.OPTIONS.function]()
 
-    def get_final_video_path(self, input_file_path, video_ext="mp4"):
-        filename = filename_without_extension(input_file_path)
+    def get_final_video_path(self, video_ext="mp4"):
+        filename = self.OPTIONS.outname or filename_without_extension(self.OPTIONS.filename)
         if not check_path_existence("io/videos"):
             print('Warning: the directory ''io/videos'' does not exist! It will be created')
             mkdir_path('io/videos')
@@ -314,7 +313,7 @@ class FloePlotter(object):
             fig, update, len(data_global.get("time")), fargs=(data_global, ax_mgr),
             interval=1, blit=False)
         if make_video:
-            anim.save(self.get_final_video_path(self.OPTIONS.filename), writer=self.writer)
+            anim.save(self.get_final_video_path(), writer=self.writer)
         else:
             plt.show()
 
@@ -340,7 +339,7 @@ class FloePlotter(object):
         if getattr(self.OPTIONS, "hd", False):
             fig.set_size_inches(60, 45)
             fig.set_dpi(100)
-            plt.savefig('{}.png'.format(self.OPTIONS.filename))
+            plt.savefig('{}.png'.format(os.path.splitext(self.OPTIONS.filename)[0]))
             # plt.savefig('{}.eps'.format(self.OPTIONS.filename), format='eps')#, dpi=1000)
         else:
             plt.show()
@@ -427,7 +426,7 @@ class FloePlotter(object):
         p.close()
         p.join()
         # Concat all partial video
-        out_filename = self.get_final_video_path(self.OPTIONS.filename)
+        out_filename = self.get_final_video_path()
         call(['ffmpeg',  '-i', 'concat:{}'.format("|".join(partial_file_names)), '-c', 'copy', out_filename])
         call(['rm', '-r', temp_dir])
 
