@@ -255,6 +255,7 @@ def get_option_dict(debug=True):
         OPTION_DICT.update({
             "linkflags": ['-g'],
             "cxxflags": [
+                '-g',
                 '-std=c++14',
                  '-O0',
                  "-Wall", #"-Wextra",
