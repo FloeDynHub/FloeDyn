@@ -155,7 +155,7 @@ public:
     void add_impulse(real_type impulse) const { m_total_impulse_received += impulse; }
     //! Reset received impulse
     void reset_impulse(real_type new_impulse = 0) const { m_total_impulse_received = new_impulse; }
-
+    void reset_detailed_impulse() const { m_detailed_impulse_received.clear(); }
     std::vector<geometry_type> fracture_floe();
     std::vector<geometry_type> fracture_floe_from_collisions();
 
@@ -306,7 +306,7 @@ std::vector<typename TStaticFloe::geometry_type>
 KinematicFloe<TStaticFloe,TState>::fracture_floe_from_collisions(){
     if (this->is_obstacle()) return {}; // no fracture for obstacles
     if (this->impulse_energy() > this->static_floe().min_crack_energy()) {
-        std::cout << "Floe fractured because " << this->impulse_energy() << " >= " << this->static_floe().min_crack_energy() << std::endl;
+        // std::cout << "Floe fractured because " << this->impulse_energy() << " >= " << this->static_floe().min_crack_energy() << std::endl;
         return this->static_floe().fracture_floe();
     }
     return {};

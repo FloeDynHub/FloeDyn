@@ -124,30 +124,16 @@ PartialFloeGroup<TFloe, TFloeList>::fracture_floes()
         auto& floe = base_class::get_floes()[i];
         if (floe.is_obstacle()) continue;
         if (floe.area() < 1) continue;
-        auto new_geometries = floe.fracture_floe_from_collisions();
+        auto new_geometries = base_class::get_floes()[i].fracture_floe_from_collisions();
         if (new_geometries.size() > 1){
-            std::cout << "Floe " << i << " fractured ! in " << new_geometries.size() << std::endl;
-            if (!floe.state().is_active()) std::cout << "Floe " << i << " is not active !" << std::endl;
-            // floe.state().desactivate();
-            // for (std::size_t j = 0; j < new_geometries.size(); ++j){
-            //     this->add_floe(new_geometries[j], i);
-            // }
+            // std::cout << "Floe " << i << " fractured in " << new_geometries.size() << " parts" << std::endl;
             all_new_geometries[i] = new_geometries;
             n_fractured++;
-            break;
         }
     }
 
     // Add new floes
     for (auto const& iter : all_new_geometries){
-        // if (iter.first == 1) {
-        //     // print boundaries of parent floe and new floes
-        //     std::cout << "Parent floe boundaries : " << std::endl;
-        //     for (auto const& p : base_class::get_floes()[iter.first].geometry().outer()){
-        //         // cout p.x and p.y with 10 digits precision
-        //         std::cout << std::setprecision(20) << p.x << " ; " << p.y << std::endl;
-        //     }
-        // }
         for (std::size_t j = 0; j < iter.second.size(); ++j){
             this->add_floe(iter.second[j], iter.first);
         }
@@ -158,12 +144,6 @@ PartialFloeGroup<TFloe, TFloeList>::fracture_floes()
     }
 
     this->update_list_ids_active();
-    // if (n_fractured > 0) {
-    //     std::cout << "New floe boundaries : " << std::endl;
-    //     for (auto const& p : base_class::get_floes()[base_class::get_floes().size() - 1].geometry().outer()){
-    //         std::cout << std::setprecision(20) << p.x << " ; " << p.y << std::endl;
-    //     }
-    // }
     
     for (auto & floe : this->get_floes()) { // TODO why is it needed ?
         floe.static_floe().attach_mesh_ptr(&floe.get_floe_h().m_static_mesh);
