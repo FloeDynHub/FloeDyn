@@ -228,8 +228,10 @@ void PROBLEM::create_optim_vars() {
 
 TEMPLATE_PB
 void PROBLEM::update_optim_vars() {
+    m_floe_group.get_floes().filter_off();
     m_proximity_detector.reset();
     m_proximity_detector.rescan_floe_group();
+    m_floe_group.get_floes().filter_on();
 }
 
 

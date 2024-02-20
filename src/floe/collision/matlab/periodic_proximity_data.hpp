@@ -45,7 +45,8 @@ public:
     //!Empty floe and optim lists
     virtual void reset() override {
         base_class::reset();
-        m_ghost_floes.clear(); m_ghost_optims.clear();
+        m_ghost_floes.clear();
+        m_ghost_optims.clear();
     }
 
     void add_ghost(std::size_t floe_id, point_type translation){
