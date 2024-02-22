@@ -110,7 +110,7 @@ PeriodicProximityData<TFloeGroup, TOptim>
 {
     const std::size_t N { this->nb_floes() };
     if (n < N)
-        return *(this->m_optims[n]);
+        return base_class::get_optim_itf(n);
     else
         return m_ghost_optims[n - N];
 }
