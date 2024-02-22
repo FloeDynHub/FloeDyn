@@ -137,8 +137,8 @@ protected:
     virtual void safe_move_floe_group();
     //! Apply smooth dynamics to floes
     point_type move_floe_group();
-    //! Handle output_datas (console + out file)
-    void output_datas();
+    //! Handle output_data (console + out file)
+    void output_data();
 
     // to allow different behaviour in the generation phase
     bool m_is_generator;
@@ -228,10 +228,8 @@ void PROBLEM::create_optim_vars() {
 
 TEMPLATE_PB
 void PROBLEM::update_optim_vars() {
-    m_floe_group.get_floes().filter_off();
     m_proximity_detector.reset();
     m_proximity_detector.rescan_floe_group();
-    m_floe_group.get_floes().filter_on();
 }
 
 
@@ -240,12 +238,13 @@ void PROBLEM::solve(real_type end_time, real_type dt_default, real_type out_step
     if (reset) this->create_optim_vars();
     m_fracture = fracture;
     m_melting = melting;
+    m_dynamics_manager.set_norm_rand_speed(1e-7);
     if (this->variable_nb_of_floes()) {
         this->m_floe_group.update_list_ids_active();
     }
     this->m_domain.set_default_time_step(dt_default);
     this->m_out_manager.set_out_step(out_step, this->m_domain.time());
-    this->output_datas(); // Initial state out
+    this->output_data(); // Initial state out
     this->detect_proximity(); // First proximity detection
         // condition for fracture :
     // real_type max_area_for_fracture = 0.8*m_floe_group.max_floe_area();
@@ -281,6 +280,7 @@ void PROBLEM::step_solve(bool crack) {
     if (m_fracture && crack) {
     	std::size_t nb_before = m_floe_group.get_floes().size();
     	// m_floe_group.fracture_biggest_floe();
+        // auto nb_fractured = 1;
         auto nb_fractured = m_floe_group.fracture_floes();
         if (nb_fractured > 0) {
             this->update_optim_vars();
@@ -310,7 +310,7 @@ void PROBLEM::step_solve(bool crack) {
     m_timeStepTime+=std::chrono::duration<double, std::nano>(t2-t1);
     m_moveTime+=std::chrono::duration<double, std::nano>(t3-t2);
 
-    output_datas();
+    output_data();
     m_step_nb++;
 }
 
@@ -325,11 +325,14 @@ void PROBLEM::safe_move_floe_group(){
         m_floe_group.recover_previous_step_states();
         m_domain.rewind_time();
         compute_time_step(); // will only divide previous time step
-        m_dynamics_manager.set_norm_rand_speed(1e-7); 
         if (m_domain.time_step() < m_domain.default_time_step() / 1e8) // 1e8 from Q.Jouet
         {   
             // Hack to bypass repeating interpenetrations...
             std::cout << "dt too small -> RECOVER STATES FROM OUT FILE (safe_move_floe_group)" << std::endl;
+            // m_floe_group.get_floes().filter_off();
+            // m_out_manager.save_step(this->m_domain.time(), this->m_dynamics_manager);
+            // m_floe_group.get_floes().filter_on();
+            // *this->QUIT = true;
             recover_states_from_file(m_out_manager.out_file_name(), m_domain.time() + 1);
             // adding a random velocity component to avoid infinite loops
             // used only in generator mode. 
@@ -350,13 +353,12 @@ void PROBLEM::safe_move_floe_group(){
             continue;
         }
         move_floe_group();
-        m_dynamics_manager.set_norm_rand_speed(1e-7); 
         // m_dynamics_manager.set_rand_speed_add(false); // it seems SimuRunner sets it to true by default 
     }    
 }
 
 TEMPLATE_PB
-void PROBLEM::output_datas(){
+void PROBLEM::output_data(){
     std::cout << "----" << std::endl;
     std::cout << " Time : " << this->m_domain.time();
     std::cout << " | delta_t : " << this->m_domain.time_step();

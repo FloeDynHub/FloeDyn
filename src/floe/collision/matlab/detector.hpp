@@ -87,8 +87,6 @@ template <
 >
 void
 MatlabDetector<TFloe, TData, TContact>::prepare_optims() {
-    //    for ( auto optim_ptr : m_prox_data.get_optims() )
-    //        optim_ptr->update(); // TODO restore with condition on floe.is_active()
     for (std::size_t i=0; i< this->data().nb_floes(); ++i)
         this->get_optim(i).update();
 }
@@ -159,7 +157,6 @@ MatlabDetector<TFloe, TData, TContact>::detect_step1()
             ) + opt1.tau() + opt2.tau();
 
             m_prox_data.set_dist_secu(n1, n2, dist);
-
             if ( dist > std::max( opt1.cdist(), opt2.cdist() ) )
             {
                 m_prox_data.set_indic(n1, n2, 0);

@@ -68,7 +68,6 @@ struct ContactPoint
 
         const point_type u { get<1>(pt2) - get<1>(pt1), get<0>(pt1) - get<0>(pt2) };
         typename coordinate_type<point_type>::type const norm_u = std::sqrt( std::pow(get<0>(u), 2) + std::pow(get<1>(u), 2) );
-
         frame = frame_type{ pt1, { get<0>(u)/norm_u, get<1>(u)/norm_u } };
         dist = norm_u;
     }

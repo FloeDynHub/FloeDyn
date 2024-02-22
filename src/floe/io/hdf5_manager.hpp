@@ -508,6 +508,7 @@ double HDF5Manager<TFloeGroup, TDynamicsMgr>::recover_states(
         auto& floe = floe_group.get_floes()[floe_id];
         // auto& new_state = floe.state();
         bool active = (data_out[floe_id][9] == 1.) ? true : false; // crack version
+        floe.static_floe().attach_mesh_ptr(&floe.get_floe_h().m_static_mesh); // TODO why is it needed ?
         floe.state().set_active(active); // crack version
         // std::cout << "RECOVER_STATES 3 " << floe_id << " active " << active << std::endl;
         if (active) {
@@ -532,6 +533,7 @@ double HDF5Manager<TFloeGroup, TDynamicsMgr>::recover_states(
         }
         // std::cout << "RECOVER_STATES 4 " << floe_id << std::endl;
     }
+    floe_group.get_floes().filter_on(); // crack version
     // std::cout << "RECOVER_STATES 3.2 " << std::endl;
     floe_group.update_list_ids_active(); // crack version
     

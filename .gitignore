@@ -69,9 +69,8 @@ getRank.py
 go.sh
 whyDontYouJustF-ckingDieAlreadyJustGiveUpAndDieQuickTime.scpt
 
-
-
-
+# python user files
+pack_creator/in_*.py
 
 ### other files ###
 data_simu.txt

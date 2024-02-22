@@ -296,7 +296,7 @@ class FloePlotter(object):
         "displays floes animation from hdf5 output file (simple plot or video creation)"
         data_file    = h5py.File(self.OPTIONS.filename, 'r')
         # Read Usefull data from file
-        data_global = self._get_useful_datas(data_file)
+        data_global = self._get_useful_data(data_file)
         fig, ax = plt.subplots()
         ax_mgr = AxeManager(ax)
         if getattr(self.OPTIONS, "hd", False):
@@ -329,7 +329,7 @@ class FloePlotter(object):
             idx = 0
         num = idx
 
-        data_global = self._get_useful_datas(file, num, img=True)
+        data_global = self._get_useful_data(file, num, img=True)
         init(data_global, ax_mgr)
         if not data_global.get("static_axes"):
             ax.axis('equal') # automatic scale
@@ -414,10 +414,10 @@ class FloePlotter(object):
         call(['mkdir', temp_dir])
         partial_file_names = ["{}/{}.mpg".format(temp_dir, i) for i in range(nb_process)]
         # Read Usefull data from file
-        data_global = self._get_useful_datas(data_file)
+        data_global = self._get_useful_data(data_file)
         # Build trunks datas
         L = [( partial_file_names[i],
-               self._get_useful_trunk_datas(data_global, trunk),
+               self._get_useful_trunk_data(data_global, trunk),
                 self.OPTIONS.version ) for i,trunk in enumerate(trunks)]
         # Launch process pool 
         p = Pool(nb_process)
@@ -431,7 +431,7 @@ class FloePlotter(object):
         call(['rm', '-r', temp_dir])
 
 
-    def _get_useful_datas(self, data_file, single_step="OFF", img=False):
+    def _get_useful_data(self, data_file, single_step="OFF", img=False):
         d = {}
         # File datas
         if not img:
@@ -477,7 +477,7 @@ class FloePlotter(object):
         return d
 
 
-    def _get_useful_trunk_datas(self, data_global, trunk):
+    def _get_useful_trunk_data(self, data_global, trunk):
         """Slice global datas for a partial video"""
         d = {}
         trunked_keys = ["time", "floe_states", "impulses", "mass_center"]

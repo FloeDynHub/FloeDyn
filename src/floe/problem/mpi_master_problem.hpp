@@ -77,7 +77,7 @@ void MPIMasterProblem<TProblem>::solve(real_type end_time, real_type dt_default,
     if (reset) this->create_optim_vars();
     this->m_domain.set_default_time_step(dt_default);
     this->m_out_manager.set_out_step(out_step, this->m_domain.time());
-    this->output_datas(); // Initial state out
+    this->output_data(); // Initial state out
     while (this->m_domain.time() < end_time)
     {   
         auto t_start = std::chrono::high_resolution_clock::now();
@@ -124,7 +124,7 @@ void MPIMasterProblem<TProblem>::step_solve(bool crack, bool melt) {
         }
     }
     // Output
-    this->output_datas();
+    this->output_data();
     if (this->m_step_nb % 10 == 0) this->m_proximity_detector.display_floe_distrib();
 
     this->m_step_nb++;
