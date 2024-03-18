@@ -1,0 +1,13 @@
+(specifications->manifest
+  '("gcc-toolchain"
+    "openmpi"
+    "python@3"
+    "cgal"
+    "gmp"
+    "mpfr"
+    "eigen"
+    "hdf5"
+    "cereal"
+    "boost"
+    "matio"
+    ))

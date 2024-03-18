@@ -9,6 +9,10 @@ namespace po = boost::program_options;
 using namespace std;
 using namespace types;
 
+/*
+Main FloeDyn simulation with MPI parallelization (no PBC)
+*/
+
 /* Function used to check that of 'for_what' is specified, then
    'required_option' is specified too. */
 void option_dependency(const po::variables_map& vm,
@@ -70,7 +74,7 @@ int main( int argc, char* argv[] )
     int OBL_status = 0;
     value_type epsilon = 0.4;
     value_type random_thickness_coeff = 0.01;
-    string matlab_topaz_filename = "io/inputs/DataTopaz01.mat";
+    string matlab_topaz_filename = "io/library/DataTopaz01.mat";
     
     po::options_description desc("Allowed options");
     desc.add_options()

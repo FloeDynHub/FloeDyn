@@ -2,6 +2,9 @@
 #include "../product/interrupt.hpp"
 #include "../product/config_periodic.hpp"
 
+/*
+Main FloeDyn simulation with Periodic Boundary Conditions (PBC) (sequential, no MPI)
+*/
 
 int main( int argc, char* argv[] )
 {   
@@ -28,7 +31,7 @@ int main( int argc, char* argv[] )
     DT_DEFAULT = atof(argv[3]);
 
     std::string matlab_list_floe_filename = argv[1];
-    std::string matlab_topaz_filename = "io/DataTopaz01.mat";
+    std::string matlab_topaz_filename = "io/library/DataTopaz01.mat";
 
     problem_type P;
     P.load_matlab_config(matlab_list_floe_filename);

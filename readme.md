@@ -1,8 +1,8 @@
-# 
+
 
 Todo: a few words about floedyn ...
 
-
+For more information, please visit the [FloeDyn documentation](https://github.com/FloeDynHub/FloeDyn-documentation).
 
 # Download and install
 
@@ -23,7 +23,7 @@ Todo: a few words about floedyn ...
 ## Get sources
 
 ```
-> git clone git@gricad-gitlab.univ-grenoble-alpes.fr:Mo_MIZ/Floe_Cpp.git
+> git clone git@github.com:FloeDynHub/FloeDyn.git
 ```
 
 

@@ -7,6 +7,10 @@
 
 using namespace std::chrono;
 
+/*
+Main FloeDyn simulation (sequential, no MPI, no PBC)
+*/
+
 int main( int argc, char* argv[] )
 {
 	auto t_start = high_resolution_clock::now();

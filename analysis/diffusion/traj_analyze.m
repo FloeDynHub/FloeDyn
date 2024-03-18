@@ -1,0 +1,422 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Trajectory Analyzes (M. Rabatel IR 09-2018)
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% the format of file_name must be: 'file_name.h5'
+%
+function traj_analyze(filename)
+
+    %% Preliminary infos:
+    suf                     = split(filename,'out_partial_');
+    suffix                  = split(suf{2},'.h5');
+    mat_save_name           = strcat('traj_analyse_',suffix{1});
+    dataname                = 'floe_states';
+    areaname                = 'floe_shapes';
+    kinename                = 'Kinetic Energy';
+    timename                = 'time';
+        
+    floes                   = h5info(filename);
+    try
+        nb_time                 = floes.Datasets(3).Dataspace.Size(3);
+        nb_floes                = floes.Datasets(3).Dataspace.Size(2);
+    catch
+        try
+            nb_time                 = floes.Datasets(2).Dataspace.Size(3);
+            nb_floes                = floes.Datasets(2).Dataspace.Size(2);
+        catch
+            nb_time                 = floes.Datasets(4).Dataspace.Size(3);
+            nb_floes                = floes.Datasets(4).Dataspace.Size(2);
+        end
+    end
+    assert(nb_time==60481 && (nb_floes==2000 || nb_floes==1 || nb_floes==500));
+    
+    fprintf('Kinetic Energy Recovering...\n');
+    member_name = strcat('/',kinename);
+    try
+        KE = h5read(filename,member_name);
+    catch
+    end
+    fprintf('Time Recovering...\n');
+    member_name = strcat('/',timename);
+    T = h5read(filename,member_name);
+    assert(size(find(T==0),1) == 1);
+    
+    % checking time
+    figure(50)
+    plot(1:nb_time,T);
+    grid on
+    
+    %% First step: removing mean trajectory (mass_center):
+%     Traj_MC = h5read(filename,'/mass_center'); % be careful this is the whole pack barycenter 
+    % preliminaries:
+    F_Sizes = zeros(nb_floes,1); 
+    Area = zeros(nb_floes,1);
+    fprintf('Floe size computation...\n');
+    for i=0:nb_floes-1
+        member_name = strcat('/',areaname,'/',int2str(i));
+        A = h5read(filename,member_name);
+        Area(i+1) = polyarea(A(1,:),A(2,:));
+        F_Sizes(i+1) = 2*sqrt( Area(i+1) / pi);
+    end
+       
+    fprintf('Floe States Recovering...\n');
+    member_name = strcat('/',dataname);
+    %  | pos x | pos y | theta | speed x | speed y | rot | impulse received
+    floe_traj_x = h5read(filename,member_name,[1 1 1],[1 nb_floes nb_time]); 
+    floe_traj_y = h5read(filename,member_name,[2 1 1],[1 nb_floes nb_time]); 
+    floe_traj_x = reshape(floe_traj_x,nb_floes,nb_time);
+    floe_traj_y = reshape(floe_traj_y,nb_floes,nb_time);
+    
+    % mass center of 2000 central floes
+    if nb_floes~=1
+        Mass_tot = sum(Area*917); % thickness = 1m!!
+        MF_x = 917*Area.*floe_traj_x;
+        MF_y = 917*Area.*floe_traj_y;
+        Mass_C = [sum(MF_x)/Mass_tot ; sum(MF_y)/Mass_tot];
+    else
+        Mass_C = zeros(2,nb_time);
+    end
+    
+    % removing mean trajectory
+    fluct_traj_x = floe_traj_x-Mass_C(1,:);
+    fluct_traj_y = floe_traj_y-Mass_C(2,:);
+    
+    %% floe comparison (size as the diameter of the disk and distance between floe pair)
+    
+    % biggest and smallest equal floe repartition:
+    if nb_floes~=1
+        Area_s = sort(Area);
+        threshold = 99;
+        idx_min_s = Area<Area_s(end-threshold);
+        idx_max_s = Area>=Area_s(end-threshold);
+    end
+      
+    % data for statistics:
+    temporal_window = 259200; % 3 days
+    simu_left = 604800-temporal_window;
+    % origin time along the trajectory:
+    t_o = floor(linspace(1,(temporal_window/10),500)); % divided by 10 (min time_step)
+    % time step:
+    delta_t = [10:10:1e2 150:50:1e3 1500:500:1e4 12500:5000:simu_left]/10;
+    % floe sets:
+    if nb_floes>500
+        floeSet = unique( ceil( nb_floes * rand(1,500) ) );
+        floeSet_min_S = 1:1:2000; floeSet_min_S = floeSet_min_S(idx_min_s);
+        floeSet_min_S = floeSet_min_S(unique( ceil( size(floeSet_min_S,2) * rand(1,500) ) ) );
+    else
+        floeSet = 1:1:nb_floes;
+    end
+    % pair floe:
+%     pair_l = unique( ceil( nb_floes * rand(1,50) ) ); 
+%     pair_r = unique( ceil( nb_floes * rand(1,250) ) );
+%     pair_r = setdiff(pair_r,pair_l);
+%     pair_floes = zeros(size(pair_r,2)*size(pair_l,2),2);
+%     k=1;
+%     for i=1:size(pair_l,2)
+%         pair_floes(k:k+size(pair_r,2)-1,1) = repmat(pair_l(i),size(pair_r,2),1);
+%         pair_floes(k:k+size(pair_r,2)-1,2) = pair_r;
+%         k = k+size(pair_r,2);
+%     end
+    
+    %% Variance computation of the distance to the origin:
+    Diffu = zeros(size(delta_t));
+    Diffu_min_s = zeros(size(delta_t));
+    Diffu_max_s = zeros(size(delta_t));
+    
+    if nb_floes~=1
+    fprintf('Variance computation of the distance for diffusion...\n')
+    
+    for i=1:size(delta_t,2)
+        real_supp = find(t_o+delta_t(i)<=60481); 
+        assert(length(real_supp) == length(t_o)); % the support must be the same for coherent comparison!!
+        D_x = fluct_traj_x(floeSet,t_o(real_supp)+delta_t(i)) - fluct_traj_x(floeSet,t_o(real_supp));
+        D_y = fluct_traj_y(floeSet,t_o(real_supp)+delta_t(i)) - fluct_traj_y(floeSet,t_o(real_supp));
+        
+        Vd = sqrt(D_x.^2 + D_y.^2);
+        vtemp = Vd(:);
+        Diffu(i) = var(vtemp);
+    end
+    end
+    
+    if nb_floes>500
+    for i=1:size(delta_t,2)
+        real_supp = find(t_o+delta_t(i)<=60481);
+        assert(length(real_supp) == length(t_o)); % the support must be the same for coherent comparison!!
+        D_x = fluct_traj_x(idx_max_s,t_o(real_supp)+delta_t(i)) - fluct_traj_x(idx_max_s,t_o(real_supp));
+        D_y = fluct_traj_y(idx_max_s,t_o(real_supp)+delta_t(i)) - fluct_traj_y(idx_max_s,t_o(real_supp));
+        
+        Vd = sqrt(D_x.^2 + D_y.^2);
+        vtemp = Vd(:);
+        Diffu_max_s(i) = var(vtemp);
+
+        %%% min
+        D_x = fluct_traj_x(floeSet_min_S,t_o(real_supp)+delta_t(i)) - fluct_traj_x(floeSet_min_S,t_o(real_supp));
+        D_y = fluct_traj_y(floeSet_min_S,t_o(real_supp)+delta_t(i)) - fluct_traj_y(floeSet_min_S,t_o(real_supp));
+        
+        Vd = sqrt(D_x.^2 + D_y.^2);
+        vtemp = Vd(:);
+        Diffu_min_s(i) = var(vtemp);
+    end
+    end
+    
+    %% autocorrelation:
+    fprintf('Autocorrelation computation...\n')
+    
+    %speed:
+    speed_x = 1/10*(fluct_traj_x(:,2:end) - fluct_traj_x(:,1:end-1) );
+    speed_y = 1/10*(fluct_traj_y(:,2:end) - fluct_traj_y(:,1:end-1) );
+    speed = sqrt(speed_x.*speed_x+speed_y.*speed_y);
+   
+    % autocorrelation fct:
+    % Comment: the mean mu and the variance var of the random process 
+    % (speed any floe, any start time) are time dependent. That means, for
+    % start time betweeen origin (t=0) to t=67500s (about 19h), mu and var
+    % are respectively equal to 3.1e-3 and 1.2812e-5, and for start time
+    % between t=177500(2j) to the end (4j) mu and var are respectively
+    % equal to 7.4e-4 and 7.1e-7.
+    % For a well-defined autocorrelation function, one need for mu and var
+    % are time independent!
+    % 
+    % temporal window:
+    temporal_window_a = 345600; % 3 days
+    simu_left_a = 604800-temporal_window_a;
+    % origin time along the trajectory:
+    t_o_a = floor(linspace(1,(temporal_window_a/10),500)); % divided by 10 (min time_step)
+    % time step:
+    Frq = 48; % 48 per day -> 30 min -> 1800s
+    day_in_s = 86400;
+    delta_t_a = [0:day_in_s/Frq:simu_left_a]/10;
+     
+    ACF = ones(1,length(delta_t_a)); 
+    ACF_min_s = zeros(1,length(delta_t_a)+1);
+    ACF_max_s = zeros(1,length(delta_t_a)+1);
+        
+    N = length(t_o_a)*length(floeSet);
+    mopt = zeros(1,length(delta_t_a)); vopt = mopt;
+    V_o = speed(floeSet,t_o_a);
+    vtemp = V_o(:);
+    mo = mean(vtemp);
+    vo = var(vtemp);
+    for i=1:size(delta_t_a,2)
+        real_supp = find(t_o_a+delta_t_a(i)<=60481);
+        assert(length(real_supp) == length(t_o_a)); % the support must be the same for coherent comparison!!
+        V_o_p_tau = speed(floeSet,t_o_a(real_supp)+delta_t_a(i));
+        
+        vtemp = V_o_p_tau(:);
+        mopt(i) = mean(vtemp);
+        vopt(i) = var(vtemp);
+%         VV = (V_o-mo).*(V_o_p_tau-mopt(i));
+        VV = (V_o-mo).*(V_o_p_tau-mo);
+        
+%         ACF(i+1) = sum(VV(:))/( (N-1) * sqrt(vo) * sqrt( vopt(i) ) );
+        ACF(i) = sum(VV(:))/( (N-1) * vo );
+    end
+    
+    if nb_floes>500
+    N_max = length(t_o_a)*length(find(idx_max_s==1));
+    N_min = length(t_o_a)*length(floeSet_min_S);
+    mopt_min = mopt; vopt_min = vopt;
+    mopt_max = mopt; vopt_max = vopt;
+    
+    V_o_max = speed(idx_max_s,t_o_a);
+    vtemp = V_o_max(:);
+    mo_max = mean(vtemp);
+    vo_max = var(vtemp);
+    
+    V_o_min = speed(floeSet_min_S,t_o_a);
+    vtemp = V_o_min(:);
+    mo_min = mean(vtemp);
+    vo_min = var(vtemp);
+    
+    for i=1:size(delta_t_a,2)
+        real_supp = find(t_o_a+delta_t_a(i)<=60481);
+        assert(length(real_supp) == length(t_o_a)); % the support must be the same for coherent comparison!!
+        V_opt_max = speed(idx_max_s,t_o_a(real_supp)+delta_t_a(i));
+        
+        vtemp = V_opt_max(:);
+        mopt_max(i) = mean(vtemp);
+        vopt_max(i) = var(vtemp);
+%         VV = (V_o_max-mo_max).*(V_opt_max-mopt_max(i));
+        VV = (V_o_max-mo_max).*(V_opt_max-mo_max);
+        
+%         ACF_max_s(i+1) = sum(VV(:))/( (N_max-1) * sqrt(vo_max) * sqrt( vopt_max(i) ) );
+        ACF_max_s(i+1) = sum(VV(:))/( (N_max-1) * vo_max );
+
+        %%% min
+        V_opt_min = speed(floeSet_min_S,t_o_a(real_supp)+delta_t_a(i));
+        
+        vtemp = V_opt_min(:);
+        mopt_min(i) = mean(vtemp);
+        vopt_min(i) = var(vtemp);
+%         VV = (V_o_min-mo_min).*(V_opt_min-mopt_min(i));
+        VV = (V_o_min-mo_min).*(V_opt_min-mo_min);
+        
+%         ACF_min_s(i+1) = sum(VV(:))/( (N_min-1) * sqrt(vo_min) * sqrt( vopt_min(i) ) );
+        ACF_min_s(i+1) = sum(VV(:))/( (N_min-1) * vo_min );
+    end
+    end
+        
+    %% Power Spectrum Density (PSD) using Fourier transform:
+    % from the autocorrelation with the ice floes velocity instead of the
+    % fluctuation velocity (without the mean movement) in order to keep the
+    % inertial oscillations:
+    speed_x = 1/10*(floe_traj_x(floeSet,2:end) - floe_traj_x(floeSet,1:end-1) );
+    speed_y = 1/10*(floe_traj_y(floeSet,2:end) - floe_traj_y(floeSet,1:end-1) );
+    speed = sqrt(speed_x.*speed_x+speed_y.*speed_y);
+    
+    ACF_tmp = ones(1,length(delta_t_a)); 
+    N = length(t_o_a)*length(floeSet);
+    V_o = speed(:,t_o_a);
+    vtemp = V_o(:);
+    mo = mean(vtemp);
+    vo = var(vtemp);
+    for i=1:size(delta_t_a,2)
+        real_supp = find(t_o_a+delta_t_a(i)<=60481);
+        assert(length(real_supp) == length(t_o_a)); % the support must be the same for coherent comparison!!
+        V_o_p_tau = speed(:,t_o_a(real_supp)+delta_t_a(i));
+        
+%         VV = (V_o-mo).*(V_o_p_tau-mopt(i));
+        VV = (V_o-mo).*(V_o_p_tau-mo);
+        
+%         ACF(i+1) = sum(VV(:))/( (N-1) * sqrt(vo) * sqrt( vopt(i) ) );
+        ACF_tmp(i) = sum(VV(:))/( (N-1) * vo );
+    end
+    
+    L = length(delta_t_a);
+    X = fft(ACF_tmp);
+    PSD=X.*conj(X)/(L*L);
+    PSD = PSD(1:ceil(L/2+1));
+    f = Frq*(1:ceil(L/2+1))/L;
+    clear ACF_tmp
+    
+    %% distribution of tangential and normal accelerations
+    % acceleration computation
+    % from [Leveque and Naso 2014]
+    % velocity computation 
+    speed_x = 1/10*(fluct_traj_x(floeSet,2:end) - fluct_traj_x(floeSet,1:end-1) );
+    speed_y = 1/10*(fluct_traj_y(floeSet,2:end) - fluct_traj_y(floeSet,1:end-1) );
+    
+    q = [0.5 1 1.5 2 2.5 3];
+    ACC = zeros(size(delta_t,2),length(q));
+    for i=1:size(delta_t,2)
+        if (mod(i,5)==0), fprintf('%.2g%%\n', i/size(delta_t,2)*100); end
+        real_supp = find(t_o+delta_t(i)<=60481);
+
+        V_x = 1/delta_t(i)*( speed_x(:,t_o(real_supp)+delta_t(i)) - speed_x(:,t_o(real_supp)) );
+        V_y = 1/delta_t(i)*( speed_y(:,t_o(real_supp)+delta_t(i)) - speed_y(:,t_o(real_supp)) );
+
+        for j=1:length(q)
+            V = abs(V_x).^q(j)+abs(V_y).^q(j);
+            vtemp = V(:);
+            ACC(i,j) = mean(vtemp);
+        end
+    end        
+ 
+    %% Floe pair dispersion
+    fprintf('Variance computation of the distance for floe pair dispersion...\n')
+    
+    Disper = zeros(size(delta_t));
+%     for i=1:size(delta_t,2)
+%         real_supp = find(t_o+delta_t(i)<=60481);
+% 
+%         D_x_1 = fluct_traj_x(pair_floes(:,1),t_o(real_supp)+delta_t(i)) - fluct_traj_x(pair_floes(:,1),t_o(real_supp));
+%         D_y_1 = fluct_traj_y(pair_floes(:,1),t_o(real_supp)+delta_t(i)) - fluct_traj_y(pair_floes(:,1),t_o(real_supp));
+%         
+%         D_x_2 = fluct_traj_x(pair_floes(:,2),t_o(real_supp)+delta_t(i)) - fluct_traj_x(pair_floes(:,2),t_o(real_supp));
+%         D_y_2 = fluct_traj_y(pair_floes(:,2),t_o(real_supp)+delta_t(i)) - fluct_traj_y(pair_floes(:,2),t_o(real_supp));
+% 
+%         R_x = D_x_1 - D_x_2; %R = r(i) - r(j)
+%         R_y = D_y_1 - D_y_2; %R = r(i) - r(j)
+% 
+%         Vd = R_x.^2 + R_y.^2;
+%         vtemp = Vd(:);
+%         % fprintf('size of the sample: %d \n',size(vtemp,1));
+%         Disper(i) = mean(vtemp);
+%     end
+    
+    %% plot
+    fprintf('Plot...\n')
+    
+    % 1/ regimes: ballistic and browian
+    kfigs = 1;
+    figure(kfigs)
+
+    loglog(10*delta_t,Diffu,'b');
+    xlabel('time (s)','FontSize',12);
+    ylabel('$\left< {r^\prime}^2 \right>$','Interpreter','latex','FontSize',12);
+    hold on
+    grid on
+
+    kfigs = kfigs+1;
+    figure(kfigs)
+    loglog(10*delta_t,Diffu,'b');
+    hold on
+    grid on
+    ax = gca;
+    ax.XLim =[1e4 5e5];
+    ax.YLim =[1e3 1e6];
+    ax.XTick = [12*3600:12*3600:3*24*3600 4*24*3600 5*24*3600];
+    ax.XTickLabel = {'1/2','1','1.5','2','2.5','3','4','5'};
+    xlabel('time (day)','FontSize',12);
+    ylabel('$\left< {r^\prime}^2 \right>$','Interpreter','latex','FontSize',12);
+ 
+    % 2/ autocorrelation:
+    kfigs = kfigs+1;
+    figure(kfigs)
+    ax = gca;
+    plot(delta_t_a,ACF,'b');
+    grid on
+    hold on
+    ax.XLim = [0 5.5*24*360];
+    ax.XTick = [0:12*360:5.5*24*360];
+    ax.XTickLabel = {'0','1/2','1','1.5','2','2.5','3','3.5','4','4.5','5','5.5'};
+    xlabel('time lag $\tau$ (day)','FontSize',12,'Interpreter','latex');
+    ylabel('normalized autocorrelation function','FontSize',12);
+    ax.XLim = [0 (simu_left_a/10+12*360)];
+    
+    leg = legend;
+    leg.String = {'$\tau \in \left[0,5.5j \right]$','$\tau \in \left[0,4.5j \right]$','$\tau \in \left[0,3j \right]$','$\tau \in \left[0,1.5j \right]$'};
+    leg.String = {'$60\%, a=2.5$','$70\%, a=1.5$','$70\%, a=2.5$','$80\%, a=1.5$'};
+    leg.Interpreter = 'latex';
+    title('Autocorrelation for 1 simu','FontSize',14);
+    leg.FontSize = 12;
+    
+    % 2bis/ Power Spectrum Density:
+    kfigs = kfigs+1;
+    figure(kfigs)
+    %N=6;
+    loglog(f,PSD,'b')
+    xlabel(' frequence (cyles per day) ','FontSize',12);
+    ylabel(' Power Spectral Density ','FontSize',12);
+    title('avg on 5 simus, ...','FontSize',12)
+    grid on;
+    hold on;
+    
+    % 3/ acceleration: 
+    kfigs = kfigs+1;
+    figure(kfigs)
+    loglog(10*delta_t,ACC(:,1),'b')
+    hold on
+    grid on
+    for j=2:length(q)
+        loglog(10*delta_t,ACC(:,j),'b')
+    end
+    ylabel('$\left< \left( \frac{\Delta u}{\tau} \right)^q \right>$','Interpreter','latex','FontSize',12);
+    xlabel('time (s)','FontSize',12);
+    
+    %% saving:
+    fprintf('saving phase in %s\n',mat_save_name)
+    try
+        save(mat_save_name,'nb_floes','nb_time','temporal_window',...
+            'temporal_window_a','delta_t_a','delta_t','simu_left',...
+            'T','KE','floe_traj_x','floe_traj_y','Mass_C','Area',...
+            'Diffu','Diffu_min_s','Diffu_max_s',...
+            'ACF','ACF_min_s','ACF_max_s','PSD','f','q','ACC')
+    catch % without 'KE'
+        save(mat_save_name,'nb_floes','nb_time','temporal_window',...
+            'temporal_window_a','delta_t_a','delta_t','simu_left',...
+            'T','floe_traj_x','floe_traj_y','Mass_C','Area',...
+            'Diffu','Diffu_min_s','Diffu_max_s',...
+            'ACF','ACF_min_s','ACF_max_s','PSD','f','q','ACC')
+    end
+end 

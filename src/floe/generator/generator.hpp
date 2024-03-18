@@ -64,7 +64,7 @@ Generator<TProblem>::generate_floe_set(std::size_t nb_floes, real_type concentra
     std::cout << "Generate " << nb_floes << " floes..." << std::endl;
     std::cout << "the restitution coefficient is fixed to: " << 
     m_problem.get_lcp_manager().get_solver().get_epsilon() << std::endl;
-    load_biblio_floe("io/inputs/Biblio_Floes.mat");
+    load_biblio_floe("io/library/Biblio_Floes.mat");
     discretize_biblio_floe(25);
     generate_meshes();
     random_floe_group(nb_floes, max_size);
