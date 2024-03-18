@@ -302,6 +302,11 @@ void LCPManager<T>::update_floes_state(TContactGraph& graph, const std::array<va
         graph[v].floe->state().rot = Sol[0](3*v + 2); // fv_test
         graph[v].floe->add_impulse(Sol[1](v)); // fv_test
     }
+    // filling another variable containing only the impulse received during the last impach time step 
+    for ( auto const v : boost::make_iterator_range( vertices(graph) ) )
+        graph[v].floe->reset_current_impulse(); // fv_test    }
+    for ( auto const v : boost::make_iterator_range( vertices(graph) ) )
+        graph[v].floe->add_current_impulse(Sol[1](v)); // fv_test    }
 }
 
 template<typename T>

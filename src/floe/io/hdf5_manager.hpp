@@ -124,13 +124,15 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::save_step(real_type time, const dyna
                 else
                 {
                     // std::cout << "Nope." << std::endl ;
-                    m_data_chunk_elem_data[m_chunk_step_count][iFloe][iElem] = (real_type)iElem;
+                    if (floe.is_obstacle())
+                        m_data_chunk_elem_data[m_chunk_step_count][iFloe][iElem] = 0;
+                    else 
+                        m_data_chunk_elem_data[m_chunk_step_count][iFloe][iElem] = (real_type)iElem;
                     // m_data_chunk_elem_data[m_chunk_step_count][iFloe][iElem] = floe.total_received_impulse();
                 }
                 // m_data_chunk_elem_data[m_chunk_step_count][iFloe][iElem] = (real_type)iElem;
             }
         }
-        // WHEREAMI
         // saving nodal data 
         if (m_data_chunk_node_data.size() == 0) m_data_chunk_node_data.resize(boost::extents[m_flush_max_step][this->nb_considered_floes()][m_max_nodes*2]); 
         for(std::size_t iFloe = 0; iFloe < this->nb_considered_floes(); ++iFloe)
@@ -153,15 +155,17 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::save_step(real_type time, const dyna
             {
                 if (femSol.size() == 2*nNodes)
                 {
-                    // std::cout << "writing " << (real_type)femSol[iNode] << " at location " << iNode << std::endl;
                     m_data_chunk_node_data[m_chunk_step_count][iFloe][iNode] = (real_type)femSol[iNode];
                     // m_data_chunk_node_data[m_chunk_step_count][iFloe][iNode+nNodes] = (real_type)femSol[iNode+nNodes];
                 }
                 else 
                 {
-                    m_data_chunk_node_data[m_chunk_step_count][iFloe][iNode] = (real_type)(std::floor(iNode/2));
+                    if (floe.is_obstacle())
+                        m_data_chunk_node_data[m_chunk_step_count][iFloe][iNode] = 0;
+                    else 
+                        m_data_chunk_node_data[m_chunk_step_count][iFloe][iNode] = (real_type)(std::floor(iNode/2));
                     // m_data_chunk_node_data[m_chunk_step_count][iFloe][iNode] = (real_type)(iNode % nNodes);
-                    std::cout << "writing " << (real_type)(std::floor(iNode/2)) << " at location " << iNode << std::endl;
+                    // std::cout << "writing " << (real_type)(std::floor(iNode/2)) << " at location " << iNode << std::endl;
                     // m_data_chunk_node_data[m_chunk_step_count][iFloe][iNode+nNodes] = 0;
                 }
                 

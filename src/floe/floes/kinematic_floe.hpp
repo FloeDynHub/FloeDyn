@@ -167,7 +167,12 @@ public:
     void add_impulse(real_type impulse) const { m_total_impulse_received += impulse; }
     //! Reset received impulse
     void reset_impulse(real_type new_impulse = 0) const { m_total_impulse_received = new_impulse; }
-    
+    //! Idem, but recalls only the impulse received during the last impact time step 
+    void add_current_impulse(real_type impulse) const { m_total_current_impulse_received += impulse; }
+    //! Reset received impulse
+    void reset_current_impulse(real_type new_impulse = 0) const { m_total_current_impulse_received = new_impulse; }
+
+
     //  std::vector<KinematicFloe<TStaticFloe,TState>> fracture_floe();
     std::vector<geometry_type> fracture_floe();
     
@@ -196,6 +201,7 @@ private:
 
     floe_h_type m_floe_h; //!< Discretisation of the Floe
     mutable real_type m_total_impulse_received; //!< Sum all collision impulses this floe received
+    mutable real_type m_total_current_impulse_received; //!< Sum all collision impulses this floe received
 
     fem_problem_type m_fem_problem;
 };
@@ -286,22 +292,61 @@ template < typename TStaticFloe, typename TState >
 bool
 KinematicFloe<TStaticFloe,TState>::solve_elasticity()
 {
-    // deuxPtitsRectangles : à gauche c'est 2 3 41
-    // deuxPtitsRectangles : à droite c'est 0 1 49
-    // std::vector<size_t> dirichletPoints = {2, 3, 41, 0, 1, 49};
-    // std::vector<size_t> dirichletPoints = {2, 3, 41, 0, 1, 49, 63};
-    // std::vector<size_t> dirichletPoints = {0};
-    std::vector<size_t> dirichletPoints = {2, 122, 41, 114, 3};
-    point_type a(0,0);
-    point_type b(0,1);
-    point_type c(2,0);
-    point_type d(3,0);
-    // std::vector<point_type> dirichletValues = {b, a};
-    // std::vector<point_type> dirichletValues = {a, a, a, b, b, b};
-    // std::vector<point_type> dirichletValues = {a, a, a, a, a, a, b};
-    std::vector<point_type> dirichletValues = {a, a, a, a, a};
-    // std::vector<point_type> dirichletValues = {b};
-	m_fem_problem.performComputation(dirichletPoints, dirichletValues);
+    bool testCase(false); // to validate code parts using the 2D clamped-loaded beam test case 
+    if (testCase)
+    {
+        // // deuxPtitsRectangles : à gauche c'est 2 3 41
+        // // deuxPtitsRectangles : à droite c'est 0 1 49
+        // // std::vector<size_t> dirichletPoints = {2, 3, 41, 0, 1, 49};
+        // // std::vector<size_t> dirichletPoints = {2, 3, 41, 0, 1, 49, 63};
+        // // std::vector<size_t> dirichletPoints = {0};
+        // // std::vector<size_t> dirichletPoints = {2, 122, 41, 114, 3};
+        // // std::vector<size_t> dirichletPoints = {2,3,1493,492,1774,135,1773,1777,491,367,1778,41,1779,490,1051,1295,114}; // avec nb_cells = 2000 pour faire l'encastrement à gauche de la poutre 2D 
+        // // std::vector<size_t> dirichletPoints = {2,3,41,55}; // avec nb_cells = 50
+        // // std::vector<size_t> dirichletPoints = {2,3,41,135,114}; // avec nb_cells = 100, 200
+        // // std::vector<size_t> dirichletPoints = {2,3,492,135,491,41,490,1051,114,367,1295}; // avec nb_cells = 1000
+        // // std::vector<size_t> dirichletPoints = {11,29,5,20,14}; // avec nb_cells = 1000, c'est 5 noeuds d'affilée au millieu 
+        // std::vector<size_t> dirichletPoints = {29,5,20}; // avec nb_cells = 1000, c'est 3 noeuds d'affilée 
+        // point_type a(0,0);
+        // point_type b(1,1);
+        // point_type c(0,1);
+        // point_type d(0,2);
+        // point_type e(0,3);
+        // point_type f(1,2);
+        // // std::vector<point_type> dirichletValues = {b, a};
+        // // std::vector<point_type> dirichletValues = {a, a, a, b, b, b};
+        // // std::vector<point_type> dirichletValues = {a, a, a, a, a, a, b};
+        // // std::vector<point_type> dirichletValues = {a, a, a, a, a};
+        // // std::vector<point_type> dirichletValues = {a, a, a, a, a,a,a,a,a,a,a,a,a,a,a,a,a};
+        // // std::vector<point_type> dirichletValues = {a, a, a, a, a,a,a,a,a,a,a};
+        // // std::vector<point_type> dirichletValues = {b, b, b, b, b,b,b,b,b,b,b};
+        // // std::vector<point_type> dirichletValues = {c,d,e,d,c};
+        // std::vector<point_type> dirichletValues = {c,d,c};
+        point_type a(0,0); 
+        std::vector<size_t> dirichletPoints = {2, 3, 41}; 
+        std::vector<point_type> dirichletValues = {a, a, a};
+        m_fem_problem.performComputation(dirichletPoints, dirichletValues);
+    }
+    else 
+    {
+        std::vector<size_t> dirichletPoints = {}; 
+        std::vector<point_type> dirichletValues = {};
+
+        real_type fact_arbitraire(1E-6); // permet de conserver l'ordre de grandeur dans le cas test de la poutre 2D, Ecinétique dissipée en Epotentielle 
+        point_type direction(-1,0);
+        std::vector<size_t> contact_points = {0}; // 46 // to do : liste des noeuds en contact, à chercher dans le problem.m_priximity_detector.contact_graph ? 
+        std::vector<real_type> amplitudes = {m_total_current_impulse_received*fact_arbitraire}; // to do : quelles variables ? velocity*mass a priori ? à voir avec Toai. Contact_point.relative_speed() ? Un coeff arbitraire pour conserver l'énergie cinétique du cas test ? 
+        std::vector<point_type> directions = {direction}; // to do : vecteur normal au choc, vraisemblamenet un ContactPoint.frame.v()  
+        size_t n_contact_points = contact_points.size();
+        for (size_t iPoint = 0 ; iPoint < n_contact_points ; ++iPoint)
+        {
+            dirichletValues.push_back(amplitudes[iPoint]*directions[iPoint]);
+            dirichletPoints.push_back(contact_points[iPoint]);
+        }
+
+        m_fem_problem.performComputation(dirichletPoints, dirichletValues);
+    }
+    
     return true; 
 }
 

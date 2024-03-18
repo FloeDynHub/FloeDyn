@@ -56,22 +56,10 @@ pb-simus.txt
 
 ### Silouane's files 
 results/
-wscript_original
-log.*
-res.*
-plotKinEnergy.py
-replotGenerator.py
+bazar_silou/ 
 .vscode/
 compile.sh
-configure.sh
-generatorTest.sh
-getRank.py
-go.sh
-whyDontYouJustF-ckingDieAlreadyJustGiveUpAndDieQuickTime.scpt
-doc_elements/tests_perturb/
-
-
-
+configure.sh 
 
 ### other files ###
 data_simu.txt
