@@ -207,9 +207,10 @@ class FloePlotter(object):
             ax_mgr.get_collection("floe_ghosts").set_verts(ghosts_verts)
 
         if opt_color:
-            ax_mgr.get_collection("floes").set_array(data.get("impulses")[indic])
+            impulses = [v for i, v in enumerate(data.get("impulses")[indic]) if data.get("floe_states")[indic][i][9] == 1]
+            ax_mgr.get_collection("floes").set_array(impulses)
             if opt_ghosts:
-                ax_mgr.get_collection("floe_ghosts").set_array(np.tile(data.get("impulses")[indic], 8))
+                ax_mgr.get_collection("floe_ghosts").set_array(np.tile(impulses, 8))
         ax.set_title("t = {}".format(str(datetime.timedelta(seconds=int(data.get("time")[indic])))))
         if not data.get("static_axes"):
             # ax.axis('equal')
