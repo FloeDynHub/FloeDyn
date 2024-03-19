@@ -332,18 +332,38 @@ KinematicFloe<TStaticFloe,TState>::solve_elasticity()
         std::vector<size_t> dirichletPoints = {}; 
         std::vector<point_type> dirichletValues = {};
 
-        real_type fact_arbitraire(1E-6); // permet de conserver l'ordre de grandeur dans le cas test de la poutre 2D, Ecinétique dissipée en Epotentielle 
-        point_type direction(-1,0);
-        std::vector<size_t> contact_points = {0}; // 46 // to do : liste des noeuds en contact, à chercher dans le problem.m_priximity_detector.contact_graph ? 
-        std::vector<real_type> amplitudes = {m_total_current_impulse_received*fact_arbitraire}; // to do : quelles variables ? velocity*mass a priori ? à voir avec Toai. Contact_point.relative_speed() ? Un coeff arbitraire pour conserver l'énergie cinétique du cas test ? 
-        std::vector<point_type> directions = {direction}; // to do : vecteur normal au choc, vraisemblamenet un ContactPoint.frame.v()  
+
+        // TO DO HERE : 
+        // * trouver le(s) vrai(s) point(s) de contact
+        // * définir des directions ? m_detailed_impulse_received[iPoint] / norm2(truc truc) tout simplement en fait, tfais pas ièch mon grand 
+        // APRES LE PAIRFORME RESOULOUCHEUNE 
+        // * récupérer l'algo de Quentin pour la génération des lignes 
+        // * test de plein de lignes, appel à does_it_break_along(vector<point_type>) ? 
+
+        // recherche du contact_point
+        // std::size_t closest_point = 0;
+        // point_type contact_point = graph[edge][i].frame.center()
+        // real_type min_dist = norm2(contact_point - this->geometry().outer()[0]);
+        // for (std::size_t i = 1; i < this->boundary_nb_points(); ++i) {
+        //     real_type dist = norm2(contact_point - this->geometry().outer()[i]);
+        //     if (dist < min_dist) {
+        //         min_dist = dist;
+        //         closest_point = i;
+        //     }
+        // }
+        
+        real_type fact_arbitraire(1E-9); // permet de conserver l'ordre de grandeur dans le cas test du bloc circulaire de r = 100m, Ecinétique avant le choc ~ Epotentielle 
+        point_type direction(-1,0); 
+
+        std::vector<size_t> contact_points = {0,1,2,3}; // 46 // to do : liste des noeuds en contact, à chercher dans le problem.m_priximity_detector.contact_graph ? 
+        std::vector<real_type> amplitudes = {m_total_current_impulse_received*fact_arbitraire, m_total_current_impulse_received*fact_arbitraire, m_total_current_impulse_received*fact_arbitraire, m_total_current_impulse_received*fact_arbitraire}; // to do : quelles variables ? velocity*mass a priori ? à voir avec Toai. Contact_point.relative_speed() ? Un coeff arbitraire pour conserver l'énergie cinétique du cas test ? 
+        std::vector<point_type> directions = {direction, direction, direction, direction}; // to do : vecteur normal au choc, vraisemblamenet un ContactPoint.frame.v()  
         size_t n_contact_points = contact_points.size();
         for (size_t iPoint = 0 ; iPoint < n_contact_points ; ++iPoint)
         {
             dirichletValues.push_back(amplitudes[iPoint]*directions[iPoint]);
-            dirichletPoints.push_back(contact_points[iPoint]);
+            dirichletPoints.push_back(contact_points[iPoint]); 
         }
-
         m_fem_problem.performComputation(dirichletPoints, dirichletValues);
     }
     

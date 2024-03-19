@@ -338,6 +338,17 @@ FemProblem<TFloe>::addDirichlet(std::vector<size_t> gamma_d, std::vector<point_t
         return false; 
     }
 
+    std::cout << "gamma_d = " ;
+    for (size_t i = 0; i < gamma_d.size(); i++)
+    {
+        std::cout << " " << gamma_d[i]; 
+    }
+    std::cout << "values = " ;
+    for (size_t i = 0; i < gamma_d.size(); i++)
+    {
+        std::cout << " " << values[i]; 
+    }
+    
     real_type very_big_stuff=10000*m_largest_value;
     real_type theta(m_floe->get_frame().theta());
     m_FTriplet.clear();
@@ -374,11 +385,13 @@ template < typename TFloe>
 bool
 FemProblem<TFloe>::addContactDirichlet(std::vector<size_t> gamma_d, std::vector<point_type> values)
 {
+    // WHEREAMI
     if (m_largest_value == 0)
     {
         std::cerr << "largest_value has not been initialized" << std::endl;
         return false; // this should have been set to a larger value in the constructor 
     }
+    // WHEREAMI
     size_t n_dirichlet(gamma_d.size());
     if (values.size() != n_dirichlet)
     {
@@ -386,14 +399,20 @@ FemProblem<TFloe>::addContactDirichlet(std::vector<size_t> gamma_d, std::vector<
         return false; 
     }
 
+    // WHEREAMI
     real_type very_big_stuff=10000*m_largest_value;
+    // WHEREAMI
     real_type theta(m_floe->get_frame().theta());
+    // WHEREAMI
     m_FTriplet.clear();
+    // WHEREAMI
     m_DirichletTriplet.clear();
+    // WHEREAMI
 
     connectivity_type connect; 
     connect = m_floe->mesh().connectivity();
 
+    // WHEREAMI
     for (size_t iDir = 0; iDir < n_dirichlet ; ++iDir)
     {
         // looking for the two surrounding points around the impact point : 
@@ -401,11 +420,13 @@ FemProblem<TFloe>::addContactDirichlet(std::vector<size_t> gamma_d, std::vector<
         std::vector<size_t> surr_elements;
         std::vector<size_t> surr_nodes_temp;
         std::vector<size_t> surr_nodes;
+        // WHEREAMI
         for (size_t iElem = 0; iElem < connect.size(); iElem++)
         {
             if ((connect[iElem][0] == gamma_d[iDir]) || (connect[iElem][1] == gamma_d[iDir]) || (connect[iElem][2] == gamma_d[iDir]))
                 surr_elements.push_back(iElem);
         }
+        // WHEREAMI
         // * if the list contains only one element : both other nodes are the surrounding ones 
         if (surr_elements.size() == 1)
         {
@@ -454,6 +475,7 @@ FemProblem<TFloe>::addContactDirichlet(std::vector<size_t> gamma_d, std::vector<
             }
         }
     
+        // WHEREAMI
         // checking that the surrounding nodes are not already in the triplet m_FTriplet s
         for (size_t iDir2 = 0; iDir2 < n_dirichlet ; ++iDir2)
             if (iDir2 != iDir)
@@ -463,14 +485,17 @@ FemProblem<TFloe>::addContactDirichlet(std::vector<size_t> gamma_d, std::vector<
                 if (iDir == surr_nodes[1])
                     surr_nodes.pop_back(); 
             } 
+        // WHEREAMI
         // pour l'instant : on y met une dirichlet avec values/2, à remplacer lorsque la condition dirichlet aura été déterminée 
         m_FTriplet.push_back(Eigen::Triplet<real_type>(gamma_d[iDir]*2, 0, very_big_stuff*(values[iDir].x*cos(theta) + values[iDir].y*sin(theta))));
         m_FTriplet.push_back(Eigen::Triplet<real_type>(gamma_d[iDir]*2+1, 0, very_big_stuff*(values[iDir].x*sin(theta)*(-1) + values[iDir].y*cos(theta))));
         m_DirichletTriplet.push_back(Eigen::Triplet<real_type>(gamma_d[iDir]*2, gamma_d[iDir]*2, very_big_stuff));
         m_DirichletTriplet.push_back(Eigen::Triplet<real_type>(gamma_d[iDir]*2+1, gamma_d[iDir]*2+1, very_big_stuff));
+        // WHEREAMI
 
         for (size_t iPoint = 0 ; iPoint < surr_nodes.size() ; ++iPoint)
         {
+            // WHEREAMI
             size_t point = surr_nodes[iPoint];
             m_FTriplet.push_back(Eigen::Triplet<real_type>(point*2, 0, 0.5*very_big_stuff*(values[iDir].x*cos(theta) + values[iDir].y*sin(theta))));
             m_FTriplet.push_back(Eigen::Triplet<real_type>(point*2+1, 0, 0.5*very_big_stuff*(values[iDir].x*sin(theta)*(-1) + values[iDir].y*cos(theta))));
@@ -478,6 +503,7 @@ FemProblem<TFloe>::addContactDirichlet(std::vector<size_t> gamma_d, std::vector<
             m_DirichletTriplet.push_back(Eigen::Triplet<real_type>(point*2, point*2, very_big_stuff));
             m_DirichletTriplet.push_back(Eigen::Triplet<real_type>(point*2+1, point*2+1, very_big_stuff));
         }
+        // WHEREAMI
         // Idée d'accélération à faire lorsque la fonction de contact dirichlet aura été définie :
         // * enregistrer une fois pour toutes pour chaque noeud une liste des plus proches voisins
         // * combien de voisin pour un contact ? faut voir sur combien de points on l'étale. 
@@ -645,14 +671,15 @@ FemProblem<TFloe>::performComputation(std::vector<size_t> gamma_d, std::vector<p
         // No need to solve, no evolution since last time
         return false; 
     }
-    real_type amplitude = m_floe->total_received_impulse() - m_last_total_impulse;
-    m_last_total_impulse = m_floe->total_received_impulse();
-    for (size_t iDir = 0; iDir < values.size() ; ++iDir)
-    {
-        amplitude = 1; // pour l'instant, pour s'assurer que la condition est bien respectée. 
-        point_type a(amplitude*values[iDir].x, amplitude*values[iDir].y);
-        values[iDir] = a;
-    }
+
+    // real_type amplitude = m_floe->total_received_impulse() - m_last_total_impulse;
+    // m_last_total_impulse = m_floe->total_received_impulse();
+    // for (size_t iDir = 0; iDir < values.size() ; ++iDir)
+    // {
+    //     amplitude = 1; // pour l'instant, pour s'assurer que la condition est bien respectée. 
+    //     point_type a(amplitude*values[iDir].x, amplitude*values[iDir].y);
+    //     values[iDir] = a;
+    // }
     // if (!addDirichlet(gamma_d, values))
     // {
     //     std::cout << "Could not build dirichlet condition" << std::endl;
@@ -660,6 +687,7 @@ FemProblem<TFloe>::performComputation(std::vector<size_t> gamma_d, std::vector<p
     //     return false; 
     // }
 
+    // WHEREAMI
     if (!addContactDirichlet(gamma_d, values))
     {
         std::cout << "Could not build dirichlet condition" << std::endl;
@@ -667,6 +695,9 @@ FemProblem<TFloe>::performComputation(std::vector<size_t> gamma_d, std::vector<p
         return false; 
     }
 
+    // std::cout << "F : " << m_F << std::endl;
+
+    // WHEREAMI
     if (!solve())
     {
         std::cout << "Could not solve " << std::endl;
@@ -674,6 +705,7 @@ FemProblem<TFloe>::performComputation(std::vector<size_t> gamma_d, std::vector<p
         return false; 
     }
 
+    // WHEREAMI
     m_stress_is_computed = compute_stress_vector();
     if (!m_stress_is_computed)
     {
@@ -682,6 +714,7 @@ FemProblem<TFloe>::performComputation(std::vector<size_t> gamma_d, std::vector<p
         return false; 
     }
 
+    // WHEREAMI
     m_energies_are_computed = compute_elementary_energies();
     if (!m_energies_are_computed)
     {
@@ -690,6 +723,7 @@ FemProblem<TFloe>::performComputation(std::vector<size_t> gamma_d, std::vector<p
         return false; 
     }
 
+    // WHEREAMI
     // recherche de fractures 
     std::vector<size_t> elems;
     for (size_t i = 0; i < m_nE; i++)

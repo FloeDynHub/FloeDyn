@@ -261,10 +261,9 @@ void PROBLEM::solve(real_type end_time, real_type dt_default, real_type out_step
         // arbritrary crack every N steps until Pth step : no physical meaning / only for demo
         // bool do_fracture = (fracture && this->m_step_nb > 0 && this->m_step_nb < 50000 && this->m_step_nb % 18 == 0);
         // bool do_fracture = (fracture && m_domain.time() > 22000 && m_domain.time() - last_frac_time > 1000);
-        bool do_fracture = true;
+        bool do_fracture = fracture;
         if (do_fracture) last_frac_time = m_domain.time();
-        // this->step_solve(do_fracture, melting);
-        this->step_solve(true, melting);
+        this->step_solve(do_fracture, melting);
         // auto t_end = std::chrono::high_resolution_clock::now();
         // std::cout << "Chrono STEP : " << std::chrono::duration<double, std::milli>(t_end-t_start).count() << " ms" << std::endl;
         if (*this->QUIT) break; // exit normally after SIGINT
@@ -296,7 +295,8 @@ void PROBLEM::step_solve(bool crack, bool melt) {
         // real_type fract_threshold(6e5);  
         // real_type fract_threshold(6e6);  
         // real_type fract_threshold(6e7);  
-        real_type fract_threshold(1e5);
+        // real_type fract_threshold(1e5);
+        real_type fract_threshold(1e8);
         if (m_floe_group.fracture_above_threshold(fract_threshold) > 0)
         {
             this->update_optim_vars();
