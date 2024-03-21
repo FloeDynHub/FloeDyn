@@ -79,18 +79,21 @@ public :
         m_E{9000000000.0}, // ice, from https://tc.copernicus.org/articles/17/3883/2023/tc-17-3883-2023.pdf 
         // m_E{10000000000.0}, // for verification purposes, to compare with analytical solution from mecagora 
         m_nu{0.3}, // from https://tc.copernicus.org/articles/17/3883/2023/tc-17-3883-2023.pdf  
+        m_tenacite{10},
         m_nE{m_floe->mesh().get_n_cells()},
         m_nN{m_floe->mesh().get_n_nodes()},
         m_nDof{2}, // 2 displacements at each node 
         m_nNodesPerElt{3}, // linear triangle elements only, for now... 
-        m_Solution{Eigen::SparseMatrix<real_type> (1, 1)},
+        // m_Solution{Eigen::SparseMatrix<real_type> (1, 1)},
+        m_Solution{Eigen::Matrix<real_type, Eigen::Dynamic, Eigen::Dynamic> (1, 1)},
         m_Stress{Eigen::Matrix<real_type, Eigen::Dynamic, Eigen::Dynamic> (m_nE, 3)},
         m_elasticEnergies{Eigen::Matrix<real_type, Eigen::Dynamic, Eigen::Dynamic> (m_nE, 1)},
         m_is_prepared{false}, 
         m_stress_is_computed{false},
         m_largest_value{0},
         m_last_total_impulse{0},
-        m_fracture_points {0,0}
+        m_e{0}
+        // m_fracture_points {0,0}
     {}
     
     
@@ -227,26 +230,149 @@ public :
     Eigen::Matrix<double, 3, 6> computeB(size_t iElem) const;
     Eigen::Matrix<double, 3, 3> computeH() const;
 
-    bool look_for_fracture()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    /**
+     * @brief Returns true if the line defined by the points (a,b) corresponds to a fracture 
+     * 
+     * @return bool. True if Epe(side 1) + Epe(side2) + E(fracture) < Epe_totale.
+     * @param a,b point_type, not necessarily on the border, they juste need to be different to define a line. 
+     * 
+     */
+    bool does_it_break_along_this_line(point_type a, point_type b)
     {
-        // au menu ici : 
-        // * calculer les énergies élémentaires
-        // * tester plein de droites
-        // * faire des listes d'éléments 
-        // * calculer les énergies 
-        // * si on tombe sur une énergie plus faible avec fracture, on ajoute les deux noeuds dans m_fracture_points et on renvoit true
-        // * sinon, on met deux fois zero dans m_fracture points et on renvoit false
-        // * question : on casse sur des noeuds ? Des endroits arbitraires ?  
-        m_fracture_points.clear();
-        m_fracture_points.push_back(0);
-        m_fracture_points.push_back(0);
-        return false;
+        if (a == b)
+        {
+            std::cout << "a and b are coincident, they do not define a line " << std::endl;
+            std::cerr << "a and b are coincident, they do not define a line " << std::endl;
+            return false; 
+        }
+
+        multi_point_type coordinates;
+        coordinates = m_floe->mesh().points();
+        connectivity_type connect; 
+        connect = m_floe->mesh().connectivity();
+
+        std::vector<int> node_sides; // indicate for each node on which side it is : 1 if it is on the right, 2 if on the left, 0 if on the line 
+        std::vector<int> elem_sides; // indicate for each element on which side it is : 1 if it is on the right, 2 if on the left, 0 if the line intersects the element  
+        node_sides.resize(m_nN);
+        elem_sides.resize(m_nE);
+
+        real_type x1 = a.x;
+        real_type y1 = a.y;
+        real_type x2 = b.x;
+        real_type y2 = b.y;
+        real_type x0(0);
+        real_type y0(0);
+        real_type tol = 0.0001; // distance below which a node is considered on the line 
+        real_type distance(0);
+        real_type fract_length(0);
+
+
+        real_type energy_top(0);
+        real_type energy_bottom(0);
+        real_type energy_fracture(0);
+
+        for (size_t iNode = 0; iNode < m_nN; iNode++)
+        {
+            x0 = coordinates[iNode][0];
+            y0 = coordinates[iNode][1];
+            distance = ((x2-x1)*(y1-y0)-(x1-x0)*(y2-y1))/(std::sqrt(std::pow(x2-x1,2)+std::pow(y2-y1,2)));
+            if (std::abs(distance) < tol)
+                node_sides[iNode] = 0;
+            else if (distance > 0)
+                node_sides[iNode] = 1;
+            else
+                node_sides[iNode] = -1;
+            // m_Solution(iNode*2,0) = node_sides[iNode]; // looks nikelos 
+            // m_Solution(iNode*2+1,0) = node_sides[iNode];
+        }
+        
+        for (size_t iElem = 0; iElem < m_nE; iElem++)
+        {
+            if (node_sides[connect[iElem][0]] + node_sides[connect[iElem][1]] + node_sides[connect[iElem][2]] == 3)
+                elem_sides[iElem] = 1;
+            else if (node_sides[connect[iElem][0]] + node_sides[connect[iElem][1]] + node_sides[connect[iElem][2]] == -3)
+                elem_sides[iElem] = -1;
+            else 
+                elem_sides[iElem] = 0;
+            // m_Stress(iElem,0) = elem_sides[iElem]; // looks vely nice tout ça 
+            // m_Stress(iElem,1) = elem_sides[iElem];
+            // m_Stress(iElem,2) = elem_sides[iElem];
+        }
+
+
+        std::vector<point_type> nodes_on_the_fract;
+        std::vector<size_t> elem_top;
+        std::vector<size_t> elem_bottom;
+        
+        for (size_t iElem = 0; iElem < m_nE; iElem++)
+        {
+            if (elem_sides[iElem] == 0)
+                for (size_t iNode = 0; iNode < 3; iNode++)
+                    nodes_on_the_fract.push_back(point_type(coordinates[connect[iElem][iNode]][0], coordinates[connect[iElem][iNode]][1]));
+            else if (elem_sides[iElem] == 1)
+                elem_top.push_back(iElem);
+            else 
+                elem_bottom.push_back(iElem);
+        }
+
+        // Estimation of the fracture length : take all the removed elements (elem_sides = 0), all the corresponding nodes, and look for the largest length. 
+        for (size_t iNode1 = 0; iNode1 < nodes_on_the_fract.size(); iNode1++)
+        {
+            for (size_t iNode2 = 0; iNode2 < nodes_on_the_fract.size(); iNode2++)
+            {
+                distance = norm2(nodes_on_the_fract[iNode2]-nodes_on_the_fract[iNode1]);
+                if (distance > fract_length) fract_length = distance; 
+            }
+        }
+        
+        std::cout << "Fracture length = " << fract_length  << " and thickness = " << m_floe->static_floe().thickness() << std::endl;
+
+        energy_fracture = fract_length*m_floe->static_floe().thickness()*m_tenacite;
+        energy_bottom = compute_elastic_energy(elem_bottom);
+        energy_top = compute_elastic_energy(elem_top);
+        std::cout << "Total energy without fracture : " << m_e << std::endl << "Total energy with fracture : " << energy_bottom+energy_top+energy_fracture << std::endl;
+        std::cout << " Breakdown : top energy (" << elem_top.size() << " elements) = " << energy_top << " ; bottom energy (" << elem_bottom.size() <<" elements) = " << energy_bottom << " ; fracture energy = " << energy_fracture << std::endl;
+        return false; 
     }
+
+
 
 private : 
     floe_type * m_floe;
     real_type m_E; // Young modulus 
     real_type m_nu; // poisson coefficient 
+    real_type m_tenacite; // tenacité, used to compute the energy of the fracture (m_tenacite*length)
     size_t m_nE; // number of elements in the mesh 
     size_t m_nN; // number of nodes in the mesh 
     size_t m_nDof; // number of degrees of freedom. 2 translations for instance 
@@ -256,7 +382,8 @@ private :
     std::vector<Eigen::Triplet<real_type>> m_FTriplet;
     Eigen::SparseMatrix<real_type> m_K;
     Eigen::SparseMatrix<real_type> m_F;
-    Eigen::SparseMatrix<real_type> m_Solution;
+    // Eigen::SparseMatrix<real_type> m_Solution;
+    Eigen::Matrix<real_type, Eigen::Dynamic, Eigen::Dynamic> m_Solution;
     Eigen::Matrix<real_type, Eigen::Dynamic, Eigen::Dynamic> m_Stress;
     Eigen::Matrix<real_type, Eigen::Dynamic, Eigen::Dynamic> m_elasticEnergies;
     bool m_is_prepared;
@@ -264,7 +391,8 @@ private :
     bool m_energies_are_computed;
     real_type m_largest_value; 
     real_type m_last_total_impulse; 
-    std::vector<size_t> m_fracture_points;
+    // std::vector<size_t> m_fracture_points;
+    real_type m_e; // total elastic energy 
 };
 
 
@@ -338,16 +466,16 @@ FemProblem<TFloe>::addDirichlet(std::vector<size_t> gamma_d, std::vector<point_t
         return false; 
     }
 
-    std::cout << "gamma_d = " ;
-    for (size_t i = 0; i < gamma_d.size(); i++)
-    {
-        std::cout << " " << gamma_d[i]; 
-    }
-    std::cout << "values = " ;
-    for (size_t i = 0; i < gamma_d.size(); i++)
-    {
-        std::cout << " " << values[i]; 
-    }
+    // std::cout << "gamma_d = " ;
+    // for (size_t i = 0; i < gamma_d.size(); i++)
+    // {
+    //     std::cout << " " << gamma_d[i]; 
+    // }
+    // std::cout << "values = " ;
+    // for (size_t i = 0; i < gamma_d.size(); i++)
+    // {
+    //     std::cout << " " << values[i]; 
+    // }
     
     real_type very_big_stuff=10000*m_largest_value;
     real_type theta(m_floe->get_frame().theta());
@@ -637,7 +765,8 @@ FemProblem<TFloe>::prepare()
     m_nN = m_floe->mesh().get_n_nodes();
     m_nDof = 2; // 2 displacements on each node. 
     m_nNodesPerElt = 3; // triangle elements 
-    m_Solution = Eigen::SparseMatrix<real_type> (m_nN*m_nDof, 1);
+    // m_Solution = Eigen::SparseMatrix<real_type> (m_nN*m_nDof, 1);
+    m_Solution = Eigen::Matrix<real_type, Eigen::Dynamic, Eigen::Dynamic> (m_nN*m_nDof, 1);
     m_largest_value = 0;
     m_K = Eigen::SparseMatrix<real_type> (m_nN*m_nDof, m_nN*m_nDof);
 
@@ -724,11 +853,11 @@ FemProblem<TFloe>::performComputation(std::vector<size_t> gamma_d, std::vector<p
     }
 
     // WHEREAMI
-    // recherche de fractures 
     std::vector<size_t> elems;
     for (size_t i = 0; i < m_nE; i++)
         elems.push_back(i);
-    std::cout << "énergie totale : " << compute_elastic_energy(elems) << std::endl; 
+    m_e = compute_elastic_energy(elems); // total elastic energy 
+    // std::cout << "énergie totale : " << compute_elastic_energy(elems) << std::endl; 
     
     return true; 
 };

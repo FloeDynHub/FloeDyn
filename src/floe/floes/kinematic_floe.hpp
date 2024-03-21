@@ -292,7 +292,7 @@ template < typename TStaticFloe, typename TState >
 bool
 KinematicFloe<TStaticFloe,TState>::solve_elasticity()
 {
-    bool testCase(false); // to validate code parts using the 2D clamped-loaded beam test case 
+    bool testCase(false); // to validate code parts, using the 2D clamped-loaded beam test case 
     if (testCase)
     {
         // // deuxPtitsRectangles : à gauche c'est 2 3 41
@@ -353,11 +353,11 @@ KinematicFloe<TStaticFloe,TState>::solve_elasticity()
         // }
         
         real_type fact_arbitraire(1E-9); // permet de conserver l'ordre de grandeur dans le cas test du bloc circulaire de r = 100m, Ecinétique avant le choc ~ Epotentielle 
-        point_type direction(-1,0); 
+        point_type direction(-1,0); // impulse sur sa norme tout simplement... 
 
-        std::vector<size_t> contact_points = {0,1,2,3}; // 46 // to do : liste des noeuds en contact, à chercher dans le problem.m_priximity_detector.contact_graph ? 
-        std::vector<real_type> amplitudes = {m_total_current_impulse_received*fact_arbitraire, m_total_current_impulse_received*fact_arbitraire, m_total_current_impulse_received*fact_arbitraire, m_total_current_impulse_received*fact_arbitraire}; // to do : quelles variables ? velocity*mass a priori ? à voir avec Toai. Contact_point.relative_speed() ? Un coeff arbitraire pour conserver l'énergie cinétique du cas test ? 
-        std::vector<point_type> directions = {direction, direction, direction, direction}; // to do : vecteur normal au choc, vraisemblamenet un ContactPoint.frame.v()  
+        std::vector<size_t> contact_points = {0,1}; // 46 // to do : liste des noeuds en contact, à chercher dans le problem.m_priximity_detector.contact_graph ? 
+        std::vector<real_type> amplitudes = {m_total_current_impulse_received*fact_arbitraire, m_total_current_impulse_received*fact_arbitraire}; // to do : quelles variables ? velocity*mass a priori ? à voir avec Toai. Contact_point.relative_speed() ? Un coeff arbitraire pour conserver l'énergie cinétique du cas test ? 
+        std::vector<point_type> directions = {direction, direction}; 
         size_t n_contact_points = contact_points.size();
         for (size_t iPoint = 0 ; iPoint < n_contact_points ; ++iPoint)
         {
@@ -365,6 +365,16 @@ KinematicFloe<TStaticFloe,TState>::solve_elasticity()
             dirichletPoints.push_back(contact_points[iPoint]); 
         }
         m_fem_problem.performComputation(dirichletPoints, dirichletValues);
+        point_type a{0,0};
+        point_type b{100,0};
+        
+        a = m_floe->geometry().outer()[0] + m_floe->frame().center() ;
+        // a = point_type(m_floe->mesh().points()[0][0], m_floe->mesh().points()[0][1]);
+        b = m_floe->geometry().outer()[int(m_floe->geometry().outer().size()/2)] + m_floe->frame().center();
+        // a = point_type(m_floe->mesh().points()[10][0], m_floe->mesh().points()[10][1]);
+        std::cout << std::endl << "Asking for breakeage along ()" << a << " ; " << b << ')' << std::endl; 
+        
+        bool test = m_fem_problem.does_it_break_along_this_line(a, b);
     }
     
     return true; 
