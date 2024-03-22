@@ -176,8 +176,8 @@ public:
 
     std::vector<point_type> get_dirichlet_condition(real_type time) const;
 
-    real_type min_radius() const {
-        return this->static_floe().min_radius();
+    real_type min_diameter() const {
+        return this->static_floe().min_diameter();
     }
 
 private:
@@ -196,6 +196,7 @@ private:
      *  m_recent_impulse_received will keep only recent time informations
      */
     mutable std::map<real_type, std::vector<point_type>> m_detailed_impulse_received;
+    mutable std::vector<point_type> m_dirichlet_condition;
 };
 
 template < typename TStaticFloe, typename TState >
@@ -240,6 +241,19 @@ void KinematicFloe<TStaticFloe,TState>::add_contact_impulse(point_type contact_p
     while (it != m_detailed_impulse_received.end() && it->first < t - 1) {
         it = m_detailed_impulse_received.erase(it);
     }
+    // Update dirichlet condition
+    // /!\ this is not correct, because it is only update when new impulses come in, but it's not a problem for now
+    // because if the condition is not enough, the floe will not fracture and the condition could only decrease
+    auto dirichlet_condition = get_dirichlet_condition(time);
+    // Rotate dirichlet condition for static floe
+    m_dirichlet_condition.resize(dirichlet_condition.size());
+    const auto trans = geometry::frame::transformer(frame_type{ {0, 0},-state().theta });
+    for (auto i = 0; i < dirichlet_condition.size(); i++) {
+        geometry::transform(dirichlet_condition[i], m_dirichlet_condition[i], trans);
+    }
+    // Update Geometry (if any)
+    geometry::transform( m_floe->get_geometry(), *m_geometry, trans );
+        
 }
 
 template < typename TStaticFloe, typename TState >
@@ -306,8 +320,9 @@ std::vector<typename TStaticFloe::geometry_type>
 KinematicFloe<TStaticFloe,TState>::fracture_floe_from_collisions(){
     if (this->is_obstacle()) return {}; // no fracture for obstacles
     if (this->impulse_energy() > this->static_floe().min_crack_energy()) {
-        // std::cout << "Floe fractured because " << this->impulse_energy() << " >= " << this->static_floe().min_crack_energy() << std::endl;
-        return this->static_floe().fracture_floe();
+        std::cout << "Floe fractured because " << this->impulse_energy() << " >= " << this->static_floe().min_crack_energy() << std::endl;
+        // return this->static_floe().fracture_floe();
+        return this->static_floe().fracture_floe_from_impulses(m_dirichlet_condition);
     }
     return {};
 }

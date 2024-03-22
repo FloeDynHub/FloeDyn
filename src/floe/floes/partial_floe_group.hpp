@@ -123,10 +123,10 @@ PartialFloeGroup<TFloe, TFloeList>::fracture_floes()
     for (std::size_t i = 0; i < base_class::get_floes().size(); ++i){
         auto& floe = base_class::get_floes()[i];
         if (floe.is_obstacle()) continue;
-        if (floe.area() < 1) continue;
+        if (floe.area() < 400) continue;
         auto new_geometries = base_class::get_floes()[i].fracture_floe_from_collisions();
-        if (new_geometries.size() > 1){
-            // std::cout << "Floe " << i << " fractured in " << new_geometries.size() << " parts" << std::endl;
+        if (new_geometries.size() > 0){
+            std::cout << "Floe " << i << " fractured in " << new_geometries.size() << " parts" << std::endl;
             all_new_geometries[i] = new_geometries;
             n_fractured++;
         }
