@@ -372,7 +372,6 @@ KinematicFloe<TStaticFloe,TState>::solve_elasticity()
         // a = point_type(m_floe->mesh().points()[0][0], m_floe->mesh().points()[0][1]);
         b = m_floe->geometry().outer()[int(m_floe->geometry().outer().size()/2)] + m_floe->frame().center();
         // a = point_type(m_floe->mesh().points()[10][0], m_floe->mesh().points()[10][1]);
-        std::cout << std::endl << "Asking for breakeage along ()" << a << " ; " << b << ')' << std::endl; 
         
         bool test = m_fem_problem.does_it_break_along_this_line(a, b);
     }

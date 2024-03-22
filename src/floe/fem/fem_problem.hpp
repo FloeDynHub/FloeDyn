@@ -79,7 +79,7 @@ public :
         m_E{9000000000.0}, // ice, from https://tc.copernicus.org/articles/17/3883/2023/tc-17-3883-2023.pdf 
         // m_E{10000000000.0}, // for verification purposes, to compare with analytical solution from mecagora 
         m_nu{0.3}, // from https://tc.copernicus.org/articles/17/3883/2023/tc-17-3883-2023.pdf  
-        m_tenacite{10},
+        m_tenacite{10}, // Dempsey, J. P.: The fracture toughness of ice, in: Ice-structure interaction, Springer, 109–145, ISBN 978-3-642-84102-6, https://doi.org/10.1007/978-3-642-84100-2_8
         m_nE{m_floe->mesh().get_n_cells()},
         m_nN{m_floe->mesh().get_n_nodes()},
         m_nDof{2}, // 2 displacements at each node 
@@ -123,7 +123,7 @@ public :
         v.resize(m_nN*2);
         if (m_Solution.rows() < 2*m_nN)
         {
-            std::cout << "problem with matrix size" << std::endl;
+            std::cout << "incoherent matrix size" << std::endl;
             WHEREAMI
             return v;
         }
@@ -230,36 +230,64 @@ public :
     Eigen::Matrix<double, 3, 6> computeB(size_t iElem) const;
     Eigen::Matrix<double, 3, 3> computeH() const;
 
+    /**
+     * @brief Returns a list of size m_nE indicating for each element on which side of the line it stands 
+     * 
+     * @return vector<size_t>. for each element, 1 = above the line, -1 = below, 0 = intersected by the line. 
+     * @param a,b point_type, not necessarily on the border, they juste need to be non-coincident to define a proper line. 
+     * 
+     */
+    std::vector<int> distribute_elements_on_both_sides_of(point_type a, point_type b)
+    {
+        multi_point_type coordinates = m_floe->mesh().points();
+        connectivity_type connect = m_floe->mesh().connectivity();
 
+        std::vector<int> node_sides; // indicate for each node on which side it is : 1 if it is on the right, 2 if on the left, 0 if on the line 
+        std::vector<int> elem_sides; // indicate for each element on which side it is : 1 if it is on the right, 2 if on the left, 0 if the line intersects the element  
+        node_sides.resize(m_nN, 0);
+        elem_sides.resize(m_nE, 0);
+        if (a == b)
+        {
+            std::cout << "a and b are coincident, they do not define a line " << std::endl;
+            WHEREAMI
+            return elem_sides; 
+        }
 
+        real_type x1 = a.x;
+        real_type y1 = a.y;
+        real_type x2 = b.x;
+        real_type y2 = b.y;
+        real_type x0(0);
+        real_type y0(0);
+        real_type tol = 0.001; // distance below which a node is considered on the line 
+        real_type distance(0);
+        real_type fract_length(0);
 
+        real_type energy_top(0);
+        real_type energy_bottom(0);
+        real_type energy_fracture(0);
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+        // distributing nodes 
+        for (size_t iNode = 0; iNode < m_nN; iNode++)
+        {
+            x0 = coordinates[iNode][0];
+            y0 = coordinates[iNode][1];
+            distance = ((x2-x1)*(y1-y0)-(x1-x0)*(y2-y1))/(std::sqrt(std::pow(x2-x1,2)+std::pow(y2-y1,2)));
+            if (std::abs(distance) < tol) node_sides[iNode] = 0;
+            else if (distance > 0) node_sides[iNode] = 1;
+            else node_sides[iNode] = -1;
+            // m_Solution(iNode*2,0) = node_sides[iNode]; // looks nikelos 
+            // m_Solution(iNode*2+1,0) = node_sides[iNode];
+        }
+        
+        // distributing elements 
+        for (size_t iElem = 0; iElem < m_nE; iElem++)
+        {
+            if (node_sides[connect[iElem][0]] + node_sides[connect[iElem][1]] + node_sides[connect[iElem][2]] == 3) elem_sides[iElem] = 1;
+            else if (node_sides[connect[iElem][0]] + node_sides[connect[iElem][1]] + node_sides[connect[iElem][2]] == -3) elem_sides[iElem] = -1;
+        }
+        return elem_sides;
+    }
 
     /**
      * @brief Returns true if the line defined by the points (a,b) corresponds to a fracture 
@@ -272,81 +300,34 @@ public :
     {
         if (a == b)
         {
+            WHEREAMI
             std::cout << "a and b are coincident, they do not define a line " << std::endl;
             std::cerr << "a and b are coincident, they do not define a line " << std::endl;
             return false; 
         }
 
-        multi_point_type coordinates;
-        coordinates = m_floe->mesh().points();
-        connectivity_type connect; 
-        connect = m_floe->mesh().connectivity();
+        multi_point_type coordinates = m_floe->mesh().points();
+        connectivity_type connect = m_floe->mesh().connectivity();
 
-        std::vector<int> node_sides; // indicate for each node on which side it is : 1 if it is on the right, 2 if on the left, 0 if on the line 
-        std::vector<int> elem_sides; // indicate for each element on which side it is : 1 if it is on the right, 2 if on the left, 0 if the line intersects the element  
-        node_sides.resize(m_nN);
-        elem_sides.resize(m_nE);
-
-        real_type x1 = a.x;
-        real_type y1 = a.y;
-        real_type x2 = b.x;
-        real_type y2 = b.y;
-        real_type x0(0);
-        real_type y0(0);
-        real_type tol = 0.0001; // distance below which a node is considered on the line 
+        std::vector<int> elem_sides = distribute_elements_on_both_sides_of(a, b);
+        std::vector<point_type> nodes_on_the_fract; // all nodes belonging to elements intersected by the fracture path  
+        std::vector<size_t> elem_outside_the_fract; // all elements that aer not intersected 
         real_type distance(0);
         real_type fract_length(0);
-
-
-        real_type energy_top(0);
-        real_type energy_bottom(0);
         real_type energy_fracture(0);
-
-        for (size_t iNode = 0; iNode < m_nN; iNode++)
-        {
-            x0 = coordinates[iNode][0];
-            y0 = coordinates[iNode][1];
-            distance = ((x2-x1)*(y1-y0)-(x1-x0)*(y2-y1))/(std::sqrt(std::pow(x2-x1,2)+std::pow(y2-y1,2)));
-            if (std::abs(distance) < tol)
-                node_sides[iNode] = 0;
-            else if (distance > 0)
-                node_sides[iNode] = 1;
-            else
-                node_sides[iNode] = -1;
-            // m_Solution(iNode*2,0) = node_sides[iNode]; // looks nikelos 
-            // m_Solution(iNode*2+1,0) = node_sides[iNode];
-        }
+        real_type energy_elastic_truncated(0);
         
-        for (size_t iElem = 0; iElem < m_nE; iElem++)
-        {
-            if (node_sides[connect[iElem][0]] + node_sides[connect[iElem][1]] + node_sides[connect[iElem][2]] == 3)
-                elem_sides[iElem] = 1;
-            else if (node_sides[connect[iElem][0]] + node_sides[connect[iElem][1]] + node_sides[connect[iElem][2]] == -3)
-                elem_sides[iElem] = -1;
-            else 
-                elem_sides[iElem] = 0;
-            // m_Stress(iElem,0) = elem_sides[iElem]; // looks vely nice tout ça 
-            // m_Stress(iElem,1) = elem_sides[iElem];
-            // m_Stress(iElem,2) = elem_sides[iElem];
-        }
-
-
-        std::vector<point_type> nodes_on_the_fract;
-        std::vector<size_t> elem_top;
-        std::vector<size_t> elem_bottom;
-        
+        // building nodes_on_the_fract and elem_outside_the_fract 
         for (size_t iElem = 0; iElem < m_nE; iElem++)
         {
             if (elem_sides[iElem] == 0)
                 for (size_t iNode = 0; iNode < 3; iNode++)
                     nodes_on_the_fract.push_back(point_type(coordinates[connect[iElem][iNode]][0], coordinates[connect[iElem][iNode]][1]));
-            else if (elem_sides[iElem] == 1)
-                elem_top.push_back(iElem);
             else 
-                elem_bottom.push_back(iElem);
+                elem_outside_the_fract.push_back(iElem);
         }
 
-        // Estimation of the fracture length : take all the removed elements (elem_sides = 0), all the corresponding nodes, and look for the largest length. 
+        // Estimation of the fracture length : take all the removed elements (elem_sides = 0), all the corresponding nodes, and look for the largest distance between them. 
         for (size_t iNode1 = 0; iNode1 < nodes_on_the_fract.size(); iNode1++)
         {
             for (size_t iNode2 = 0; iNode2 < nodes_on_the_fract.size(); iNode2++)
@@ -356,14 +337,19 @@ public :
             }
         }
         
-        std::cout << "Fracture length = " << fract_length  << " and thickness = " << m_floe->static_floe().thickness() << std::endl;
-
         energy_fracture = fract_length*m_floe->static_floe().thickness()*m_tenacite;
-        energy_bottom = compute_elastic_energy(elem_bottom);
-        energy_top = compute_elastic_energy(elem_top);
-        std::cout << "Total energy without fracture : " << m_e << std::endl << "Total energy with fracture : " << energy_bottom+energy_top+energy_fracture << std::endl;
-        std::cout << " Breakdown : top energy (" << elem_top.size() << " elements) = " << energy_top << " ; bottom energy (" << elem_bottom.size() <<" elements) = " << energy_bottom << " ; fracture energy = " << energy_fracture << std::endl;
-        return false; 
+        energy_elastic_truncated = compute_elastic_energy(elem_outside_the_fract);
+
+        
+        std::cout << std::endl << "Does it break along (" << a << " ; " << b << ')' << std::endl; 
+        std::cout << "Fracture length = " << fract_length  << " ; floe thickness = " << m_floe->static_floe().thickness() << std::endl;
+        std::cout << "Total energy without fracture : " << m_e << std::endl << "Total energy with fracture : " << energy_elastic_truncated+energy_fracture << std::endl;
+        std::cout << "Breakdown : elastic energy (" << elem_outside_the_fract.size() <<" elements) = " << energy_elastic_truncated << " ; fracture energy = " << energy_fracture << std::endl;
+        if (energy_elastic_truncated+energy_fracture < m_e) std::cout << "   => It should break ! " << std::endl;
+        else std::cout << "   => It should not break. " << std::endl;
+        
+        
+        return energy_elastic_truncated+energy_fracture < m_e ;
     }
 
 
