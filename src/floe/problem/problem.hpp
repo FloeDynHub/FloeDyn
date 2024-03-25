@@ -297,22 +297,22 @@ void PROBLEM::step_solve(bool crack) {
         }
     }
     auto t1 = std::chrono::high_resolution_clock::now();
-    if (crack) {
-        // instead of fracturing the biggest floe at regular intervals, you may choose to fracture it only if the floe impulses exceed a predefined threshold 
-        std::size_t nb_before = m_floe_group.get_floes().size();  
-        // real_type fract_threshold(6e5);  
-        // real_type fract_threshold(6e6);  
-        // real_type fract_threshold(6e7);  
-        // real_type fract_threshold(1e5);
-        real_type fract_threshold(1e8);
-        if (m_floe_group.fracture_above_threshold(fract_threshold) > 0)
-        {
-            this->update_optim_vars();
-            // std::cout << "Fracture on threshold at time : " << this->m_domain.time() << " - nb floes : " << nb_before << " -> " << m_floe_group.get_floes().size() << std::endl;
-            std::cout << "Fracture on threshold at time : " << this->m_domain.time() << " - nb floes : " << nb_before << " -> " << m_floe_group.get_floes().size() << std::endl;
-        }
-        // WHEREAMI
-    }
+    // if (crack) {
+    //     // instead of fracturing the biggest floe at regular intervals, you may choose to fracture it only if the floe impulses exceed a predefined threshold 
+    //     std::size_t nb_before = m_floe_group.get_floes().size();  
+    //     // real_type fract_threshold(6e5);  
+    //     // real_type fract_threshold(6e6);  
+    //     // real_type fract_threshold(6e7);  
+    //     // real_type fract_threshold(1e5);
+    //     real_type fract_threshold(1e8);
+    //     if (m_floe_group.fracture_above_threshold(fract_threshold) > 0)
+    //     {
+    //         this->update_optim_vars();
+    //         // std::cout << "Fracture on threshold at time : " << this->m_domain.time() << " - nb floes : " << nb_before << " -> " << m_floe_group.get_floes().size() << std::endl;
+    //         std::cout << "Fracture on threshold at time : " << this->m_domain.time() << " - nb floes : " << nb_before << " -> " << m_floe_group.get_floes().size() << std::endl;
+    //     }
+    //     // WHEREAMI
+    // }
     
     auto t2 = std::chrono::high_resolution_clock::now();
     compute_time_step();
