@@ -41,22 +41,16 @@ public:
     using optim_interface_type = typename optim_type::optim_interface_type;
 
     //! Default constructor
-    ProximityData() : /*m_floes{},*/ m_floe_group{nullptr}, m_optims{}, m_indic{0,0}, m_dist_secu{0,0}, m_dist_opt{0,0}, m_interpenetration{false} {}
+    ProximityData() : m_floe_group{nullptr}, m_optims{}, m_indic{0,0}, m_dist_secu{0,0}, m_dist_opt{0,0}, m_interpenetration{false} {}
 
     //!Empty floe and optim lists
-    virtual void reset() { /*m_floes.clear();*/ m_optims.clear(); }
+    virtual void reset() { m_optims.clear(); }
 
     inline void resize(std::size_t N1, std::size_t N2) { 
         m_indic.resize(N1, N2);
         m_dist_opt = ublas::scalar_matrix<real_type>(N1, N2, 0);
         m_dist_secu = ublas::scalar_matrix<real_type>(N1, N2, 0);
     }
-
-    // virtual void push_back( floe_type * floe_ptr )
-    // {
-    //     m_floes.push_back(floe_ptr);
-    //     m_optims.push_back( new optim_type{*floe_ptr} );
-    // }
 
     virtual void set_floe_group(floe_group_type const& floe_group){
         m_floe_group = &floe_group;
@@ -84,7 +78,6 @@ public:
     inline virtual void set_dist_opt(std::size_t n1, std::size_t n2, real_type val) { m_dist_opt(n1, n2) = m_dist_opt(n2, n1) = val; }
 
     //! Container accessors
-    // inline std::vector<floe_type const*> const& get_floes() const { return m_floes; }
     inline typename floe_group_type::floe_list_type const& get_floes() const { return m_floe_group->get_floes(); }
     inline std::vector<optim_type *> const& get_optims() const { return m_optims; }
     inline virtual floe_interface_type const& get_floe_itf(std::size_t n) const { return get_floe(n); }
@@ -102,7 +95,6 @@ public:
 protected:
 
     floe_group_type const* m_floe_group;
-    // std::vector<floe_type const*>   m_floes; //!< Floes list.
     std::vector<optim_type*>   m_optims; //!< Optimization datas list.
     indic_matrix_type m_indic; //!< Indicator of collision (0=far away, 1=close, 2=contact)
     dist_matrix_type m_dist_secu; //!< Security distance

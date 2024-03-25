@@ -60,6 +60,14 @@ bazar_silou/
 .vscode/
 compile.sh
 configure.sh 
+configure.sh
+generatorTest.sh
+getRank.py
+go.sh
+whyDontYouJustF-ckingDieAlreadyJustGiveUpAndDieQuickTime.scpt
+
+# python user files
+pack_creator/in_*.py
 
 ### other files ###
 data_simu.txt

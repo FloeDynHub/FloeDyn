@@ -1,20 +1,19 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import numpy as np
-# import matplotlib
-# matplotlib.use("GTKAgg")
-from matplotlib import transforms, cm, animation, colors, gridspec
+from matplotlib import cm, animation, colors, gridspec
 import matplotlib.pyplot as plt
 from matplotlib.patches import Circle, Polygon
-from matplotlib.collections import PatchCollection, PolyCollection, CircleCollection
+from matplotlib.collections import PolyCollection
 
-from multiprocessing import Pool, Process, cpu_count
+from multiprocessing import Pool, cpu_count
 from subprocess import call
 
 from utils import filename_without_extension, get_unused_path, check_path_existence, mkdir_path
 import h5py
 import datetime
 import math
+import os
 
 
 class AxeManager(object):
@@ -86,8 +85,8 @@ class FloePlotter(object):
             self.writer.extra_args = ['-profile:v', 'high444', '-tune:v', 'animation', '-preset:v', 'slow', '-level', '4.0']
         funcs[self.OPTIONS.function]()
 
-    def get_final_video_path(self, input_file_path, video_ext="mp4"):
-        filename = filename_without_extension(input_file_path)
+    def get_final_video_path(self, video_ext="mp4"):
+        filename = self.OPTIONS.outname or filename_without_extension(self.OPTIONS.filename)
         if not check_path_existence("io/videos"):
             print('Warning: the directory ''io/videos'' does not exist! It will be created')
             mkdir_path('io/videos')
@@ -314,6 +313,11 @@ class FloePlotter(object):
             # End of attempt
             ax_mgr.get_collection("floe_ghosts").set_verts(ghosts_verts)
 
+        if opt_color:
+            impulses = [v for i, v in enumerate(data.get("impulses")[indic]) if data.get("floe_states")[indic][i][9] == 1]
+            ax_mgr.get_collection("floes").set_array(impulses)
+            if opt_ghosts:
+                ax_mgr.get_collection("floe_ghosts").set_array(np.tile(impulses, 8))
         ax.set_title("t = {}".format(str(datetime.timedelta(seconds=int(data.get("time")[indic])))))
         if not data.get("static_axes"):
             # ax.axis('equal')
@@ -415,7 +419,7 @@ class FloePlotter(object):
         "displays floes animation from hdf5 output file (simple plot or video creation)"
         data_file    = h5py.File(self.OPTIONS.filename, 'r')
         # Read Usefull data from file
-        data_global = self._get_useful_datas(data_file)
+        data_global = self._get_useful_data(data_file)
         fig, ax = plt.subplots()
         ax_mgr = AxeManager(ax)
         if getattr(self.OPTIONS, "hd", False):
@@ -432,7 +436,7 @@ class FloePlotter(object):
             fig, update, len(data_global.get("time")), fargs=(data_global, ax_mgr),
             interval=1, blit=False)
         if make_video:
-            anim.save(self.get_final_video_path(self.OPTIONS.filename), writer=self.writer)
+            anim.save(self.get_final_video_path(), writer=self.writer)
         else:
             plt.show()
 
@@ -448,7 +452,7 @@ class FloePlotter(object):
             idx = 0
         num = idx
 
-        data_global = self._get_useful_datas(file, num, img=True)
+        data_global = self._get_useful_data(file, num, img=True)
         init(data_global, ax_mgr)
         if not data_global.get("static_axes"):
             ax.axis('equal') # automatic scale
@@ -458,7 +462,7 @@ class FloePlotter(object):
         if getattr(self.OPTIONS, "hd", False):
             fig.set_size_inches(60, 45)
             fig.set_dpi(100)
-            plt.savefig('{}.png'.format(self.OPTIONS.filename))
+            plt.savefig('{}.png'.format(os.path.splitext(self.OPTIONS.filename)[0]))
             # plt.savefig('{}.eps'.format(self.OPTIONS.filename), format='eps')#, dpi=1000)
         else:
             plt.show()
@@ -533,10 +537,10 @@ class FloePlotter(object):
         call(['mkdir', temp_dir])
         partial_file_names = ["{}/{}.mpg".format(temp_dir, i) for i in range(nb_process)]
         # Read Usefull data from file
-        data_global = self._get_useful_datas(data_file)
+        data_global = self._get_useful_data(data_file)
         # Build trunks datas
         L = [( partial_file_names[i],
-               self._get_useful_trunk_datas(data_global, trunk),
+               self._get_useful_trunk_data(data_global, trunk),
                 self.OPTIONS.version ) for i,trunk in enumerate(trunks)]
         # Launch process pool 
         p = Pool(nb_process)
@@ -545,12 +549,12 @@ class FloePlotter(object):
         p.close()
         p.join()
         # Concat all partial video
-        out_filename = self.get_final_video_path(self.OPTIONS.filename)
+        out_filename = self.get_final_video_path()
         call(['ffmpeg',  '-i', 'concat:{}'.format("|".join(partial_file_names)), '-c', 'copy', out_filename])
         call(['rm', '-r', temp_dir])
 
 
-    def _get_useful_datas(self, data_file, single_step="OFF", img=False):
+    def _get_useful_data(self, data_file, single_step="OFF", img=False):
         d = {}
         # File datas
         if not img:
@@ -601,7 +605,7 @@ class FloePlotter(object):
         return d
 
 
-    def _get_useful_trunk_datas(self, data_global, trunk):
+    def _get_useful_trunk_data(self, data_global, trunk):
         """Slice global datas for a partial video"""
         d = {}
         trunked_keys = ["time", "floe_states", "impulses", "mass_center"]

@@ -8,6 +8,7 @@
 #define OPE_LCP_MANAGER_HPP
 
 #include "floe/domain/time_scale_manager.hpp"
+#include "../product/config/config_base.hpp" // types
 #include <boost/numeric/ublas/vector_proxy.hpp>
 #include <boost/numeric/ublas/blas.hpp>
 #include <iostream> // debug
@@ -73,7 +74,7 @@ public:
 
     //! Solve collision represented by a contact graph
     template<typename TContactGraph>
-    int solve_contacts(TContactGraph& contact_graph);
+    int solve_contacts(TContactGraph& contact_graph, real_type time);
     //! Get solving success ratio in percent
     double success_ratio(){ return (m_nb_lcp == 0)? 100 : 100 * (double)m_nb_lcp_success/m_nb_lcp; }
 
@@ -91,7 +92,10 @@ private:
 
     //! Update floes state with LCP solution
     template<typename TContactGraph>
-    void update_floes_state(TContactGraph& graph, const std::array<value_vector, 2> Sol);
+    void update_floes_state(TContactGraph& graph, const value_vector Sol, real_type time);
+    //! Update floes impulses with LCP solution
+    template<typename TContactGraph>
+    void update_floes_impulses(TContactGraph& graph, real_type time);
 
     /*! \fn bool saving_contact_graph_in_hdf5(int lCP_count, std::size_t loop_count, std::size_t size_a_sub_graph, bool all_solved )
         \brief Saves information on the contact graph in the same file as LCP statistics.
@@ -115,7 +119,7 @@ private:
 
 template<typename T>
 template<typename TContactGraph>
-int LCPManager<T>::solve_contacts(TContactGraph& contact_graph)
+int LCPManager<T>::solve_contacts(TContactGraph& contact_graph, typename T::real_type time)
 {
 
     auto const subgraphs = collision_subgraphs( contact_graph );
@@ -187,13 +191,13 @@ int LCPManager<T>::solve_contacts(TContactGraph& contact_graph)
                         auto Sol = m_solver.solve( igraph, success, nb_lcp_failed_stats );
                         mark_solved(igraph, success);
                         if (success) {++loop_nb_success;}
-                        update_floes_state(igraph, Sol);
+                        update_floes_state(igraph, Sol, time);
                     }
                 } else {
                     auto Sol = m_solver.solve( graph, success, nb_lcp_failed_stats );
                     mark_solved(graph, success);
                     if (success) {++loop_nb_success;}
-                    update_floes_state(graph, Sol); // updates the velocity of floes
+                    update_floes_state(graph, Sol, time); // updates the velocity of floes
                 }
 
                 mark_changed_parent(graph, subgraph); // indicates which floes have been modified
@@ -233,48 +237,7 @@ int LCPManager<T>::solve_contacts(TContactGraph& contact_graph)
         // End saving data on LCP
         // EndMat
     }
-    // auto t_end = std::chrono::high_resolution_clock::now(); // test perf
-    // auto call_time = std::chrono::duration<double, std::milli>(t_end-t_start).count(); // test perf
-    // std::cout << "#slv() : " << m_solver.nb_solver_run // test perf
-    // << ", T : " << (double)call_time // test perf
-    // << ", avg_T_Slv : " << (double)m_solver.chrono_solver/m_solver.nb_solver_run // test perf
-    // << ", max_T_Slv : " << m_solver.max_chrono_solver // test perf
-    // << ", #ASG_loop : " << nb_active_subgraph_loop // test perf
-    // << ", avg_T_ASG : " << chrono_active_subgraph/nb_active_subgraph_loop // test perf
-    // << ", max_T_ASG : " << max_chrono_active_subgraph // test perf
-    // << " ( #contacts : " << num_contacts(contact_graph) << " )" // test perf
-    // << "\n"; // test perf
-
-    // version omp
-    // #pragma omp parallel for
-    // for ( std::size_t i = 0; i < subgraphs.size(); ++i )
-    // {
-    //     auto& subgraph = subgraphs[i];
-    //     auto asubgraphs = active_subgraphs( subgraph );
-    //     int loop_cnt = 0;
-    //     while (asubgraphs.size() != 0 && loop_cnt < 60 * num_contacts(subgraph) )
-    //     {
-    //         LCP_count += asubgraphs.size();
-    //         #pragma omp parallel for
-    //         for ( std::size_t j = 0; j < asubgraphs.size(); ++j )
-    //         {
-    //             bool success;
-    //             auto& graph = asubgraphs[j];
-    //             auto Sol = m_solver.solve( graph, success );
-    //             mark_solved(graph, success);
-    //             // #pragma omp critical
-    //             if (success) 
-    //             {
-    //                 // #pragma omp atomic
-    //                 // nb_success++;
-    //                 update_floes_state(graph, Sol);
-    //             }
-    //         }
-    //         asubgraphs = active_subgraphs( subgraph );
-    //         loop_cnt++;
-    //     }
-    // }
-
+    update_floes_impulses(contact_graph, time);
     m_nb_lcp += LCP_count;
     m_nb_lcp_success += nb_success;
     for (int i=0;i<3;++i){
@@ -294,13 +257,12 @@ int LCPManager<T>::solve_contacts(TContactGraph& contact_graph)
 
 template<typename T>
 template<typename TContactGraph>
-void LCPManager<T>::update_floes_state(TContactGraph& graph, const std::array<value_vector, 2> Sol){
+void LCPManager<T>::update_floes_state(TContactGraph& graph, const value_vector Sol, real_type time){
 
     for ( auto const v : boost::make_iterator_range( vertices(graph) ) )
     {
-        graph[v].floe->state().speed = {Sol[0](3*v), Sol[0](3*v + 1)}; // fv_test
-        graph[v].floe->state().rot = Sol[0](3*v + 2); // fv_test
-        graph[v].floe->add_impulse(Sol[1](v)); // fv_test
+        graph[v].floe->state().speed = {Sol(3*v), Sol(3*v + 1)}; // fv_test
+        graph[v].floe->state().rot = Sol(3*v + 2); // fv_test
     }
     // filling another variable containing only the impulse received during the last impach time step 
     for ( auto const v : boost::make_iterator_range( vertices(graph) ) )
@@ -308,6 +270,30 @@ void LCPManager<T>::update_floes_state(TContactGraph& graph, const std::array<va
     for ( auto const v : boost::make_iterator_range( vertices(graph) ) )
         graph[v].floe->add_current_impulse(Sol[1](v)); // fv_test    }
 }
+
+//! Update floes impulses from contact graph
+template<typename T>
+template<typename TContactGraph>
+void LCPManager<T>::update_floes_impulses(TContactGraph& graph, real_type time){
+    for ( auto const v : boost::make_iterator_range( vertices(graph) ) )
+    {
+        graph[v].floe->add_impulse(graph[v].impulse()); // fv_test
+    }
+    for ( auto const& edge : make_iterator_range( edges( graph ) ) )
+    {
+        for ( std::size_t i = 0; i < graph[edge].size(); ++i ) // iter over contacts
+        {
+            // Add contact point impulses to corresponding floes
+            graph[source(edge, graph)].floe->add_contact_impulse(
+                graph[edge][i].frame.center(), -graph[edge][i].impulse_abs_frame(),
+                time);
+            graph[target(edge, graph)].floe->add_contact_impulse(
+                graph[edge][i].frame.center(), graph[edge][i].impulse_abs_frame(),
+                time);
+        }
+    }
+}
+
 
 template<typename T>
 bool LCPManager<T>::saving_contact_graph_in_hdf5(int LCP_count, std::size_t loop_count, std::size_t size_a_sub_graph,

@@ -131,7 +131,7 @@ protected:
     //! Load floes set and initial states from hdf5 file
     virtual void load_h5_config(std::string const& filename);
     //! Move one time step forward
-    virtual void step_solve(bool crack, bool melt);
+    virtual void step_solve(bool crack);
     //! Proximity detection (inter-floe distance and eventual collisions)
     void detect_proximity();
     //! Collision solving
@@ -142,8 +142,8 @@ protected:
     virtual void safe_move_floe_group();
     //! Apply smooth dynamics to floes
     point_type move_floe_group();
-    //! Handle output_datas (console + out file)
-    void output_datas();
+    //! Handle output_data (console + out file)
+    void output_data();
 
     // to allow different behaviour in the generation phase
     bool m_is_generator;
@@ -244,12 +244,13 @@ void PROBLEM::solve(real_type end_time, real_type dt_default, real_type out_step
     if (reset) this->create_optim_vars();
     m_fracture = fracture;
     m_melting = melting;
+    m_dynamics_manager.set_norm_rand_speed(1e-7);
     if (this->variable_nb_of_floes()) {
         this->m_floe_group.update_list_ids_active();
     }
     this->m_domain.set_default_time_step(dt_default);
     this->m_out_manager.set_out_step(out_step, this->m_domain.time());
-    this->output_datas(); // Initial state out
+    this->output_data(); // Initial state out
     this->detect_proximity(); // First proximity detection
         // condition for fracture :
     // real_type max_area_for_fracture = 0.8*m_floe_group.max_floe_area();
@@ -259,11 +260,13 @@ void PROBLEM::solve(real_type end_time, real_type dt_default, real_type out_step
     {   
         // auto t_start = std::chrono::high_resolution_clock::now();
         // arbritrary crack every N steps until Pth step : no physical meaning / only for demo
+        // bool do_fracture = true;
         // bool do_fracture = (fracture && this->m_step_nb > 0 && this->m_step_nb < 50000 && this->m_step_nb % 18 == 0);
         // bool do_fracture = (fracture && m_domain.time() > 22000 && m_domain.time() - last_frac_time > 1000);
         bool do_fracture = fracture;
         if (do_fracture) last_frac_time = m_domain.time();
-        this->step_solve(do_fracture, melting);
+        // this->step_solve(do_fracture, melting);
+        this->step_solve(do_fracture);
         // auto t_end = std::chrono::high_resolution_clock::now();
         // std::cout << "Chrono STEP : " << std::chrono::duration<double, std::milli>(t_end-t_start).count() << " ms" << std::endl;
         if (*this->QUIT) break; // exit normally after SIGINT
@@ -278,16 +281,21 @@ void PROBLEM::solve(real_type end_time, real_type dt_default, real_type out_step
 
 
 TEMPLATE_PB
-void PROBLEM::step_solve(bool crack, bool melt) {
+void PROBLEM::step_solve(bool crack) {
     auto t0 = std::chrono::high_resolution_clock::now();
     manage_collisions();
+    m_floe_group.get_floes()[0].get_dirichlet_condition(m_domain.time());
     // fracture
-    // if (crack) {
-    // 	std::size_t nb_before = m_floe_group.get_floes().size();
-    // 	m_floe_group.fracture_biggest_floe();
-    //     this->update_optim_vars();
-    // 	std::cout << "Fracture - nb floes : " << nb_before << " -> " << m_floe_group.get_floes().size() << std::endl;
-    // }
+    if (m_fracture && crack) {
+    	std::size_t nb_before = m_floe_group.get_floes().size();
+    	// m_floe_group.fracture_biggest_floe();
+        // auto nb_fractured = 1;
+        auto nb_fractured = m_floe_group.fracture_floes();
+        if (nb_fractured > 0) {
+            this->update_optim_vars();
+            std::cout << "Fracture of " << nb_fractured << " floes - nb floes : " << nb_before << " -> " << m_floe_group.get_floes().size() << std::endl;
+        }
+    }
     auto t1 = std::chrono::high_resolution_clock::now();
     if (crack) {
         // instead of fracturing the biggest floe at regular intervals, you may choose to fracture it only if the floe impulses exceed a predefined threshold 
@@ -311,7 +319,7 @@ void PROBLEM::step_solve(bool crack, bool melt) {
     auto t3 = std::chrono::high_resolution_clock::now();
     safe_move_floe_group();
     auto t4 = std::chrono::high_resolution_clock::now();
-    if (melt) {
+    if (m_melting) {
         m_floe_group.melt_floes();
         this->update_optim_vars();
     }
@@ -331,9 +339,7 @@ void PROBLEM::step_solve(bool crack, bool melt) {
     m_timeStepTime+=std::chrono::duration<double, std::nano>(t3-t2);
     m_moveTime+=std::chrono::duration<double, std::nano>(t4-t3);
 
-    // WHEREAMI
-    output_datas();
-    // WHEREAMI
+    output_data();
     m_step_nb++;
 }
 
@@ -348,11 +354,14 @@ void PROBLEM::safe_move_floe_group(){
         m_floe_group.recover_previous_step_states();
         m_domain.rewind_time();
         compute_time_step(); // will only divide previous time step
-        m_dynamics_manager.set_norm_rand_speed(1e-7); 
-        if (m_domain.time_step() < m_domain.default_time_step() / 1e5) // 1e8 from Q.Jouet
+        if (m_domain.time_step() < m_domain.default_time_step() / 1e8) // 1e8 from Q.Jouet
         {   
             // Hack to bypass repeating interpenetrations...
-            std::cout << "dt too small -> RECOVER STATES FROM OUT FILE" << std::endl;
+            std::cout << "dt too small -> RECOVER STATES FROM OUT FILE (safe_move_floe_group)" << std::endl;
+            // m_floe_group.get_floes().filter_off();
+            // m_out_manager.save_step(this->m_domain.time(), this->m_dynamics_manager);
+            // m_floe_group.get_floes().filter_on();
+            // *this->QUIT = true;
             recover_states_from_file(m_out_manager.out_file_name(), m_domain.time() + 1);
             // adding a random velocity component to avoid infinite loops
             // used only in generator mode. 
@@ -373,13 +382,12 @@ void PROBLEM::safe_move_floe_group(){
             continue;
         }
         move_floe_group();
-        m_dynamics_manager.set_norm_rand_speed(1e-7); 
         // m_dynamics_manager.set_rand_speed_add(false); // it seems SimuRunner sets it to true by default 
     }    
 }
 
 TEMPLATE_PB
-void PROBLEM::output_datas(){
+void PROBLEM::output_data(){
     std::cout << "----" << std::endl;
     std::cout << " Time : " << this->m_domain.time();
     std::cout << " | delta_t : " << this->m_domain.time_step();
@@ -396,7 +404,7 @@ void PROBLEM::detect_proximity(){
     {   
         // Hack to bypass repeating interpenetrations...
         m_out_manager.flush();
-        std::cout << "dt too small -> RECOVER STATES FROM OUT FILE" << std::endl;
+        std::cout << "dt too small -> RECOVER STATES FROM OUT FILE (detect_proximity)" << std::endl;
         recover_states_from_file(m_out_manager.out_file_name(), m_domain.time() + 1);
     }
     if (!m_proximity_detector.update()) // we have a floe interpenetration
@@ -406,7 +414,7 @@ void PROBLEM::detect_proximity(){
 
 TEMPLATE_PB
 int PROBLEM::manage_collisions(){
-    int nb_lcp = m_collision_manager.solve_contacts(m_proximity_detector.contact_graph());
+    int nb_lcp = m_collision_manager.solve_contacts(m_proximity_detector.contact_graph(), this->m_domain.time());
     m_proximity_detector.clean_dist_opt();
     return nb_lcp;
 }
