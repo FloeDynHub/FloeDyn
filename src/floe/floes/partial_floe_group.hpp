@@ -57,7 +57,7 @@ public:
     // fracture !
     void add_floe(geometry_type geometry, std::size_t parent_floe_idx);
     void fracture_biggest_floe();
-    size_t fracture_above_threshold(real_type threshold);
+    // size_t fracture_above_threshold(real_type threshold);
     int fracture_floes();
     void melt_floes();
     void update_list_ids_active();//{std::cout<<"test"<<std::endl;}
@@ -118,52 +118,52 @@ PartialFloeGroup<TFloe, TFloeList>::fracture_biggest_floe()
     }
 }
 
-template <typename TFloe, typename TFloeList>
-size_t 
-PartialFloeGroup<TFloe, TFloeList>::fracture_above_threshold(real_type threshold)
-{
-	// returns the number of cracked floes ``
-    size_t nCracked(0);
-	for (std::size_t iFloe = 0; iFloe < base_class::get_floes().size(); ++iFloe){
-        auto& floe = base_class::get_floes()[iFloe];
-        // WHEREAMI
-        if (!floe.prepare_elasticity())
-            std::cout << "FEM computation initialization failed" << std::endl;
-        // WHEREAMI
-        if (!floe.is_obstacle() && floe.total_received_impulse() > 0) 
-        {
-            // WHEREAMI
-            std::cout << "trying to solve elasticity " << std::endl;
-            if (!floe.solve_elasticity())
-                std::cout << "Solve on floe " << iFloe << " has failed." << std::endl;
-            // WHEREAMI
-        }
-        if (!floe.is_obstacle() && floe.total_received_impulse() > threshold){
-            // if the impulse is greater than a threshold, flow is fractured
-            auto new_geometries = floe.fracture_floe();
-            // WHEREAMI
-            std::cout << "fracturing floe " << iFloe << " whose impulse reaches " << floe.total_received_impulse()<< " replaced by " << new_geometries.size() << " new geometries" << std::endl;
-            for (std::size_t i = 0; i < new_geometries.size(); ++i){
-                // new geometries are added to the floe list.
-                // note : iFloe is needed to initialize correctly the new floes states  
-                this->add_floe(new_geometries[i], iFloe); 
-                // WHEREAMI
-            }
-            // WHEREAMI
-            // previous flow is deactivated 
-            base_class::get_floes()[iFloe].state().desactivate(); // floe.state().desactivate(); does not work 
-            nCracked++;
-            this->update_list_ids_active();
+// template <typename TFloe, typename TFloeList>
+// size_t 
+// PartialFloeGroup<TFloe, TFloeList>::fracture_above_threshold(real_type threshold)
+// {
+// 	// returns the number of cracked floes ``
+//     size_t nCracked(0);
+// 	for (std::size_t iFloe = 0; iFloe < base_class::get_floes().size(); ++iFloe){
+//         auto& floe = base_class::get_floes()[iFloe];
+//         // WHEREAMI
+//         if (!floe.prepare_elasticity())
+//             std::cout << "FEM computation initialization failed" << std::endl;
+//         // WHEREAMI
+//         if (!floe.is_obstacle() && floe.total_received_impulse() > 0) 
+//         {
+//             // WHEREAMI
+//             std::cout << "trying to solve elasticity " << std::endl;
+//             if (!floe.solve_elasticity())
+//                 std::cout << "Solve on floe " << iFloe << " has failed." << std::endl;
+//             // WHEREAMI
+//         }
+//         if (!floe.is_obstacle() && floe.total_received_impulse() > threshold){
+//             // if the impulse is greater than a threshold, flow is fractured
+//             auto new_geometries = floe.fracture_floe();
+//             // WHEREAMI
+//             std::cout << "fracturing floe " << iFloe << " whose impulse reaches " << floe.total_received_impulse()<< " replaced by " << new_geometries.size() << " new geometries" << std::endl;
+//             for (std::size_t i = 0; i < new_geometries.size(); ++i){
+//                 // new geometries are added to the floe list.
+//                 // note : iFloe is needed to initialize correctly the new floes states  
+//                 this->add_floe(new_geometries[i], iFloe); 
+//                 // WHEREAMI
+//             }
+//             // WHEREAMI
+//             // previous flow is deactivated 
+//             base_class::get_floes()[iFloe].state().desactivate(); // floe.state().desactivate(); does not work 
+//             nCracked++;
+//             this->update_list_ids_active();
 
-            for (auto & floe : this->get_floes()) { // TODO why is it needed ?
-                floe.static_floe().attach_mesh_ptr(&floe.get_floe_h().m_static_mesh);
-                floe.update();
-            }
-            // WHEREAMI
-        }
-    }
-    return nCracked;
-}
+//             for (auto & floe : this->get_floes()) { // TODO why is it needed ?
+//                 floe.static_floe().attach_mesh_ptr(&floe.get_floe_h().m_static_mesh);
+//                 floe.update();
+//             }
+//             // WHEREAMI
+//         }
+//     }
+//     return nCracked;
+// }
 
 
 template <typename TFloe, typename TFloeList>
@@ -176,8 +176,14 @@ PartialFloeGroup<TFloe, TFloeList>::fracture_floes()
     for (std::size_t i = 0; i < base_class::get_floes().size(); ++i){
         auto& floe = base_class::get_floes()[i];
         if (floe.is_obstacle()) continue;
-        if (floe.area() < 400) continue;
-        auto new_geometries = base_class::get_floes()[i].fracture_floe_from_collisions();
+        if (floe.area() < 400) 
+        {
+            std::cout << "Ignoring Floe " << i << ", which area is " << floe.area() << std::endl;
+            continue; 
+        }
+        // auto new_geometries = base_class::get_floes()[i].fracture_floe_from_collisions();
+        auto new_geometries = base_class::get_floes()[i].fracture_floe_from_collisions_fem();
+        std::cout << "dealing with Floe " << i << " : ";
         if (new_geometries.size() > 0){
             std::cout << "Floe " << i << " fractured in " << new_geometries.size() << " parts" << std::endl;
             all_new_geometries[i] = new_geometries;

@@ -57,12 +57,6 @@ class FemProblem
 {
 public :
     
-    // using point_type = typename TFloeGroup::point_type;
-    // // using floe_group_type = TFloeGroup; 
-    // // using time_scale_manager_type = TDomain::TimeScaleManager<typename TProxymityDetector::proximity_data_type>;
-    // using floe_type = typename TFloeGroup::floe_type;
-    // typedef typename floe_type::mesh_type     mesh_type;
-
     using real_type = typename TFloe::real_type;
     using point_type = typename TFloe::point_type;
     // using floe_type = typename TFloe;
@@ -79,7 +73,8 @@ public :
         m_E{9000000000.0}, // ice, from https://tc.copernicus.org/articles/17/3883/2023/tc-17-3883-2023.pdf 
         // m_E{10000000000.0}, // for verification purposes, to compare with analytical solution from mecagora 
         m_nu{0.3}, // from https://tc.copernicus.org/articles/17/3883/2023/tc-17-3883-2023.pdf  
-        m_tenacite{10}, // Dempsey, J. P.: The fracture toughness of ice, in: Ice-structure interaction, Springer, 109–145, ISBN 978-3-642-84102-6, https://doi.org/10.1007/978-3-642-84100-2_8
+        // m_tenacite{10}, // Dempsey, J. P.: The fracture toughness of ice, in: Ice-structure interaction, Springer, 109–145, ISBN 978-3-642-84102-6, https://doi.org/10.1007/978-3-642-84100-2_8
+        m_tenacite{0.01}, // out of mon chapeau 
         m_nE{m_floe->mesh().get_n_cells()},
         m_nN{m_floe->mesh().get_n_nodes()},
         m_nDof{2}, // 2 displacements at each node 
@@ -93,7 +88,6 @@ public :
         m_largest_value{0},
         m_last_total_impulse{0},
         m_e{0}
-        // m_fracture_points {0,0}
     {}
     
     
@@ -226,7 +220,8 @@ public :
         return e;
     }; 
 
-    inline bool unset_prepared() {m_is_prepared = false;};
+    inline real_type get_total_elastic_energy() {return m_e;};
+    inline bool unset_prepared() {m_is_prepared = false; return true;};
     Eigen::Matrix<double, 3, 6> computeB(size_t iElem) const;
     Eigen::Matrix<double, 3, 3> computeH() const;
 
@@ -248,11 +243,11 @@ public :
         elem_sides.resize(m_nE, 0);
         if (a == b)
         {
-            std::cout << "a and b are coincident, they do not define a line " << std::endl;
+            std::cout << "a and b are coincident, they do not define a line, I cannot distribute elements on both sides " << std::endl;
             WHEREAMI
             return elem_sides; 
         }
-
+        
         real_type x1 = a.x;
         real_type y1 = a.y;
         real_type x2 = b.x;
@@ -300,9 +295,9 @@ public :
     {
         if (a == b)
         {
-            WHEREAMI
-            std::cout << "a and b are coincident, they do not define a line " << std::endl;
-            std::cerr << "a and b are coincident, they do not define a line " << std::endl;
+            // WHEREAMI
+            std::cout << "a and b are coincident, they do not define a line : (" << a.x << ";" << a.y << ")" << " -- (" << b.x << ";" << b.y << ")" << std::endl;
+            std::cerr << "a and b are coincident, they do not define a line : (" << a.x << ";" << a.y << ")" << " -- (" << b.x << ";" << b.y << ")" << std::endl;
             return false; 
         }
 
@@ -341,12 +336,12 @@ public :
         energy_elastic_truncated = compute_elastic_energy(elem_outside_the_fract);
 
         
-        std::cout << std::endl << "Does it break along (" << a << " ; " << b << ')' << std::endl; 
-        std::cout << "Fracture length = " << fract_length  << " ; floe thickness = " << m_floe->static_floe().thickness() << std::endl;
-        std::cout << "Total energy without fracture : " << m_e << std::endl << "Total energy with fracture : " << energy_elastic_truncated+energy_fracture << std::endl;
-        std::cout << "Breakdown : elastic energy (" << elem_outside_the_fract.size() <<" elements) = " << energy_elastic_truncated << " ; fracture energy = " << energy_fracture << std::endl;
-        if (energy_elastic_truncated+energy_fracture < m_e) std::cout << "   => It should break ! " << std::endl;
-        else std::cout << "   => It should not break. " << std::endl;
+        // std::cout << std::endl << "Does it break along (" << a << " ; " << b << ')' << std::endl; 
+        // std::cout << "Fracture length = " << fract_length  << " ; floe thickness = " << m_floe->static_floe().thickness() << std::endl;
+        // std::cout << "Total energy without fracture : " << m_e << std::endl << "Total energy with fracture : " << energy_elastic_truncated+energy_fracture << std::endl;
+        // std::cout << "Breakdown : elastic energy (" << elem_outside_the_fract.size() <<" elements) = " << energy_elastic_truncated << " ; fracture energy = " << energy_fracture << std::endl;
+        if (energy_elastic_truncated+energy_fracture < m_e) std::cout << "========> It should break along (" << a << " ; " << b << ')' << std::endl; 
+        // else std::cout << "   => It should not break. " << std::endl;
         
         
         return energy_elastic_truncated+energy_fracture < m_e ;
@@ -499,13 +494,11 @@ template < typename TFloe>
 bool
 FemProblem<TFloe>::addContactDirichlet(std::vector<size_t> gamma_d, std::vector<point_type> values)
 {
-    // WHEREAMI
     if (m_largest_value == 0)
     {
         std::cerr << "largest_value has not been initialized" << std::endl;
         return false; // this should have been set to a larger value in the constructor 
     }
-    // WHEREAMI
     size_t n_dirichlet(gamma_d.size());
     if (values.size() != n_dirichlet)
     {
@@ -513,20 +506,17 @@ FemProblem<TFloe>::addContactDirichlet(std::vector<size_t> gamma_d, std::vector<
         return false; 
     }
 
-    // WHEREAMI
     real_type very_big_stuff=10000*m_largest_value;
-    // WHEREAMI
     real_type theta(m_floe->get_frame().theta());
-    // WHEREAMI
+    point_type center(m_floe->get_frame().center());
+    std::vector<size_t> contact_points;
+    contact_points.resize(n_dirichlet, 0);
     m_FTriplet.clear();
-    // WHEREAMI
     m_DirichletTriplet.clear();
-    // WHEREAMI
 
     connectivity_type connect; 
     connect = m_floe->mesh().connectivity();
 
-    // WHEREAMI
     for (size_t iDir = 0; iDir < n_dirichlet ; ++iDir)
     {
         // looking for the two surrounding points around the impact point : 
@@ -534,13 +524,11 @@ FemProblem<TFloe>::addContactDirichlet(std::vector<size_t> gamma_d, std::vector<
         std::vector<size_t> surr_elements;
         std::vector<size_t> surr_nodes_temp;
         std::vector<size_t> surr_nodes;
-        // WHEREAMI
         for (size_t iElem = 0; iElem < connect.size(); iElem++)
         {
             if ((connect[iElem][0] == gamma_d[iDir]) || (connect[iElem][1] == gamma_d[iDir]) || (connect[iElem][2] == gamma_d[iDir]))
                 surr_elements.push_back(iElem);
         }
-        // WHEREAMI
         // * if the list contains only one element : both other nodes are the surrounding ones 
         if (surr_elements.size() == 1)
         {
@@ -577,20 +565,12 @@ FemProblem<TFloe>::addContactDirichlet(std::vector<size_t> gamma_d, std::vector<
                 size_t count(0);
                 for (size_t iNode2 = 0; iNode2 < surr_nodes_temp.size(); iNode2++)
                 {
-                    if (surr_nodes_temp[iNode2] == surr_nodes_temp[iNode])
-                    {
-                        count++;
-                    }
+                    if (surr_nodes_temp[iNode2] == surr_nodes_temp[iNode]){count++;}
                 }
-                if (count > 1)
-                {
-                    surr_nodes.pop_back(); 
-                }
+                if (count > 1){surr_nodes.pop_back();}
             }
         }
-    
-        // WHEREAMI
-        // checking that the surrounding nodes are not already in the triplet m_FTriplet s
+            // checking that the surrounding nodes are not already in the triplet m_FTriplet s
         for (size_t iDir2 = 0; iDir2 < n_dirichlet ; ++iDir2)
             if (iDir2 != iDir)
             {
@@ -599,17 +579,14 @@ FemProblem<TFloe>::addContactDirichlet(std::vector<size_t> gamma_d, std::vector<
                 if (iDir == surr_nodes[1])
                     surr_nodes.pop_back(); 
             } 
-        // WHEREAMI
         // pour l'instant : on y met une dirichlet avec values/2, à remplacer lorsque la condition dirichlet aura été déterminée 
         m_FTriplet.push_back(Eigen::Triplet<real_type>(gamma_d[iDir]*2, 0, very_big_stuff*(values[iDir].x*cos(theta) + values[iDir].y*sin(theta))));
         m_FTriplet.push_back(Eigen::Triplet<real_type>(gamma_d[iDir]*2+1, 0, very_big_stuff*(values[iDir].x*sin(theta)*(-1) + values[iDir].y*cos(theta))));
         m_DirichletTriplet.push_back(Eigen::Triplet<real_type>(gamma_d[iDir]*2, gamma_d[iDir]*2, very_big_stuff));
         m_DirichletTriplet.push_back(Eigen::Triplet<real_type>(gamma_d[iDir]*2+1, gamma_d[iDir]*2+1, very_big_stuff));
-        // WHEREAMI
 
         for (size_t iPoint = 0 ; iPoint < surr_nodes.size() ; ++iPoint)
         {
-            // WHEREAMI
             size_t point = surr_nodes[iPoint];
             m_FTriplet.push_back(Eigen::Triplet<real_type>(point*2, 0, 0.5*very_big_stuff*(values[iDir].x*cos(theta) + values[iDir].y*sin(theta))));
             m_FTriplet.push_back(Eigen::Triplet<real_type>(point*2+1, 0, 0.5*very_big_stuff*(values[iDir].x*sin(theta)*(-1) + values[iDir].y*cos(theta))));
@@ -617,11 +594,10 @@ FemProblem<TFloe>::addContactDirichlet(std::vector<size_t> gamma_d, std::vector<
             m_DirichletTriplet.push_back(Eigen::Triplet<real_type>(point*2, point*2, very_big_stuff));
             m_DirichletTriplet.push_back(Eigen::Triplet<real_type>(point*2+1, point*2+1, very_big_stuff));
         }
-        // WHEREAMI
-        // Idée d'accélération à faire lorsque la fonction de contact dirichlet aura été définie :
+        // Idée d'accélération, à faire lorsque la fonction de contact dirichlet aura été définie :
         // * enregistrer une fois pour toutes pour chaque noeud une liste des plus proches voisins
         // * combien de voisin pour un contact ? faut voir sur combien de points on l'étale. 
-        // * en effet, la recherche de voisins doit aller vite car faite à chaque nouveau contact. 
+        // * en effet, la recherche de voisins doit aller vite car elle est faite à chaque nouveau contact. 
     }
     return true;
 };
@@ -751,7 +727,6 @@ FemProblem<TFloe>::prepare()
     m_nN = m_floe->mesh().get_n_nodes();
     m_nDof = 2; // 2 displacements on each node. 
     m_nNodesPerElt = 3; // triangle elements 
-    // m_Solution = Eigen::SparseMatrix<real_type> (m_nN*m_nDof, 1);
     m_Solution = Eigen::Matrix<real_type, Eigen::Dynamic, Eigen::Dynamic> (m_nN*m_nDof, 1);
     m_largest_value = 0;
     m_K = Eigen::SparseMatrix<real_type> (m_nN*m_nDof, m_nN*m_nDof);
@@ -802,7 +777,6 @@ FemProblem<TFloe>::performComputation(std::vector<size_t> gamma_d, std::vector<p
     //     return false; 
     // }
 
-    // WHEREAMI
     if (!addContactDirichlet(gamma_d, values))
     {
         std::cout << "Could not build dirichlet condition" << std::endl;
@@ -810,9 +784,6 @@ FemProblem<TFloe>::performComputation(std::vector<size_t> gamma_d, std::vector<p
         return false; 
     }
 
-    // std::cout << "F : " << m_F << std::endl;
-
-    // WHEREAMI
     if (!solve())
     {
         std::cout << "Could not solve " << std::endl;
@@ -820,7 +791,6 @@ FemProblem<TFloe>::performComputation(std::vector<size_t> gamma_d, std::vector<p
         return false; 
     }
 
-    // WHEREAMI
     m_stress_is_computed = compute_stress_vector();
     if (!m_stress_is_computed)
     {
@@ -829,7 +799,6 @@ FemProblem<TFloe>::performComputation(std::vector<size_t> gamma_d, std::vector<p
         return false; 
     }
 
-    // WHEREAMI
     m_energies_are_computed = compute_elementary_energies();
     if (!m_energies_are_computed)
     {
@@ -838,13 +807,11 @@ FemProblem<TFloe>::performComputation(std::vector<size_t> gamma_d, std::vector<p
         return false; 
     }
 
-    // WHEREAMI
     std::vector<size_t> elems;
     for (size_t i = 0; i < m_nE; i++)
         elems.push_back(i);
-    m_e = compute_elastic_energy(elems); // total elastic energy 
-    // std::cout << "énergie totale : " << compute_elastic_energy(elems) << std::endl; 
-    
+    m_e = compute_elastic_energy(elems);
+
     return true; 
 };
 

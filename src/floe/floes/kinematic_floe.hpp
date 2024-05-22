@@ -180,6 +180,7 @@ public:
     void reset_detailed_impulse() const { m_detailed_impulse_received.clear(); }
     std::vector<geometry_type> fracture_floe();
     std::vector<geometry_type> fracture_floe_from_collisions();
+    std::vector<geometry_type> fracture_floe_from_collisions_fem();
 
     void update_after_fracture(const state_type init_state,const bool init_obstacle_m,const real_type init_total_impulse_received, point_type mass_center_floe_init);
 
@@ -225,6 +226,7 @@ private:
      *  m_recent_impulse_received will keep only recent time informations
      */
     mutable std::map<real_type, std::vector<point_type>> m_detailed_impulse_received;
+    mutable std::vector<point_type> m_last_impulses;
     mutable std::vector<point_type> m_dirichlet_condition;
 };
 
@@ -282,7 +284,23 @@ void KinematicFloe<TStaticFloe,TState>::add_contact_impulse(point_type contact_p
     }
     // Update Geometry (if any)
     geometry::transform( m_floe->get_geometry(), *m_geometry, trans );
-        
+
+
+    // updating m_last_impulses, which contains only the last impulse for each mesh node. 
+    // m_last_impulses will be reset in solve_elasticity() 
+    closest_point = 0;
+    auto coordinates = this->mesh().points();
+    m_last_impulses.resize(coordinates.size());
+    min_dist = norm2(contact_point - coordinates[0]);
+    for (std::size_t i = 1; i < coordinates.size(); ++i) {
+        real_type dist = norm2(contact_point - coordinates[i]);
+        if (dist < min_dist) {
+            min_dist = dist;
+            closest_point = i;
+        }
+    }
+    // pour la gestion du cumul des impulses : on peut dire que si un noeud est impacté à tous les pas de temps depuis une seconde, on fait la somme 
+    m_last_impulses[closest_point] += impulse;
 }
 
 template < typename TStaticFloe, typename TState >
@@ -356,6 +374,90 @@ KinematicFloe<TStaticFloe,TState>::fracture_floe_from_collisions(){
     return {};
 }
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/**
+ * @brief Looks for cracks according to fem elastic energy minimisation 
+ * @details if the floe is not an obstacle and did collide during the last time step, 
+ * the elasticity computation is 
+ *  * prepared if needed, and performed. 
+ *  * Then, lines of fracture across the floe are build by traveling along the floe contour. 
+ *  * If one of them corresponds to an energy-minimizing fracture, the floe is broken. 
+ * 
+ * @return list of two floes if the floe is broken, otherwise an empty list 
+ */
+template < typename TStaticFloe, typename TState >
+std::vector<typename TStaticFloe::geometry_type>
+KinematicFloe<TStaticFloe,TState>::fracture_floe_from_collisions_fem(){
+    // 0 - obstacles and blocks that did not collide won't break 
+    if (this->is_obstacle() || m_total_current_impulse_received == 0) return {}; 
+    
+    // 1 - initialisation if required 
+    if (!prepare_elasticity())
+    {
+        std::cout << "FEM initialization has failed" << std::endl;
+        std::cerr << "FEM initialization has failed" << std::endl;
+        return {}; 
+    }
+    
+    // 2 - resolution 
+    if (!solve_elasticity())
+    {
+        std::cout << "FEM resolution has failed." << std::endl;
+        std::cerr << "FEM resolution has failed." << std::endl;
+        return {}; 
+    }
+    
+    // 3 - looking for possible crack lines, and 4 - dealing with fracture 
+    if (m_fem_problem.get_total_elastic_energy() > 0)
+    {
+        point_type crack_start;
+        point_type crack_end;
+        for (size_t i = 0; i < m_geometry->outer().size(); ++i)
+        {
+            crack_start = m_geometry->outer()[i]; 
+            for (size_t j = i+2; j < m_geometry->outer().size()-1; ++j) 
+            {
+                crack_end = m_geometry->outer()[j];
+                if (m_fem_problem.does_it_break_along_this_line(crack_start, crack_end))
+                {
+                    return this->static_floe().fracture_floe_along(crack_start, crack_end);
+                }
+            }
+        }
+    }
+    return {};
+}
+
 //! Update frame, geometry and mesh with respect to the current state.
 template < typename TStaticFloe, typename TState >
 void
@@ -413,6 +515,11 @@ KinematicFloe<TStaticFloe,TState>::solve_elasticity()
         // // std::vector<point_type> dirichletValues = {b, b, b, b, b,b,b,b,b,b,b};
         // // std::vector<point_type> dirichletValues = {c,d,e,d,c};
         // std::vector<point_type> dirichletValues = {c,d,c};
+
+
+
+
+
         point_type a(0,0); 
         std::vector<size_t> dirichletPoints = {2, 3, 41}; 
         std::vector<point_type> dirichletValues = {a, a, a};
@@ -422,49 +529,25 @@ KinematicFloe<TStaticFloe,TState>::solve_elasticity()
     {
         std::vector<size_t> dirichletPoints = {}; 
         std::vector<point_type> dirichletValues = {};
-
-
-        // TO DO HERE : 
-        // * trouver le(s) vrai(s) point(s) de contact
-        // * définir des directions ? m_detailed_impulse_received[iPoint] / norm2(truc truc) tout simplement en fait, tfais pas ièch mon grand 
-        // APRES LE PAIRFORME RESOULOUCHEUNE 
-        // * récupérer l'algo de Quentin pour la génération des lignes 
-        // * test de plein de lignes, appel à does_it_break_along(vector<point_type>) ? 
-
-        // recherche du contact_point
-        // std::size_t closest_point = 0;
-        // point_type contact_point = graph[edge][i].frame.center()
-        // real_type min_dist = norm2(contact_point - this->geometry().outer()[0]);
-        // for (std::size_t i = 1; i < this->boundary_nb_points(); ++i) {
-        //     real_type dist = norm2(contact_point - this->geometry().outer()[i]);
-        //     if (dist < min_dist) {
-        //         min_dist = dist;
-        //         closest_point = i;
-        //     }
-        // }
-        
-        real_type fact_arbitraire(1E-9); // permet de conserver l'ordre de grandeur dans le cas test du bloc circulaire de r = 100m, Ecinétique avant le choc ~ Epotentielle 
-        point_type direction(-1,0); // impulse sur sa norme tout simplement... 
-
-        std::vector<size_t> contact_points = {0,1}; // 46 // to do : liste des noeuds en contact, à chercher dans le problem.m_priximity_detector.contact_graph ? 
-        std::vector<real_type> amplitudes = {m_total_current_impulse_received*fact_arbitraire, m_total_current_impulse_received*fact_arbitraire}; // to do : quelles variables ? velocity*mass a priori ? à voir avec Toai. Contact_point.relative_speed() ? Un coeff arbitraire pour conserver l'énergie cinétique du cas test ? 
-        std::vector<point_type> directions = {direction, direction}; 
-        size_t n_contact_points = contact_points.size();
-        for (size_t iPoint = 0 ; iPoint < n_contact_points ; ++iPoint)
+        // ça, c'est du gros bluff en attendant une belle expression pour la CL de contact 
+        real_type fact_arbitraire(1E-9); // permet de conserver l'ordre de grandeur dans le cas test du bloc circulaire de r = 100m, Ecinétique avant le choc ~ Epotentielle.         
+        size_t nb_points = this->mesh().points().size();
+        for (size_t iPoint = 0; iPoint < nb_points; iPoint++)
         {
-            dirichletValues.push_back(amplitudes[iPoint]*directions[iPoint]);
-            dirichletPoints.push_back(contact_points[iPoint]); 
+            if (norm2(m_last_impulses[iPoint]) > 0) 
+            {
+                dirichletValues.push_back(m_last_impulses[iPoint]*fact_arbitraire);
+                dirichletPoints.push_back(iPoint); 
+            }
         }
-        m_fem_problem.performComputation(dirichletPoints, dirichletValues);
-        point_type a{0,0};
-        point_type b{100,0};
-        
-        a = m_floe->geometry().outer()[0] + m_floe->frame().center() ;
-        // a = point_type(m_floe->mesh().points()[0][0], m_floe->mesh().points()[0][1]);
-        b = m_floe->geometry().outer()[int(m_floe->geometry().outer().size()/2)] + m_floe->frame().center();
-        // a = point_type(m_floe->mesh().points()[10][0], m_floe->mesh().points()[10][1]);
-        
-        bool test = m_fem_problem.does_it_break_along_this_line(a, b);
+        // resetting before next time step 
+        m_last_impulses.clear();
+        m_last_impulses.resize(nb_points);
+        if (dirichletPoints.size() > 0)
+        {
+            std::cout << std::endl << "Performing resolution with " << dirichletPoints.size() << " contact points" << std::endl;
+            m_fem_problem.performComputation(dirichletPoints, dirichletValues);
+        }
     }
     
     return true; 

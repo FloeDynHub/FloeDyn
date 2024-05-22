@@ -111,26 +111,22 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::save_step(real_type time, const dyna
         {
             auto const& floe = this->get_floe(iFloe);
             size_t nElem(floe.mesh().get_n_cells());
-            // std::vector<std::vector<real_type>> femSolStress = floe.get_fem_stress();
             std::vector<real_type> femSolStress = floe.get_fem_stress();
             for (std::size_t iElem = 0 ; iElem < nElem ; ++iElem)
             {
                 if (femSolStress.size() == nElem*3)
                 {
-                    // std::cout << "Writing stress to hdf5 output file" << std::endl ;
                     real_type sigma_von_mises = sqrt(pow(femSolStress[iElem], 2) + pow(femSolStress[iElem+nElem], 2) - femSolStress[iElem]*femSolStress[iElem+nElem] + 3*pow(femSolStress[iElem+2*nElem], 2));
                     m_data_chunk_elem_data[m_chunk_step_count][iFloe][iElem] = sigma_von_mises;
                 }
                 else
                 {
-                    // std::cout << "Nope." << std::endl ;
                     if (floe.is_obstacle())
                         m_data_chunk_elem_data[m_chunk_step_count][iFloe][iElem] = 0;
                     else 
-                        m_data_chunk_elem_data[m_chunk_step_count][iFloe][iElem] = (real_type)iElem;
-                    // m_data_chunk_elem_data[m_chunk_step_count][iFloe][iElem] = floe.total_received_impulse();
+                        // m_data_chunk_elem_data[m_chunk_step_count][iFloe][iElem] = (real_type)iElem;
+                        m_data_chunk_elem_data[m_chunk_step_count][iFloe][iElem] = 0;
                 }
-                // m_data_chunk_elem_data[m_chunk_step_count][iFloe][iElem] = (real_type)iElem;
             }
         }
         // saving nodal data 
