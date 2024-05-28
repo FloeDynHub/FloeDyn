@@ -377,75 +377,17 @@ StaticFloe<T,TPoint,TGeometry,TMesh,TFrame,TDensity>::fracture_floe_from_impulse
     return new_borders;
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 template <typename T,typename TPoint,typename TGeometry,typename TMesh,typename TFrame ,typename TDensity>
 std::vector<TGeometry>
 StaticFloe<T,TPoint,TGeometry,TMesh,TFrame,TDensity>::fracture_floe_along(point_type a, point_type b)
 {
-    // real_type min_radius = std::numeric_limits<real_type>::max();
-    // std::size_t min_radius_i = 0;
-    // std::size_t min_radius_j = 0;
-    point_type crack_start = a;
-    point_type crack_end = b;
-    // for (size_t i = 0; i < m_geometry->outer().size(); ++i)
-    // {
-    //     auto const& p = m_geometry->outer()[i];
-    //     for (size_t j = i + 1; j < m_geometry->outer().size(); ++j) {
-    //         if ((j - i) < m_geometry->outer().size() / 3 || (m_geometry->outer().size() - j + i) < m_geometry->outer().size() / 3) // TODO : improve this logic
-    //             continue; // Too close to be a valid radius
-    //         auto q = m_geometry->outer()[j];
-    //         auto radius = norm2(p - q) * (1. - 0.5 * (1. - 1. / (1. + norm2(impulses[i]) + norm2(impulses[j])))) + 2 * this->minimum_distance(p, q, {0, 0});
-    //         if (radius < min_radius) {
-    //             min_radius = radius;
-    //             crack_start = p;
-    //             crack_end = q;
-    //         }
-    //         // try mid point for q
-    //         q = (q + m_geometry->outer()[(j + 1) % m_geometry->outer().size()]) / 2;
-    //         radius = norm2(p - q) * (1. - 0.5 * (1. - 1. / (1. + norm2(impulses[i]) + norm2(impulses[j])))) + 2 * this->minimum_distance(p, q, {0, 0});
-    //         if (radius < min_radius) {
-    //             min_radius = radius;
-    //             crack_start = p;
-    //             crack_end = q;
-    //         }
-    //     }
-    // }
-    auto& boundary = this->geometry().outer();
-    crack_start = crack_start * 1.1; // arbitrary 1.1 (10%) for spacial margin
-    crack_end = crack_end * 1.1;
+    point_type crack_start = 2*a - b; // taking points on the same line but further away : norm2(crack_end-crack_start) = 3* norm2(b-a)
+    point_type crack_end = 2*b - a;
     std::vector<TGeometry> new_borders;
-    // crack is a long and thin rectangle containing crack_start and floe's mass center
+    // crack is a long and thin rectangle containing a and b 
     geometry_type crack;
     real_type crack_width = std::sqrt(this->area()) * 0.002;
-    point_type crack_ortho = direct_orthogonal(crack_start) / norm2(crack_start);
+    point_type crack_ortho = direct_orthogonal(b-a) / norm2(b-a);
     point_type crack_delta = crack_ortho * crack_width / 2;
     int crack_nb_point = 6;
     for (int i = 0; i <= crack_nb_point; ++i) {
@@ -456,6 +398,32 @@ StaticFloe<T,TPoint,TGeometry,TMesh,TFrame,TDensity>::fracture_floe_along(point_
     }
     boost::geometry::correct(crack);
     boost::geometry::difference(this->geometry().outer(), crack, new_borders);
+
+
+    if (new_borders.size() < 2)
+    {
+        std::cout << "the geometries do not intersect each other as expected" << std::endl;
+        std::cerr << "the geometries do not intersect each other as expected" << std::endl;
+    }
+    
+    
+    // debug - checking the geometries 
+    // debug 
+    // debug 
+    // std::cerr << std::endl << "DEBUG supprime moi de static_floe.hpp" << std::endl;
+    // for (size_t iPoint = 0 ; iPoint < crack.outer().size() ; iPoint++ )
+    // {
+    //     std::cerr << "crack definition, point " << iPoint << ": (" << crack.outer()[iPoint].x << ";" << crack.outer()[iPoint].y << ")" << std::endl;
+    // }
+    // std::cerr << std::endl << std::endl;
+    // for (size_t iPoint = 0 ; iPoint < this->geometry().outer().size() ; iPoint++ )
+    // {
+    //     std::cerr << "geo definition, point " << iPoint << ": (" << this->geometry().outer()[iPoint].x << ";" << this->geometry().outer()[iPoint].y << ")" << std::endl;
+    // }
+    // debug 
+    // debug 
+    // debug 
+    
     // Add points to new borders
     std::vector<TGeometry> final_borders;
     for (auto const& border : new_borders) {
@@ -467,7 +435,7 @@ StaticFloe<T,TPoint,TGeometry,TMesh,TFrame,TDensity>::fracture_floe_along(point_
         boost::geometry::correct(new_border);
         final_borders.push_back(new_border);
     }
-    return new_borders;
+    return final_borders;
 }
 
 template <typename T,typename TPoint,typename TGeometry,typename TMesh,typename TFrame ,typename TDensity>

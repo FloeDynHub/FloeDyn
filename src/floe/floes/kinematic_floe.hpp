@@ -194,6 +194,7 @@ public:
     bool prepare_elasticity(); 
     bool solve_elasticity(); 
     inline std::vector<real_type> get_fem_solution() const {return m_fem_problem.get_solution_vector();};
+    // inline std::vector<real_type> get_fem_solution() {return m_fem_problem.get_solution_vector();};
     // inline std::vector<std::vector<real_type>> get_fem_stress() const {return m_fem_problem.get_stress_vector();};
     inline std::vector<real_type> get_fem_stress() const {return m_fem_problem.get_stress_vector();};
     std::size_t boundary_nb_points() const {
@@ -344,7 +345,13 @@ KinematicFloe<TStaticFloe,TState>::update()
     {
         geometry::transform( m_floe->get_mesh(), mesh(), trans ); // TODO bad_array_new_length PB HERE
     }
+    else 
+    {
+        WHEREAMI
+        std::cout << "Warning : the updated static floe does not have a mesh. " << std::endl;
+    }
     // std::cout << "KinematicFloe::update() 6" << std::endl;
+
 }
 
 template < typename TStaticFloe, typename TState >
@@ -381,30 +388,6 @@ KinematicFloe<TStaticFloe,TState>::fracture_floe_from_collisions(){
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 /**
  * @brief Looks for cracks according to fem elastic energy minimisation 
  * @details if the floe is not an obstacle and did collide during the last time step, 
@@ -418,14 +401,16 @@ KinematicFloe<TStaticFloe,TState>::fracture_floe_from_collisions(){
 template < typename TStaticFloe, typename TState >
 std::vector<typename TStaticFloe::geometry_type>
 KinematicFloe<TStaticFloe,TState>::fracture_floe_from_collisions_fem(){
-    // 0 - obstacles and blocks that did not collide won't break 
+    // 0 - obstacles and blocks that did not collide won't break. Floes without meshes are not considered either. 
     if (this->is_obstacle() || m_total_current_impulse_received == 0) return {}; 
-    
+    if (!m_floe->has_mesh()) {WHEREAMI return {};}
+    if (!has_static_floe()) {WHEREAMI return {};}
+
     // 1 - initialisation if required 
     if (!prepare_elasticity())
     {
         std::cout << "FEM initialization has failed" << std::endl;
-        std::cerr << "FEM initialization has failed" << std::endl;
+        // std::cerr << "FEM initialization has failed" << std::endl;
         return {}; 
     }
     
@@ -440,19 +425,60 @@ KinematicFloe<TStaticFloe,TState>::fracture_floe_from_collisions_fem(){
     // 3 - looking for possible crack lines, and 4 - dealing with fracture 
     if (m_fem_problem.get_total_elastic_energy() > 0)
     {
-        point_type crack_start;
-        point_type crack_end;
+        real_type energy(0);
+        point_type a; // crack_start
+        point_type b; // crack_end 
+        point_type a_translated;
+        point_type b_translated;
+        point_type best_a;
+        point_type best_b;
+        point_type mass_center (get_frame().center()); 
+        real_type theta (get_frame().theta()); 
+
+
+        // measuring floe // (deprecated, replaced by a loop over the geometry->outer() points )
+        // size_t n_points(16);
+        // real_type minx(m_geometry->outer()[0][0]), maxx(m_geometry->outer()[0][0]), miny(m_geometry->outer()[0][1]), maxy(m_geometry->outer()[0][1]);
+        // for (size_t iPoint = 1 ; iPoint < m_geometry->outer().size() ; iPoint++)
+        // {
+        //     if (m_geometry->outer()[iPoint][0] < minx) minx = m_geometry->outer()[iPoint][0];
+        //     if (m_geometry->outer()[iPoint][0] > maxx) maxx = m_geometry->outer()[iPoint][0];
+        //     if (m_geometry->outer()[iPoint][1] < miny) miny = m_geometry->outer()[iPoint][1];
+        //     if (m_geometry->outer()[iPoint][1] > maxy) maxy = m_geometry->outer()[iPoint][1];
+        // } 
+        // real_type r(norm2(point_type(maxx, maxy) - point_type(minx, miny))/2);
+        
         for (size_t i = 0; i < m_geometry->outer().size(); ++i)
+        // for (size_t i = 0; i < n_points; ++i)
         {
-            crack_start = m_geometry->outer()[i]; 
+            a = m_geometry->outer()[i]; 
+            // real_type theta1 = i*2*3.141926/n_points;
+            // a = point_type(r*cos(theta1), r*sin(theta1)); 
             for (size_t j = i+2; j < m_geometry->outer().size()-1; ++j) 
+            // for (size_t j = i+2; j < n_points; ++j) 
             {
-                crack_end = m_geometry->outer()[j];
-                if (m_fem_problem.does_it_break_along_this_line(crack_start, crack_end))
+                b = m_geometry->outer()[j];
+                // real_type theta2 = j*2*3.141926/n_points;
+                // b = point_type(r*cos(theta2), r*sin(theta2)); 
+                if ((b != a)||(abs(int(j)-int(i)) > 3))
                 {
-                    return this->static_floe().fracture_floe_along(crack_start, crack_end);
+                    a_translated = point_type (a.x*cos(theta)-a.y*sin(theta),a.x*sin(theta)+a.y*cos(theta))+mass_center;
+                    b_translated = point_type (b.x*cos(theta)-b.y*sin(theta),b.x*sin(theta)+b.y*cos(theta))+mass_center;
+                    real_type e = m_fem_problem.energy_release_by_breaking_along(a_translated, b_translated);
+                    if (e > energy)
+                    {
+                        energy = e;
+                        best_a = a;
+                        best_b = b;
+                    }
                 }
             }
+        }
+
+        if (energy > 0)
+        {
+            std::cout << std::endl << "Breaking along (" << best_a.x << ";" << best_a.y << ")" << " -- (" << best_b.x << ";" << best_b.y << ")" << std::endl;
+            return this->static_floe().fracture_floe_along(best_a, best_b);
         }
     }
     return {};
@@ -478,14 +504,13 @@ template < typename TStaticFloe, typename TState >
 bool
 KinematicFloe<TStaticFloe,TState>::prepare_elasticity()
 {
-	m_fem_problem.prepare();
-    return true; 
+	return m_fem_problem.prepare();
 }
 template < typename TStaticFloe, typename TState >
 bool
 KinematicFloe<TStaticFloe,TState>::solve_elasticity()
 {
-    bool testCase(false); // to validate code parts, using the 2D clamped-loaded beam test case 
+    bool testCase(false); // to validate code parts, using the 2D clamped-loaded beam analytical test case 
     if (testCase)
     {
         // // deuxPtitsRectangles : à gauche c'est 2 3 41
@@ -545,7 +570,7 @@ KinematicFloe<TStaticFloe,TState>::solve_elasticity()
         m_last_impulses.resize(nb_points);
         if (dirichletPoints.size() > 0)
         {
-            std::cout << std::endl << "Performing resolution with " << dirichletPoints.size() << " contact points" << std::endl;
+            std::cout << "Performing resolution with " << dirichletPoints.size() << " contact points" << std::endl;
             m_fem_problem.performComputation(dirichletPoints, dirichletValues);
         }
     }

@@ -178,16 +178,20 @@ PartialFloeGroup<TFloe, TFloeList>::fracture_floes()
         if (floe.is_obstacle()) continue;
         if (floe.area() < 400) 
         {
-            std::cout << "Ignoring Floe " << i << ", which area is " << floe.area() << std::endl;
+            std::cout << "Ignoring Floe " << i << " in elasticity computation, too small" << std::endl;
+            // std::cout << "Ignoring Floe " << i << " in elasticity computation, its area is too small (" << floe.area() << ")" << std::endl;
             continue; 
         }
         // auto new_geometries = base_class::get_floes()[i].fracture_floe_from_collisions();
         auto new_geometries = base_class::get_floes()[i].fracture_floe_from_collisions_fem();
-        std::cout << "dealing with Floe " << i << " : ";
+        std::cout << "Looking for fracture in Floe " << i << " : ";
         if (new_geometries.size() > 0){
-            std::cout << "Floe " << i << " fractured in " << new_geometries.size() << " parts" << std::endl;
+            std::cout << " fractured in " << new_geometries.size() << " parts" << std::endl;
             all_new_geometries[i] = new_geometries;
             n_fractured++;
+        }
+        else{
+            std::cout << " not fractured " << std::endl;
         }
     }
 

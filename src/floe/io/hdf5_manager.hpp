@@ -144,7 +144,8 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::save_step(real_type time, const dyna
             }
             if (femSol.size() != nNodes*2)
             {
-                std::cout << "Incoherent size. Size of femSol : " << femSol.size() << " instead of " << nNodes*2 << std::endl;
+                // std::cout << "No FEM solution available for floe " << iFloe << " (I found a vector of size : " << femSol.size() << " instead of " << nNodes*2 << "). Writing zeros instead" << std::endl;
+                // the elasticity computation has not been performed and has never been prepared, the floe might be too small or could be an obstacle for instance.  
             }
 
             for (std::size_t iNode = 0 ; iNode < nNodes*2 ; ++iNode)
@@ -155,17 +156,15 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::save_step(real_type time, const dyna
                     // m_data_chunk_node_data[m_chunk_step_count][iFloe][iNode+nNodes] = (real_type)femSol[iNode+nNodes];
                 }
                 else 
-                {
+                { // computation has not yet been performed or floe is an obstacle. 
                     if (floe.is_obstacle())
                         m_data_chunk_node_data[m_chunk_step_count][iFloe][iNode] = 0;
                     else 
-                        m_data_chunk_node_data[m_chunk_step_count][iFloe][iNode] = (real_type)(std::floor(iNode/2));
+                        m_data_chunk_node_data[m_chunk_step_count][iFloe][iNode] = (real_type)(std::floor(iNode/2)); // allows to plot node id instead of null displacement 
                     // m_data_chunk_node_data[m_chunk_step_count][iFloe][iNode] = (real_type)(iNode % nNodes);
                     // std::cout << "writing " << (real_type)(std::floor(iNode/2)) << " at location " << iNode << std::endl;
                     // m_data_chunk_node_data[m_chunk_step_count][iFloe][iNode+nNodes] = 0;
                 }
-                
-
             }
         }
     }

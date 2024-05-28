@@ -73,14 +73,13 @@ public :
         m_E{9000000000.0}, // ice, from https://tc.copernicus.org/articles/17/3883/2023/tc-17-3883-2023.pdf 
         // m_E{10000000000.0}, // for verification purposes, to compare with analytical solution from mecagora 
         m_nu{0.3}, // from https://tc.copernicus.org/articles/17/3883/2023/tc-17-3883-2023.pdf  
-        // m_tenacite{10}, // Dempsey, J. P.: The fracture toughness of ice, in: Ice-structure interaction, Springer, 109–145, ISBN 978-3-642-84102-6, https://doi.org/10.1007/978-3-642-84100-2_8
-        m_tenacite{0.01}, // out of mon chapeau 
+        m_tenacite{10}, // Dempsey, J. P.: The fracture toughness of ice, in: Ice-structure interaction, Springer, 109–145, ISBN 978-3-642-84102-6, https://doi.org/10.1007/978-3-642-84100-2_8
+        // m_tenacite{0.01}, // out of mon chapeau 
         m_nE{m_floe->mesh().get_n_cells()},
         m_nN{m_floe->mesh().get_n_nodes()},
         m_nDof{2}, // 2 displacements at each node 
         m_nNodesPerElt{3}, // linear triangle elements only, for now... 
-        // m_Solution{Eigen::SparseMatrix<real_type> (1, 1)},
-        m_Solution{Eigen::Matrix<real_type, Eigen::Dynamic, Eigen::Dynamic> (1, 1)},
+        m_Solution{Eigen::Matrix<real_type, Eigen::Dynamic, Eigen::Dynamic> (m_nN*m_nDof, 1)},
         m_Stress{Eigen::Matrix<real_type, Eigen::Dynamic, Eigen::Dynamic> (m_nE, 3)},
         m_elasticEnergies{Eigen::Matrix<real_type, Eigen::Dynamic, Eigen::Dynamic> (m_nE, 1)},
         m_is_prepared{false}, 
@@ -114,7 +113,7 @@ public :
     std::vector<real_type> get_solution_vector() const 
     {
         std::vector<real_type> v;
-        v.resize(m_nN*2);
+        v.resize(m_nN*m_nDof);
         if (m_Solution.rows() < 2*m_nN)
         {
             std::cout << "incoherent matrix size" << std::endl;
@@ -262,6 +261,13 @@ public :
         real_type energy_bottom(0);
         real_type energy_fracture(0);
 
+        if (coordinates.size() == 0)
+        {
+            WHEREAMI
+            std::cout << "The mesh has not been properly built" << std::endl;
+            return elem_sides;
+        }
+
         // distributing nodes 
         for (size_t iNode = 0; iNode < m_nN; iNode++)
         {
@@ -271,8 +277,6 @@ public :
             if (std::abs(distance) < tol) node_sides[iNode] = 0;
             else if (distance > 0) node_sides[iNode] = 1;
             else node_sides[iNode] = -1;
-            // m_Solution(iNode*2,0) = node_sides[iNode]; // looks nikelos 
-            // m_Solution(iNode*2+1,0) = node_sides[iNode];
         }
         
         // distributing elements 
@@ -284,26 +288,35 @@ public :
         return elem_sides;
     }
 
+
     /**
-     * @brief Returns true if the line defined by the points (a,b) corresponds to a fracture 
+     * @brief Returns the energy difference between total elastic energy and parts Ee + fracture energy if the line defined by the points (a,b) corresponds to a fracture 
      * 
-     * @return bool. True if Epe(side 1) + Epe(side2) + E(fracture) < Epe_totale.
+     * @return real_type. positive if Epe(side 1) + Epe(side2) + E(fracture) < Epe_totale.
      * @param a,b point_type, not necessarily on the border, they juste need to be different to define a line. 
      * 
      */
-    bool does_it_break_along_this_line(point_type a, point_type b)
+    real_type energy_release_by_breaking_along(point_type a, point_type b)
     {
         if (a == b)
         {
-            // WHEREAMI
+            WHEREAMI
             std::cout << "a and b are coincident, they do not define a line : (" << a.x << ";" << a.y << ")" << " -- (" << b.x << ";" << b.y << ")" << std::endl;
-            std::cerr << "a and b are coincident, they do not define a line : (" << a.x << ";" << a.y << ")" << " -- (" << b.x << ";" << b.y << ")" << std::endl;
-            return false; 
+            return -1; 
         }
+        if (m_floe==nullptr){WHEREAMI return -1;}
+        if (!(m_floe->has_static_floe())){WHEREAMI return -1;}
+        if (!(m_floe->get_static_floe().has_mesh())){WHEREAMI return -1;}
 
-        multi_point_type coordinates = m_floe->mesh().points();
+        multi_point_type coordinates;
+        coordinates = m_floe->mesh().points();
+        if (coordinates.size() == 0)
+        {
+            WHEREAMI
+            std::cout << "The mesh has not been properly built" << std::endl;
+            return -1;
+        }
         connectivity_type connect = m_floe->mesh().connectivity();
-
         std::vector<int> elem_sides = distribute_elements_on_both_sides_of(a, b);
         std::vector<point_type> nodes_on_the_fract; // all nodes belonging to elements intersected by the fracture path  
         std::vector<size_t> elem_outside_the_fract; // all elements that aer not intersected 
@@ -311,6 +324,16 @@ public :
         real_type fract_length(0);
         real_type energy_fracture(0);
         real_type energy_elastic_truncated(0);
+
+        // making sure the flow is divided in two parts 
+        size_t up(0);
+        size_t down(0);
+        for (size_t iElem = 0; iElem < m_nE; iElem++)
+        {
+            if (elem_sides[iElem] < 0) up++;
+            else if (elem_sides[iElem] > 0) down++;
+        }
+        if ((up ==0)||(down == 0)){return -1;}
         
         // building nodes_on_the_fract and elem_outside_the_fract 
         for (size_t iElem = 0; iElem < m_nE; iElem++)
@@ -321,7 +344,7 @@ public :
             else 
                 elem_outside_the_fract.push_back(iElem);
         }
-
+        
         // Estimation of the fracture length : take all the removed elements (elem_sides = 0), all the corresponding nodes, and look for the largest distance between them. 
         for (size_t iNode1 = 0; iNode1 < nodes_on_the_fract.size(); iNode1++)
         {
@@ -334,17 +357,27 @@ public :
         
         energy_fracture = fract_length*m_floe->static_floe().thickness()*m_tenacite;
         energy_elastic_truncated = compute_elastic_energy(elem_outside_the_fract);
-
         
-        // std::cout << std::endl << "Does it break along (" << a << " ; " << b << ')' << std::endl; 
-        // std::cout << "Fracture length = " << fract_length  << " ; floe thickness = " << m_floe->static_floe().thickness() << std::endl;
-        // std::cout << "Total energy without fracture : " << m_e << std::endl << "Total energy with fracture : " << energy_elastic_truncated+energy_fracture << std::endl;
-        // std::cout << "Breakdown : elastic energy (" << elem_outside_the_fract.size() <<" elements) = " << energy_elastic_truncated << " ; fracture energy = " << energy_fracture << std::endl;
-        if (energy_elastic_truncated+energy_fracture < m_e) std::cout << "========> It should break along (" << a << " ; " << b << ')' << std::endl; 
-        // else std::cout << "   => It should not break. " << std::endl;
+        if (m_e - energy_elastic_truncated - energy_fracture > 0)
+        {
+            real_type minx(coordinates[0][0]), maxx(coordinates[0][0]), miny(coordinates[0][1]), maxy(coordinates[0][1]);
+            for (size_t iPoint = 1 ; iPoint < coordinates.size() ; iPoint++)
+            {
+                if (coordinates[iPoint][0] < minx) minx = coordinates[iPoint][0];
+                if (coordinates[iPoint][0] > maxx) maxx = coordinates[iPoint][0];
+                if (coordinates[iPoint][1] < miny) miny = coordinates[iPoint][1];
+                if (coordinates[iPoint][1] > maxy) maxy = coordinates[iPoint][1];
+            }
+            std::cout << "Possible fracture. : " << std::endl;
+            std::cout << "  -> Points : (" << a.x << ";" << a.y << ")" << " -- (" << b.x << ";" << b.y << ")" << std::endl;
+            std::cout << "  -> Fracture length " << fract_length << std::endl;
+            std::cout << "  -> Floe enveloppe (" << minx << ";" << miny << ") -- (" << maxx << ";" << maxy << ")" << std::endl;
+            std::cout << "  -> Nb of elements on both sides of the fracture : " << up << " / " << down << std::endl;
+            std::cout << "  -> Energy bilan " << m_e << " - " << energy_elastic_truncated << " - " << energy_fracture << " = " << (m_e - energy_elastic_truncated - energy_fracture) << std::endl ;
+        }
+        // std::cout << std::endl << " returning " << (m_e - energy_elastic_truncated - energy_fracture) << " == " << m_e << " - " << energy_elastic_truncated << " - " << energy_fracture << std::endl ;
         
-        
-        return energy_elastic_truncated+energy_fracture < m_e ;
+        return (m_e - energy_elastic_truncated - energy_fracture)  ;
     }
 
 
@@ -388,8 +421,8 @@ FemProblem<TFloe>::assembleK()
     Eigen::Matrix<real_type, 3, 6> B; // idem for gradient matrix
     Eigen::Matrix<real_type, 3,3> H;
 
-    size_t ngp = gp.rows(); // number of integration points 
-    size_t gw(2); // indicates the column of gp associated with the weight. (ex: for a 2D case, the columns 0 and 1 contain x_i and y_i coordinates, column 2 contains w_i )
+    // size_t ngp = gp.rows(); // number of integration points 
+    // size_t gw(2); // indicates the column of gp associated with the weight. (ex: for a 2D case, the columns 0 and 1 contain x_i and y_i coordinates, column 2 contains w_i )
     multi_point_type coordinates;
     connectivity_type connect; 
     coordinates = m_floe->mesh().points();
@@ -721,10 +754,16 @@ FemProblem<TFloe>::prepare()
         std::cerr << "In FemProblem::prepare, m_floe has not been set to an initialized floe" << std::endl;
         return false; 
     }
+    if (!(m_floe->has_static_floe())){WHEREAMI return false;}
+    if (!(m_floe->get_static_floe().has_mesh())){WHEREAMI return false;}
+    
+
     if (m_is_prepared)
         return true;
     m_nE = m_floe->mesh().get_n_cells();
     m_nN = m_floe->mesh().get_n_nodes();
+    // if (m_nN == 0) std::cerr << "Incoherent siiiiiize ! There it is ! " << std::endl;
+    // else std::cerr << "m_nN is now set to " << m_nN << std::endl;
     m_nDof = 2; // 2 displacements on each node. 
     m_nNodesPerElt = 3; // triangle elements 
     m_Solution = Eigen::Matrix<real_type, Eigen::Dynamic, Eigen::Dynamic> (m_nN*m_nDof, 1);
