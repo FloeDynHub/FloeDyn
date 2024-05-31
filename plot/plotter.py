@@ -207,7 +207,7 @@ class FloePlotter(object):
             ax_mgr.get_collection("floe_ghosts").set_verts(ghosts_verts)
 
         if opt_color:
-            impulses = [v for i, v in enumerate(data.get("impulses")[indic]) if data.get("floe_states")[indic][i][9] == 1]
+            impulses = [v for i, v in enumerate(data.get("impulses")[indic]) if len(data.get("floe_states")[indic][i]) < 10 or data.get("floe_states")[indic][i][9] == 1]
             ax_mgr.get_collection("floes").set_array(impulses)
             if opt_ghosts:
                 ax_mgr.get_collection("floe_ghosts").set_array(np.tile(impulses, 8))
