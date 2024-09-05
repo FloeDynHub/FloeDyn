@@ -238,7 +238,7 @@ void PROBLEM::solve(real_type end_time, real_type dt_default, real_type out_step
     if (reset) this->create_optim_vars();
     m_fracture = fracture;
     m_melting = melting;
-    m_dynamics_manager.set_norm_rand_speed(1e-7);
+    // m_dynamics_manager.set_norm_rand_speed(1e-7);
     if (this->variable_nb_of_floes()) {
         this->m_floe_group.update_list_ids_active();
     }
