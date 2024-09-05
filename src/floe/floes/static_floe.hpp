@@ -373,7 +373,7 @@ StaticFloe<T,TPoint,TGeometry,TMesh,TFrame,TDensity>::fracture_floe_from_impulse
         boost::geometry::correct(new_border);
         final_borders.push_back(new_border);
     }
-    return new_borders;
+    return final_borders;
 }
 
 template <typename T,typename TPoint,typename TGeometry,typename TMesh,typename TFrame ,typename TDensity>
