@@ -137,12 +137,25 @@ void import_floes_from_hdf5(H5std_string filename, TFloeGroup& floe_group)
                 floe.static_floe().set_thickness(states_data_out[floe_id][10]);
             }
             try {
-                // read oceanic skin drag attributes
+                // read oceanic skin drag attribute
                 Attribute attr = dataset.openAttribute("C_w");
                 DataType type = attr.getDataType();
                 real_type val;
                 attr.read(type, &val);
                 floe.static_floe().set_C_w(val);
+            }
+            catch(AttributeIException) {
+                // do nothing, thickness and oceanic skin drag attributes will be set randomly
+            }
+            try {
+                // read obstacle attribute
+                Attribute attr = dataset.openAttribute("obstacle");
+                DataType type = attr.getDataType();
+                int val;
+                attr.read(type, &val);
+                if (val == 1) {
+                    floe.is_obstacle() = true;
+                }
             }
             catch(AttributeIException) {
                 // do nothing, thickness and oceanic skin drag attributes will be set randomly

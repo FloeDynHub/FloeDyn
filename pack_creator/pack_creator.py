@@ -1,6 +1,6 @@
 import math
 import h5py
-from shapely.geometry import Polygon
+from shapely.geometry import Polygon, Point
 
 
 class State:
@@ -25,7 +25,7 @@ class State:
 
 
 class Floe:
-  def __init__(self, shape, state=None):
+  def __init__(self, shape, state=None, obstacle=False):
     """
     Shape must be described in counter clockwise order !
     """
@@ -34,6 +34,7 @@ class Floe:
     # self.shape = shape # As point list [(x, y), ...]
     # self.state = state or State() # State object
     self.shape = [(x - c.x, y - c.y) for x, y in shape]
+    self.obstacle = obstacle
     if state:
         x, y = state.pos
         state.pos = [x + c.x, y + c.y]
@@ -61,6 +62,8 @@ def write_input_file(floes_list, filename):
         for i, floe in enumerate(floes_list):
             shape_dset = grp.create_dataset(f"{i}", (len(floe.shape), 2), dtype='float64') # nb_points, 2 (space dim)
             shape_dset[...] = floe.shape
+            if floe.obstacle:
+                shape_dset.attrs['obstacle'] = 1
             # shape_dset.attrs['thickness'] = 1.2
             states_dset[0, i, ...] = floe.state.get_dataset_slice()
         win_dset = f.create_dataset("window", (4, ), dtype='float64')
@@ -103,10 +106,17 @@ def complete_shape(shape, max_edge_length=10, close=True):
             new_shape.append((edge[0][0] + j * (edge[1][0] - edge[0][0]) / nb_points, edge[0][1] + j * (edge[1][1] - edge[0][1]) / nb_points))
     return new_shape
 
+from shapely.geometry import Point
+
 def resize_pack(list_floe, resize_coeff):
     for floe in list_floe:
         floe.shape = [(resize_coeff * x, resize_coeff * y) for x, y in floe.shape]
         floe.state.pos = [resize_coeff * x for x in floe.state.pos]
+
+def resize_floe(floe, resize_coeff):
+    # Resize floe around its mass center
+    c = Polygon(floe.shape).centroid
+    floe.shape = [(c.x + resize_coeff * (x - c.x), c.y + resize_coeff * (y - c.y)) for x, y in floe.shape]
 
 def translate_pack(list_floe, x, y):
     for floe in list_floe:
