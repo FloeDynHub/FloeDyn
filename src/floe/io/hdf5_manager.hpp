@@ -510,33 +510,19 @@ double HDF5Manager<TFloeGroup, TDynamicsMgr>::recover_states(
         bool active = (data_out[floe_id][9] == 1.) ? true : false; // crack version
         floe.static_floe().attach_mesh_ptr(&floe.get_floe_h().m_static_mesh); // TODO why is it needed ?
         floe.state().set_active(active); // crack version
-        // std::cout << "RECOVER_STATES 3 " << floe_id << " active " << active << std::endl;
         if (active) {
-            // std::cout << "RECOVER_STATES 3.0 " << floe_id << std::endl;
-            // std::cout << data_out[floe_id][0] << floe_id << std::endl;
-            // std::cout << data_out[floe_id][1] << floe_id << std::endl;
-            // std::cout << data_out[floe_id][2] << floe_id << std::endl;
-            // std::cout << data_out[floe_id][3] << floe_id << std::endl;
-            // std::cout << data_out[floe_id][4] << floe_id << std::endl;
-            // std::cout << data_out[floe_id][5] << floe_id << std::endl;
             floe.set_state({
                 {data_out[floe_id][0], data_out[floe_id][1]}, data_out[floe_id][2],
                 {data_out[floe_id][3], data_out[floe_id][4]}, data_out[floe_id][5],
                 {0,0}
             });
-            // std::cout << "RECOVER_STATES 3.1 " << floe_id << std::endl;
             floe.reset_impulse(data_out[floe_id][6]);
             floe.reset_detailed_impulse();
-            // std::cout << "RECOVER_STATES 3.2 " << floe_id << std::endl;
             floe.static_floe().set_thickness(data_out[floe_id][10]);
-            // std::cout << "RECOVER_STATES 3.3 " << floe_id << std::endl;
         }
-        // std::cout << "RECOVER_STATES 4 " << floe_id << std::endl;
     }
     floe_group.get_floes().filter_on(); // crack version
-    // std::cout << "RECOVER_STATES 3.2 " << std::endl;
     floe_group.update_list_ids_active(); // crack version
-    
     {
     // Load OBL speed
     DataSet dataset = file.openDataSet( "OBL_speed" );
@@ -553,7 +539,6 @@ double HDF5Manager<TFloeGroup, TDynamicsMgr>::recover_states(
     dataset.read( data_out.data(), PredType::NATIVE_DOUBLE, memspace, dataspace );
     point_type OBL_speed{data_out[0], data_out[1]};
     dynamics_manager.set_OBL_speed(OBL_speed);
-    // std::cout << " OBL " << OBL_speed;
     }
 
     }

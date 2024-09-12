@@ -208,7 +208,9 @@ void PROBLEM::recover_states_from_file(std::string const& filename, real_type t,
     real_type saved_time = m_out_manager.recover_states(filename, t, m_floe_group, m_dynamics_manager, keep_as_outfile);
     std::cout << "RECOVER : " << saved_time << std::endl;
     m_domain.set_time(saved_time);
-    this->update_optim_vars(); // needed in case of crack rewind
+    if (this->variable_nb_of_floes()) {
+        this->update_optim_vars(); // needed in case of crack rewind
+    }
 }
 
 
