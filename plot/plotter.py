@@ -244,6 +244,9 @@ class FloePlotter(object):
     def _update2(self, num, data, ax_mgr):
         """updates floes (Polygons) positions for matplotlib animation creation
         (version 3 : collection and compute outlines transforms"""
+        if num > 0 and num % 10 == 0:
+            progress = num / len(data.get("time"))
+            print("progress::{:.2f}%".format(progress * 100))
         if getattr(self.OPTIONS, "disp_floes"):
             self._update_floes(num, data, ax_mgr)
         if getattr(self.OPTIONS, "disp_circles"):
@@ -340,7 +343,7 @@ class FloePlotter(object):
         if getattr(self.OPTIONS, "hd", False):
             fig.set_size_inches(60, 45)
             fig.set_dpi(100)
-            plt.savefig('{}.png'.format(os.path.splitext(self.OPTIONS.filename)[0]))
+            plt.savefig('{}.png'.format(os.path.splitext(self.OPTIONS.filename)[0]), bbox_inches='tight')
             # plt.savefig('{}.eps'.format(self.OPTIONS.filename), format='eps')#, dpi=1000)
         else:
             plt.show()
