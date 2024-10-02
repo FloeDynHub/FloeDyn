@@ -173,7 +173,9 @@ PROBLEM::Problem(real_type epsilon, int OBL_status) :
         m_is_generator{false},
         m_collisionTime{},
         m_timeStepTime{},
-        m_moveTime{}
+        m_moveTime{},
+        m_fracture{false},
+        m_melting{false}
     {
         m_time_scale_manager.set_prox_data_ptr( &(m_proximity_detector.data()) );
     }
