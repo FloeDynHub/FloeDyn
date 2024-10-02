@@ -302,7 +302,7 @@ def build(bld):
         print("compilation with LCP statistics storage.")
         opts["defines"].append('LCPSTATS')
     if "MPI" in bld.options.target:
-        opts["linkflags"].extend(["-lmpi"])
+        opts["linkflags"].extend(["-lmpi", "-lmpi_cxx"])
         opts["defines"].append('MPIRUN')
         opts["cxxflags"].extend(subprocess.check_output(["mpicc", "--showme:compile"]).strip().split(b" "))
         opts["linkflags"].extend(subprocess.check_output(["mpicc", "--showme:link"]).strip().split(b" "))

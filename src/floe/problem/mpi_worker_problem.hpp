@@ -49,7 +49,7 @@ public:
 private:
     bool m_terminate;
     //! Move one time step forward
-    virtual void step_solve(bool crack = false, bool melt = false) override;
+    virtual void step_solve(bool crack = false) override;
     message_type receive_request();
     void send_response(message_type&, message_type&);
 };
@@ -65,7 +65,7 @@ void MPIWorkerProblem<TProblem>::solve(real_type end_time, real_type dt_default,
 }
 
 template<typename TProblem>
-void MPIWorkerProblem<TProblem>::step_solve(bool crack, bool melt){
+void MPIWorkerProblem<TProblem>::step_solve(bool crack){
     // auto t_start = std::chrono::high_resolution_clock::now();
     message_type request = receive_request();
     // auto t_1 = std::chrono::high_resolution_clock::now();

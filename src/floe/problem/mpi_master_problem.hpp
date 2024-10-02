@@ -54,7 +54,7 @@ private:
     //! last message id (increment for unicity)
     int msg_pk = 0; // TOD
     //! Move one time step forward
-    virtual void step_solve(bool crack = false, bool melt = false) override;
+    virtual void step_solve(bool crack = false) override;
      //! Collision solving
     virtual int manage_collisions() override;
     //! Compute next time step
@@ -94,7 +94,7 @@ void MPIMasterProblem<TProblem>::solve(real_type end_time, real_type dt_default,
 }
 
 template<typename TProblem>
-void MPIMasterProblem<TProblem>::step_solve(bool crack, bool melt) {
+void MPIMasterProblem<TProblem>::step_solve(bool crack) {
     auto t_start = std::chrono::high_resolution_clock::now();
     this->m_proximity_detector.distribute_floes();
     auto t_end = std::chrono::high_resolution_clock::now();
