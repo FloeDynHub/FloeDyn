@@ -22,10 +22,10 @@ namespace types { // testings
 #ifdef MPIRUN
 using floe_type = ff::Identifiable<std::size_t, ff::KinematicFloe<ff::StaticFloe<value_type, point_type>>>;
 using floe_group_type = floe::floes::PartialFloeGroup<floe_type>;
-#else
+#else 
 using floe_type = ff::KinematicFloe<ff::StaticFloe<value_type, point_type>>;
 // using floe_group_type = floe::floes::FloeGroup<floe_type>;
-using floe_group_type = floe::floes::PartialFloeGroup<floe_type>; // TODO : for crack mode 
+using floe_group_type = floe::floes::PartialFloeGroup<floe_type>; // TODO : for crack mode
 #endif
 
 
