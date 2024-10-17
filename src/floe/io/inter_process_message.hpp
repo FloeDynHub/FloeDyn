@@ -48,7 +48,7 @@ public:
         m_id{request.id()}, m_tag{request.tag()} {}
 
     //! Accessors
-    inline std::map<int, std::array<real_type, 7>> const&  states() const { return m_states; }
+    inline std::map<int, std::array<real_type, 9>> const&  states() const { return m_states; }
     inline id_list_type const&  floe_ids() const { return m_floe_ids; }
     inline void set_floe_ids(id_list_type const& floe_ids) { m_floe_ids = floe_ids; }
     inline JobTag tag() const { return m_tag; }
@@ -79,7 +79,8 @@ public:
             m_states[id] = {{
                 state.pos.x, state.pos.y, state.theta,
                 state.speed.x, state.speed.y, state.rot,
-                floe.total_received_impulse()
+                floe.total_received_impulse(),
+                state.trans.x, state.trans.y
             }};
         }
     }
@@ -94,7 +95,8 @@ public:
                 m_states[id] = {{
                     state.pos.x, state.pos.y, state.theta,
                     state.speed.x, state.speed.y, state.rot,
-                    floe.total_received_impulse()
+                    floe.total_received_impulse(),
+                    state.trans.x, state.trans.y
                 }};
             }
         }
@@ -114,7 +116,7 @@ private:
     int m_id;
     JobTag m_tag;
     id_list_type m_floe_ids;
-    std::map<int, std::array<real_type, 7>> m_states;
+    std::map<int, std::array<real_type, 9>> m_states;
     real_type m_delta_t = 0;
     real_type m_time;
     int m_nb_LCP_solved = 0;

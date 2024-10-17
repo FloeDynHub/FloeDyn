@@ -306,10 +306,10 @@ def build(bld):
         opts["defines"].append('MPIRUN')
         opts["cxxflags"].extend(subprocess.check_output(["mpicc", "--showme:compile"]).strip().split(b" "))
         opts["linkflags"].extend(subprocess.check_output(["mpicc", "--showme:link"]).strip().split(b" "))
-    if bld.options.target in ["FLOE", "FLOE_PBC", "FLOE_MPI"]:
-        opts["source"] = ["product/FLOE.cpp"] + recursive_file_finder("src/floe", "*.cpp")
+    if bld.options.target in ["FLOE", "FLOE_PBC", "FLOE_MPI", "FLOE_MPI_PBC"]:
+        opts["source"] = [f"product/FLOE.cpp"] + recursive_file_finder("src/floe", "*.cpp")
         opts["target"] = bld.options.target
-        if bld.options.target == "FLOE_PBC":
+        if "PBC" in bld.options.target: # ex : FLOE_PBC, FLOE_MPI_PBC
             opts["defines"].append('PBC')
         bld.program(**opts)
     elif "FLOE" in bld.options.target:

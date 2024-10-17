@@ -72,7 +72,12 @@ void MPIWorkerProblem<TProblem>::step_solve(bool crack){
     this->m_domain.set_time(request.time());
     this->get_floe_group().update_floe_states(request);
     this->get_floe_group().update_partial_list(request.floe_ids());
-    // std::cout << "#" << this->mpi().process_rank() << " : " << this->get_floe_group().get_floes().size() << " floes" << std::endl;
+    this->update_optim_vars(); // Needed for MPI + Periodic
+    // std::cout << "#" << this->mpi().process_rank() << " : " << this->get_floe_group().get_floes().size() << " floes";
+    // for (auto const& f : this->get_floe_group().get_floes()){
+    //     std::cout << f.id() << " ";
+    // }
+    // std::cout << std::endl;
     message_type response{request};
     // auto t_10 = std::chrono::high_resolution_clock::now();
     if (request.tag()==floe::io::collision_job){

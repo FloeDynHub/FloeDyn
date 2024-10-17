@@ -69,7 +69,9 @@ private:
 
     void set_topology_ptr(){
         base_class::m_dynamics_manager.set_topology(m_space_topology);
-        base_class::m_proximity_detector.set_topology(m_space_topology);
+        if (base_class::m_proximity_detector.is_periodic()) {
+            base_class::m_proximity_detector.set_topology(m_space_topology);
+        }
     }
 
 };
