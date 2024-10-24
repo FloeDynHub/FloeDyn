@@ -15,7 +15,7 @@
 #include "floe/arithmetic/filtered_container.hpp"
 #include "floe/io/inter_process_message.hpp"
 #include "floe/generator/mesh_generator.hpp"
- 
+
 namespace floe { namespace floes
 {
 
@@ -32,7 +32,7 @@ template <
 >
 class PartialFloeGroup : public FloeGroup<TFloe, TFloeList>
 {
- 
+
 public:
     using base_class = FloeGroup<TFloe, TFloeList>;
     using floe_type = TFloe;
@@ -53,7 +53,7 @@ public:
     void update_floe_states(message_type const& msg, bool update=true); // override;
     virtual void post_load_floe() override { m_states_origin.clear(); m_states_origin.resize(this->get_floes().size(), 0); }
     virtual void recover_previous_step_states() override { base_class::recover_previous_step_states(); this->post_load_floe(); };
-    
+
     // fracture !
     void add_floe(geometry_type geometry, std::size_t parent_floe_idx);
     void fracture_biggest_floe();
@@ -61,7 +61,7 @@ public:
     int fracture_floes();
     void melt_floes();
     void update_list_ids_active();//{std::cout<<"test"<<std::endl;}
-    
+
 private:
     std::vector<int> m_states_origin;
 };
@@ -89,7 +89,7 @@ PartialFloeGroup<TFloe, TFloeList>::update_floe_states(message_type const& msg, 
 }
 
 template <typename TFloe, typename TFloeList>
-void 
+void
 PartialFloeGroup<TFloe, TFloeList>::fracture_biggest_floe()
 {
 	real_type max_area = 0;
@@ -106,7 +106,7 @@ PartialFloeGroup<TFloe, TFloeList>::fracture_biggest_floe()
     for (std::size_t i = 0; i < new_geometries.size(); ++i){
     	this->add_floe(new_geometries[i], biggest_floe_idx);
     }
-    
+
     // Desactivate cracked floe
     base_class::get_floes()[biggest_floe_idx].state().desactivate();
 
@@ -119,7 +119,7 @@ PartialFloeGroup<TFloe, TFloeList>::fracture_biggest_floe()
 }
 
 // template <typename TFloe, typename TFloeList>
-// size_t 
+// size_t
 // PartialFloeGroup<TFloe, TFloeList>::fracture_above_threshold(real_type threshold)
 // {
 // 	// returns the number of cracked floes ``
@@ -130,7 +130,7 @@ PartialFloeGroup<TFloe, TFloeList>::fracture_biggest_floe()
 //         if (!floe.prepare_elasticity())
 //             std::cout << "FEM computation initialization failed" << std::endl;
 //         // WHEREAMI
-//         if (!floe.is_obstacle() && floe.total_received_impulse() > 0) 
+//         if (!floe.is_obstacle() && floe.total_received_impulse() > 0)
 //         {
 //             // WHEREAMI
 //             std::cout << "trying to solve elasticity " << std::endl;
@@ -145,13 +145,13 @@ PartialFloeGroup<TFloe, TFloeList>::fracture_biggest_floe()
 //             std::cout << "fracturing floe " << iFloe << " whose impulse reaches " << floe.total_received_impulse()<< " replaced by " << new_geometries.size() << " new geometries" << std::endl;
 //             for (std::size_t i = 0; i < new_geometries.size(); ++i){
 //                 // new geometries are added to the floe list.
-//                 // note : iFloe is needed to initialize correctly the new floes states  
-//                 this->add_floe(new_geometries[i], iFloe); 
+//                 // note : iFloe is needed to initialize correctly the new floes states
+//                 this->add_floe(new_geometries[i], iFloe);
 //                 // WHEREAMI
 //             }
 //             // WHEREAMI
-//             // previous flow is deactivated 
-//             base_class::get_floes()[iFloe].state().desactivate(); // floe.state().desactivate(); does not work 
+//             // previous flow is deactivated
+//             base_class::get_floes()[iFloe].state().desactivate(); // floe.state().desactivate(); does not work
 //             nCracked++;
 //             this->update_list_ids_active();
 
@@ -167,24 +167,33 @@ PartialFloeGroup<TFloe, TFloeList>::fracture_biggest_floe()
 
 
 template <typename TFloe, typename TFloeList>
-int 
+int
 PartialFloeGroup<TFloe, TFloeList>::fracture_floes()
 {
     int n_fractured = 0;
+    // real_type min_area(400);
+    real_type min_area(0.001);
     std::map<std::size_t, std::vector<geometry_type>> all_new_geometries;
-    // iter over floes
     for (std::size_t i = 0; i < base_class::get_floes().size(); ++i){
         auto& floe = base_class::get_floes()[i];
-        if (floe.is_obstacle()) continue;
-        if (floe.area() < 400) 
+        if (floe.is_obstacle())
         {
-            std::cout << "Ignoring Floe " << i << " in elasticity computation, too small" << std::endl;
-            // std::cout << "Ignoring Floe " << i << " in elasticity computation, its area is too small (" << floe.area() << ")" << std::endl;
-            continue; 
+            std::cout << "Ignoring Floe " << i << " (obstacle)." << std::endl;
+            continue;
         }
-        // auto new_geometries = base_class::get_floes()[i].fracture_floe_from_collisions();
-        auto new_geometries = base_class::get_floes()[i].fracture_floe_from_collisions_fem();
-        std::cout << "Looking for fracture in Floe " << i << " : ";
+        if (floe.area() < min_area)
+        {
+            std::cout << "Ignoring Floe " << i << " (too small). " << std::endl;
+            continue;
+        }
+        if (!floe.has_been_impacted())
+        {
+            std::cout << "Ignoring Floe " << i << " (no impact). " << std::endl;
+            continue;
+        }
+        auto new_geometries = base_class::get_floes()[i].fracture_floe_from_collisions();
+        // auto new_geometries = floe.fracture_floe_from_collisions_fem();
+        std::cout << "Looking for fracture in Floe " << i << ":";
         if (new_geometries.size() > 0){
             std::cout << " fractured in " << new_geometries.size() << " parts" << std::endl;
             all_new_geometries[i] = new_geometries;
@@ -205,18 +214,29 @@ PartialFloeGroup<TFloe, TFloeList>::fracture_floes()
     for (auto const& iter : all_new_geometries){
         base_class::get_floes()[iter.first].state().desactivate();
     }
-
     this->update_list_ids_active();
-    
+
+    // // Deactivate too small floes
+    // for (auto & floe : base_class::get_floes()){
+    //     if (floe.area() < min_area)
+    //     {
+    //         floe.state().desactivate();
+    //         // std::cout << "Floe " << i << " is too small and has been deactivated." << std::endl;
+    //         std::cout << "Floe is too small and has been deactivated." << std::endl;
+    //     }
+    // }
+    // this->update_list_ids_active();
+
     for (auto & floe : this->get_floes()) { // TODO why is it needed ?
         floe.static_floe().attach_mesh_ptr(&floe.get_floe_h().m_static_mesh);
         floe.update();
+        floe.unset_fem_problem_prepared();
     }
     return n_fractured;
 }
 
 template <typename TFloe, typename TFloeList>
-void 
+void
 PartialFloeGroup<TFloe, TFloeList>::melt_floes()
 {
     // Dumb melting model for feature testing :
@@ -237,7 +257,7 @@ PartialFloeGroup<TFloe, TFloeList>::melt_floes()
 }
 
 template <typename TFloe, typename TFloeList>
-void 
+void
 PartialFloeGroup<TFloe, TFloeList>::add_floe(geometry_type shape, std::size_t parent_floe_idx)
 {
 	// Resize floe group, set all floe properties
@@ -248,11 +268,11 @@ PartialFloeGroup<TFloe, TFloeList>::add_floe(geometry_type shape, std::size_t pa
     // Create Kinematic floe
     list_floes.resize(list_floes.size() + 1);
     auto& floe = list_floes[list_floes.size() - 1];
-    
+
     // link static floe
     floe.attach_static_floe_ptr(std::unique_ptr<static_floe_type>(new static_floe_type()));
     auto& static_floe = floe.static_floe();
-    
+
     // Create mesh
     auto mesh = floe::generator::generate_mesh_for_shape<geometry_type, mesh_type>(shape);
 
@@ -269,7 +289,7 @@ PartialFloeGroup<TFloe, TFloeList>::add_floe(geometry_type shape, std::size_t pa
     geometry::transform( shape_cpy, shape, geometry::frame::transformer( typename floe_type::frame_type{-mass_center, 0} ));
     mesh_type mesh_cpy = mesh;
     geometry::transform( mesh_cpy, mesh, geometry::frame::transformer( typename floe_type::frame_type{-mass_center, 0} ));
-    
+
     // Save mesh and shape
     std::unique_ptr<typename floe_type::geometry_type> geometry(new typename floe_type::geometry_type(shape));
     static_floe.attach_geometry_ptr(std::move(geometry));
@@ -277,7 +297,7 @@ PartialFloeGroup<TFloe, TFloeList>::add_floe(geometry_type shape, std::size_t pa
     mesh_type& floe_mesh = floe.get_floe_h().m_static_mesh;
     floe_mesh = mesh;
     static_floe.attach_mesh_ptr(&floe_mesh);
-    
+
     this->get_floe_group_h().add_floe(floe.get_floe_h());
     // Compute and set space-time state
     auto& parent_floe = list_floes[parent_floe_abs_id];
@@ -305,15 +325,15 @@ PartialFloeGroup<TFloe, TFloeList>::add_floe(geometry_type shape, std::size_t pa
 /*
 
 template <typename TFloe, typename TFloeList>
-real_type 
+real_type
 PartialFloeGroup<TFloe, TFloeList>::max_floe_area()
 {
 	real_type max_area {0.0};
 	for (std::size_t i = 0; i < base_class::get_floes().size(); ++i){
     	max_floe_are = std::max(max_area, base_class::get_floes()[i].static_floe.area());
-    }	  
+    }
     return max_area;
-} 
+}
 
 */
 
@@ -322,16 +342,16 @@ PartialFloeGroup<TFloe, TFloeList>::max_floe_area()
 template <typename TFloe, typename TFloeList>
 void
 PartialFloeGroup<TFloe, TFloeList>::update_list_ids_active()
-{	
+{
 	base_class::get_floes().filter_off();
 	std::vector<std::size_t> m_list_id_active_floe;
 	// add active floe to the liste of indice of active floe
 	for (std::size_t i = 0; i < base_class::get_floes().size(); ++i){
     	if ( base_class::get_floes()[i].state().is_active()) { m_list_id_active_floe.push_back(i); }
-    }	
+    }
     this->update_partial_list(m_list_id_active_floe);
-    base_class::get_floes().filter_on();	
-} 
+    base_class::get_floes().filter_on();
+}
 
 
 }} // namespace floe::floes

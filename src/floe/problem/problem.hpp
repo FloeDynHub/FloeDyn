@@ -276,7 +276,8 @@ void PROBLEM::solve(real_type end_time, real_type dt_default, real_type out_step
     std::cout << " total collision time : " << time_taken*1e-9 << " s" << std::endl;
     std::cout << " total time step time : " << std::chrono::duration_cast<std::chrono::nanoseconds>(m_timeStepTime).count()*1e-9 << " s" << std::endl;
     std::cout << " total move time : " << std::chrono::duration_cast<std::chrono::nanoseconds>(m_moveTime).count()*1e-9 << " s" << std::endl;
-    std::cout << " total fracture time : " << std::chrono::duration_cast<std::chrono::nanoseconds>(m_fractureTime).count()*1e-9 << " s" << std::endl;
+    if (m_fracture) 
+        std::cout << " total fracture time : " << std::chrono::duration_cast<std::chrono::nanoseconds>(m_fractureTime).count()*1e-9 << " s" << std::endl;
 }
 
 
@@ -285,6 +286,7 @@ void PROBLEM::step_solve(bool crack) {
     auto t0 = std::chrono::high_resolution_clock::now();
     manage_collisions();
     m_floe_group.get_floes()[0].get_dirichlet_condition(m_domain.time());
+    auto t1 = std::chrono::high_resolution_clock::now();
     // fracture
     if (m_fracture && crack) {
     	std::size_t nb_before = m_floe_group.get_floes().size();
@@ -296,24 +298,6 @@ void PROBLEM::step_solve(bool crack) {
             std::cout << "Fracture of " << nb_fractured << " floes - nb floes : " << nb_before << " -> " << m_floe_group.get_floes().size() << std::endl;
         }
     }
-    auto t1 = std::chrono::high_resolution_clock::now();
-    // if (crack) {
-    //     // instead of fracturing the biggest floe at regular intervals, you may choose to fracture it only if the floe impulses exceed a predefined threshold 
-    //     std::size_t nb_before = m_floe_group.get_floes().size();  
-    //     // real_type fract_threshold(6e5);  
-    //     // real_type fract_threshold(6e6);  
-    //     // real_type fract_threshold(6e7);  
-    //     // real_type fract_threshold(1e5);
-    //     real_type fract_threshold(1e8);
-    //     if (m_floe_group.fracture_above_threshold(fract_threshold) > 0)
-    //     {
-    //         this->update_optim_vars();
-    //         // std::cout << "Fracture on threshold at time : " << this->m_domain.time() << " - nb floes : " << nb_before << " -> " << m_floe_group.get_floes().size() << std::endl;
-    //         std::cout << "Fracture on threshold at time : " << this->m_domain.time() << " - nb floes : " << nb_before << " -> " << m_floe_group.get_floes().size() << std::endl;
-    //     }
-    //     // WHEREAMI
-    // }
-    
     auto t2 = std::chrono::high_resolution_clock::now();
     compute_time_step();
     auto t3 = std::chrono::high_resolution_clock::now();
@@ -323,11 +307,6 @@ void PROBLEM::step_solve(bool crack) {
         m_floe_group.melt_floes();
         this->update_optim_vars();
     }
-    // if (this->m_dynamics_manager.get_external_forces().get_physical_data().get_air_mode()==5) { //!< only if the external forces is a vortex
-    //     std::cout << "the vortex wind speed is: " << 
-    //         this->m_dynamics_manager.get_external_forces().get_physical_data().get_vortex_wind_speed() 
-    //         << std::endl;
-    // }
     std::cout << "Chrono : collisions " << std::chrono::duration<double, std::milli>(t1-t0).count() << " ms + "
     << "fracture " << std::chrono::duration<double, std::milli>(t2-t1).count() << " ms + "
     << "time_step " << std::chrono::duration<double, std::milli>(t3-t2).count() << " ms + "
