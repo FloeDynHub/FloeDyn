@@ -83,6 +83,33 @@ def rectangle_floe_shape(xlen, ylen):
    y = ylen / 2
    return [(x, -y), (x, y), (-x, y), (-x, -y)]
 
+def discretized_rectangle_floe_shape(xlen, ylen, nb_vertices=25):
+    x = xlen / 2
+    y = ylen / 2
+    N = int(nb_vertices*xlen/(2*xlen+2*ylen))
+    M = int(nb_vertices*ylen/(2*xlen+2*ylen))
+    if N < 2:
+        N = 2
+    if M < 2:
+        M = 2
+    # x_points = np.linspace(-x,x,N)[:-1]
+    # y_points = np.linspace(-y,y,M)[:-1]
+    x_points = np.linspace(-x,x,N)
+    y_points = np.linspace(-y,y,M)
+    
+    
+    f = []
+    b = x
+    f += ([(b,a) for a in y_points[:-1]])
+    b = y 
+    f += ([(a,b) for a in reversed(x_points[1:])])
+    b = -x
+    f += ([(b,a) for a in reversed(y_points[1:])])
+    b = -y 
+    f += ([(a,b) for a in x_points[:-1]])
+    
+    return f
+
 def translate_floe_group(floes, x, y):
     for floe in floes:
         floe.state.pos[0] += x
