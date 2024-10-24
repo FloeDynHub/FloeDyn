@@ -138,7 +138,7 @@ def configure_package(conf, name, required_libs=None, includes_suffix=None):
 
 
 
-    
+
 def configure(conf):
     # Check waf version
     conf.check_waf_version(mini='1.8.8')
@@ -184,7 +184,7 @@ def configure(conf):
     #'boost', ['boost_system', 'boost_program_options'])
     #configure_package(conf, 'matio',['matio'])
     #configure_package(conf, 'matio',['matio'])
-    
+
     # Boost setup
     #conf.load('find_boost', tooldir='.')
     # conf.env.BOOST = conf.env.default_search_path
@@ -258,7 +258,9 @@ def get_option_dict(debug=True):
                 '-g',
                 '-std=c++14',
                  '-O0',
-                 "-Wall", #"-Wextra",
+                 # "-Wall", #"-Wextra",
+                 "-Wno-deprecated",
+                 "-Wno-enum-constexpr-conversion",
             ],
             "defines": []
         })
@@ -270,8 +272,8 @@ def get_option_dict(debug=True):
                  "-O3",
                  # "-march=native", # g++ fails with this
                 #  "-mtune=native",
-                #  "-Wall", "-Wextra", 
-                #  "-Wno-unused-parameter", 
+                #  "-Wall", "-Wextra",
+                #  "-Wno-unused-parameter",
                 #  "-Wno-unused-local-typedef",
                 #  "-Wno-gnu-anonymous-struct", "-Wno-nested-anon-types", # floe/geometry/geometries/point.hpp
                 #  "-Wno-redeclared-class-member",
@@ -330,7 +332,7 @@ def build(bld):
         bld.program(**opts)
     else:
         print("Nothing to build.")
-  
+
 def forward_options(opt_list, options):
     def my_str(var):
         return " " + var if isinstance(var, basestring) else ""
@@ -354,4 +356,3 @@ def TEST(ctx):
     ctx.exec_command('./waf build --target TEST {}'.format(
         forward_options(["omp", "name", "debug"], ctx.options)))
     print("to run the test : ./build/%s <args>" % TEST_target)
-
