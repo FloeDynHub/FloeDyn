@@ -183,7 +183,7 @@ public:
         const real_type l2 = std::pow(v.x - w.x, 2) + std::pow(v.y - w.y, 2);  // i.e. |w-v|^2 -  avoid a sqrt
         if (l2 == 0.0) return distance(p, v);   // v == w case
         // Consider the line extending the segment, parameterized as v + t (w - v).
-        // We find projection of point p onto the line. 
+        // We find projection of point p onto the line.
         // It falls where t = [(p-v) . (w-v)] / |w-v|^2
         // We clamp t from [0,1] to handle points outside the segment vw.
         real_type dot = (p - v).x * (w - v).x + (p - v).y * (w - v).y;
@@ -243,7 +243,7 @@ private:
 
     //! Calculate min crack energy
     real_type calc_min_crack_energy() const
-    {   
+    {
         // Minimum crack energy
         // Source coeff : MODÉLISATION DE LA FRACTURE DE LA GLACE DE MER PAR LA HOULE, Alexandre TLILI, 2022
         real_type ice_crack_coeff = 1.5 * 5000; // Gc entre 1,5 J m−2 et 3,5 J m−2
@@ -381,15 +381,27 @@ template <typename T,typename TPoint,typename TGeometry,typename TMesh,typename 
 std::vector<TGeometry>
 StaticFloe<T,TPoint,TGeometry,TMesh,TFrame,TDensity>::fracture_floe_along(point_type a, point_type b)
 {
-    point_type crack_start = 2*a - b; // taking points on the same line but further away : norm2(crack_end-crack_start) = 3* norm2(b-a)
+    point_type crack_start = 2*a - b; // taking points on the same line but further away so that norm2(crack_end-crack_start) = 3* norm2(b-a)
     point_type crack_end = 2*b - a;
+    point_type p1;
+    point_type p2;
+
     std::vector<TGeometry> new_borders;
-    // crack is a long and thin rectangle containing a and b 
+    std::vector<TGeometry> simplified_borders;
+    std::vector<TGeometry> resampled_borders;
     geometry_type crack;
+    geometry_type temp_border;
+    geometry_type myvec;
+
+    double merge_tol = 0.001;
+    double max_length=10;
+
     real_type crack_width = std::sqrt(this->area()) * 0.002;
     point_type crack_ortho = direct_orthogonal(b-a) / norm2(b-a);
     point_type crack_delta = crack_ortho * crack_width / 2;
     int crack_nb_point = 6;
+
+    // crack definition : a long and thin rectangle containing a and b
     for (int i = 0; i <= crack_nb_point; ++i) {
         crack.outer().push_back(crack_start + (crack_end - crack_start) * i / crack_nb_point - crack_delta);
     }
@@ -398,44 +410,44 @@ StaticFloe<T,TPoint,TGeometry,TMesh,TFrame,TDensity>::fracture_floe_along(point_
     }
     boost::geometry::correct(crack);
     boost::geometry::difference(this->geometry().outer(), crack, new_borders);
-
-
     if (new_borders.size() < 2)
     {
-        std::cout << "the geometries do not intersect each other as expected" << std::endl;
-        std::cerr << "the geometries do not intersect each other as expected" << std::endl;
+        std::cout << "CAUTION the following geometries do not intersect each other as expected" << std::endl;
     }
-    
-    
-    // debug - checking the geometries 
-    // debug 
-    // debug 
-    // std::cerr << std::endl << "DEBUG supprime moi de static_floe.hpp" << std::endl;
-    // for (size_t iPoint = 0 ; iPoint < crack.outer().size() ; iPoint++ )
-    // {
-    //     std::cerr << "crack definition, point " << iPoint << ": (" << crack.outer()[iPoint].x << ";" << crack.outer()[iPoint].y << ")" << std::endl;
-    // }
-    // std::cerr << std::endl << std::endl;
-    // for (size_t iPoint = 0 ; iPoint < this->geometry().outer().size() ; iPoint++ )
-    // {
-    //     std::cerr << "geo definition, point " << iPoint << ": (" << this->geometry().outer()[iPoint].x << ";" << this->geometry().outer()[iPoint].y << ")" << std::endl;
-    // }
-    // debug 
-    // debug 
-    // debug 
-    
-    // Add points to new borders
-    std::vector<TGeometry> final_borders;
-    for (auto const& border : new_borders) {
-        TGeometry new_border;
-        for (std::size_t i = 0; i < border.outer().size(); ++i) {
-            new_border.outer().push_back(border.outer()[i]);
-            new_border.outer().push_back((border.outer()[i] + border.outer()[(i + 1) % border.outer().size()]) / 2);
+
+    // simplifying the geometries
+    for (auto it = new_borders.begin() ; it != new_borders.end() ; it++)
+    {
+        boost::geometry::simplify(*it, temp_border, merge_tol);
+        simplified_borders.push_back(temp_border);
+    }
+
+    for (auto it = simplified_borders.begin() ; it != simplified_borders.end() ; it++)
+    {
+        temp_border.clear();
+        max_length = boost::geometry::perimeter(*it)/20;
+        // std::cout << "max length = " << max_length << std::endl;
+        for (size_t iInterval = 1; iInterval < it->outer().size(); ++iInterval)
+        {
+            p1 = it->outer()[iInterval - 1];
+            p2 = it->outer()[iInterval];
+            double seg_length = boost::geometry::distance(p1, p2);
+            if (seg_length > max_length)
+            {
+                size_t nb_point = floor(seg_length/max_length);
+                for (int iPoint = 0; iPoint <= nb_point; ++iPoint)
+                    temp_border.outer().push_back(p1 + (p2-p1)/(nb_point+1) * iPoint);
+            }
+            else
+            {
+                temp_border.outer().push_back(p1);
+            }
         }
-        boost::geometry::correct(new_border);
-        final_borders.push_back(new_border);
+        boost::geometry::correct(temp_border);
+        resampled_borders.push_back(temp_border);
     }
-    return final_borders;
+
+    return resampled_borders;
 }
 
 template <typename T,typename TPoint,typename TGeometry,typename TMesh,typename TFrame ,typename TDensity>
@@ -498,4 +510,3 @@ StaticFloe<T,TPoint,TGeometry,TMesh,TFrame,TDensity>::get_mass_center()
 
 
 #endif // FLOE_FLOES_STATIC_FLOE_HPP
-
