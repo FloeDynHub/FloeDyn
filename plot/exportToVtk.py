@@ -201,10 +201,19 @@ def data_at_t(data, t, displacement=False):
             connect = np.concatenate((connect, data.get("floe_meshes_connect")[iFloe]+shift))
             shift += nNodes
             dataTemp = np.zeros((nElem, 1))
-            dataTemp[:nElem,0] = data.get("floe_elem_data")[t, iFloe, :nElem]
+            # print(f"nElem = {nElem}")
+            temp = data.get("floe_elem_data")[t, iFloe, :nElem]
+            if len(temp) != nElem:
+                dataTemp[:nElem,0] = np.zeros([nElem,])
+            else:
+                dataTemp[:nElem,0] = temp
             elem_field = np.concatenate((elem_field, dataTemp))
             dataTempNode = np.zeros((nNodes*2, 1))
-            dataTempNode[:nNodes*2,0] = data.get("floe_node_data")[t, iFloe, :nNodes*2]
+            temp = data.get("floe_node_data")[t, iFloe, :nNodes*2]
+            if len(temp) != nNodes:
+                dataTempNode[:nNodes*2,0] = np.zeros([nNodes*2,])
+            else:
+                dataTempNode[:nNodes*2,0] = data.get("floe_node_data")[t, iFloe, :nNodes*2]
             # the solution is computed in the reference frame of the floe, so it has to be rotated as well 
             dataTempNode = dataTempNode.reshape([nNodes, 2])
             dataTempNode = np.transpose(np.dot(r, np.transpose(dataTempNode)))
@@ -228,7 +237,8 @@ import datetime
 import math
 import sys 
 if len(sys.argv) == 1:
-    print("you did not specify output file name ")
+    filename = "../io/outputs/0_test.h5"
+    print(f"you did not specify output file name. Default file is {filename}")
 else:
     filename = (sys.argv[1])
     print("Converting {}.".format(filename))
