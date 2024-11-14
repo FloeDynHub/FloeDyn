@@ -70,26 +70,17 @@ PartialFloeGroup<TFloe, TFloeList>::update_floe_states(message_type const& msg, 
         auto const& s = iter.second;
         auto& floe = this->m_list_floe(iter.first);
         auto& state = floe.state();
-        if (msg.tag() == io::JobTag::collision_job && (state.pos != point_type{s[0], s[1]} || state.theta != s[2] || state.trans != point_type{s[7], s[8]})){
-            std::cout << "Warning : state mismatch FLOE #" << floe.id() << " (" << iter.first << ")" << std::endl;
-            if (state.pos != point_type{s[0], s[1]}) std::cout << "pos " << state.pos << " != " << point_type{s[0], s[1]} << std::endl;
-            if (state.theta != s[2]) std::cout << "theta " << state.theta << " != " << s[2] << std::endl;
-            if (state.trans != point_type{s[7], s[8]}) std::cout << "trans " << state.trans << " != " << point_type{s[7], s[8]} << std::endl;
-        }
         if (update){
             floe.set_state({{s[0], s[1]}, s[2], {s[3], s[4]}, s[5], { s[7], s[8] }});
         } else {
-            auto& state = floe.state();
-            if (msg.tag() == io::JobTag::collision_job && (state.pos != point_type{s[0], s[1]} || state.theta != s[2] || state.trans != point_type{s[7], s[8]})){
-                std::cout << "Warning : state mismatch2" << std::endl;
-            }
+            // auto& state = floe.state();
             state.speed = {s[3], s[4]};
             state.rot = s[5];
-            // if (msg.tag() == io::JobTag::move_job) {
+            if (msg.tag() == io::JobTag::move_job) {
                 state.pos = {s[0], s[1]};
                 state.theta = s[2];
                 state.trans = { s[7], s[8] };
-            // }
+            }
         }
         floe.reset_impulse(s[6]);
         m_states_origin[iter.first] = msg.mpi_source();

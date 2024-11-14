@@ -50,9 +50,20 @@ public:
     virtual void solve(real_type end_time, real_type dt_default, real_type out_step = 0, bool reset = true, bool fracture = false, bool melting = false) override;
     virtual void recover_states_from_file(std::string const& filename, real_type t, bool keep_as_outfile=true) override;
 
+    void load_config(std::string const& filename) override {
+        base_class::load_config(filename);
+        #ifdef PBC // Periodic boundary conditions
+        if (base_class::m_floe_group.initial_window_area())
+        {
+            auto a = this->base_class::m_floe_group.get_initial_window();
+            this->m_proximity_detector.set_topology( { a[0], a[1], a[2], a[3]} );
+        }
+        #endif
+    }
+
 private:
     //! last message id (increment for unicity)
-    int msg_pk = 0; // TOD
+    int msg_pk = 0;
     //! Move one time step forward
     virtual void step_solve(bool crack = false) override;
      //! Collision solving
@@ -144,7 +155,7 @@ int MPIMasterProblem<TProblem>::manage_collisions(){
     unsigned long loop_count{0};
     auto keys = this->m_proximity_detector.collision_process_partition_keys();
     int i = 0;
-    while (OK_SET < keys.size() and loop_count++ < 20 * keys.size()) {
+    while (OK_SET < keys.size() and loop_count++ < 4 * keys.size()) {
         std::cout << "LCP (" << keys[i] << ") : " << std::flush;
         auto msg_ids = request_jobs(floe::io::collision_job, this->m_proximity_detector.process_partition().at(keys[i]));
         still_collision = handle_responses(msg_ids, floe::io::collision_job);

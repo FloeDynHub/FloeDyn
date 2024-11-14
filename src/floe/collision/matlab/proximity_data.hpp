@@ -44,7 +44,12 @@ public:
     ProximityData() : m_floe_group{nullptr}, m_optims{}, m_indic{0,0}, m_dist_secu{0,0}, m_dist_opt{0,0}, m_interpenetration{false} {}
 
     //!Empty floe and optim lists
-    virtual void reset() { m_optims.clear(); }
+    virtual void reset() {
+        for (auto ptr : m_optims) {
+            delete ptr;
+        }
+        m_optims.clear();
+    }
 
     inline void resize(std::size_t N1, std::size_t N2) { 
         m_indic.resize(N1, N2);

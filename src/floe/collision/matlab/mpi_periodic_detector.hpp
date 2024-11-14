@@ -11,6 +11,7 @@
 #include <mpi.h>
 #include "floe/collision/matlab/mpi_detector.hpp"
 #include <math.h>
+// #include "../../../../product/config/config.hpp"
 
 namespace floe { namespace collision { namespace matlab
 {
@@ -55,9 +56,11 @@ public:
     };
 
     void distribute_floes(){
-        this->resize_window();
         // Clear previous distribution
         this->m_floe_process_distrib.clear();
+        for (int i = 0; i < this->m_nb_workers; i++){
+            this->m_floe_process_distrib[i + 1] = {};
+        }
         // Ocean division
         for (std::size_t i = 0; i < this->data().get_optims().size(); ++i){
             auto const& optim = this->data().get_optim(i);
@@ -65,9 +68,10 @@ public:
         }
         std::cout << "END distribute_floes " << std::endl;
     }
+    inline void set_topology(types::topology_type t) { m_topology = t; }
 
 private:
-
+    types::topology_type m_topology; //!< Space topology
     void init_grid_dimension(){
         // calc grid dimension
         int nb_process;
@@ -118,33 +122,30 @@ private:
         for (int i = 0; i < size_pbc_crossing; i++){
             this->m_process_partition["crossing"].push_back(BASE_NUM_PROC + i);
         }
-    }
-
-    void resize_window(){
-        // Update floe optimizers (but not their local disks)
-        for ( auto optim_ptr : this->m_prox_data.get_optims() ) optim_ptr->update(false);
-        // compute minimal rectangle ocean area
-        real_type mg = 1e-8; // margin
-        real_type min_x, min_y, max_x, max_y;
-        min_x = min_y = std::numeric_limits<real_type>::max();
-        max_x = max_y = - std::numeric_limits<real_type>::max();
-        for (auto const* optim : this->data().get_optims()){
-            max_x = std::max(optim->global_disk().center.x, max_x);
-            min_x = std::min(optim->global_disk().center.x, min_x);
-            max_y = std::max(optim->global_disk().center.y, max_y);
-            min_y = std::min(optim->global_disk().center.y, min_y);
-        }
-        this->m_window = {{ min_x - mg, max_x + mg, min_y - mg, max_y + mg }};
+        // DISPLAY PARTITION
+        // std::cout << "GRID : ";
+        // for (auto i : this->m_process_partition["grid"]) std::cout << i << " ";
+        // std::cout << std::endl;
+        // std::cout << "X_BORDER : ";
+        // for (auto i : this->m_process_partition["x_border"]) std::cout << i << " ";
+        // std::cout << std::endl;
+        // std::cout << "Y_BORDER : ";
+        // for (auto i : this->m_process_partition["y_border"]) std::cout << i << " ";
+        // std::cout << std::endl;
+        // std::cout << "CROSSING : ";
+        // for (auto i : this->m_process_partition["crossing"]) std::cout << i << " ";
+        // std::cout << std::endl;
     }
 
 void distribute(optim_type const& optim, std::size_t floe_id){
         // base class
         // Calc ocean 2D parcel dimension
-        real_type parcel_width = (this->m_window[1] - this->m_window[0]) / this->grid_dim_x();
-        real_type parcel_height = (this->m_window[3] - this->m_window[2]) / this->grid_dim_y();
+        const floe_interface_type& floe = this->data().get_floe(floe_id);
+        real_type parcel_width = this->m_topology.width() / this->grid_dim_x();
+        real_type parcel_height = this->m_topology.height() / this->grid_dim_y();
         // Coordinates relative to grid
-        auto X_grid = (optim.global_disk().center.x - this->m_window[0]) / parcel_width; // TODO /!\ global disk not updated !
-        auto Y_grid = (optim.global_disk().center.y - this->m_window[2]) / parcel_height;
+        auto X_grid = (floe.state().pos.x - this->m_topology.min_x()) / parcel_width; // TODO /!\ global disk not updated !
+        auto Y_grid = (floe.state().pos.y - this->m_topology.min_y()) / parcel_height;
         // indices of floe parcel
         int X_id{(int)floor(X_grid)};
         int Y_id{(int)floor(Y_grid)};
@@ -161,7 +162,6 @@ void distribute(optim_type const& optim, std::size_t floe_id){
         bool xy_border_floe{x_border_floe && y_border_floe};
         // assigning floe to related processes
         int worker_id = Y_id * this->grid_dim_x() + X_id;
-        if (floe_id == 0) std::cout << "POS ZERO " << optim.global_disk().center.x << " " << optim.global_disk().center.y << " -> worker_id " << worker_id << std::endl;
         this->m_floe_process_distrib[this->m_process_partition["grid"][worker_id]].push_back(floe_id); // order : left->right, down->up
         if (x_border_floe){
             worker_id = Y_id * (this->grid_dim_x() - 1) + (X_border_id -1);
@@ -183,25 +183,27 @@ void distribute(optim_type const& optim, std::size_t floe_id){
           (X_border_id == 0 || X_border_id == this->grid_dim_x()) && std::abs(X_grid - X_border_id) * parcel_width - optim.global_disk().radius < this->m_max_floe_radius
         };
         if (X_pbc_border_floe) {
-          worker_id = size_x_border + Y_id; // TODO VERIFIER (formule 1er jet)
-        //   std::cout << "X_pbc_border_floe " << worker_id << " " << size_x_border << " " << Y_id << std::endl;
-        //   if (worker_id > 3) std::cout << "PB distrib X_pbc_border_floe" << worker_id << std::endl;
+          worker_id = size_x_border + Y_id;
           this->m_floe_process_distrib[this->m_process_partition["x_border"][worker_id]].push_back(floe_id);
         }
         bool Y_pbc_border_floe {
           (Y_border_id == 0 || Y_border_id == this->grid_dim_y()) && std::abs(Y_grid - Y_border_id) * parcel_height - optim.global_disk().radius < this->m_max_floe_radius
         };
         if (Y_pbc_border_floe) {
-          worker_id = size_y_border + X_id; // TODO VERIFIER (formule 1er jet)
-        //   std::cout << "Y_pbc_border_floe " << worker_id << std::endl;
-        //   if (worker_id > 3) std::cout << "PB distrib Y_pbc_border_floe" << worker_id << std::endl;
+          worker_id = size_y_border + X_id;
           this->m_floe_process_distrib[this->m_process_partition["y_border"][worker_id]].push_back(floe_id);
+        }
+        if (x_border_floe && Y_pbc_border_floe) {
+            worker_id = size_crossing + X_border_id - 1;
+            this->m_floe_process_distrib[this->m_process_partition["crossing"][worker_id]].push_back(floe_id);
+        }
+        if (y_border_floe && X_pbc_border_floe) {
+            worker_id = size_crossing + this->grid_dim_x() - 1 + Y_border_id - 1;
+            this->m_floe_process_distrib[this->m_process_partition["crossing"][worker_id]].push_back(floe_id);
         }
         bool XY_pbc_border_floe = X_pbc_border_floe && Y_pbc_border_floe;
         if (XY_pbc_border_floe) {
-          worker_id = size_crossing + X_id + Y_id; // TODO VERIFIER (formule 1er jet)
-        //   std::cout << "XY_pbc_border_floe " << worker_id << std::endl;
-        //   if (worker_id > 3) std::cout << "PB distrib XY_pbc_border_floe" << worker_id << std::endl;
+          worker_id = size_crossing + this->grid_dim_x() + this->grid_dim_y() - 2;
           this->m_floe_process_distrib[this->m_process_partition["crossing"][worker_id]].push_back(floe_id);
         }
     }

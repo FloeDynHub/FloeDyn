@@ -70,21 +70,18 @@ void MPIWorkerProblem<TProblem>::step_solve(bool crack){
     message_type request = receive_request();
     // auto t_1 = std::chrono::high_resolution_clock::now();
     this->m_domain.set_time(request.time());
-    this->get_floe_group().update_floe_states(request);
     this->get_floe_group().update_partial_list(request.floe_ids());
+    this->get_floe_group().update_floe_states(request, true);
+    for (auto& f : this->get_floe_group().get_floes()){
+        // MPI + PBC has interpenetrations without this update (not sure exactly why as update_floe_states should do the job)
+        f.update();
+    }
     this->update_optim_vars(); // Needed for MPI + Periodic
-    // std::cout << "#" << this->mpi().process_rank() << " : " << this->get_floe_group().get_floes().size() << " floes";
-    // for (auto const& f : this->get_floe_group().get_floes()){
-    //     std::cout << f.id() << " ";
-    // }
-    // std::cout << std::endl;
     message_type response{request};
     // auto t_10 = std::chrono::high_resolution_clock::now();
     if (request.tag()==floe::io::collision_job){
-        // this->detect_proximity();
         if (!this->m_proximity_detector.update()) std::cout << "DIRECT INTER #" << this->mpi().process_rank() << std::endl;
         int n = this->manage_collisions();
-        // if (n) std::cout << "#" << this->mpi().process_rank() << " : " << n << " lcp" << std::endl;
         response.nb_LCP_solved(n);
     } else if (request.tag()==floe::io::time_step_job) {
         this->compute_time_step();
@@ -94,7 +91,6 @@ void MPIWorkerProblem<TProblem>::step_solve(bool crack){
         this->get_dynamics_manager().set_OBL_speed(request.template get_OBL_speed<point_type>());
         point_type diff_speed = this->move_floe_group();
         bool interpene = !this->m_proximity_detector.check_interpenetration();
-        // if (request.interpenetration()) { std::cout << "RECOVER" << this->m_domain.time_step() << " " << resp << " #" << this->mpi().process_rank() << std::endl; }
         response.interpenetration(interpene);
         response.store_OBL_contribution(diff_speed);
     } else if (request.tag()==floe::io::interpene_job){
