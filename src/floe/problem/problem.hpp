@@ -20,6 +20,8 @@
 
 #include <numeric> // FOR TEST
 
+using namespace types;
+
 namespace floe { namespace problem
 {
 
@@ -51,9 +53,6 @@ public:
         using out_manager_type = io::HDF5Manager<TFloeGroup, TDynamicsManager>;
     #endif
 
-    using real_type = typename TFloeGroup::real_type;
-    using point_type = typename TFloeGroup::point_type;
-    using floe_group_type = TFloeGroup; // generator accessor
     using time_scale_manager_type = domain::TimeScaleManager<typename TProxymityDetector::proximity_data_type>;
     using proximity_detector_type = TProxymityDetector;
 

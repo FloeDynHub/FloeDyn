@@ -19,6 +19,8 @@
 
 #include "floe/floes/floe_interface.hpp"
 
+using namespace types;
+
 namespace floe { namespace floes
 {
 
@@ -38,7 +40,7 @@ namespace fg = floe::geometry;
 
 template <
     typename TStaticFloe,
-    typename TState = state::SpaceTimeState< typename TStaticFloe::point_type, typename TStaticFloe::real_type >
+    typename TState = state::SpaceTimeState<point_type, real_type>
 >
 class KinematicFloe : public FloeInterface<
     TStaticFloe,
@@ -49,8 +51,6 @@ class KinematicFloe : public FloeInterface<
 public:
 
     // Type traits
-    using real_type = typename TStaticFloe::real_type;
-    using point_type = typename TStaticFloe::point_type;
     using geometry_type = typename TStaticFloe::geometry_type;
     using mesh_type = typename TStaticFloe::mesh_type;
     using frame_type = typename TStaticFloe::frame_type;
@@ -190,7 +190,7 @@ private:
 };
 
 template < typename TStaticFloe, typename TState >
-typename KinematicFloe<TStaticFloe,TState>::real_type
+real_type
 KinematicFloe<TStaticFloe,TState>::impulse_energy() const {
     auto impulsive_energy = 0;
     for (auto it = m_detailed_impulse_received.begin(); it != m_detailed_impulse_received.end(); it++) {
@@ -247,7 +247,7 @@ void KinematicFloe<TStaticFloe,TState>::add_contact_impulse(point_type contact_p
 }
 
 template < typename TStaticFloe, typename TState >
-std::vector<typename TStaticFloe::point_type> KinematicFloe<TStaticFloe,TState>::get_dirichlet_condition(real_type time) const {
+std::vector<point_type> KinematicFloe<TStaticFloe,TState>::get_dirichlet_condition(real_type time) const {
     auto nb_points = this->boundary_nb_points();
     std::vector<point_type> resp(nb_points, {0,0});
     // iter over m_detailed_impulse_received and cumul impulses
@@ -291,7 +291,7 @@ KinematicFloe<TStaticFloe,TState>::update()
 }
 
 template < typename TStaticFloe, typename TState >
-typename KinematicFloe<TStaticFloe,TState>::real_type
+real_type
 KinematicFloe<TStaticFloe,TState>::kinetic_energy() const
 {
     return 0.5 * ( mass() * geometry::dot_product( m_state.speed, m_state.speed ) + moment_cst() * m_state.rot * m_state.rot );

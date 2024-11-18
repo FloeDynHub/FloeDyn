@@ -14,6 +14,8 @@
 #include "floe/problem/mpi_problem.hpp"
 #include "floe/collision/contact_graph.hpp" // for graph vertices access (collision job response), todo move elsewhere
 
+using namespace types;
+
 namespace floe { namespace problem
 {
 
@@ -36,8 +38,6 @@ class MPIWorkerProblem : public MPIProblem<TProblem>
 {
 public:
     using base_class = MPIProblem<TProblem>;
-    using real_type = typename TProblem::floe_group_type::floe_type::real_type;
-    using point_type = typename TProblem::floe_group_type::floe_type::point_type;
     using message_type = typename base_class::message_type;
 
     //! Default constructor

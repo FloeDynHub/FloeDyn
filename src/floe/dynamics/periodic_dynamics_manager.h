@@ -10,6 +10,8 @@
 #include "floe/dynamics/dynamics_manager.h"
 
 
+using namespace types;
+
 namespace floe { namespace dynamics
 {
 
@@ -26,10 +28,6 @@ class PeriodicDynamicsManager : public DynamicsManager<TExternalForces, TFloeGro
 
 public:
     using base_class = DynamicsManager<TExternalForces, TFloeGroup>;
-    using floe_type = typename base_class::floe_type;
-    using point_type = typename base_class::point_type;
-    using real_type = typename base_class::real_type;
-    using topology_type = TSpaceTopology;
     // using integration_strategy = typename base_class::integration_strategy;
 
     PeriodicDynamicsManager(real_type const& time_ref, int OBL_status) :

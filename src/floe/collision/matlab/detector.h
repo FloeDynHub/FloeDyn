@@ -37,6 +37,8 @@
 #include <omp.h>
 #endif
 
+using namespace types;
+
 namespace floe { namespace collision { namespace matlab
 {
 
@@ -61,19 +63,15 @@ namespace ublas = boost::numeric::ublas;
  */
 template <
     typename TFloeGroup,
-    typename TProximityData = ProximityData<TFloeGroup, OptimizedFloe<typename TFloeGroup::floe_type>>,
-    typename TContact = ContactPoint<typename TFloeGroup::floe_type> 
+    typename TProximityData = ProximityData<TFloeGroup, OptimizedFloe<floe_type>>,
+    typename TContact = ContactPoint<floe_type> 
 >
 class MatlabDetector
 {
 
 public:
     // Type traits
-    using floe_group_type = TFloeGroup;
-    using floe_type = typename floe_group_type::floe_type;
     using optim_type = typename TProximityData::optim_type;
-    using point_type = typename floe_type::point_type;
-    using real_type = typename floe_type::real_type;
     using floe_interface_type = typename floe_type::floe_interface_type;
     using optim_interface_type = typename optim_type::optim_interface_type;
     using circle_type = typename optim_type::circle_type;

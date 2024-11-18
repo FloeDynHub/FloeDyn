@@ -11,6 +11,8 @@
 
 
 
+using namespace types;
+
 namespace floe { namespace domain
 {
 

@@ -17,6 +17,8 @@
 #include <CGAL/Delaunay_mesh_size_criteria_2.h>
 
 
+using namespace types;
+
 namespace floe { namespace generator {
 
 // CGAL typedefs
@@ -32,8 +34,6 @@ using Point = CDT::Point;
 template<typename TShape, typename TMesh>
 TMesh generate_mesh_for_shape(TShape const& shape)
 {
-    using point_type = typename TShape::point_type;
-    using real_type = typename point_type::value_type;
     CDT cdt;
     std::vector<Vertex_handle> v;
     for (point_type pt : shape.outer())

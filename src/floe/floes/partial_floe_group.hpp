@@ -12,6 +12,8 @@
 #include "floe/io/inter_process_message.hpp"
 #include "floe/generator/mesh_generator.hpp"
  
+using namespace types;
+
 namespace floe { namespace floes
 {
 
@@ -31,12 +33,9 @@ class PartialFloeGroup : public FloeGroup<TFloe, TFloeList>
  
 public:
     using base_class = FloeGroup<TFloe, TFloeList>;
-    using floe_type = TFloe;
-    using real_type = typename floe_type::real_type;
-    using geometry_type = typename floe_type::geometry_type;
-    using point_type = typename floe_type::point_type;
-    using static_floe_type = typename floe_type::static_floe_type;
-    using mesh_type = typename floe_type::mesh_type;
+    using geometry_type = typename TFloe::geometry_type;
+    using static_floe_type = typename TFloe::static_floe_type;
+    using mesh_type = typename TFloe::mesh_type;
     using message_type = io::InterProcessMessage<real_type>;
 
     void update_partial_list(std::vector<std::size_t> floe_id_list){
@@ -203,12 +202,12 @@ PartialFloeGroup<TFloe, TFloeList>::add_floe(geometry_type shape, std::size_t pa
          mesh,integration_strategy()
      );
     geometry_type shape_cpy = shape;
-    geometry::transform( shape_cpy, shape, geometry::frame::transformer( typename floe_type::frame_type{-mass_center, 0} ));
+    geometry::transform( shape_cpy, shape, geometry::frame::transformer( typename TFloe::frame_type{-mass_center, 0} ));
     mesh_type mesh_cpy = mesh;
-    geometry::transform( mesh_cpy, mesh, geometry::frame::transformer( typename floe_type::frame_type{-mass_center, 0} ));
+    geometry::transform( mesh_cpy, mesh, geometry::frame::transformer( typename TFloe::frame_type{-mass_center, 0} ));
     
     // Save mesh and shape
-    std::unique_ptr<typename floe_type::geometry_type> geometry(new typename floe_type::geometry_type(shape));
+    std::unique_ptr<typename TFloe::geometry_type> geometry(new typename TFloe::geometry_type(shape));
     static_floe.attach_geometry_ptr(std::move(geometry));
 
     static_floe.set_mesh(mesh);

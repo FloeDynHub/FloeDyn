@@ -10,6 +10,7 @@
 #include "floe/geometry/geometry.hpp"
 #include "floe/geometry/geometries/multi_point.hpp"
 #include "floe/geometry/frame/frame_transformers.hpp"
+#include "../product/config/config.hpp"
 
 // #include "floe/collision/matlab/proximity_data.hpp"
 
@@ -18,6 +19,8 @@
 #ifdef _OPENMP
 #include <omp.h>
 #endif
+
+using namespace types;
 
 namespace floe { namespace domain
 {
@@ -35,9 +38,6 @@ class TimeScaleManager
 
 public:
     using proximity_data_type = TProxData;
-    using real_type = typename proximity_data_type::real_type;
-    using floe_type = typename proximity_data_type::floe_type;
-    using point_type = typename floe_type::point_type;
     using optim_type = typename proximity_data_type::optim_type;
     using frame_type = typename floe_type::frame_type;
     using multi_point_type = floe::geometry::MultiPoint<point_type>;
@@ -89,7 +89,7 @@ private:
 
 template <typename TDetector>
 template <typename TDomain>
-typename TimeScaleManager<TDetector>::real_type
+real_type
 TimeScaleManager<TDetector>::delta_t_secu(TDomain* domain)
 {
     real_type dt_default = domain->default_time_step();
@@ -135,7 +135,7 @@ TimeScaleManager<TDetector>::delta_t_secu(TDomain* domain)
 }
 
 template <typename TDetector>
-typename TimeScaleManager<TDetector>::real_type
+real_type
 TimeScaleManager<TDetector>::delta_t_secu(
     real_type dist_secu,
     real_type dist_opt,
@@ -230,7 +230,7 @@ TimeScaleManager<TDetector>::delta_t_secu(
 }
 
 template <typename TDetector>
-typename TimeScaleManager<TDetector>::real_type
+real_type
 TimeScaleManager<TDetector>::delta_t_secu_fast(
         real_type dist_secu,
         const floe_type& floe1,

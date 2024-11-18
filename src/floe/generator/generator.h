@@ -14,21 +14,22 @@
 
 // Floes
 #include "floe/floes/kinematic_floe.hpp"
+#include "../product/config/config.hpp"
 
 #include <vector>
 #include <atomic>
 #include <iostream>
 
 
+
 namespace floe { namespace generator {
+
 
 template<typename TProblem>
 class Generator
 {
 public:
-    using real_type = typename TProblem::real_type;
-    using floe_type = typename TProblem::floe_group_type::floe_type;
-    using point_type = typename floe_type::point_type;
+    using floe_type = types::floe_type;
     using multi_point_type = floe::geometry::MultiPoint<point_type>;
     using polygon_type = typename floe_type::geometry_type;
     using static_floe_type = typename floe_type::static_floe_type;

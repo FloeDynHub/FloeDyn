@@ -8,6 +8,8 @@
 #define FLOE_COLLISION_FLOE_VERTEX_HPP
 
 
+using namespace types;
+
 namespace floe { namespace collision
 {
 
@@ -21,7 +23,6 @@ template <
 >
 struct FloeVertex
 {
-	using real_type = typename TFloe::real_type;
 	FloeVertex() : floe{nullptr} {}
 	FloeVertex(TFloe const* floe_ptr) : floe{floe_ptr} {}
 	//! Get received impulse

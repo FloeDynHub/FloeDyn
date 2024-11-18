@@ -16,7 +16,7 @@
 
 namespace ff = floe::floes;
 
-namespace types { // testings
+namespace types {
 
 
 #ifdef MPIRUN

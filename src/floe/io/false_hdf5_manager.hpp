@@ -13,6 +13,8 @@
 #include <string>
 #include "floe/floes/floe_group.hpp"
 
+using namespace types;
+
 namespace floe { namespace io
 {
 
@@ -30,8 +32,6 @@ class HDF5Manager
 {
 
 public:
-    using floe_group_type = TFloeGroup;
-    using real_type = typename TFloeGroup::real_type;
     using dynamics_mgr_type = TDynamicsMgr;
 
     HDF5Manager(floe_group_type const& floe_group) {}

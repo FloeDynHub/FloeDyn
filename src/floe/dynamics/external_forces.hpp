@@ -10,8 +10,11 @@
 
 #include "floe/geometry/arithmetic/arithmetic.hpp"
 #include "floe/geometry/arithmetic/point_operators.hpp"
+#include "../product/config/config.hpp"
 #include <cmath>
 
+
+using namespace types;
 
 namespace floe { namespace dynamics
 {
@@ -29,11 +32,6 @@ class ExternalForces
 {
 
 public:
-    using floe_type = TFloe;
-    using point_type = typename floe_type::point_type;
-    using real_type = typename floe_type::real_type;
-    using physical_data_type = TPhysicalData;
-    // using physical_data_type = PhysicalData<point_type>;
 
     ExternalForces(real_type const& time_ref) : m_physical_data{time_ref}, m_O_latitude{80.207} {}
 

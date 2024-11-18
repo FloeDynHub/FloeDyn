@@ -16,6 +16,8 @@
 #include <boost/numeric/ublas/matrix_sparse.hpp>
 
 
+using namespace types;
+
 namespace floe { namespace collision { namespace matlab
 {
 
@@ -31,9 +33,6 @@ class ProximityData
 
 public:
 
-    using floe_group_type = TFloeGroup;
-    using floe_type = typename floe_group_type::floe_type;
-    using real_type = typename floe_type::real_type;
     using optim_type = TOptim;
     using dist_matrix_type = ublas::matrix<real_type>; //!< Type of distance matrix
     using indic_matrix_type = ublas::matrix<short>; //!< Type of indicator matrix

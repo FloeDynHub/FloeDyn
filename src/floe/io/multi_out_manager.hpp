@@ -13,6 +13,8 @@
 #include <type_traits>
 
 
+using namespace types;
+
 namespace floe { namespace io
 {
 
@@ -21,9 +23,6 @@ class MultiOutManager
 {
 
 public:
-    using floe_group_type = typename TOutManager::floe_group_type;
-    using dynamics_mgr_type = typename TOutManager::dynamics_mgr_type;
-    using real_type = typename TOutManager::real_type;
     //! Default constructor.
     MultiOutManager(floe_group_type const& floe_group) :
         m_out_managers{floe_group, floe_group},

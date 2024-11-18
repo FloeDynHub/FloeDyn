@@ -10,6 +10,8 @@
 #include <exception>
 #include <string>
 
+using namespace types;
+
 namespace floe { namespace floes
 {
 

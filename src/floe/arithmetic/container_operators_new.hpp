@@ -21,8 +21,6 @@
 #include <type_traits> // std::enable_if_t
 #include <ostream>
 
-// namespace floe { namespace arithmetic {
-
 namespace container_operators {
 
 using std::size_t;

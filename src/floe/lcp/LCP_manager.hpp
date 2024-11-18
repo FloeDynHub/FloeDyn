@@ -9,6 +9,7 @@
 
 #include "floe/domain/time_scale_manager.hpp"
 #include "../product/config/config_base.hpp" // types
+
 #include <boost/numeric/ublas/vector_proxy.hpp>
 #include <boost/numeric/ublas/blas.hpp>
 #include <iostream> // debug
@@ -38,6 +39,8 @@
 #include <omp.h>
 #endif
 
+using namespace types;
+
 namespace floe { namespace lcp
 {
 
@@ -54,7 +57,6 @@ class LCPManager
 
 public:
     using solver_type = TSolver;
-    using real_type = typename solver_type::real_type;
     using value_vector = boost::numeric::ublas::vector<real_type>;
 
     //! Constructor

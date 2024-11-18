@@ -13,6 +13,8 @@
 #include "floe/floes/ghost_floe.hpp"
 
 
+using namespace types;
+
 namespace floe { namespace collision { namespace matlab
 {
 
@@ -29,9 +31,7 @@ class PeriodicProximityData : public ProximityData<TFloeGroup, TOptim>
 public:
 
     using base_class = ProximityData<TFloeGroup, TOptim>;
-    using real_type = typename base_class::real_type;
-    using floe_type = typename base_class::floe_type;
-    using point_type = typename floe_type::point_type;
+    
     using optim_type = TOptim;
     using floe_interface_type = typename floe_type::floe_interface_type;
     using optim_interface_type = typename optim_type::optim_interface_type;

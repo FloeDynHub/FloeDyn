@@ -13,7 +13,10 @@
 #include <vector>
 #include <iostream> // DEBUG
 #include <cassert>
+#include <random>
 
+
+using namespace types;
 
 namespace floe { namespace dynamics
 {
@@ -31,8 +34,6 @@ class PhysicalData
 
 public:
 
-    using point_type = TPoint;
-    using real_type = decltype(TPoint::x);
     using point_vector = std::vector<point_type>;
 
     //! Constructor
@@ -267,14 +268,14 @@ private:
     }
 
     point_type y_increasing(point_type pt = {0,0}, real_type coeff = -1e-3) {
-        return {0, coeff * m_time_ref};
-        // return {0, -10};
+        // return {0, coeff * m_time_ref};
+        return {1, -1};
     }
 
 };
 
 template <typename TPoint>
-TPoint
+point_type
 PhysicalData<TPoint>::water_speed(point_type pt) {
     point_type resp;
     if (m_water_mode == 1){
@@ -286,7 +287,7 @@ PhysicalData<TPoint>::water_speed(point_type pt) {
 }
 
 template <typename TPoint>
-TPoint
+point_type
 PhysicalData<TPoint>::air_speed(point_type pt) {
     if (m_air_mode == 1){
         return topaz_air_speed(pt);
@@ -357,21 +358,21 @@ PhysicalData<TPoint>::interpolate_hour_to_minute(point_vector const& data_hours,
 
 
 template <typename TPoint>
-TPoint
+point_type
 PhysicalData<TPoint>::geostrophic_water_speed(point_type p){
     return minute_value(m_time_ref, m_ocean_data_minutes);
 }
 
 
 template <typename TPoint>
-TPoint
+point_type
 PhysicalData<TPoint>::topaz_air_speed(point_type p){
     return minute_value(m_time_ref, m_air_data_minutes);
 }
 
 
 template <typename TPoint>
-TPoint
+point_type
 PhysicalData<TPoint>::minute_value(real_type t, point_vector const& data_minutes){
     std::size_t minutes = t / 60;
     if (minutes < data_minutes.size())
@@ -510,7 +511,7 @@ PhysicalData<TPoint>::init_random_vortex(){
 
 
 template <typename TPoint>
-TPoint
+point_type
 PhysicalData<TPoint>::get_speed(point_type pt, int mode, real_type speed){
     point_type resp;
     switch(mode){
