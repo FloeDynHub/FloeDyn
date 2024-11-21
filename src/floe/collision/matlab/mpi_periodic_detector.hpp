@@ -162,6 +162,7 @@ void distribute(optim_type const& optim, std::size_t floe_id){
         bool xy_border_floe{x_border_floe && y_border_floe};
         // assigning floe to related processes
         int worker_id = Y_id * this->grid_dim_x() + X_id;
+        if (worker_id >= this->grid_dim_x() * this->grid_dim_y() || worker_id < 0) { worker_id = 0; }
         this->m_floe_process_distrib[this->m_process_partition["grid"][worker_id]].push_back(floe_id); // order : left->right, down->up
         if (x_border_floe){
             worker_id = Y_id * (this->grid_dim_x() - 1) + (X_border_id -1);

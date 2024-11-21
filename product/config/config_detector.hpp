@@ -11,7 +11,9 @@
 
 #ifdef MPIRUN
 #include "floe/collision/matlab/mpi_detector.hpp"
+#ifdef PBC
 #include "floe/collision/matlab/mpi_periodic_detector.hpp"
+#endif
 #endif
 
 namespace types {

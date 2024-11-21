@@ -10,7 +10,6 @@
 #include "floe/geometry/arithmetic/point_operators.hpp"
 #include <iostream> // DEBUG
 #include <vector>
-#include <mpi.h>
 
 namespace floe { namespace topology
 {
@@ -38,11 +37,7 @@ public:
     ToricTopology(T min_x, T max_x, T min_y, T max_y) :
         m_min_x{min_x}, m_max_x{max_x},
         m_min_y{min_y}, m_max_y{max_y},
-        delta_x{max_x - min_x}, delta_y{max_y - min_y} {
-            // if process rank = 0, print init
-            int rank;
-            MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-        }
+        delta_x{max_x - min_x}, delta_y{max_y - min_y} {}
 
     //! Returns the list of ghosts of a point
     point_list ghosts(const TPoint& pt) const

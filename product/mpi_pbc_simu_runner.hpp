@@ -135,8 +135,10 @@ private:
         P.get_floe_group().set_mu_static(mu_static);
         if (mu_static!=0.7) {std::cout << "Warning: the ice/ice static friction coefficient is fixed to: " << mu_static << std::endl;}
         if (epsilon!=0.4) {std::cout << "Warning: the restitution coefficient is fixed to: " << epsilon << std::endl;}
-        P.get_floe_group().randomize_floes_thickness(this->vm["sigma"].as<value_type>());
-        P.get_floe_group().randomize_floes_oceanic_skin_drag(0.01);
+        if (!P.get_floe_group().h5_contains_floes_characs(input_file_name)) {
+            P.get_floe_group().randomize_floes_thickness(this->vm["sigma"].as<value_type>());
+            P.get_floe_group().randomize_floes_oceanic_skin_drag(0.01);
+        }
         P.solve(this->vm["tend"].as<value_type>(), this->vm["step"].as<value_type>(), this->vm["outstep"].as<value_type>());
         return 0;
     }
