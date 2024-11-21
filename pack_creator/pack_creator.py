@@ -25,7 +25,7 @@ class State:
 
 
 class Floe:
-  def __init__(self, shape, state=None, obstacle=False):
+  def __init__(self, shape, state=None, obstacle=False, thickness=None, cw=None):
     """
     Shape must be described in counter clockwise order !
     """
@@ -35,6 +35,8 @@ class Floe:
     # self.state = state or State() # State object
     self.shape = [(x - c.x, y - c.y) for x, y in shape]
     self.obstacle = obstacle
+    self.thickness = thickness
+    self.cw = cw
     if state:
         x, y = state.pos
         state.pos = [x + c.x, y + c.y]
@@ -54,7 +56,7 @@ def get_window(floes_list):
     return [x0 - width / 2 , x0 + width / 2, y0 - width / 2, y0 + width / 2]
 
 
-def write_input_file(floes_list, filename):
+def write_input_file(floes_list, filename, window=None):
     """Creates hdf5 input file for floe list"""
     with h5py.File(f"io/inputs/{filename}.h5", "w") as f:
         states_dset = f.create_dataset("floe_states", (1, len(floes_list), 9), dtype='float64') # 1 = t0, nb_floe, state_size
@@ -64,10 +66,13 @@ def write_input_file(floes_list, filename):
             shape_dset[...] = floe.shape
             if floe.obstacle:
                 shape_dset.attrs['obstacle'] = 1
-            # shape_dset.attrs['thickness'] = 1.2
+            if floe.thickness:
+                shape_dset.attrs['thickness'] = floe.thickness
+            if floe.cw:
+                shape_dset.attrs['C_w'] = floe.cw
             states_dset[0, i, ...] = floe.state.get_dataset_slice()
         win_dset = f.create_dataset("window", (4, ), dtype='float64')
-        win_dset[...] = get_window(floes_list)
+        win_dset[...] =  window or get_window(floes_list)
 
 
 def circle_floe_shape(radius=1, nb_vertices=25):
@@ -136,11 +141,25 @@ def load_h5_input(filename, list_floe):
             list_floe.append(Floe(shape, state))
         win = f["window"][...]
         # translate_pack(list_floe, -win[0], -win[2])
+    return list(win)
 
-def display_floes(list_floe):
+def display_floes(list_floe, axes=None):
     from matplotlib import pyplot as plt
     fig, ax = plt.subplots()
     for floe in list_floe:
-        ax.plot([x + floe.state.pos[0] for x, y in floe.shape], [y + floe.state.pos[1] for x, y in floe.shape], 'b')
+        cos_theta = math.cos(floe.state.theta)
+        sin_theta = math.sin(floe.state.theta)
+        shape_x = [
+            floe.state.pos[0] + x * cos_theta - y * sin_theta
+            for x, y in floe.shape
+        ] + [floe.state.pos[0] + floe.shape[0][0] * cos_theta - floe.shape[0][1] * sin_theta]
+        shape_y = [
+            floe.state.pos[1] + x * sin_theta + y * cos_theta
+            for x, y in floe.shape
+        ] + [floe.state.pos[1] + floe.shape[0][0] * sin_theta + floe.shape[0][1] * cos_theta]
+        ax.plot(shape_x, shape_y, 'b')
     ax.set_aspect('equal')
+    if axes: # Explicit Axes limits
+        ax.set_xlim(axes[0], axes[1])
+        ax.set_ylim(axes[2], axes[3])
     plt.show()
