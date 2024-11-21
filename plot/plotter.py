@@ -252,27 +252,28 @@ class FloePlotter(object):
         if getattr(self.OPTIONS, "disp_circles"):
             self._update_circles(num, data, ax_mgr)
 
-    def _init2_dual(self, data, ax1, ax2):
+    def _init2_dual(self, data, ax_mgr1, ax_mgr2):
         "initializes floes (Polygon creation) for matplotlib animation creation (v3 : shapes)"
-        ax1 = _init2(data, ax1)
+        self._init2(data, ax_mgr1)
         first_idx, _ = data["total_trunk_indices"]
         x = np.array(data.get("total_time")[0:first_idx])
         ys = [np.array([data.get("total_impulses")[i][idx] for i in range(len(x))]) for idx in data.get("special_indices", [])]
+        ax2 = ax_mgr2.ax
         for y in ys:
             ax2.plot(x,y)
         ax2.axis([data.get("total_time")[0], data.get("total_time")[-1], -100, data["MAX_IMPULSE"]])
         ax2.set_title("Norm of the contact impulses applied to the obstacle")
         # ax.set_xlabel("text") # bottom
-        return ax1, ax2
+        return ax_mgr1.ax, ax2
 
-    def _update2_dual(self, num, data, ax1, ax2):
+    def _update2_dual(self, num, data, ax_mgr1, ax_mgr2):
         first_idx, _ = data["total_trunk_indices"]
         indic = first_idx + num
-        ax1, = self._update2(num, data, ax1)
+        self._update2(num, data, ax_mgr1)
+        ax2 = ax_mgr2.ax
         for i, idx in enumerate(data.get("special_indices")):
             ax2.lines[i].set_xdata(np.append(ax2.lines[i].get_xdata(), data.get("total_time")[indic]))
             ax2.lines[i].set_ydata(np.append(ax2.lines[i].get_ydata(), data.get("total_impulses")[indic][idx]))
-        return ax1, ax2
 
     def _transform_shapes(self, floe_shapes, floe_states, follow=False):
         resp = floe_shapes
@@ -355,27 +356,20 @@ class FloePlotter(object):
 
     def make_partial_floe_video(self, out_filename, data_chunk, version):
         "creates video directly from data"
-        # print(1)
         fig, ax = plt.subplots()
-        # print(2)
         if getattr(self.OPTIONS, "hd", False):
             fig.set_size_inches(20, 15)
             fig.set_dpi(100)
-        # print(3)
         init, update = self.get_anim_fcts(version)
         ax_mgr = AxeManager(ax)
         init(data_chunk, ax_mgr)
-        # print(4)
         if not data_chunk.get("static_axes"):
             ax.axis('equal') # automatic scale
         else:
             ax.axis(data_chunk.get("static_axes"))
-        # print(5)
-        # ax.set_axis_bgcolor('#162252')
         anim = animation.FuncAnimation(
             fig, update, len(data_chunk.get("time")), fargs=(data_chunk, ax_mgr),
             interval=1, blit=False)
-        # print(6)
         print(out_filename)
         anim.save(out_filename, writer=self.writer)
 
@@ -386,28 +380,30 @@ class FloePlotter(object):
     def make_partial_floe_video_dual_plot(self, out_filename, data_chunk, version):
         "creates video directly from data, and adds obstacle impulse subplot under floes"
         gs = gridspec.GridSpec(2, 1, height_ratios=[3, 1])
-        fig = plt.figure()
+        fig, ax = plt.subplots()
         if getattr(self.OPTIONS, "hd", False):
             fig.set_size_inches(16, 12)
             fig.set_dpi(100)
         ax1 = plt.subplot(gs[0])
         ax2 = plt.subplot(gs[1])
-        init, update = _init2_dual, _update2_dual
-        ax1, ax2 = init(data_chunk, ax1, ax2)
+        ax_mgr1 = AxeManager(ax1)
+        ax_mgr2 = AxeManager(ax2)
+        init, update = self._init2_dual, self._update2_dual
+        init(data_chunk, ax_mgr1, ax_mgr2)
         if not data_chunk.get("static_axes"):
             ax1.axis('equal') # automatic scale
         else:
             ax1.axis(data_chunk.get("static_axes"))
         # ax1.set_axis_bgcolor('#162252')
         anim = animation.FuncAnimation(
-            fig, update, len(data_chunk.get("time")), fargs=(data_chunk, ax1, ax2),
+            fig, update, len(data_chunk.get("time")), fargs=(data_chunk, ax_mgr1, ax_mgr2),
             interval=50, blit=False)
         anim.save(out_filename, writer=self.writer)
 
     def make_partial_floe_video_dual_plot_helper(self, t):
         return self.make_partial_floe_video_dual_plot(*t)
 
-    def plot_floes_fast(self, dual=False, **kwargs):
+    def plot_floes_fast(self, **kwargs):
         "Creates a video from hdf5 file output, using multiprocessing to go faster"
         data_file    = h5py.File(self.OPTIONS.filename, 'r')
         nb_step = int(math.ceil(len(data_file.get("time")) // self.OPTIONS.step))
@@ -425,7 +421,7 @@ class FloePlotter(object):
                 self.OPTIONS.version ) for i,trunk in enumerate(trunks)]
         # Launch process pool 
         p = Pool(nb_process)
-        partial_video_maker = self.make_partial_floe_video_helper if not dual else make_partial_floe_video_dual_plot_helper
+        partial_video_maker = self.make_partial_floe_video_helper if not self.OPTIONS.dual else self.make_partial_floe_video_dual_plot_helper
         p.map(partial_video_maker, L)
         p.close()
         p.join()
