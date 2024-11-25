@@ -268,7 +268,13 @@ protected:
 
             "   For the simulation of percution against an obstacle: \n"
             "       air mode: 4      water mode: 0\n"
-            "   or  air mode: 0     water mode: 4\n\n")
+            "   or  air mode: 0     water mode: 4\n\n"
+
+            "   For the simulation of pressure imposed on a floe: \n"
+            "       air mode: 7      water mode: 0\n\n"
+
+            "   For converging winds without physical sense (forcing the floes to gather to a particular location): \n"
+            "       air mode: 8      water mode: 0\n\n")
 
         ("fspeeds", po::value< std::vector<value_type> >(&force_speeds)->multitoken(), "forces speeds [air, water] (m/s).\n"
             "Possibilities: \n\n"

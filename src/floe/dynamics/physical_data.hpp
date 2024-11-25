@@ -83,6 +83,15 @@ public:
             this->init_random_vortex();m_water_mode = 0;
             std::cout << "Storm defined as a wind vortex" << std::endl;
         }
+        else if (m_air_mode==7) {
+            m_water_mode = 0;
+            std::cout << "Forcing imposed on the first floe." << std::endl;
+        }
+        else if (m_air_mode==8) {
+            m_water_mode = 0;
+            std::cout << "Converging winds" << std::endl;
+        }
+        
         else { std::cout << "Error: air and/or water modes: " << m_air_mode << " and " << m_water_mode << " are unknown!" << std::endl; assert(true==false); }
     }
     
@@ -206,6 +215,14 @@ private:
         //     return speed_current;
         // }
     }
+    point_type converging_rotating_wind(point_type pt = {0,0}, real_type speed=1)
+    {
+        real_type norm = norm2(pt);
+        real_type x{(pt.x+0.5*pt.y)*speed/norm}, y{(pt.y-0.5*pt.x)*speed/norm};
+        return {x,y};
+    }
+
+    
     //! vortex storm
     point_type vortex_center(std::size_t i){
         return m_vortex_origin[i] + m_time_ref * m_vortex_speed[i];
@@ -524,6 +541,12 @@ PhysicalData<TPoint>::get_speed(point_type pt, int mode, real_type speed){
         case 5:
             // std::cout << "generation of a vortex storm\n";
             return vortex(pt);
+        case 7:
+            // std::cout << "no speed\n";
+            return vortex(pt);
+        case 8:
+            // std::cout << "converging rotating speed\n";
+            return converging_rotating_wind(pt, speed);
         case 0:
             return {0,0};
 
