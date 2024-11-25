@@ -117,7 +117,7 @@ def translate_floe_group(floes, x, y):
 
 
 
-def get_floes_from_bdd(filename, nPoints=25):
+def get_floes_from_bdd(filename=None, nPoints=25):
     """ Returns a list of floes, which are defined by a list of nPoints coordinates. They are all centered at the origin
     
     ex:     mat = get_floes_from_bdd('../path/to/Biblio_Floes.mat', 25)
@@ -129,7 +129,10 @@ def get_floes_from_bdd(filename, nPoints=25):
 
     
     """
-    biblio_floes = _discretize_biblio_floes(scipy.io.loadmat('../../../Floe/Floe_Cpp/io/inputs/Biblio_Floes.mat'), nPoints)
+    if filename is None:
+        biblio_floes = _discretize_biblio_floes(scipy.io.loadmat('../../../Floe/Floe_Cpp/io/inputs/Biblio_Floes.mat'), nPoints)
+    else:
+        biblio_floes = _discretize_biblio_floes(scipy.io.loadmat(filename), nPoints)        
     return biblio_floes 
 
 

@@ -237,7 +237,7 @@ import datetime
 import math
 import sys 
 if len(sys.argv) == 1:
-    filename = "../io/outputs/0_test.h5"
+    filename = "../io/outputs/1_test.h5"
     print(f"you did not specify output file name. Default file is {filename}")
 else:
     filename = (sys.argv[1])

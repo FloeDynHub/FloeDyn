@@ -172,7 +172,7 @@ PartialFloeGroup<TFloe, TFloeList>::fracture_floes()
 {
     int n_fractured = 0;
     // real_type min_area(400);
-    real_type min_area(0.001);
+    real_type min_area(100);
     std::map<std::size_t, std::vector<geometry_type>> all_new_geometries;
     for (std::size_t i = 0; i < base_class::get_floes().size(); ++i){
         auto& floe = base_class::get_floes()[i];
@@ -191,8 +191,8 @@ PartialFloeGroup<TFloe, TFloeList>::fracture_floes()
             std::cout << "Ignoring Floe " << i << " (no impact). " << std::endl;
             continue;
         }
-        auto new_geometries = base_class::get_floes()[i].fracture_floe_from_collisions();
-        // auto new_geometries = floe.fracture_floe_from_collisions_fem();
+        // auto new_geometries = base_class::get_floes()[i].fracture_floe_from_collisions();
+        auto new_geometries = floe.fracture_floe_from_collisions_fem();
         std::cout << "Looking for fracture in Floe " << i << ":";
         if (new_geometries.size() > 0){
             std::cout << " fractured in " << new_geometries.size() << " parts" << std::endl;
@@ -216,22 +216,23 @@ PartialFloeGroup<TFloe, TFloeList>::fracture_floes()
     }
     this->update_list_ids_active();
 
-    // // Deactivate too small floes
-    // for (auto & floe : base_class::get_floes()){
-    //     if (floe.area() < min_area)
-    //     {
-    //         floe.state().desactivate();
-    //         // std::cout << "Floe " << i << " is too small and has been deactivated." << std::endl;
-    //         std::cout << "Floe is too small and has been deactivated." << std::endl;
-    //     }
-    // }
-    // this->update_list_ids_active();
+    // Deactivate too small floes
+    for (auto & floe : base_class::get_floes()){
+        if ((floe.area() < min_area) && !floe.is_obstacle())
+        {
+            floe.state().desactivate();
+            std::cout << "Floe is too small and has been deactivated." << std::endl;
+        }
+    }
+    this->update_list_ids_active();
 
     for (auto & floe : this->get_floes()) { // TODO why is it needed ?
         floe.static_floe().attach_mesh_ptr(&floe.get_floe_h().m_static_mesh);
         floe.update();
         floe.unset_fem_problem_prepared();
+        floe.reset_current_impulse();
     }
+
     return n_fractured;
 }
 

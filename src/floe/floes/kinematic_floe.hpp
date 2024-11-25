@@ -279,6 +279,7 @@ void KinematicFloe<TStaticFloe,TState>::add_contact_impulse(point_type contact_p
     }
     // Add impulses at closest_point to m_detailed_impulse_received[t]
     m_detailed_impulse_received[t][closest_point] += impulse;
+    add_current_impulse(norm2(impulse));
 
     // Remove old entries from m_detailed_impulse_received (keep only 1s)
     // (std::map is ordered ...)
@@ -470,7 +471,12 @@ KinematicFloe<TStaticFloe,TState>::fracture_floe_from_collisions_fem(){
         if (energy > 0)
         {
             std::cout << std::endl << "Breaking along (" << best_a.x << ";" << best_a.y << ")" << " -- (" << best_b.x << ";" << best_b.y << ")" << std::endl;
+            std::cout << "Impact summary : fracturing along " << best_a << " -- " << best_b << " ; " <<  m_fem_problem.get_impact_definition() << std::endl; // this print is used to help build a database by parsing the logs 
             return this->static_floe().fracture_floe_along(best_a, best_b);
+        }
+        else
+        {
+            std::cout << "Impact summary : no fracture ; " <<  m_fem_problem.get_impact_definition() << std::endl; // idem, this print is used to help build a database by parsing the logs 
         }
     }
     return {};
@@ -565,11 +571,6 @@ KinematicFloe<TStaticFloe,TState>::solve_elasticity()
         // ça, c'est du gros bluff en attendant une belle expression pour la CL de contact
         real_type fact_arbitraire(1E-9); // permet de conserver l'ordre de grandeur dans le cas test du bloc circulaire de r = 100m, Ecinétique avant le choc ~ Epotentielle.
         size_t nb_points = this->mesh().points().size();
-        if (nb_points != m_last_impulses.size())
-        {
-            std::cout << "I expected nb_points = " << nb_points << " but I got " << m_last_impulses.size() << std::endl;
-        }
-        // for (size_t iPoint = 0; iPoint < nb_points; iPoint++)
         for (size_t iPoint = 0; iPoint < m_last_impulses.size(); iPoint++)
         {
             if (norm2(m_last_impulses[iPoint]) > 0)

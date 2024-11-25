@@ -68,6 +68,7 @@ public :
     real_type energy_release_by_breaking_along(point_type a, point_type b);
     bool disable();
     inline bool is_disabled(){return !m_enabled;};
+    std::string get_impact_definition(){return m_impact_definition.str();};
 
 private :
     floe_type * m_floe;
@@ -98,6 +99,7 @@ private :
     multi_point_type m_coordinates;
     mesh_type m_mesh;
     real_type m_thickness;
+    std::stringstream m_impact_definition;
 };
 
 template <typename TFloe>
@@ -106,8 +108,8 @@ FemProblem<TFloe>::FemProblem(floe_type * floe):
     m_E{9000000000.0}, // ice, from https://tc.copernicus.org/articles/17/3883/2023/tc-17-3883-2023.pdf
     // m_E{10000000000.0}, // for verification purposes, to compare with analytical solution from mecagora
     m_nu{0.3}, // from https://tc.copernicus.org/articles/17/3883/2023/tc-17-3883-2023.pdf
-    // m_tenacite{10}, // Dempsey, J. P.: The fracture toughness of ice, in: Ice-structure interaction, Springer, 109–145, ISBN 978-3-642-84102-6, https://doi.org/10.1007/978-3-642-84100-2_8
-    m_tenacite{0.01}, // out of mon chapeau pour que ça casse dans tous les sens
+    m_tenacite{10}, // Dempsey, J. P.: The fracture toughness of ice, in: Ice-structure interaction, Springer, 109–145, ISBN 978-3-642-84102-6, https://doi.org/10.1007/978-3-642-84100-2_8
+    // m_tenacite{0.5}, // out of mon chapeau pour que ça casse dans tous les sens
     m_nE{m_floe->mesh().get_n_cells()},
     m_nN{m_floe->mesh().get_n_nodes()},
     m_nDof{2}, // 2 displacements at each node
@@ -121,7 +123,8 @@ FemProblem<TFloe>::FemProblem(floe_type * floe):
     m_last_total_impulse{0},
     m_e{0},
     m_enabled{true},
-    m_thickness{1}
+    m_thickness{1},
+    m_impact_definition{std::stringstream("")}
 {}
 
 template <typename TFloe>
@@ -278,9 +281,11 @@ FemProblem<TFloe>::addContactDirichlet(std::vector<size_t> gamma_d, std::vector<
     m_FTriplet.clear();
     m_DirichletTriplet.clear();
 
-
+    m_impact_definition.clear();
+    m_impact_definition << " " << n_dirichlet << " impacts: ";
     for (size_t iDir = 0; iDir < n_dirichlet ; ++iDir)
     {
+        m_impact_definition << "impact " << iDir << " on node " << gamma_d[iDir] << ": (" << values[iDir].x << " ; " << values[iDir].y << "); ";
         std::vector<size_t> surr_nodes = get_surr_nodes(gamma_d[iDir]);
         // checking that the surrounding nodes are not already in the triplet m_FTriplet s
         for (size_t iDir2 = 0; iDir2 < n_dirichlet ; ++iDir2)
@@ -317,6 +322,7 @@ FemProblem<TFloe>::addContactDirichlet(std::vector<size_t> gamma_d, std::vector<
         // * combien de voisin pour un contact ? faut voir sur combien de points on l'étale. à voir avec la vraie définition de la CL dirichlet.
         // * en effet, la recherche de voisins doit aller vite car elle est faite à chaque nouveau contact.
     }
+
     return true;
 };
 
@@ -826,7 +832,8 @@ FemProblem<TFloe>::energy_release_by_breaking_along(point_type a, point_type b)
         if (elem_sides[i_elem] < 0) up++;
         else if (elem_sides[i_elem] > 0) down++;
     }
-    if ((up ==0)||(down == 0)){return -1;}
+    // if ((up ==0)||(down == 0)){return -1;}
+    if ((up + down == m_nE)){return -1;}
 
     // building nodes_on_the_fract and elem_outside_the_fract
     for (size_t i_elem = 0; i_elem < m_nE; i_elem++)

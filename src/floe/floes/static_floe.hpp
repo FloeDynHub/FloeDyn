@@ -396,7 +396,7 @@ StaticFloe<T,TPoint,TGeometry,TMesh,TFrame,TDensity>::fracture_floe_along(point_
     double merge_tol = 0.001;
     double max_length=10;
 
-    real_type crack_width = std::sqrt(this->area()) * 0.002;
+    real_type crack_width = std::sqrt(this->area()) * 0.005;
     point_type crack_ortho = direct_orthogonal(b-a) / norm2(b-a);
     point_type crack_delta = crack_ortho * crack_width / 2;
     int crack_nb_point = 6;
