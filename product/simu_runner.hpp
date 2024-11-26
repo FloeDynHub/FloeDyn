@@ -221,7 +221,7 @@ protected:
     value_type              mu_static               = 0.7;
     value_type              random_thickness_coeff  = 0.01;
     value_type              min_thickness           = 0.01;
-    string                  matlab_topaz_filename   = "io/inputs/DataTopaz01.mat";
+    string                  matlab_topaz_filename   = "io/library/DataTopaz01.mat";
     value_type              max_size                = 250;
     bool                    fracture                = 0;
     bool                    melting                 = 0;
@@ -273,8 +273,10 @@ protected:
             "   For the simulation of pressure imposed on a floe: \n"
             "       air mode: 7      water mode: 0\n\n"
 
-            "   For converging winds without physical sense (forcing the floes to gather to a particular location): \n"
-            "       air mode: 8      water mode: 0\n\n")
+            "   For rotating converging wind/current without physical sense (forcing the floes to gather to a particular location in spiral): \n"
+            "       air mode: 8      water mode: 0\n"
+            "       air mode: 0      water mode: 8\n"
+            "       air mode: 8      water mode: 8\n")
 
         ("fspeeds", po::value< std::vector<value_type> >(&force_speeds)->multitoken(), "forces speeds [air, water] (m/s).\n"
             "Possibilities: \n\n"

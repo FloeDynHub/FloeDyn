@@ -80,7 +80,7 @@ protected:
     real_type m_rand_norm; //!< norm of these extra random velocities
 
     //! Move one floe
-    virtual void move_floe(floe_type& floe, real_type delta_t);
+    virtual void move_floe(floe_type& floe, real_type delta_t, bool mode_seven=false, bool is_first_floe=false);
     //! Ocean window area accessor
     virtual real_type ocean_window_area() { return m_ocean_window_area; }
 };

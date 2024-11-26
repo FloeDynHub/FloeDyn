@@ -83,12 +83,14 @@ public:
             this->init_random_vortex();m_water_mode = 0;
             std::cout << "Storm defined as a wind vortex" << std::endl;
         }
-        else if (m_air_mode==7) {
-            m_water_mode = 0;
+        else if (m_air_mode==7 || m_water_mode==7) {
+            m_water_mode = 7;
+            m_air_mode = 7;
             std::cout << "Forcing imposed on the first floe." << std::endl;
         }
-        else if (m_air_mode==8) {
-            m_water_mode = 0;
+        else if (m_air_mode==8 || m_water_mode==8) {
+            m_water_mode = 8;
+            m_air_mode = 8;
             std::cout << "Converging winds" << std::endl;
         }
         
@@ -115,6 +117,9 @@ public:
 
     //!< air mode accessor 
     int get_air_mode() {return m_air_mode;};
+    //!< air and wind accessor 
+    int get_air_speed() {return m_air_speed;};
+    int get_water_speed() {return m_water_speed;};
 
 
     //!< vortex getter and setter
@@ -215,10 +220,11 @@ private:
         //     return speed_current;
         // }
     }
-    point_type converging_rotating_wind(point_type pt = {0,0}, real_type speed=1)
+    point_type converging_rotating_speed(point_type pt = {0,0}, real_type speed=1)
     {
         real_type norm = norm2(pt);
-        real_type x{(pt.x+0.5*pt.y)*speed/norm}, y{(pt.y-0.5*pt.x)*speed/norm};
+        real_type x{-(pt.x+0.5*pt.y)*speed/norm}, y{-(pt.y-0.5*pt.x)*speed/norm};
+        // std::cout << "converging wind speed ! x: " << x << " y: " << y << std::endl;
         return {x,y};
     }
 
@@ -543,10 +549,10 @@ PhysicalData<TPoint>::get_speed(point_type pt, int mode, real_type speed){
             return vortex(pt);
         case 7:
             // std::cout << "no speed\n";
-            return vortex(pt);
+            return {0,0};
         case 8:
             // std::cout << "converging rotating speed\n";
-            return converging_rotating_wind(pt, speed);
+            return converging_rotating_speed(pt, speed);
         case 0:
             return {0,0};
 
