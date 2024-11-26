@@ -221,7 +221,7 @@ protected:
     value_type              mu_static               = 0.7;
     value_type              random_thickness_coeff  = 0.01;
     value_type              min_thickness           = 0.01;
-    string                  matlab_topaz_filename   = "io/library/DataTopaz01.mat";
+    string                  matlab_topaz_filename   = "io/inputs/DataTopaz01.mat";
     value_type              max_size                = 250;
     bool                    fracture                = 0;
     bool                    melting                 = 0;
