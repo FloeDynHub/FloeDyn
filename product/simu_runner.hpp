@@ -271,12 +271,12 @@ protected:
             "   or  air mode: 0     water mode: 4\n\n"
 
             "   For the simulation of pressure imposed on a floe: \n"
-            "       air mode: 7      water mode: 0\n\n"
+            "       air mode: 8      water mode: 0\n\n"
 
             "   For rotating converging wind/current without physical sense (forcing the floes to gather to a particular location in spiral): \n"
-            "       air mode: 8      water mode: 0\n"
-            "       air mode: 0      water mode: 8\n"
-            "       air mode: 8      water mode: 8\n")
+            "       air mode: 9      water mode: 0\n"
+            "       air mode: 0      water mode: 9\n"
+            "       air mode: 9      water mode: 9\n")
 
         ("fspeeds", po::value< std::vector<value_type> >(&force_speeds)->multitoken(), "forces speeds [air, water] (m/s).\n"
             "Possibilities: \n\n"

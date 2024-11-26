@@ -34,13 +34,13 @@ DynamicsManager<TExternalForces, TFloeGroup>::move_floes(floe_group_type& floe_g
     // for (auto& floe : floe_group.get_floes())
     //     move_floe(floe, delta_t);
 
-    bool mode_seven = false;
-    if (m_external_forces.get_physical_data().get_air_mode() == 7)
-        mode_seven = true;
+    bool mode_eight = false;
+    if (m_external_forces.get_physical_data().get_air_mode() == 8)
+        mode_eight = true;
     
     #pragma omp parallel for
     for (std::size_t i=0; i < floe_group.get_floes().size(); ++i){
-        this->move_floe(floe_group.get_floes()[i], delta_t, mode_seven, i==0);
+        this->move_floe(floe_group.get_floes()[i], delta_t, mode_eight, i==0);
     }
 
     return this->update_ocean(floe_group, delta_t);
@@ -49,7 +49,7 @@ DynamicsManager<TExternalForces, TFloeGroup>::move_floes(floe_group_type& floe_g
 
 template <typename TExternalForces, typename TFloeGroup>
 void
-DynamicsManager<TExternalForces, TFloeGroup>::move_floe(floe_type& floe, real_type delta_t, bool mode_seven, bool is_first_floe)
+DynamicsManager<TExternalForces, TFloeGroup>::move_floe(floe_type& floe, real_type delta_t, bool mode_eight, bool is_first_floe)
 {
     state_type new_state = floe.state();
     // Inertic motion
@@ -63,7 +63,7 @@ DynamicsManager<TExternalForces, TFloeGroup>::move_floe(floe_type& floe, real_ty
             floe.mesh(),
             integration_strategy<real_type>()
         );
-        if (mode_seven && is_first_floe)
+        if (mode_eight && is_first_floe)
         {
             real_type fx = m_external_forces.get_physical_data().get_air_speed();
             real_type fy = m_external_forces.get_physical_data().get_water_speed();
@@ -85,8 +85,7 @@ DynamicsManager<TExternalForces, TFloeGroup>::move_floe(floe_type& floe, real_ty
             floe.mesh(),
             integration_strategy<real_type>()
         );
-        // if (m_external_forces.get_physical_data().get_air_mode() != 7)
-        if (mode_seven && is_first_floe)
+        if (mode_eight && is_first_floe)
             new_state.rot = 0;
         else 
             new_state.rot += ( delta_t / floe.moment_cst() ) * rot_drag_force;

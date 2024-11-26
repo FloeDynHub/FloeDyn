@@ -547,10 +547,10 @@ PhysicalData<TPoint>::get_speed(point_type pt, int mode, real_type speed){
         case 5:
             // std::cout << "generation of a vortex storm\n";
             return vortex(pt);
-        case 7:
+        case 8:
             // std::cout << "no speed\n";
             return {0,0};
-        case 8:
+        case 9:
             // std::cout << "converging rotating speed\n";
             return converging_rotating_speed(pt, speed);
         case 0:
