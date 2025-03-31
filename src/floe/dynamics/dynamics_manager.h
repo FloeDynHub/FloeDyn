@@ -42,7 +42,7 @@ public:
         m_OBL_status{OBL_status}, m_rand_speed_add{false}, m_rand_norm{1e-7} {}
 
     //! Floes state update (+ update_ocean call, returns update_ocean's return value)
-    point_type move_floes(floe_group_type& floe_group, real_type delta_t);
+    point_type move_floes(floe_group_type& floe_group, real_type delta_t, real_type t);
     //! Ocean state update, returns difference speed applied
     point_type update_ocean(floe_group_type& floe_group, real_type delta_t, point_type floes_force = {0,0});
 
@@ -68,6 +68,7 @@ public:
 
     //! Accessor for specific use
     external_forces_type& get_external_forces() { return m_external_forces; }
+    bool is_mode_eight() { return (m_external_forces.get_physical_data().get_air_mode() == 8) || (m_external_forces.get_physical_data().get_water_mode() == 8);}
 
 protected:
 
@@ -80,7 +81,7 @@ protected:
     real_type m_rand_norm; //!< norm of these extra random velocities
 
     //! Move one floe
-    virtual void move_floe(floe_type& floe, real_type delta_t, bool mode_seven=false, bool is_first_floe=false);
+    virtual void move_floe(floe_type& floe, real_type delta_t, real_type t, bool mode_seven=false, bool is_first_floe=false);
     //! Ocean window area accessor
     virtual real_type ocean_window_area() { return m_ocean_window_area; }
 };

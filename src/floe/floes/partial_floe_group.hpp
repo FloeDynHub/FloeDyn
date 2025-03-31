@@ -58,7 +58,7 @@ public:
     void add_floe(geometry_type geometry, std::size_t parent_floe_idx);
     void fracture_biggest_floe();
     // size_t fracture_above_threshold(real_type threshold);
-    int fracture_floes();
+    int fracture_floes(bool mode_eight = false);
     void melt_floes();
     void update_list_ids_active();//{std::cout<<"test"<<std::endl;}
 
@@ -168,7 +168,7 @@ PartialFloeGroup<TFloe, TFloeList>::fracture_biggest_floe()
 
 template <typename TFloe, typename TFloeList>
 int
-PartialFloeGroup<TFloe, TFloeList>::fracture_floes()
+PartialFloeGroup<TFloe, TFloeList>::fracture_floes(bool mode_eight)
 {
     int n_fractured = 0;
     // real_type min_area(400);
@@ -189,6 +189,12 @@ PartialFloeGroup<TFloe, TFloeList>::fracture_floes()
         if (!floe.has_been_impacted())
         {
             std::cout << "Ignoring Floe " << i << " (no impact). " << std::endl;
+            continue;
+        }
+        // do not look for fracture if mode 8 is activated
+        if (mode_eight && i == 0)
+        {
+            std::cout << "Ignoring Floe " << i << " (mode 8). " << std::endl;
             continue;
         }
         // auto new_geometries = base_class::get_floes()[i].fracture_floe_from_collisions();
@@ -226,6 +232,7 @@ PartialFloeGroup<TFloe, TFloeList>::fracture_floes()
     }
     this->update_list_ids_active();
 
+    // for (auto & floe : base_class::get_floes()){ // supprime moi et remplace moi par la ligne suivante si ça marche pas 
     for (auto & floe : this->get_floes()) { // TODO why is it needed ?
         floe.static_floe().attach_mesh_ptr(&floe.get_floe_h().m_static_mesh);
         floe.update();

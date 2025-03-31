@@ -28,7 +28,7 @@ using integration_strategy = floe::integration::RefGaussLegendre<T,2,2>;
 
 template <typename TExternalForces, typename TFloeGroup>
 typename TFloeGroup::floe_type::point_type
-DynamicsManager<TExternalForces, TFloeGroup>::move_floes(floe_group_type& floe_group, real_type delta_t)
+DynamicsManager<TExternalForces, TFloeGroup>::move_floes(floe_group_type& floe_group, real_type delta_t, real_type t)
 {   
     // OpenMP doesn't like this syntax
     // for (auto& floe : floe_group.get_floes())
@@ -40,7 +40,7 @@ DynamicsManager<TExternalForces, TFloeGroup>::move_floes(floe_group_type& floe_g
     
     #pragma omp parallel for
     for (std::size_t i=0; i < floe_group.get_floes().size(); ++i){
-        this->move_floe(floe_group.get_floes()[i], delta_t, mode_eight, i==0);
+        this->move_floe(floe_group.get_floes()[i], delta_t, t, mode_eight, i==0);
     }
 
     return this->update_ocean(floe_group, delta_t);
@@ -49,7 +49,7 @@ DynamicsManager<TExternalForces, TFloeGroup>::move_floes(floe_group_type& floe_g
 
 template <typename TExternalForces, typename TFloeGroup>
 void
-DynamicsManager<TExternalForces, TFloeGroup>::move_floe(floe_type& floe, real_type delta_t, bool mode_eight, bool is_first_floe)
+DynamicsManager<TExternalForces, TFloeGroup>::move_floe(floe_type& floe, real_type delta_t, real_type t, bool mode_eight, bool is_first_floe)
 {
     state_type new_state = floe.state();
     // Inertic motion
@@ -67,13 +67,17 @@ DynamicsManager<TExternalForces, TFloeGroup>::move_floe(floe_type& floe, real_ty
         {
             real_type fx = m_external_forces.get_physical_data().get_air_speed();
             real_type fy = m_external_forces.get_physical_data().get_water_speed();
-            drag_force = floe::integration::integrate(
-                std::function<point_type (real_type, real_type)>([&](real_type x, real_type y) {
-                    return point_type({fx, fy});
-                }),
-                floe.mesh(),
-                integration_strategy<real_type>()
-            );
+            real_type coeffx(1);
+            real_type coeffy(1);
+            real_type T(1e6);
+            // to create an oscillation
+            // real_type omega = 2*2*3.1415926/86400; 
+            // if (t > 600000)  
+                // coeff = cos(omega*(t-600000));
+            // to create an increasing force 
+            coeffx = fx*(1-exp(-t/T));
+            coeffy = fy*(1-exp(-t/T));
+            drag_force = point_type({fx*coeffx, fy*coeffy});
         }
        
         new_state.speed += ( delta_t / floe.mass() ) * drag_force
@@ -85,11 +89,6 @@ DynamicsManager<TExternalForces, TFloeGroup>::move_floe(floe_type& floe, real_ty
             floe.mesh(),
             integration_strategy<real_type>()
         );
-        if (mode_eight && is_first_floe)
-            new_state.rot = 0;
-        else 
-            new_state.rot += ( delta_t / floe.moment_cst() ) * rot_drag_force;
- 
         /* Adding random perturbation to speed and rot
         (improve collision computing, physically justifiable) */
         if (m_rand_speed_add) {
@@ -107,9 +106,16 @@ DynamicsManager<TExternalForces, TFloeGroup>::move_floe(floe_type& floe, real_ty
             new_state.speed += rand_speed;
             new_state.rot += rand_rot;
         }
+        if (mode_eight && is_first_floe)
+            new_state.rot = 0;
+        else 
+            new_state.rot += ( delta_t / floe.moment_cst() ) * rot_drag_force;
     }
     
     // Floe update
+    // if (mode_eight && is_first_floe)
+    //     std::cout << "Mode 8, first floe new state rot " << new_state.rot << std::endl;
+        // new_state.speed = {m_external_forces.get_physical_data().get_air_speed(), m_external_forces.get_physical_data().get_water_speed()};
     floe.set_state(new_state);
 }
 

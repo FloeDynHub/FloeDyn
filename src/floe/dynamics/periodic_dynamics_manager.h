@@ -40,7 +40,7 @@ public:
 
 private:
     topology_type const* m_topology; //!< Space topology
-    virtual void move_floe(floe_type& floe, real_type delta_t) override;
+    virtual void move_floe(floe_type& floe, real_type delta_t, real_type t, bool mode_eight=false, bool is_first_floe=false) override;
     //! Translate floe if needed according to periodic boundary conditions (topology)
     bool replace_floe(floe_type& floe);
     virtual real_type ocean_window_area() override { return m_topology->area(); }

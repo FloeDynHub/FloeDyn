@@ -84,8 +84,8 @@ public:
             std::cout << "Storm defined as a wind vortex" << std::endl;
         }
         else if (m_air_mode==8 || m_water_mode==8) {
-            // m_water_mode = 8;
-            // m_air_mode = 8;
+            m_water_mode = 8;
+            m_air_mode = 8;
             std::cout << "Force and no rotation imposed on the first floe." << std::endl;
         }
         else if (m_air_mode==9 || m_water_mode==9) {
@@ -117,6 +117,7 @@ public:
 
     //!< air mode accessor 
     int get_air_mode() {return m_air_mode;};
+    int get_water_mode() {return m_water_mode;};
     //!< air and wind accessor 
     int get_air_speed() {return m_air_speed;};
     int get_water_speed() {return m_water_speed;};
@@ -222,10 +223,13 @@ private:
     }
     point_type converging_rotating_speed(point_type pt = {0,0}, real_type speed=1)
     {
-        real_type norm = norm2(pt);
-        real_type x{-(pt.x+0.5*pt.y)*speed/norm}, y{-(pt.y-0.5*pt.x)*speed/norm};
-        // std::cout << "converging wind speed ! x: " << x << " y: " << y << std::endl;
-        return {x,y};
+        size_t n = 10; // reduction factor for the tangential component 
+        real_type r = norm2(pt);
+        real_type L = m_window_width/2;
+        real_type norm = speed*n/(r*std::sqrt(n*n+1));
+        real_type x{-(pt.x+pt.y/n)*norm}, y{-(pt.y-pt.x/n)*norm};
+        real_type amplitude = 1-std::exp(-r/(2*L));
+        return {amplitude*x,amplitude*y};
     }
 
     
