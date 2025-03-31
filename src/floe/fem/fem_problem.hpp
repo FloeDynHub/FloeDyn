@@ -25,6 +25,7 @@
 #include "floe/geometry/arithmetic/arithmetic.hpp"
 
 #include "floe/floes/floe_interface.hpp"
+#include "floe/fem/fracture_predictor.hpp"
 
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
@@ -68,7 +69,8 @@ public :
     real_type energy_release_by_breaking_along(point_type a, point_type b);
     bool disable();
     inline bool is_disabled(){return !m_enabled;};
-    std::string get_impact_definition(){return m_impact_definition.str();};
+    std::string get_impact_definition(){return m_fracture_predictor.get_database_entry();};
+    bool predict_fracture(){return m_fracture_predictor.predict_fracture();};
 
 private :
     floe_type * m_floe;
@@ -100,6 +102,7 @@ private :
     mesh_type m_mesh;
     real_type m_thickness;
     std::stringstream m_impact_definition;
+    FracturePredictor<floe_type> m_fracture_predictor;
 };
 
 template <typename TFloe>
@@ -127,6 +130,7 @@ FemProblem<TFloe>::FemProblem(floe_type * floe):
     m_impact_definition{std::stringstream("")}
 {}
 
+
 template <typename TFloe>
 bool FemProblem<TFloe>::addFloe(floe_type * floe)
 {
@@ -145,6 +149,7 @@ bool FemProblem<TFloe>::addFloe(floe_type * floe)
     m_stress_is_computed = false;
     m_enabled = true;
     m_thickness = m_floe->static_floe().thickness();
+    m_fracture_predictor.prepare_entry_floe(floe);
     return true;
 }
 template < typename TFloe>
@@ -273,6 +278,8 @@ FemProblem<TFloe>::addContactDirichlet(std::vector<size_t> gamma_d, std::vector<
         std::cerr << "Incoherent input" << std::endl;
         return false;
     }
+    m_fracture_predictor.clear_entry_impact();
+
     real_type very_big_stuff=10000*m_largest_value;
     real_type theta(m_floe->get_frame().theta());
     point_type center(m_floe->get_frame().center());
@@ -281,6 +288,7 @@ FemProblem<TFloe>::addContactDirichlet(std::vector<size_t> gamma_d, std::vector<
     m_FTriplet.clear();
     m_DirichletTriplet.clear();
 
+    m_impact_definition.str("");
     m_impact_definition.clear();
     m_impact_definition << " " << n_dirichlet << " impacts: ";
     for (size_t iDir = 0; iDir < n_dirichlet ; ++iDir)
@@ -321,7 +329,9 @@ FemProblem<TFloe>::addContactDirichlet(std::vector<size_t> gamma_d, std::vector<
         // * enregistrer une fois pour toutes pour chaque noeud une liste des plus proches voisins
         // * combien de voisin pour un contact ? faut voir sur combien de points on l'étale. à voir avec la vraie définition de la CL dirichlet.
         // * en effet, la recherche de voisins doit aller vite car elle est faite à chaque nouveau contact.
+        m_fracture_predictor.prepare_entry_impact(iDir, values[iDir]);
     }
+
 
     return true;
 };

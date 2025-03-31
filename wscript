@@ -60,6 +60,7 @@ floedyn_deps = {
     'cgal'  : [''],
     'mpfr'  : ['mpfr'],
     'cereal' : [''], # header only
+    'onnxruntime' : ['onnxruntime'],
     }
 
 floedyn_includes = {
@@ -71,6 +72,7 @@ floedyn_includes = {
     'cgal'  : [],
     'mpfr'  : [],
     'cereal' : [],
+    'onnxruntime' : [],
     }
 
 
@@ -246,7 +248,7 @@ def get_option_dict(debug=True):
                 'matio',
                 "hdf5",
                 "hdf5_cpp",
-                "gmp", "mpfr", "boost_thread"
+                "gmp", "mpfr", "boost_thread", "onnxruntime"
                 ],
         "framework": ["Accelerate"],
         "frameworkpath" : ["/System/Library/Frameworks"]
@@ -294,6 +296,7 @@ import subprocess
 def build(bld):
     opts = get_option_dict(bld.options.debug)
     opts['use']= []
+    opts['linkflags'].append('-Wl,-rpath,/Users/silouane/Documents/code/piml/onnxruntime/lib/')
     bld.options.install_path = '${PREFIX}'
     for dep in floedyn_deps:
         opts['use'].append(dep.upper())

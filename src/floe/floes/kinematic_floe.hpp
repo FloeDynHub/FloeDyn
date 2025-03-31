@@ -78,11 +78,11 @@ public:
 
     KinematicFloe() : m_geometry{nullptr}, m_floe{nullptr}, m_state{ {0,0}, 0, {0,0}, 0, {0,0}, true},
                     //   m_obstacle{false}, m_floe_h{}, m_total_impulse_received{0}, m_fem_problem{this} {}
-                      m_obstacle{false}, m_floe_h{}, m_total_impulse_received{0}, m_fem_problem{this}, m_fem_problem_is_set{false} {}
+                      m_obstacle{false}, m_floe_h{}, m_total_impulse_received{0}, m_fem_problem{this}, m_fem_problem_is_set{false}, m_use_fast_fracture_predictor(true) {}
 
     KinematicFloe(static_floe_type new_static_floe) : m_geometry{nullptr}, m_floe{new_static_floe}, m_state{ {0,0}, 0, {0,0}, 0, {0,0}, true},
                     //   m_obstacle{false}, m_floe_h{}, m_total_impulse_received{0} {} //comment je fais avec floe_h ????
-                      m_obstacle{false}, m_floe_h{}, m_total_impulse_received{0}, m_fem_problem_is_set{false}
+                      m_obstacle{false}, m_floe_h{}, m_total_impulse_received{0}, m_fem_problem_is_set{false}, m_use_fast_fracture_predictor(true)
                     //   m_obstacle{false}, m_floe_h{}, m_total_impulse_received{0}, m_fem_problem{this}
     {}
 
@@ -235,6 +235,7 @@ private:
 
     fem_problem_type m_fem_problem;
     bool m_fem_problem_is_set;
+    bool m_use_fast_fracture_predictor;
     /*! keep track of recent collisions
      *  accumulate projected impulses on floe's boundary edges for discretized time
      *  m_recent_impulse_received will keep only recent time informations
@@ -420,6 +421,10 @@ KinematicFloe<TStaticFloe,TState>::fracture_floe_from_collisions_fem(){
         std::cout << "Floe is disabled" << std::endl;
         return {};
     }
+    if (m_use_fast_fracture_predictor) 
+        if (!m_fem_problem.predict_fracture())
+            return {};
+
     // WHEREAMI
     // 1 - initialisation if required
     if (!prepare_elasticity())
@@ -468,15 +473,17 @@ KinematicFloe<TStaticFloe,TState>::fracture_floe_from_collisions_fem(){
             }
         }
 
+        bool print_summary(false);// enable this only for database building: the features of each impact sample are written in the logs
         if (energy > 0)
         {
             std::cout << std::endl << "Breaking along (" << best_a.x << ";" << best_a.y << ")" << " -- (" << best_b.x << ";" << best_b.y << ")" << std::endl;
-            std::cout << "Impact summary : fracturing along " << best_a << " -- " << best_b << " ; " <<  m_fem_problem.get_impact_definition() << std::endl; // this print is used to help build a database by parsing the logs 
+            if (print_summary)
+                std::cout << "Impact summary : " <<  m_fem_problem.get_impact_definition() << " ; theta = " << m_state.theta << " ; is_broken = True " << std::endl; // this print is used to help build a database by parsing the logs 
             return this->static_floe().fracture_floe_along(best_a, best_b);
         }
-        else
+        else if (print_summary)
         {
-            std::cout << "Impact summary : no fracture ; " <<  m_fem_problem.get_impact_definition() << std::endl; // idem, this print is used to help build a database by parsing the logs 
+            std::cout << "Impact summary : " <<  m_fem_problem.get_impact_definition() << " ; theta = " << m_state.theta << " ; is_broken = False " << std::endl; // idem, this print is used to help build a database by parsing the logs 
         }
     }
     return {};
