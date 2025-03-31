@@ -292,7 +292,7 @@ void PROBLEM::step_solve(bool crack) {
     	std::size_t nb_before = m_floe_group.get_floes().size();
     	// m_floe_group.fracture_biggest_floe();
         // auto nb_fractured = 1;
-        auto nb_fractured = m_floe_group.fracture_floes();
+        auto nb_fractured = m_floe_group.fracture_floes(m_dynamics_manager.is_mode_eight());
         if (nb_fractured > 0) {
             this->update_optim_vars();
             std::cout << "Fracture of " << nb_fractured << " floes - nb floes : " << nb_before << " -> " << m_floe_group.get_floes().size() << std::endl;
@@ -407,7 +407,7 @@ void PROBLEM::compute_time_step(){
 
 TEMPLATE_PB
 typename TFloeGroup::point_type PROBLEM::move_floe_group(){
-    point_type resp = m_dynamics_manager.move_floes(m_floe_group, m_domain.time_step());
+    point_type resp = m_dynamics_manager.move_floes(m_floe_group, m_domain.time_step(), m_domain.time());
     m_domain.update_time();
     return resp;
 }
