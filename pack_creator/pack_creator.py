@@ -188,3 +188,55 @@ def get_floes_from_output_file(filename, timing=-1):
 
     return floes 
 
+def get_floes_from_input_file(filename, timing=-1):
+    """ Returns a list of class Floe from a FloeDyn input. Compared to an output, there is no time dependent entries. 
+
+    ex:     list_f = []
+            # build the floe list list_f as you wish, list_f.append(Floe(truc truc))... 
+            floes = get_floes_from_output_file('../path/to/io/outputs/out_9464522515578516354651f_99p.h5')
+            list_f += floes
+        
+    """
+    d = {}
+    floes = []
+
+    data_file = h5py.File(filename, 'r')
+    file_time_dependant_keys =["floe_states"] 
+    nTime = 0
+    
+    for key in file_time_dependant_keys:
+        if data_file.get(key) is not None:
+            d[key] = data_file.get(key)[nTime]
+        else:
+            print('could not find {} in {}'.format(key, filename))
+            return floes
+        
+    if data_file.get("floe_shapes") is not None:
+        d["floe_shapes"] = [np.array(data_file.get("floe_shapes").get(k)) for k in sorted(list(data_file.get("floe_shapes")), key=int)]
+    else:
+        print('could not find floe shapes in {}'.format(filename))
+        return floes
+    
+    for iFloe in np.arange(0, len(d["floe_shapes"])):
+        floes.append(Floe(d["floe_shapes"][iFloe], State(pos=[d["floe_states"][iFloe, 7], d["floe_states"][iFloe, 8]], speed=[0,0], theta=d["floe_states"][iFloe, 2])))
+
+    return floes 
+
+
+
+def plot_floe(floe, ax, show_vertices=False, color='black', u=None):
+    floe_shape = floe.shape
+    theta = -floe.state.theta
+    x_vals = [point[0]*np.cos(theta)+point[1]*np.sin(theta) + floe.state.pos[0] for point in floe_shape]
+    y_vals = [-point[0]*np.sin(theta)+point[1]*np.cos(theta) + floe.state.pos[1] for point in floe_shape]
+    x_vals.append(x_vals[0])
+    y_vals.append(y_vals[0])
+    if show_vertices:
+        ax.plot(x_vals, y_vals, '*-', color=color)
+    else:
+        ax.plot(x_vals, y_vals, '-', color=color)
+        
+    if u is not None:
+        ax.annotate('', xy=(u[0], u[1]), xytext=(0, 0), arrowprops=dict(facecolor='red', shrink=0.05))
+
+    ax.set_aspect('equal')

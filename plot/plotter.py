@@ -436,7 +436,9 @@ class FloePlotter(object):
             fig, update, len(data_global.get("time")), fargs=(data_global, ax_mgr),
             interval=1, blit=False)
         if make_video:
-            anim.save(self.get_final_video_path(), writer=self.writer)
+            path = self.get_final_video_path()
+            anim.save(path, writer=self.writer)
+            print(f'saving {path}')
         else:
             plt.show()
 
