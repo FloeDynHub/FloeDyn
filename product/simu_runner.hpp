@@ -194,7 +194,7 @@ public:
         P.get_floe_group().set_min_thickness(min_thickness);
         if (mu_static!=0.7) {std::cout << "Warning: the ice/ice static friction coefficient is fixed to: " << mu_static << std::endl;}
         if (epsilon!=0.4) {std::cout << "Warning: the restitution coefficient is fixed to: " << epsilon << std::endl;}
-        P.solve(endtime, default_time_step, out_time_step, true, fracture, melting);
+        P.solve(endtime, default_time_step, out_time_step, true, fracture, use_predictor, melting);
         return 0;
     }
 
@@ -224,6 +224,7 @@ protected:
     string                  matlab_topaz_filename   = "io/library/DataTopaz01.mat";
     value_type              max_size                = 250;
     bool                    fracture                = 0;
+    bool                    use_predictor           = 0;
     bool                    melting                 = 0;
     bool                    export_mesh             = 0;
     bool                    rand_speed_add          = 1;
@@ -330,6 +331,7 @@ protected:
 
             "   4/ the distance of the first ring to the ice field origin (in [km]).\n")
         ("crack", po::value<bool>(&fracture), "1 to activate floe cracking model.\n")
+        ("use_predictor", po::value<bool>(&use_predictor), "1 to activate fast fracture predictor.\n")
         ("exportmesh", po::value<bool>(&export_mesh), "1 to activate mesh export in the output file.\n")
         ("melting", po::value<bool>(&melting), "1 to activate floe melting model.\n")
         ("minthick", po::value(&min_thickness)->default_value(

@@ -66,7 +66,7 @@ public:
     Problem(real_type epsilon=0.4, int OBL_status=0, bool export_mesh=false);
 
     //! Solver of the problem (main method)
-    virtual void solve(real_type end_time, real_type dt_default, real_type out_step = 0, bool reset = true, bool fracture = false, bool melting = false);
+    virtual void solve(real_type end_time, real_type dt_default, real_type out_step = 0, bool reset = true, bool fracture = false, bool use_predictor = false, bool melting = false);
 
     virtual void load_config(std::string const& filename);
     //! Load ocean and wind data from a topaz file
@@ -105,7 +105,7 @@ public:
 
     // to be used in generation mode, to allow different behaviour
     inline void set_is_generator() {m_is_generator = true;};
-
+    // void remove_too_small_floes();
 
 protected:
     // domain
@@ -124,6 +124,7 @@ protected:
     int m_step_nb; //!< Total number of steps from beginning
     out_manager_type m_out_manager; //!< Object managing simulation output
     bool m_fracture; //!< Fracture activated ?
+    bool m_use_predictor; //!< Fracture activated ?
     bool m_melting; //!< Melting model activated ?
 
     //! Load floes set and initial states from matlab file
@@ -131,7 +132,7 @@ protected:
     //! Load floes set and initial states from hdf5 file
     virtual void load_h5_config(std::string const& filename);
     //! Move one time step forward
-    virtual void step_solve(bool crack);
+    virtual void step_solve(bool crack, bool use_predictor);
     //! Proximity detection (inter-floe distance and eventual collisions)
     void detect_proximity();
     //! Collision solving
@@ -240,7 +241,7 @@ void PROBLEM::update_optim_vars() {
 
 
 TEMPLATE_PB
-void PROBLEM::solve(real_type end_time, real_type dt_default, real_type out_step, bool reset, bool fracture, bool melting){
+void PROBLEM::solve(real_type end_time, real_type dt_default, real_type out_step, bool reset, bool fracture, bool use_predictor, bool melting){
     if (reset) this->create_optim_vars();
     m_fracture = fracture;
     m_melting = melting;
@@ -266,7 +267,7 @@ void PROBLEM::solve(real_type end_time, real_type dt_default, real_type out_step
         bool do_fracture = fracture;
         if (do_fracture) last_frac_time = m_domain.time();
         // this->step_solve(do_fracture, melting);
-        this->step_solve(do_fracture);
+        this->step_solve(do_fracture, use_predictor);
         // auto t_end = std::chrono::high_resolution_clock::now();
         // std::cout << "Chrono STEP : " << std::chrono::duration<double, std::milli>(t_end-t_start).count() << " ms" << std::endl;
         if (*this->QUIT) break; // exit normally after SIGINT
@@ -282,8 +283,9 @@ void PROBLEM::solve(real_type end_time, real_type dt_default, real_type out_step
 
 
 TEMPLATE_PB
-void PROBLEM::step_solve(bool crack) {
+void PROBLEM::step_solve(bool crack, bool use_predictor) {
     auto t0 = std::chrono::high_resolution_clock::now();
+    // this->create_optim_vars();
     manage_collisions();
     m_floe_group.get_floes()[0].get_dirichlet_condition(m_domain.time());
     auto t1 = std::chrono::high_resolution_clock::now();
@@ -292,12 +294,15 @@ void PROBLEM::step_solve(bool crack) {
     	std::size_t nb_before = m_floe_group.get_floes().size();
     	// m_floe_group.fracture_biggest_floe();
         // auto nb_fractured = 1;
-        auto nb_fractured = m_floe_group.fracture_floes(m_dynamics_manager.is_mode_eight());
+        auto nb_fractured = m_floe_group.fracture_floes(m_dynamics_manager.is_mode_eight(), use_predictor);
         if (nb_fractured > 0) {
             this->update_optim_vars();
             std::cout << "Fracture of " << nb_fractured << " floes - nb floes : " << nb_before << " -> " << m_floe_group.get_floes().size() << std::endl;
         }
     }
+    // remove_too_small_floes();
+    this->update_optim_vars();
+    // m_floe_group.remove_too_small_floes();
     auto t2 = std::chrono::high_resolution_clock::now();
     compute_time_step();
     auto t3 = std::chrono::high_resolution_clock::now();
@@ -307,6 +312,7 @@ void PROBLEM::step_solve(bool crack) {
         m_floe_group.melt_floes();
         this->update_optim_vars();
     }
+    compute_time_step();
     std::cout << "Chrono : collisions " << std::chrono::duration<double, std::milli>(t1-t0).count() << " ms + "
     << "fracture " << std::chrono::duration<double, std::milli>(t2-t1).count() << " ms + "
     << "time_step " << std::chrono::duration<double, std::milli>(t3-t2).count() << " ms + "
@@ -321,6 +327,30 @@ void PROBLEM::step_solve(bool crack) {
     output_data();
     m_step_nb++;
 }
+
+
+// TEMPLATE_PB
+// void PROBLEM::remove_too_small_floes(){
+//     // Deactivate too small floes
+//     size_t i = 0;
+//     real_type min_area(100);
+//     for (auto & floe : m_floe_group.get_floes()){
+//         if ((floe.area() < min_area) && !floe.is_obstacle())
+//         {
+//             floe.state().desactivate();
+//             std::cout << "Floe " << i << " is too small and has been deactivated in the problem stage." << std::endl;
+//             i++;
+//         }
+//     }
+//     m_floe_group.update_list_ids_active();
+//     for (auto & floe : m_floe_group.get_floes()) { // TODO why is it needed ?
+//         floe.static_floe().attach_mesh_ptr(&floe.get_floe_h().m_static_mesh);
+//         floe.update();
+//         floe.unset_fem_problem_prepared();
+//         floe.reset_current_impulse();
+//     } 
+//     this->update_optim_vars();
+// }
 
 TEMPLATE_PB
 void PROBLEM::safe_move_floe_group(){

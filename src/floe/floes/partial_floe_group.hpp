@@ -58,8 +58,9 @@ public:
     void add_floe(geometry_type geometry, std::size_t parent_floe_idx);
     void fracture_biggest_floe();
     // size_t fracture_above_threshold(real_type threshold);
-    int fracture_floes(bool mode_eight = false);
+    int fracture_floes(bool mode_eight = false, bool use_predictor = false);
     void melt_floes();
+    // void remove_too_small_floes();
     void update_list_ids_active();//{std::cout<<"test"<<std::endl;}
 
 private:
@@ -168,7 +169,7 @@ PartialFloeGroup<TFloe, TFloeList>::fracture_biggest_floe()
 
 template <typename TFloe, typename TFloeList>
 int
-PartialFloeGroup<TFloe, TFloeList>::fracture_floes(bool mode_eight)
+PartialFloeGroup<TFloe, TFloeList>::fracture_floes(bool mode_eight, bool use_predictor)
 {
     int n_fractured = 0;
     // real_type min_area(400);
@@ -198,7 +199,7 @@ PartialFloeGroup<TFloe, TFloeList>::fracture_floes(bool mode_eight)
             continue;
         }
         // auto new_geometries = base_class::get_floes()[i].fracture_floe_from_collisions();
-        auto new_geometries = floe.fracture_floe_from_collisions_fem();
+        auto new_geometries = floe.fracture_floe_from_collisions_fem(use_predictor);
         std::cout << "Looking for fracture in Floe " << i << ":";
         if (new_geometries.size() > 0){
             std::cout << " fractured in " << new_geometries.size() << " parts" << std::endl;
@@ -216,6 +217,7 @@ PartialFloeGroup<TFloe, TFloeList>::fracture_floes(bool mode_eight)
             this->add_floe(iter.second[j], iter.first);
         }
     }
+
     // Desactivate cracked floe
     for (auto const& iter : all_new_geometries){
         base_class::get_floes()[iter.first].state().desactivate();
@@ -223,14 +225,17 @@ PartialFloeGroup<TFloe, TFloeList>::fracture_floes(bool mode_eight)
     this->update_list_ids_active();
 
     // Deactivate too small floes
-    for (auto & floe : base_class::get_floes()){
-        if ((floe.area() < min_area) && !floe.is_obstacle())
-        {
-            floe.state().desactivate();
-            std::cout << "Floe is too small and has been deactivated." << std::endl;
-        }
-    }
-    this->update_list_ids_active();
+    // size_t i = 0;
+    // for (auto & floe : base_class::get_floes()){
+    //     if ((floe.area() < min_area) && !floe.is_obstacle())
+    //     {
+    //         floe.state().desactivate();
+    //         std::cout << "Floe " << i << " is too small and has been deactivated." << std::endl;
+    //         i++;
+    //         // this->update_list_ids_active();
+    //     }
+    // }
+    // this->update_list_ids_active();
 
     // for (auto & floe : base_class::get_floes()){ // supprime moi et remplace moi par la ligne suivante si ça marche pas 
     for (auto & floe : this->get_floes()) { // TODO why is it needed ?
@@ -263,6 +268,21 @@ PartialFloeGroup<TFloe, TFloeList>::melt_floes()
     }
     this->update_list_ids_active();
 }
+
+// template <typename TFloe, typename TFloeList>
+// void
+// PartialFloeGroup<TFloe, TFloeList>::remove_too_small_floes()
+// {
+//     real_type min_area(100);
+// 	for (auto& floe : base_class::get_floes()){
+//         auto& static_floe = floe.static_floe();
+//         if (floe.area() < min_area) {
+//             std::cout << "POUF ! DISAPPEARED ! Th'as what I call f*cking magic !" << std::endl;
+//             floe.state().desactivate();
+//         }
+//     }
+//     this->update_list_ids_active();
+// }
 
 template <typename TFloe, typename TFloeList>
 void
