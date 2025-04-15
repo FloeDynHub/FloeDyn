@@ -105,7 +105,7 @@ public:
 
     // to be used in generation mode, to allow different behaviour
     inline void set_is_generator() {m_is_generator = true;};
-    // void remove_too_small_floes();
+    void remove_too_small_floes();
 
 protected:
     // domain
@@ -300,7 +300,7 @@ void PROBLEM::step_solve(bool crack, bool use_predictor) {
             std::cout << "Fracture of " << nb_fractured << " floes - nb floes : " << nb_before << " -> " << m_floe_group.get_floes().size() << std::endl;
         }
     }
-    // remove_too_small_floes();
+    remove_too_small_floes();
     this->update_optim_vars();
     // m_floe_group.remove_too_small_floes();
     auto t2 = std::chrono::high_resolution_clock::now();
@@ -329,28 +329,28 @@ void PROBLEM::step_solve(bool crack, bool use_predictor) {
 }
 
 
-// TEMPLATE_PB
-// void PROBLEM::remove_too_small_floes(){
-//     // Deactivate too small floes
-//     size_t i = 0;
-//     real_type min_area(100);
-//     for (auto & floe : m_floe_group.get_floes()){
-//         if ((floe.area() < min_area) && !floe.is_obstacle())
-//         {
-//             floe.state().desactivate();
-//             std::cout << "Floe " << i << " is too small and has been deactivated in the problem stage." << std::endl;
-//             i++;
-//         }
-//     }
-//     m_floe_group.update_list_ids_active();
-//     for (auto & floe : m_floe_group.get_floes()) { // TODO why is it needed ?
-//         floe.static_floe().attach_mesh_ptr(&floe.get_floe_h().m_static_mesh);
-//         floe.update();
-//         floe.unset_fem_problem_prepared();
-//         floe.reset_current_impulse();
-//     } 
-//     this->update_optim_vars();
-// }
+TEMPLATE_PB
+void PROBLEM::remove_too_small_floes(){
+    // Deactivate too small floes
+    size_t i = 0;
+    real_type min_area(100);
+    for (auto & floe : m_floe_group.get_floes()){
+        if ((floe.area() < min_area) && !floe.is_obstacle())
+        {
+            floe.state().desactivate();
+            std::cout << "Floe " << i << " is too small and has been deactivated in the problem stage." << std::endl;
+            i++;
+        }
+    }
+    m_floe_group.update_list_ids_active();
+    for (auto & floe : m_floe_group.get_floes()) { // TODO why is it needed ?
+        floe.static_floe().attach_mesh_ptr(&floe.get_floe_h().m_static_mesh);
+        floe.update();
+        floe.unset_fem_problem_prepared();
+        floe.reset_current_impulse();
+    } 
+    this->update_optim_vars();
+}
 
 TEMPLATE_PB
 void PROBLEM::safe_move_floe_group(){
