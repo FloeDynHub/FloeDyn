@@ -16,6 +16,9 @@
 #include "floe/io/inter_process_message.hpp"
 #include "floe/generator/mesh_generator.hpp"
 
+// #include "floe/fem/fracture_predictor.hpp"
+
+
 namespace floe { namespace floes
 {
 
@@ -43,6 +46,12 @@ public:
     using mesh_type = typename floe_type::mesh_type;
     using message_type = io::InterProcessMessage<real_type>;
 
+    PartialFloeGroup(bool use_predictor = false) : m_fracture_predictor()
+    {
+        if (use_predictor)
+            m_fracture_predictor.prepare_predictor();
+    };
+
     void update_partial_list(std::vector<std::size_t> floe_id_list){
         base_class::get_floes().update_ids(floe_id_list);
     }
@@ -65,6 +74,7 @@ public:
 
 private:
     std::vector<int> m_states_origin;
+    fem::FracturePredictor<floe_type> m_fracture_predictor;
 };
 
 
@@ -199,7 +209,12 @@ PartialFloeGroup<TFloe, TFloeList>::fracture_floes(bool mode_eight, bool use_pre
             continue;
         }
         // auto new_geometries = base_class::get_floes()[i].fracture_floe_from_collisions();
-        auto new_geometries = floe.fracture_floe_from_collisions_fem(use_predictor);
+        // auto new_geometries;
+        // std::vector<geometry_type> new_geometries;
+        // if (use_predictor)
+        //     new_geometries = floe.fracture_floe_from_collisions_fem(nullptr);
+        // else
+        auto new_geometries = floe.fracture_floe_from_collisions_fem(use_predictor, m_fracture_predictor);
         std::cout << "Looking for fracture in Floe " << i << ":";
         if (new_geometries.size() > 0){
             std::cout << " fractured in " << new_geometries.size() << " parts" << std::endl;

@@ -25,6 +25,8 @@
 #include "floe/floes/floe_interface.hpp"
 #include "floe/fem/fem_problem.hpp"
 
+#include "floe/fem/fracture_predictor.hpp"
+
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
 
@@ -184,7 +186,7 @@ public:
     void reset_detailed_impulse() const { m_detailed_impulse_received.clear(); }
     std::vector<geometry_type> fracture_floe();
     std::vector<geometry_type> fracture_floe_from_collisions();
-    std::vector<geometry_type> fracture_floe_from_collisions_fem(bool use_predictor = false);
+    std::vector<geometry_type> fracture_floe_from_collisions_fem(bool use_predictor, fem::FracturePredictor<KinematicFloe> const &predictor);
 
     void update_after_fracture(const state_type init_state,const bool init_obstacle_m,const real_type init_total_impulse_received, point_type mass_center_floe_init);
 
@@ -409,7 +411,7 @@ KinematicFloe<TStaticFloe,TState>::fracture_floe_from_collisions(){
  */
 template < typename TStaticFloe, typename TState >
 std::vector<typename TStaticFloe::geometry_type>
-KinematicFloe<TStaticFloe,TState>::fracture_floe_from_collisions_fem(bool use_predictor){
+KinematicFloe<TStaticFloe,TState>::fracture_floe_from_collisions_fem(bool use_predictor, fem::FracturePredictor<KinematicFloe> const &predictor){
     // 0 - obstacles and blocks that did not collide won't break. Floes without meshes are not considered either.
     // WHEREAMI
     if (this->is_obstacle() || m_total_current_impulse_received == 0) return {};
@@ -424,7 +426,7 @@ KinematicFloe<TStaticFloe,TState>::fracture_floe_from_collisions_fem(bool use_pr
     if (use_predictor) 
     {
         std::cout << "Using fast fracture predictor" << std::endl;
-        if (!m_fem_problem.predict_fracture())
+        if (!predictor.predict_fracture(m_fem_problem.descriptor()))
             return {};
     }
 

@@ -63,7 +63,7 @@ public:
     using proximity_detector_type = TProxymityDetector;
 
     //! Default constructor.
-    Problem(real_type epsilon=0.4, int OBL_status=0, bool export_mesh=false);
+    Problem(real_type epsilon=0.4, int OBL_status=0, bool export_mesh=false, bool use_predictor=false);
 
     //! Solver of the problem (main method)
     virtual void solve(real_type end_time, real_type dt_default, real_type out_step = 0, bool reset = true, bool fracture = false, bool use_predictor = false, bool melting = false);
@@ -168,13 +168,13 @@ protected:
 
 
 TEMPLATE_PB
-PROBLEM::Problem(real_type epsilon, int OBL_status, bool export_mesh) :
+PROBLEM::Problem(real_type epsilon, int OBL_status, bool export_mesh, bool use_predictor) :
         QUIT{nullptr},
         m_domain{},
         m_proximity_detector{},
         m_collision_manager{epsilon},
         m_dynamics_manager{m_domain.time(), OBL_status},
-        m_floe_group{},
+        m_floe_group{use_predictor},
         m_step_nb{0},
         m_out_manager{m_floe_group, export_mesh},
         m_is_generator{false},

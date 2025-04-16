@@ -25,7 +25,7 @@
 #include "floe/geometry/arithmetic/arithmetic.hpp"
 
 #include "floe/floes/floe_interface.hpp"
-#include "floe/fem/fracture_predictor.hpp"
+#include "floe/fem/fracture_descriptor.hpp"
 
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
@@ -69,8 +69,8 @@ public :
     real_type energy_release_by_breaking_along(point_type a, point_type b);
     bool disable();
     inline bool is_disabled(){return !m_enabled;};
-    std::string get_impact_definition(){return m_fracture_predictor.get_database_entry();};
-    bool predict_fracture(){return m_fracture_predictor.predict_fracture();};
+    std::string get_impact_definition(){return m_fracture_descriptor.get_database_entry();};
+    inline FractureDescriptor<floe_type> const& descriptor() {return m_fracture_descriptor;};
 
 private :
     floe_type * m_floe;
@@ -102,7 +102,7 @@ private :
     mesh_type m_mesh;
     real_type m_thickness;
     std::stringstream m_impact_definition;
-    FracturePredictor<floe_type> m_fracture_predictor;
+    FractureDescriptor<floe_type> m_fracture_descriptor;
 };
 
 template <typename TFloe>
@@ -149,7 +149,7 @@ bool FemProblem<TFloe>::addFloe(floe_type * floe)
     m_stress_is_computed = false;
     m_enabled = true;
     m_thickness = m_floe->static_floe().thickness();
-    m_fracture_predictor.prepare_entry_floe(floe);
+    m_fracture_descriptor.prepare_entry_floe(floe);
     return true;
 }
 template < typename TFloe>
@@ -278,7 +278,7 @@ FemProblem<TFloe>::addContactDirichlet(std::vector<size_t> gamma_d, std::vector<
         std::cerr << "Incoherent input" << std::endl;
         return false;
     }
-    m_fracture_predictor.clear_entry_impact();
+    m_fracture_descriptor.clear_entry_impact();
 
     real_type very_big_stuff=10000*m_largest_value;
     real_type theta(m_floe->get_frame().theta());
@@ -329,7 +329,7 @@ FemProblem<TFloe>::addContactDirichlet(std::vector<size_t> gamma_d, std::vector<
         // * enregistrer une fois pour toutes pour chaque noeud une liste des plus proches voisins
         // * combien de voisin pour un contact ? faut voir sur combien de points on l'étale. à voir avec la vraie définition de la CL dirichlet.
         // * en effet, la recherche de voisins doit aller vite car elle est faite à chaque nouveau contact.
-        m_fracture_predictor.prepare_entry_impact(iDir, values[iDir]);
+        m_fracture_descriptor.prepare_entry_impact(iDir, values[iDir]);
     }
 
 
