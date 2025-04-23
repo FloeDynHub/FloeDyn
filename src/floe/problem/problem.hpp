@@ -63,10 +63,10 @@ public:
     using proximity_detector_type = TProxymityDetector;
 
     //! Default constructor.
-    Problem(real_type epsilon=0.4, int OBL_status=0, bool export_mesh=false);
+    Problem(real_type epsilon=0.4, int OBL_status=0, bool export_mesh=false, bool use_predictor=false);
 
     //! Solver of the problem (main method)
-    virtual void solve(real_type end_time, real_type dt_default, real_type out_step = 0, bool reset = true, bool fracture = false, bool melting = false);
+    virtual void solve(real_type end_time, real_type dt_default, real_type out_step = 0, bool reset = true, bool fracture = false, bool use_predictor = false, bool melting = false);
 
     virtual void load_config(std::string const& filename);
     //! Load ocean and wind data from a topaz file
@@ -131,7 +131,7 @@ protected:
     //! Load floes set and initial states from hdf5 file
     virtual void load_h5_config(std::string const& filename);
     //! Move one time step forward
-    virtual void step_solve(bool crack);
+    virtual void step_solve(bool crack, bool use_predictor);
     //! Proximity detection (inter-floe distance and eventual collisions)
     void detect_proximity();
     //! Collision solving
@@ -167,13 +167,13 @@ protected:
 
 
 TEMPLATE_PB
-PROBLEM::Problem(real_type epsilon, int OBL_status, bool export_mesh) :
+PROBLEM::Problem(real_type epsilon, int OBL_status, bool export_mesh, bool use_predictor) :
         QUIT{nullptr},
         m_domain{},
         m_proximity_detector{},
         m_collision_manager{epsilon},
         m_dynamics_manager{m_domain.time(), OBL_status},
-        m_floe_group{},
+        m_floe_group{use_predictor},
         m_step_nb{0},
         m_out_manager{m_floe_group, export_mesh},
         m_is_generator{false},
@@ -240,7 +240,7 @@ void PROBLEM::update_optim_vars() {
 
 
 TEMPLATE_PB
-void PROBLEM::solve(real_type end_time, real_type dt_default, real_type out_step, bool reset, bool fracture, bool melting){
+void PROBLEM::solve(real_type end_time, real_type dt_default, real_type out_step, bool reset, bool fracture, bool use_predictor, bool melting){
     if (reset) this->create_optim_vars();
     m_fracture = fracture;
     m_melting = melting;
@@ -266,7 +266,7 @@ void PROBLEM::solve(real_type end_time, real_type dt_default, real_type out_step
         bool do_fracture = fracture;
         if (do_fracture) last_frac_time = m_domain.time();
         // this->step_solve(do_fracture, melting);
-        this->step_solve(do_fracture);
+        this->step_solve(do_fracture, use_predictor);
         // auto t_end = std::chrono::high_resolution_clock::now();
         // std::cout << "Chrono STEP : " << std::chrono::duration<double, std::milli>(t_end-t_start).count() << " ms" << std::endl;
         if (*this->QUIT) break; // exit normally after SIGINT
@@ -282,7 +282,7 @@ void PROBLEM::solve(real_type end_time, real_type dt_default, real_type out_step
 
 
 TEMPLATE_PB
-void PROBLEM::step_solve(bool crack) {
+void PROBLEM::step_solve(bool crack, bool use_predictor) {
     auto t0 = std::chrono::high_resolution_clock::now();
     manage_collisions();
     m_floe_group.get_floes()[0].get_dirichlet_condition(m_domain.time());
@@ -292,7 +292,7 @@ void PROBLEM::step_solve(bool crack) {
     	std::size_t nb_before = m_floe_group.get_floes().size();
     	// m_floe_group.fracture_biggest_floe();
         // auto nb_fractured = 1;
-        auto nb_fractured = m_floe_group.fracture_floes(m_dynamics_manager.is_mode_eight());
+        auto nb_fractured = m_floe_group.fracture_floes(m_dynamics_manager.is_mode_eight(), use_predictor);
         if (nb_fractured > 0) {
             this->update_optim_vars();
             std::cout << "Fracture of " << nb_fractured << " floes - nb floes : " << nb_before << " -> " << m_floe_group.get_floes().size() << std::endl;

@@ -16,6 +16,7 @@
 #include "floe/io/inter_process_message.hpp"
 #include "floe/generator/mesh_generator.hpp"
 
+#include "floe/fem/fracture_predictor.hpp"
 namespace floe { namespace floes
 {
 
@@ -43,6 +44,19 @@ public:
     using mesh_type = typename floe_type::mesh_type;
     using message_type = io::InterProcessMessage<real_type>;
 
+    PartialFloeGroup(bool use_predictor = false) : m_fracture_predictor()
+    {
+        if (use_predictor)
+        {
+            m_fracture_predictor.prepare_predictor();
+            std::cout << "READYORNOT Fracture predictor is ready" << std::endl;
+        }
+        else 
+        {
+            std::cout << "READYORNOT Fracture predictor is not used" << std::endl;
+        }
+    };
+
     void update_partial_list(std::vector<std::size_t> floe_id_list){
         base_class::get_floes().update_ids(floe_id_list);
     }
@@ -58,12 +72,13 @@ public:
     void add_floe(geometry_type geometry, std::size_t parent_floe_idx);
     void fracture_biggest_floe();
     // size_t fracture_above_threshold(real_type threshold);
-    int fracture_floes(bool mode_eight = false);
+    int fracture_floes(bool mode_eight = false, bool use_predictor = false);
     void melt_floes();
     void update_list_ids_active();//{std::cout<<"test"<<std::endl;}
 
 private:
     std::vector<int> m_states_origin;
+    fem::FracturePredictor<floe_type> m_fracture_predictor;
 };
 
 
@@ -168,11 +183,11 @@ PartialFloeGroup<TFloe, TFloeList>::fracture_biggest_floe()
 
 template <typename TFloe, typename TFloeList>
 int
-PartialFloeGroup<TFloe, TFloeList>::fracture_floes(bool mode_eight)
+PartialFloeGroup<TFloe, TFloeList>::fracture_floes(bool mode_eight, bool use_predictor)
 {
     int n_fractured = 0;
     // real_type min_area(400);
-    real_type min_area(100);
+    real_type min_area(10);
     std::map<std::size_t, std::vector<geometry_type>> all_new_geometries;
     for (std::size_t i = 0; i < base_class::get_floes().size(); ++i){
         auto& floe = base_class::get_floes()[i];
@@ -198,7 +213,7 @@ PartialFloeGroup<TFloe, TFloeList>::fracture_floes(bool mode_eight)
             continue;
         }
         // auto new_geometries = base_class::get_floes()[i].fracture_floe_from_collisions();
-        auto new_geometries = floe.fracture_floe_from_collisions_fem();
+        auto new_geometries = floe.fracture_floe_from_collisions_fem(use_predictor, m_fracture_predictor);
         std::cout << "Looking for fracture in Floe " << i << ":";
         if (new_geometries.size() > 0){
             std::cout << " fractured in " << new_geometries.size() << " parts" << std::endl;

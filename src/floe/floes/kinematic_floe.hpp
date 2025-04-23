@@ -28,6 +28,7 @@
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
 
+#include "floe/fem/fracture_predictor.hpp"
 
 namespace floe { namespace floes
 {
@@ -77,13 +78,10 @@ public:
 
 
     KinematicFloe() : m_geometry{nullptr}, m_floe{nullptr}, m_state{ {0,0}, 0, {0,0}, 0, {0,0}, true},
-                    //   m_obstacle{false}, m_floe_h{}, m_total_impulse_received{0}, m_fem_problem{this} {}
                       m_obstacle{false}, m_floe_h{}, m_total_impulse_received{0}, m_fem_problem{this}, m_fem_problem_is_set{false} {}
 
     KinematicFloe(static_floe_type new_static_floe) : m_geometry{nullptr}, m_floe{new_static_floe}, m_state{ {0,0}, 0, {0,0}, 0, {0,0}, true},
-                    //   m_obstacle{false}, m_floe_h{}, m_total_impulse_received{0} {} //comment je fais avec floe_h ????
                       m_obstacle{false}, m_floe_h{}, m_total_impulse_received{0}, m_fem_problem_is_set{false}
-                    //   m_obstacle{false}, m_floe_h{}, m_total_impulse_received{0}, m_fem_problem{this}
     {}
 
     //! Deleted copy constructor
@@ -184,7 +182,7 @@ public:
     void reset_detailed_impulse() const { m_detailed_impulse_received.clear(); }
     std::vector<geometry_type> fracture_floe();
     std::vector<geometry_type> fracture_floe_from_collisions();
-    std::vector<geometry_type> fracture_floe_from_collisions_fem();
+    std::vector<geometry_type> fracture_floe_from_collisions_fem(bool use_predictor, fem::FracturePredictor<KinematicFloe> const &predictor);
 
     void update_after_fracture(const state_type init_state,const bool init_obstacle_m,const real_type init_total_impulse_received, point_type mass_center_floe_init);
 
@@ -408,35 +406,39 @@ KinematicFloe<TStaticFloe,TState>::fracture_floe_from_collisions(){
  */
 template < typename TStaticFloe, typename TState >
 std::vector<typename TStaticFloe::geometry_type>
-KinematicFloe<TStaticFloe,TState>::fracture_floe_from_collisions_fem(){
+// KinematicFloe<TStaticFloe,TState>::fracture_floe_from_collisions_fem(bool use_predictor, FracturePredictor<KinematicFloe> const &predictor){
+KinematicFloe<TStaticFloe,TState>::fracture_floe_from_collisions_fem(bool use_predictor, fem::FracturePredictor<KinematicFloe> const &predictor){
     // 0 - obstacles and blocks that did not collide won't break. Floes without meshes are not considered either.
-    // WHEREAMI
     if (this->is_obstacle() || m_total_current_impulse_received == 0) return {};
     if (!m_floe->has_mesh()) {WHEREAMI return {};}
     if (!has_static_floe()) {WHEREAMI return {};}
-    // WHEREAMI
     if (m_fem_problem.is_disabled())
     {
         std::cout << "Floe is disabled" << std::endl;
         return {};
     }
-    // WHEREAMI
-    // 1 - initialisation if required
+    // 1 - if the fast predictor is enabled, check whether the computation is useful
+    if (use_predictor) 
+    {
+        std::cout << "Using fast fracture predictor" << std::endl;
+        if (!predictor.predict_fracture(m_fem_problem.descriptor()))
+            return {};
+    }
+
+    // 2 - initialisation if required
     if (!prepare_elasticity())
     {
         std::cout << "FEM initialization has failed" << std::endl;
         return {};
     }
-    // WHEREAMI
-    // 2 - resolution
+    // 3 - resolution
     if (!solve_elasticity())
     {
         std::cout << "FEM resolution has failed." << std::endl;
         std::cerr << "FEM resolution has failed." << std::endl;
         return {};
     }
-    // WHEREAMI
-    // 3 - looking for possible crack lines, and 4 - dealing with fracture
+    // 4 - looking for possible crack lines, and 4 - dealing with fracture
     if (m_fem_problem.get_total_elastic_energy() > 0)
     {
         real_type energy(0);
@@ -468,18 +470,21 @@ KinematicFloe<TStaticFloe,TState>::fracture_floe_from_collisions_fem(){
             }
         }
 
+        bool print_summary(false);// enable this only for database building: the features of each impact sample are written in the logs
         if (energy > 0)
         {
             std::cout << std::endl << "Breaking along (" << best_a.x << ";" << best_a.y << ")" << " -- (" << best_b.x << ";" << best_b.y << ")" << std::endl;
-            std::cout << "Impact summary : fracturing along " << best_a << " -- " << best_b << " ; " <<  m_fem_problem.get_impact_definition() << std::endl; // this print is used to help build a database by parsing the logs 
+            if (print_summary)
+                std::cout << "Impact summary : " <<  m_fem_problem.get_impact_definition() << " ; theta = " << m_state.theta << " ; is_broken = True " << std::endl; // this print is used to help build a database by parsing the logs 
             return this->static_floe().fracture_floe_along(best_a, best_b);
         }
-        else
+        else if (print_summary)
         {
-            std::cout << "Impact summary : no fracture ; " <<  m_fem_problem.get_impact_definition() << std::endl; // idem, this print is used to help build a database by parsing the logs 
+            std::cout << "Impact summary : " <<  m_fem_problem.get_impact_definition() << " ; theta = " << m_state.theta << " ; is_broken = False " << std::endl; // idem, this print is used to help build a database by parsing the logs 
         }
     }
     return {};
+
 }
 
 //! Update frame, geometry and mesh with respect to the current state.
