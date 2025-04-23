@@ -186,8 +186,8 @@ int
 PartialFloeGroup<TFloe, TFloeList>::fracture_floes(bool mode_eight, bool use_predictor)
 {
     int n_fractured = 0;
-    // real_type min_area(400);
-    real_type min_area(10);
+    real_type min_area(400);
+    // real_type min_area(10);
     std::map<std::size_t, std::vector<geometry_type>> all_new_geometries;
     for (std::size_t i = 0; i < base_class::get_floes().size(); ++i){
         auto& floe = base_class::get_floes()[i];
