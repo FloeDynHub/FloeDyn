@@ -30,6 +30,8 @@ class Floe:
     """
     Shape must be described in counter clockwise order !
     """
+    # making sure there are no doublons in the shape
+    shape = list(dict.fromkeys(shape)) 
     # re-center shape on mass center
     c = Polygon(shape).centroid
     # self.shape = shape # As point list [(x, y), ...]
