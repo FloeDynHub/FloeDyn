@@ -52,6 +52,11 @@ public:
         m_dist_secu = ublas::scalar_matrix<real_type>(N1, N2, 0);
     }
 
+    inline void auto_resize() {
+        std::size_t N = this->nb_floes();
+        resize(N, N);
+    }
+
     virtual void set_floe_group(floe_group_type const& floe_group){
         m_floe_group = &floe_group;
         m_optims.clear();

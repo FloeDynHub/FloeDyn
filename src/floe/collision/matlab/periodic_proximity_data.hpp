@@ -49,6 +49,12 @@ public:
         m_ghost_optims.clear();
     }
 
+    inline void auto_resize() {
+        const std::size_t N = base_class::nb_floes();
+        const std::size_t Ng = nb_ghosts();
+        base_class::resize(N, N + Ng);
+    }
+
     void add_ghost(std::size_t floe_id, point_type translation){
         m_ghost_floes.push_back(ghost_floe_type{ this->get_floe(floe_id), translation, floe_id});
         m_ghost_optims.push_back(ghost_optim_type{ this->get_optim(floe_id), translation });

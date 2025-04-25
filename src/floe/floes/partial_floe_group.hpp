@@ -235,7 +235,7 @@ PartialFloeGroup<TFloe, TFloeList>::fracture_floes(bool mode_eight, bool use_pre
     for (auto const& iter : all_new_geometries){
         base_class::get_floes()[iter.first].state().desactivate();
     }
-    this->update_list_ids_active();
+    // this->update_list_ids_active();
 
     // Deactivate too small floes
     for (auto & floe : base_class::get_floes()){

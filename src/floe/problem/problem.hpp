@@ -293,7 +293,7 @@ void PROBLEM::step_solve(bool crack, bool use_predictor) {
     	// m_floe_group.fracture_biggest_floe();
         // auto nb_fractured = 1;
         auto nb_fractured = m_floe_group.fracture_floes(m_dynamics_manager.is_mode_eight(), use_predictor);
-        if (nb_fractured > 0) {
+        if (nb_before != m_floe_group.get_floes().size()) {
             this->update_optim_vars();
             std::cout << "Fracture of " << nb_fractured << " floes - nb floes : " << nb_before << " -> " << m_floe_group.get_floes().size() << std::endl;
         }

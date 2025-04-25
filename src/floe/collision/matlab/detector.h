@@ -111,6 +111,7 @@ public:
 
     virtual void rescan_floe_group() {
         m_prox_data.update_optim_vars();
+        m_prox_data.auto_resize();
     }
 
     //!Empty floe and optim lists
