@@ -25,25 +25,35 @@ class State:
 
 
 class Floe:
-  def __init__(self, shape, state=None, obstacle=False, thickness=None, cw=None):
-    """
-    Shape must be described in counter clockwise order !
-    """
-    # re-center shape on mass center
-    c = Polygon(shape).centroid
-    # self.shape = shape # As point list [(x, y), ...]
-    # self.state = state or State() # State object
-    self.shape = [(x - c.x, y - c.y) for x, y in shape]
-    self.obstacle = obstacle
-    self.thickness = thickness
-    self.cw = cw
-    if state:
-        x, y = state.pos
-        state.pos = [x + c.x, y + c.y]
-        self.state = state
-    else:
-        self.state = State()
+    def __init__(self, shape, state=None, obstacle=False, thickness=None, cw=None):
+        """
+        Shape must be described in counter clockwise order !
+        """
+        self.shape = shape
+        self.obstacle = obstacle
+        self.thickness = thickness
+        self.cw = cw
+        self.state = state if state else State()
+        self.recenter_shape()
 
+    def recenter_shape(self):
+        """
+        Recenter shape on mass center
+        """
+        c = Polygon(self.shape).centroid
+        self.shape = [(x - c.x, y - c.y) for x, y in self.shape]
+        x, y = self.state.pos
+        self.state.pos = [x + c.x, y + c.y]
+    
+    def reduce_shape(self, nb_points):
+        """
+        Reduce the shape to nb_points by removing points
+        """
+        self.shape = reduce_shape(self.shape, nb_points)
+        self.recenter_shape()
+
+    def __repr__(self):
+        return f"Floe(shape={self.shape}, state={self.state}, obstacle={self.obstacle}, thickness={self.thickness}, cw={self.cw})"
 
 def get_window(floes_list):
     max_x = max(pt[0] + floe.state.pos[0] for floe in floes_list for pt in floe.shape)
@@ -110,6 +120,15 @@ def complete_shape(shape, max_edge_length=10, close=True):
         for j in range(1, nb_points):
             new_shape.append((edge[0][0] + j * (edge[1][0] - edge[0][0]) / nb_points, edge[0][1] + j * (edge[1][1] - edge[0][1]) / nb_points))
     return new_shape
+
+def reduce_shape(shape, nb_points):
+    """
+    Reduce the shape to nb_points by removing points
+    """
+    if len(shape) <= nb_points:
+        return shape
+    step = len(shape) // nb_points
+    return [shape[i] for i in range(0, len(shape), step)]
 
 from shapely.geometry import Point
 
