@@ -40,7 +40,9 @@ DynamicsManager<TExternalForces, TFloeGroup>::move_floes(floe_group_type& floe_g
     
     #pragma omp parallel for
     for (std::size_t i=0; i < floe_group.get_floes().size(); ++i){
+        std::cout << "Moving floe " << i << std::endl;
         this->move_floe(floe_group.get_floes()[i], delta_t, t, mode_eight, i==0);
+        WHEREAMI
     }
 
     return this->update_ocean(floe_group, delta_t);
@@ -117,6 +119,7 @@ DynamicsManager<TExternalForces, TFloeGroup>::move_floe(floe_type& floe, real_ty
     //     std::cout << "Mode 8, first floe new state rot " << new_state.rot << std::endl;
         // new_state.speed = {m_external_forces.get_physical_data().get_air_speed(), m_external_forces.get_physical_data().get_water_speed()};
     floe.set_state(new_state);
+    WHEREAMI
 }
 
 

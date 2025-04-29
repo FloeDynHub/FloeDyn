@@ -255,49 +255,49 @@ private:
 };
 
 
-// template <typename T,typename TPoint,typename TGeometry,typename TMesh,typename TFrame ,typename TDensity>
-// std::vector<TGeometry>
-// StaticFloe<T,TPoint,TGeometry,TMesh,TFrame,TDensity>::fracture_floe()
-// {
-//     // Better basic fracture : cutting floe according to crack geometry
-//     auto& boundary = this->geometry().outer();
-//     point_type middle_point = (boundary[0] + boundary[boundary.size() - 1]) / 2;
-//     real_type min_dist = norm2(middle_point);
-//     point_type crack_start = middle_point;
-//     // crack_start will be the closest edge midpoint to floe's mass center ({0, 0})
-//     for (std::size_t i = 0; i < this->geometry().outer().size() - 1; ++i){
-//         middle_point = (boundary[i] + boundary[i + 1])  / 2;
-//         if (norm2(middle_point) < min_dist) {
-//             min_dist = norm2(middle_point);
-//             crack_start = middle_point * 1.1;
-//         }
-//     }
-//     // crack end is opposite to crack_start (crack is a line crossing mamss center)
-//     point_type crack_end = - crack_start * (this->max_diameter() * 1.1 - norm2(crack_start)) / norm2(crack_start);
-//     std::vector<TGeometry> new_borders;
-//     // crack is a long and thin rectangle containing crack_start and floe's mass center
-//     geometry_type crack;
-//     real_type crack_width = std::sqrt(this->area()) * 0.002;
-//     point_type crack_ortho = direct_orthogonal(crack_start) / norm2(crack_start);
-//     point_type crack_delta = crack_ortho * crack_width / 2;
-//     int crack_nb_point = 10;
-//     for (int i = 0; i < crack_nb_point; ++i)
-//     {
-//         crack.outer().push_back(crack_start + (crack_end - crack_start) * i / crack_nb_point - crack_delta);
-//     }
-//     for (int i = 0; i < crack_nb_point; ++i) {
-//         crack.outer().push_back(crack_end + (crack_start - crack_end) * i / crack_nb_point + crack_delta);
-//     }
-//     // crack.outer().push_back(crack_start * 1e6 + crack_delta);
-//     // crack.outer().push_back(crack_start * 1e6 - crack_delta);
-//     // crack.outer().push_back(- crack_start * 1e6 - crack_delta);
-//     // crack.outer().push_back(- crack_start * 1e6 + crack_delta);
+template <typename T,typename TPoint,typename TGeometry,typename TMesh,typename TFrame ,typename TDensity>
+std::vector<TGeometry>
+StaticFloe<T,TPoint,TGeometry,TMesh,TFrame,TDensity>::fracture_floe()
+{
+    // Better basic fracture : cutting floe according to crack geometry
+    auto& boundary = this->geometry().outer();
+    point_type middle_point = (boundary[0] + boundary[boundary.size() - 1]) / 2;
+    real_type min_dist = norm2(middle_point);
+    point_type crack_start = middle_point;
+    // crack_start will be the closest edge midpoint to floe's mass center ({0, 0})
+    for (std::size_t i = 0; i < this->geometry().outer().size() - 1; ++i){
+        middle_point = (boundary[i] + boundary[i + 1])  / 2;
+        if (norm2(middle_point) < min_dist) {
+            min_dist = norm2(middle_point);
+            crack_start = middle_point * 1.1;
+        }
+    }
+    // crack end is opposite to crack_start (crack is a line crossing mamss center)
+    point_type crack_end = - crack_start * (this->max_diameter() * 1.1 - norm2(crack_start)) / norm2(crack_start);
+    std::vector<TGeometry> new_borders;
+    // crack is a long and thin rectangle containing crack_start and floe's mass center
+    geometry_type crack;
+    real_type crack_width = std::sqrt(this->area()) * 0.002;
+    point_type crack_ortho = direct_orthogonal(crack_start) / norm2(crack_start);
+    point_type crack_delta = crack_ortho * crack_width / 2;
+    int crack_nb_point = 10;
+    for (int i = 0; i < crack_nb_point; ++i)
+    {
+        crack.outer().push_back(crack_start + (crack_end - crack_start) * i / crack_nb_point - crack_delta);
+    }
+    for (int i = 0; i < crack_nb_point; ++i) {
+        crack.outer().push_back(crack_end + (crack_start - crack_end) * i / crack_nb_point + crack_delta);
+    }
+    // crack.outer().push_back(crack_start * 1e6 + crack_delta);
+    // crack.outer().push_back(crack_start * 1e6 - crack_delta);
+    // crack.outer().push_back(- crack_start * 1e6 - crack_delta);
+    // crack.outer().push_back(- crack_start * 1e6 + crack_delta);
 
-//     boost::geometry::correct(crack);
-//     // remove crack from floe geometry
-//     boost::geometry::difference(this->geometry().outer(), crack, new_borders);
-//     return new_borders;
-// }
+    boost::geometry::correct(crack);
+    // remove crack from floe geometry
+    boost::geometry::difference(this->geometry().outer(), crack, new_borders);
+    return new_borders;
+}
 
 template <typename T,typename TPoint,typename TGeometry,typename TMesh,typename TFrame ,typename TDensity>
 std::vector<TGeometry>
