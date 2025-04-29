@@ -16,6 +16,8 @@ def run():
     parser.add_argument('--circles', action="store_true", dest="disp_circles", default=False, help='Display floes bounding circles')
     parser.add_argument('--nofloes', dest='disp_floes', action="store_false", default=True, help='Do not display floes')
     parser.add_argument('--dual', dest="dual", action="store_true", default=False, help="Plot some floe's impulse (use with -i)")
+    parser.add_argument('--bar', dest="bar", action="store_true", default=False, help="Dual plot inpulses as bar chart (use with --dual)")
+    parser.add_argument('--cumul', dest="cumul", action="store_true", default=False, help="Display cumulative impulse (use with --dual and --bar)")
     parser.add_argument('-i', "--index", action="append", type=int, help='Indexes of special floes')
     parser.add_argument('--nocolor', dest='color', action="store_false", default=True, help='Color floes according to impulses')
     parser.add_argument('--follow', action="store_true", default=False, help="Automatically adjust axes to follow floes")
