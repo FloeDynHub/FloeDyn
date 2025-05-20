@@ -124,7 +124,9 @@ public:
         // P.get_dynamics_manager().get_external_forces().get_physical_data().set_storm_mode(); // for simu: with storm
         // P.get_dynamics_manager().get_external_forces().get_physical_data().set_modes(2,0);   // for simu: ?
         // P.get_dynamics_manager().get_external_forces().get_physical_data().set_modes(-1,4);  // for simu: floes against obstacle
-
+        if (!output_file_name.empty()) {
+            P.get_out_manager().set_out_file_name(output_file_name);
+        }
         #ifdef MULTIOUTPUT
             P.get_out_manager().set_size(nb_floe_select);
         #endif
@@ -205,6 +207,7 @@ protected:
 
     //!< supported options
     string input_file_name;
+    string output_file_name; // New member variable for the output file name
     #ifdef MULTIOUTPUT
         std::size_t nb_floe_select; //!< the size of the floe selection for the multiple output files (it is required!)
     #endif
@@ -232,7 +235,6 @@ protected:
     std::vector<value_type> vortex_characs          = std::vector<value_type>(4,0);
     std::vector<std::size_t> obstacles_indexes       = std::vector<std::size_t>{};
 
-
     void init_program_options( int argc, char* argv[] ){
         desc.add_options()
         // First parameter describes option name/short name
@@ -240,6 +242,7 @@ protected:
         // The third is description
         ("help,h", "print usage message")
         ("input,i", po::value(&input_file_name)->required(), "input file path")
+        ("output", po::value<string>(&output_file_name)->default_value("output.txt"), "name of the output file") // New option
         ("fext, z", po::value(&matlab_topaz_filename)->default_value(matlab_topaz_filename), "external forces input file")
         #ifdef MULTIOUTPUT
             ("nbsefloes", po::value<std::size_t>(&nb_floe_select)->required(), "the size of the floe selection for the multiple output files")

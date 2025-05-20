@@ -86,7 +86,10 @@ public:
     };
     inline bool is_restrained() const { return m_floe_ids.size(); }
     inline std::string const& out_file_name() const { return m_out_file_name; }
-    inline void set_out_file_name(std::string file_name) { m_out_file_name = file_name; }
+    inline void set_out_file_name(std::string file_name) {
+        m_out_file_name = "io/outputs/" + file_name + ".h5";
+        std::cout << "OUT FILE : " << m_out_file_name << std::endl;
+    }
     inline real_type get_next_out_limit() const {return m_next_out_limit;}
     inline void set_out_step(real_type out_step, real_type time) {
         m_out_step = out_step;
