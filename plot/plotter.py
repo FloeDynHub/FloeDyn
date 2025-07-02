@@ -132,14 +132,13 @@ class FloePlotter(object):
         ax.set_facecolor(self.colors["ocean"])
         floes_collec = PolyCollection(
             data.get("floe_shapes"),
-            # linewidths=0.2,
             linewidths=0.05,
-            # edgecolors="red", facecolors="none") # no facecolor mode
-            cmap=cm.YlOrRd, norm=colors.PowerNorm(gamma=0.3))
-            # cmap=cm.Paired)#MPI
+            cmap=self.get_cmap(data),
+            norm=colors.PowerNorm(gamma=0.3))
+            # cmap=cm.Paired) # MPI visu
         if getattr(self.OPTIONS, "color", True):
-            floes_collec.set_array(data.get("impulses")[0])
-            floes_collec.set_clim([0, data["MAX_IMPULSE"]])
+            floes_collec.set_array(data.get(data["color_key"])[0])
+            floes_collec.set_clim([0, data.get(data["max_color_key"])])
             plt.colorbar(floes_collec, ax = ax, fraction = 0.05) # display color bar
         else:
             floes_collec.set_array(np.zeros(len(data.get("floe_shapes")))) # comment for no facecolor mode
@@ -148,11 +147,14 @@ class FloePlotter(object):
 
         if getattr(self.OPTIONS, "ghosts", False):
             ghosts_collec = PolyCollection(data.get("floe_shapes") * 8, linewidths=0.2, alpha=0.4,
-                                         cmap=cm.YlOrRd, norm=colors.PowerNorm(gamma=0.3))
+                                         cmap=self.get_cmap(data), norm=colors.PowerNorm(gamma=0.3))
                                         # cmap=cm.Paired)#MPI
             ghosts_collec.set_clim(floes_collec.get_clim())
             ghosts_collec.set_array(np.zeros(len(data.get("floe_shapes")) * 8))
             ax_mgr.set_collection("floe_ghosts", ghosts_collec)
+    
+    def get_cmap(self, data):
+        return cm.YlOrRd if data["color_key"] == "impulses" else cm.GnBu
 
     def _init_circles(self, data, ax_mgr, begin=0):
         # floes_collec = CircleCollection(np.zeros(shape=(len(data.get(floe_shapes)), 2),
@@ -207,7 +209,7 @@ class FloePlotter(object):
             ax_mgr.get_collection("floe_ghosts").set_verts(ghosts_verts)
 
         if opt_color:
-            impulses = [v for i, v in enumerate(data.get("impulses")[indic]) if len(data.get("floe_states")[indic][i]) < 10 or data.get("floe_states")[indic][i][9] == 1]
+            impulses = [v for i, v in enumerate(data.get(data["color_key"])[indic]) if len(data.get("floe_states")[indic][i]) < 10 or data.get("floe_states")[indic][i][9] == 1]
             ax_mgr.get_collection("floes").set_array(impulses)
             if opt_ghosts:
                 ax_mgr.get_collection("floe_ghosts").set_array(np.tile(impulses, 8))
@@ -493,8 +495,13 @@ class FloePlotter(object):
         # Other datas
         d["cumul_impulses"] = [np.array([state[6] for state in time_states]) for time_states in d["floe_states"]]
         d["impulses"] = d["total_impulses"] = self.calc_impulses(d["cumul_impulses"], 6) # Calc impulsions
+        # Calculate speed norm for each floe at each time step
+        d["speeds"] = [np.linalg.norm([np.array(state)[:,3], np.array(state)[:,4]], axis=0) for state in d.get("floe_states")]
         # calc or set global max impulse for color range
         d["MAX_IMPULSE"] = max(np.amax(step_impulses) for step_impulses in d.get("impulses"))
+        d["MAX_SPEED"] = max(np.amax(step_speeds) for step_speeds in d.get("speeds"))
+        d["color_key"] = "impulses" if not getattr(self.OPTIONS, "speed_color", True) else "speeds"
+        d["max_color_key"] = "MAX_IMPULSE" if not getattr(self.OPTIONS, "speed_color", True) else "MAX_SPEED"
         # Set static axes from window data
         w = data_file.get("window")
         w_width, w_length = w[1] - w[0], w[3] - w[2]

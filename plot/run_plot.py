@@ -20,6 +20,7 @@ def run():
     parser.add_argument('--cumul', dest="cumul", action="store_true", default=False, help="Display cumulative impulse (use with --dual and --bar)")
     parser.add_argument('-i', "--index", action="append", type=int, help='Indexes of special floes')
     parser.add_argument('--nocolor', dest='color', action="store_false", default=True, help='Color floes according to impulses')
+    parser.add_argument('--speedcolor', dest='speed_color', action="store_true", default=False, help='Color floes according to speed')
     parser.add_argument('--follow', action="store_true", default=False, help="Automatically adjust axes to follow floes")
     parser.add_argument('--ghosts', action="store_true", default=False, help="Display ghost floes (PBC)")
     parser.add_argument('--crack', dest="fracture", action="store_true", default=False, help="Floes can fracture")
