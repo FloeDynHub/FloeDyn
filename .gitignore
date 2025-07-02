@@ -13,7 +13,6 @@ io/outputs
 io/stdout
 io/videos
 io/inputs
-io/stdout
 
 ### macOS ###
 *.DS_Store
