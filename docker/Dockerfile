@@ -19,6 +19,9 @@ COPY --chmod=777 ./install/cereal.sh ./deps/
 RUN ./deps/cereal.sh
 COPY --chmod=777 ./install/eigen.sh ./deps/
 RUN ./deps/eigen.sh
+# Fix for gfortran not found when installing openmpi
+RUN ln -s /usr/bin/gfortran-10 /usr/bin/gfortran
+RUN apt-get install -y libopenmpi-dev openmpi-bin
 
 RUN apt install openssh-server -y
 # Create a user “sshuser” and group “sshgroup”

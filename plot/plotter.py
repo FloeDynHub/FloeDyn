@@ -1,20 +1,19 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import numpy as np
-# import matplotlib
-# matplotlib.use("GTKAgg")
-from matplotlib import transforms, cm, animation, colors, gridspec
+from matplotlib import cm, animation, colors, gridspec
 import matplotlib.pyplot as plt
 from matplotlib.patches import Circle, Polygon
-from matplotlib.collections import PatchCollection, PolyCollection, CircleCollection
+from matplotlib.collections import PolyCollection
 
-from multiprocessing import Pool, Process, cpu_count
+from multiprocessing import Pool, cpu_count
 from subprocess import call
 
 from utils import filename_without_extension, get_unused_path, check_path_existence, mkdir_path
 import h5py
 import datetime
 import math
+import os
 
 
 class AxeManager(object):
@@ -86,8 +85,8 @@ class FloePlotter(object):
             self.writer.extra_args = ['-profile:v', 'high444', '-tune:v', 'animation', '-preset:v', 'slow', '-level', '4.0']
         funcs[self.OPTIONS.function]()
 
-    def get_final_video_path(self, input_file_path, video_ext="mp4"):
-        filename = filename_without_extension(input_file_path)
+    def get_final_video_path(self, video_ext="mp4"):
+        filename = self.OPTIONS.outname or filename_without_extension(self.OPTIONS.filename)
         if not check_path_existence("io/videos"):
             print('Warning: the directory ''io/videos'' does not exist! It will be created')
             mkdir_path('io/videos')
@@ -133,14 +132,13 @@ class FloePlotter(object):
         ax.set_facecolor(self.colors["ocean"])
         floes_collec = PolyCollection(
             data.get("floe_shapes"),
-            # linewidths=0.2,
             linewidths=0.05,
-            # edgecolors="red", facecolors="none") # no facecolor mode
-            cmap=cm.YlOrRd, norm=colors.PowerNorm(gamma=0.3))
-            # cmap=cm.Paired)#MPI
+            cmap=self.get_cmap(data),
+            norm=colors.PowerNorm(gamma=0.3))
+            # cmap=cm.Paired) # MPI visu
         if getattr(self.OPTIONS, "color", True):
-            floes_collec.set_array(data.get("impulses")[0])
-            floes_collec.set_clim([0, data["MAX_IMPULSE"]])
+            floes_collec.set_array(data.get(data["color_key"])[0])
+            floes_collec.set_clim([0, data.get(data["max_color_key"])])
             plt.colorbar(floes_collec, ax = ax, fraction = 0.05) # display color bar
         else:
             floes_collec.set_array(np.zeros(len(data.get("floe_shapes")))) # comment for no facecolor mode
@@ -149,11 +147,14 @@ class FloePlotter(object):
 
         if getattr(self.OPTIONS, "ghosts", False):
             ghosts_collec = PolyCollection(data.get("floe_shapes") * 8, linewidths=0.2, alpha=0.4,
-                                         cmap=cm.YlOrRd, norm=colors.PowerNorm(gamma=0.3))
+                                         cmap=self.get_cmap(data), norm=colors.PowerNorm(gamma=0.3))
                                         # cmap=cm.Paired)#MPI
             ghosts_collec.set_clim(floes_collec.get_clim())
             ghosts_collec.set_array(np.zeros(len(data.get("floe_shapes")) * 8))
             ax_mgr.set_collection("floe_ghosts", ghosts_collec)
+    
+    def get_cmap(self, data):
+        return cm.YlOrRd if data["color_key"] == "impulses" else cm.GnBu
 
     def _init_circles(self, data, ax_mgr, begin=0):
         # floes_collec = CircleCollection(np.zeros(shape=(len(data.get(floe_shapes)), 2),
@@ -208,9 +209,10 @@ class FloePlotter(object):
             ax_mgr.get_collection("floe_ghosts").set_verts(ghosts_verts)
 
         if opt_color:
-            ax_mgr.get_collection("floes").set_array(data.get("impulses")[indic])
+            impulses = [v for i, v in enumerate(data.get(data["color_key"])[indic]) if len(data.get("floe_states")[indic][i]) < 10 or data.get("floe_states")[indic][i][9] == 1]
+            ax_mgr.get_collection("floes").set_array(impulses)
             if opt_ghosts:
-                ax_mgr.get_collection("floe_ghosts").set_array(np.tile(data.get("impulses")[indic], 8))
+                ax_mgr.get_collection("floe_ghosts").set_array(np.tile(impulses, 8))
         ax.set_title("t = {}".format(str(datetime.timedelta(seconds=int(data.get("time")[indic])))))
         if not data.get("static_axes"):
             # ax.axis('equal')
@@ -244,32 +246,66 @@ class FloePlotter(object):
     def _update2(self, num, data, ax_mgr):
         """updates floes (Polygons) positions for matplotlib animation creation
         (version 3 : collection and compute outlines transforms"""
+        if num > 0 and num % 10 == 0:
+            progress = num / len(data.get("time"))
+            print("progress::{:.2f}%".format(progress * 100))
         if getattr(self.OPTIONS, "disp_floes"):
             self._update_floes(num, data, ax_mgr)
         if getattr(self.OPTIONS, "disp_circles"):
             self._update_circles(num, data, ax_mgr)
 
-    def _init2_dual(self, data, ax1, ax2):
+    def _init2_dual(self, data, ax_mgr1, ax_mgr2):
         "initializes floes (Polygon creation) for matplotlib animation creation (v3 : shapes)"
-        ax1 = _init2(data, ax1)
+        self._init2(data, ax_mgr1)
+        self.init_chart(data, ax_mgr2) if not self.OPTIONS.bar else self.init_bar(data, ax_mgr2)
+        return ax_mgr1.ax, ax_mgr2.ax
+    
+    def init_chart(self, data, ax_mgr2):
         first_idx, _ = data["total_trunk_indices"]
         x = np.array(data.get("total_time")[0:first_idx])
         ys = [np.array([data.get("total_impulses")[i][idx] for i in range(len(x))]) for idx in data.get("special_indices", [])]
+        ax2 = ax_mgr2.ax
         for y in ys:
             ax2.plot(x,y)
         ax2.axis([data.get("total_time")[0], data.get("total_time")[-1], -100, data["MAX_IMPULSE"]])
         ax2.set_title("Norm of the contact impulses applied to the obstacle")
-        # ax.set_xlabel("text") # bottom
-        return ax1, ax2
 
-    def _update2_dual(self, num, data, ax1, ax2):
+    def init_bar(self, data, ax_mgr2):
+        first_idx, _ = data["total_trunk_indices"]
+        special_indices = data.get("special_indices")
+        impulse_key = "total_impulses" if not self.OPTIONS.cumul else "cumul_impulses"
+        max_key = "MAX_IMPULSE" if not self.OPTIONS.dual else "max_received_impulse_special_indices"
+        initial_heights = [data.get(impulse_key)[first_idx][i] for i in special_indices]
+        ax2 = ax_mgr2.ax
+        self.bars = ax2.bar(range(len(special_indices)), initial_heights)
+        ax2.set_xticks(range(len(special_indices)))
+        ax2.set_xlim(-1, len(special_indices))
+        ax2.set_ylim(-100, data[max_key])
+        return self.bars
+
+    def _update2_dual(self, num, data, ax_mgr1, ax_mgr2):
         first_idx, _ = data["total_trunk_indices"]
         indic = first_idx + num
-        ax1, = self._update2(num, data, ax1)
+        self._update2(num, data, ax_mgr1)
+        self.update_chart(num, data, ax_mgr2) if not self.OPTIONS.bar else self.update_bar(num, data, ax_mgr2)
+            
+    def update_chart(self, num, data, ax_mgr2):
+        first_idx, _ = data["total_trunk_indices"]
+        indic = first_idx + num
+        ax2 = ax_mgr2.ax
         for i, idx in enumerate(data.get("special_indices")):
             ax2.lines[i].set_xdata(np.append(ax2.lines[i].get_xdata(), data.get("total_time")[indic]))
             ax2.lines[i].set_ydata(np.append(ax2.lines[i].get_ydata(), data.get("total_impulses")[indic][idx]))
-        return ax1, ax2
+
+    def update_bar(self, num, data, ax_mgr2):
+        first_idx, _ = data["total_trunk_indices"]
+        indic = first_idx + num
+        special_indices = data.get("special_indices")
+        impulse_key = "total_impulses" if not self.OPTIONS.cumul else "cumul_impulses"
+        for i, idx in enumerate(special_indices):
+            new_height = data.get(impulse_key)[indic][idx]
+            self.bars[i].set_height(new_height)
+        return self.bars
 
     def _transform_shapes(self, floe_shapes, floe_states, follow=False):
         resp = floe_shapes
@@ -295,28 +331,28 @@ class FloePlotter(object):
 
     def plot_floes(self, make_video=1):
         "displays floes animation from hdf5 output file (simple plot or video creation)"
-        data_file    = h5py.File(self.OPTIONS.filename, 'r')
-        # Read Usefull data from file
-        data_global = self._get_useful_datas(data_file)
-        fig, ax = plt.subplots()
-        ax_mgr = AxeManager(ax)
-        if getattr(self.OPTIONS, "hd", False):
-            fig.set_size_inches(20, 15)
-            fig.set_dpi(100)
-        init, update = self.get_anim_fcts()
-        init(data_global, ax_mgr)
-        # print ax_mgr.patches
-        if not data_global.get("static_axes"):
-            ax.axis('equal') # automatic scale
-        else:
-            ax.axis(data_global.get("static_axes"))
-        anim = animation.FuncAnimation(
-            fig, update, len(data_global.get("time")), fargs=(data_global, ax_mgr),
-            interval=1, blit=False)
-        if make_video:
-            anim.save(self.get_final_video_path(self.OPTIONS.filename), writer=self.writer)
-        else:
-            plt.show()
+        with h5py.File(self.OPTIONS.filename, 'r') as data_file:
+            # Read Usefull data from file
+            data_global = self._get_useful_data(data_file)
+            fig, ax = plt.subplots()
+            ax_mgr = AxeManager(ax)
+            if getattr(self.OPTIONS, "hd", False):
+                fig.set_size_inches(20, 15)
+                fig.set_dpi(100)
+            init, update = self.get_anim_fcts()
+            init(data_global, ax_mgr)
+            # print ax_mgr.patches
+            if not data_global.get("static_axes"):
+                ax.axis('equal') # automatic scale
+            else:
+                ax.axis(data_global.get("static_axes"))
+            anim = animation.FuncAnimation(
+                fig, update, len(data_global.get("time")), fargs=(data_global, ax_mgr),
+                interval=1, blit=False)
+            if make_video:
+                anim.save(self.get_final_video_path(), writer=self.writer)
+            else:
+                plt.show()
 
     def plot_one(self):
         "displays floes at last time recorded in output file"
@@ -330,7 +366,7 @@ class FloePlotter(object):
             idx = 0
         num = idx
 
-        data_global = self._get_useful_datas(file, num, img=True)
+        data_global = self._get_useful_data(file, num, img=True)
         init(data_global, ax_mgr)
         if not data_global.get("static_axes"):
             ax.axis('equal') # automatic scale
@@ -340,7 +376,7 @@ class FloePlotter(object):
         if getattr(self.OPTIONS, "hd", False):
             fig.set_size_inches(60, 45)
             fig.set_dpi(100)
-            plt.savefig('{}.png'.format(self.OPTIONS.filename))
+            plt.savefig('{}.png'.format(os.path.splitext(self.OPTIONS.filename)[0]), bbox_inches='tight')
             # plt.savefig('{}.eps'.format(self.OPTIONS.filename), format='eps')#, dpi=1000)
         else:
             plt.show()
@@ -352,27 +388,20 @@ class FloePlotter(object):
 
     def make_partial_floe_video(self, out_filename, data_chunk, version):
         "creates video directly from data"
-        # print(1)
         fig, ax = plt.subplots()
-        # print(2)
         if getattr(self.OPTIONS, "hd", False):
             fig.set_size_inches(20, 15)
             fig.set_dpi(100)
-        # print(3)
         init, update = self.get_anim_fcts(version)
         ax_mgr = AxeManager(ax)
         init(data_chunk, ax_mgr)
-        # print(4)
         if not data_chunk.get("static_axes"):
             ax.axis('equal') # automatic scale
         else:
             ax.axis(data_chunk.get("static_axes"))
-        # print(5)
-        # ax.set_axis_bgcolor('#162252')
         anim = animation.FuncAnimation(
             fig, update, len(data_chunk.get("time")), fargs=(data_chunk, ax_mgr),
             interval=1, blit=False)
-        # print(6)
         print(out_filename)
         anim.save(out_filename, writer=self.writer)
 
@@ -382,57 +411,62 @@ class FloePlotter(object):
 
     def make_partial_floe_video_dual_plot(self, out_filename, data_chunk, version):
         "creates video directly from data, and adds obstacle impulse subplot under floes"
-        gs = gridspec.GridSpec(2, 1, height_ratios=[3, 1])
-        fig = plt.figure()
-        if getattr(self.OPTIONS, "hd", False):
-            fig.set_size_inches(16, 12)
-            fig.set_dpi(100)
-        ax1 = plt.subplot(gs[0])
-        ax2 = plt.subplot(gs[1])
-        init, update = _init2_dual, _update2_dual
-        ax1, ax2 = init(data_chunk, ax1, ax2)
-        if not data_chunk.get("static_axes"):
-            ax1.axis('equal') # automatic scale
-        else:
-            ax1.axis(data_chunk.get("static_axes"))
-        # ax1.set_axis_bgcolor('#162252')
-        anim = animation.FuncAnimation(
-            fig, update, len(data_chunk.get("time")), fargs=(data_chunk, ax1, ax2),
-            interval=50, blit=False)
-        anim.save(out_filename, writer=self.writer)
+        try:
+            gs = gridspec.GridSpec(2, 1, height_ratios=[3, 1])
+            fig, ax = plt.subplots()
+            if getattr(self.OPTIONS, "hd", False):
+                fig.set_size_inches(16, 12)
+                fig.set_dpi(100)
+            ax1 = plt.subplot(gs[0])
+            ax2 = plt.subplot(gs[1])
+            ax_mgr1 = AxeManager(ax1)
+            ax_mgr2 = AxeManager(ax2)
+            init, update = self._init2_dual, self._update2_dual
+            init(data_chunk, ax_mgr1, ax_mgr2)
+            if not data_chunk.get("static_axes"):
+                ax1.axis('equal') # automatic scale
+            else:
+                ax1.axis(data_chunk.get("static_axes"))
+            # ax1.set_axis_bgcolor('#162252')
+            anim = animation.FuncAnimation(
+                fig, update, len(data_chunk.get("time")), fargs=(data_chunk, ax_mgr1, ax_mgr2),
+                interval=50, blit=False)
+            anim.save(out_filename, writer=self.writer)
+        except Exception as e:
+            print(f"Erreur dans le processus enfant : {e}")
 
     def make_partial_floe_video_dual_plot_helper(self, t):
         return self.make_partial_floe_video_dual_plot(*t)
 
-    def plot_floes_fast(self, dual=False, **kwargs):
+    def plot_floes_fast(self, **kwargs):
         "Creates a video from hdf5 file output, using multiprocessing to go faster"
-        data_file    = h5py.File(self.OPTIONS.filename, 'r')
-        nb_step = int(math.ceil(len(data_file.get("time")) // self.OPTIONS.step))
-        # Create multiple partial videos
-        trunks = self._get_trunks(nb_step)
-        nb_process = len(trunks)
-        temp_dir = 'plot_tmp'
-        call(['mkdir', temp_dir])
-        partial_file_names = ["{}/{}.mpg".format(temp_dir, i) for i in range(nb_process)]
-        # Read Usefull data from file
-        data_global = self._get_useful_datas(data_file)
+        with h5py.File(self.OPTIONS.filename, 'r') as data_file:
+            nb_step = int(math.ceil(len(data_file.get("time")) // self.OPTIONS.step))
+            # Create multiple partial videos
+            trunks = self._get_trunks(nb_step)
+            nb_process = len(trunks)
+            temp_dir = 'plot_tmp'
+            call(['mkdir', temp_dir])
+            partial_file_names = ["{}/{}.mpg".format(temp_dir, i) for i in range(nb_process)]
+            # Read Usefull data from file
+            data_global = self._get_useful_data(data_file)
         # Build trunks datas
         L = [( partial_file_names[i],
-               self._get_useful_trunk_datas(data_global, trunk),
+               self._get_useful_trunk_data(data_global, trunk),
                 self.OPTIONS.version ) for i,trunk in enumerate(trunks)]
         # Launch process pool 
         p = Pool(nb_process)
-        partial_video_maker = self.make_partial_floe_video_helper if not dual else make_partial_floe_video_dual_plot_helper
+        partial_video_maker = self.make_partial_floe_video_helper if not self.OPTIONS.dual else self.make_partial_floe_video_dual_plot_helper
         p.map(partial_video_maker, L)
         p.close()
         p.join()
         # Concat all partial video
-        out_filename = self.get_final_video_path(self.OPTIONS.filename)
+        out_filename = self.get_final_video_path()
         call(['ffmpeg',  '-i', 'concat:{}'.format("|".join(partial_file_names)), '-c', 'copy', out_filename])
         call(['rm', '-r', temp_dir])
 
 
-    def _get_useful_datas(self, data_file, single_step="OFF", img=False):
+    def _get_useful_data(self, data_file, single_step="OFF", img=False):
         d = {}
         # File datas
         if not img:
@@ -441,7 +475,7 @@ class FloePlotter(object):
             file_time_dependant_keys =["time", "floe_states"] # allow input files to be plotted
         if single_step == "OFF":
             for key in file_time_dependant_keys:
-                d[key] = data_file.get(key)[::self.OPTIONS.step]
+                d[key] = data_file.get(key)[:10000:self.OPTIONS.step]
         else:
             for key in file_time_dependant_keys:
                 if img and key == "time" and not "time" in data_file: # plot input files
@@ -459,10 +493,15 @@ class FloePlotter(object):
             else:
                 d["floe_shapes"] = self.calc_shapes(data_file)
         # Other datas
-        d["impulses"] = d["total_impulses"] = self.calc_impulses(d["floe_states"], 6) # Calc impulsions
-        # d["impulses"] = [np.zeros(len(d["floe_states"][0]))] * len(d["floe_states"]) # set impulses to 0
+        d["cumul_impulses"] = [np.array([state[6] for state in time_states]) for time_states in d["floe_states"]]
+        d["impulses"] = d["total_impulses"] = self.calc_impulses(d["cumul_impulses"], 6) # Calc impulsions
+        # Calculate speed norm for each floe at each time step
+        d["speeds"] = [np.linalg.norm([np.array(state)[:,3], np.array(state)[:,4]], axis=0) for state in d.get("floe_states")]
         # calc or set global max impulse for color range
         d["MAX_IMPULSE"] = max(np.amax(step_impulses) for step_impulses in d.get("impulses"))
+        d["MAX_SPEED"] = max(np.amax(step_speeds) for step_speeds in d.get("speeds"))
+        d["color_key"] = "impulses" if not getattr(self.OPTIONS, "speed_color", True) else "speeds"
+        d["max_color_key"] = "MAX_IMPULSE" if not getattr(self.OPTIONS, "speed_color", True) else "MAX_SPEED"
         # Set static axes from window data
         w = data_file.get("window")
         w_width, w_length = w[1] - w[0], w[3] - w[2]
@@ -474,17 +513,21 @@ class FloePlotter(object):
         if getattr(self.OPTIONS, "ghosts"):
             d["ghosts_trans"] = [(i * w_width, j * w_length) for i in range(-1, 2) for j in range(-1, 2) if not i==j==0]
             # d["ghosts_trans"] = [(i * w, j * w) for i in range(-2, 3) for j in range(-2, 3) if not i==j==0] #MPI, more ghosts
-        d["special_indices"] = getattr(self.OPTIONS, "index", [])
+        if self.OPTIONS.dual:
+            d["special_indices"] = getattr(self.OPTIONS, "index") or []
+            d["max_received_impulse_special_indices"] = max(np.amax(
+                [step_impulses[i] for i in d["special_indices"]])
+                for step_impulses in d.get("cumul_impulses"))
         return d
 
 
-    def _get_useful_trunk_datas(self, data_global, trunk):
+    def _get_useful_trunk_data(self, data_global, trunk):
         """Slice global datas for a partial video"""
         d = {}
         trunked_keys = ["time", "floe_states", "impulses", "mass_center"]
         global_keys = [
-            "total_time","total_impulses", "MAX_IMPULSE", "window",
-            "special_indices", "static_axes", "ghosts_trans"
+            "total_time","total_impulses", "MAX_IMPULSE", "max_received_impulse_special_indices", "window",
+            "special_indices", "static_axes", "ghosts_trans", "cumul_impulses"
         ]
         print(trunk)
         for key in trunked_keys:
@@ -500,15 +543,9 @@ class FloePlotter(object):
         return d
 
 
-    def calc_impulses(self, floe_states, n=1):
+    def calc_impulses(self, cumul_impulses, n=1):
         "calcul floe received impulses between each step and step -n"
-        imps = [np.array([state[6] for state in time_states]) for time_states in floe_states]
-        imps = [np.subtract(imps[t], imps[max(t-n, 0)]) for t in range(len(imps))]
-        # for imp in imps: # hide bad values
-        #     np.putmask(imp, imp>1e6, 0)
-        # for i in range(len(imps)):
-        #     if np.amax(imps[i]) > 1e8:
-        #         imps[i] = imps[i-1]
+        imps = [np.subtract(cumul_impulses[t], cumul_impulses[max(t-n, 0)]) for t in range(len(cumul_impulses))]
         return imps
 
 

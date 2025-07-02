@@ -499,15 +499,16 @@ double HDF5Manager<TFloeGroup, TDynamicsMgr>::recover_states(
     */
     boost::multi_array<real_type, 2> data_out(boost::extents[dims_out[1]][dims_out[2]]);
     dataset.read( data_out.data(), PredType::NATIVE_DOUBLE, memspace, dataspace );
-
     floe_group.get_floes().filter_off(); // crack version
     floe_group.get_floes().resize(dims_out[1]); // Resize for crack version
+    std::cout << "RECOVER_STATES floes resize : " << dims_out[1] << std::endl;
     floe_group.get_floe_group_h().m_list_floe_h.resize(dims_out[1]);
     for (std::size_t floe_id = 0; floe_id < floe_group.get_floes().size(); floe_id++)
     {
         auto& floe = floe_group.get_floes()[floe_id];
         // auto& new_state = floe.state();
         bool active = (data_out[floe_id][9] == 1.) ? true : false; // crack version
+        floe.static_floe().attach_mesh_ptr(&floe.get_floe_h().m_static_mesh); // TODO why is it needed ?
         floe.state().set_active(active); // crack version
         if (active) {
             floe.set_state({
@@ -516,11 +517,12 @@ double HDF5Manager<TFloeGroup, TDynamicsMgr>::recover_states(
                 {0,0}
             });
             floe.reset_impulse(data_out[floe_id][6]);
+            floe.reset_detailed_impulse();
             floe.static_floe().set_thickness(data_out[floe_id][10]);
         }
     }
+    floe_group.get_floes().filter_on(); // crack version
     floe_group.update_list_ids_active(); // crack version
-    
     {
     // Load OBL speed
     DataSet dataset = file.openDataSet( "OBL_speed" );
@@ -537,7 +539,6 @@ double HDF5Manager<TFloeGroup, TDynamicsMgr>::recover_states(
     dataset.read( data_out.data(), PredType::NATIVE_DOUBLE, memspace, dataspace );
     point_type OBL_speed{data_out[0], data_out[1]};
     dynamics_manager.set_OBL_speed(OBL_speed);
-    // std::cout << " OBL " << OBL_speed;
     }
 
     }

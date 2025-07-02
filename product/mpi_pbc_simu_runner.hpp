@@ -4,18 +4,18 @@
  * \author Quentin Jouet
  */
 
-#ifndef PRODUCT_MPI_SIMU_RUNNER_HPP
-#define PRODUCT_MPI_SIMU_RUNNER_HPP
+#ifndef PRODUCT_MPI_PBC_SIMU_RUNNER_HPP
+#define PRODUCT_MPI_PBC_SIMU_RUNNER_HPP
 #include <mpi.h>
 #include <iostream>
-#include "../product/simu_runner.hpp"
+#include "../product/mpi_simu_runner.hpp"
 
 namespace product {
 
 
-class MPISimuRunner : public SimuRunner {
+class MPIPBCSimuRunner : public MPISimuRunner {
 public:
-    MPISimuRunner( int argc, char* argv[] ) : SimuRunner(argc, argv) {}
+    MPIPBCSimuRunner( int argc, char* argv[] ) : MPISimuRunner(argc, argv) {}
 
     virtual int run() override {
         if (this->vm.count("help")) {  
@@ -35,20 +35,35 @@ public:
         MPI_Comm_rank( MPI_COMM_WORLD, &rank );
 
         int return_value;
+        int total_processes;
+        MPI_Comm_size(MPI_COMM_WORLD, &total_processes);
+        int N = 1; // dim grid
+        // iter from 0
+        while (4 * N * N + 1 < total_processes) N++;
         if (rank==0){
             // I'm the MASTER process
             std::cout << "MASTER OK" << std::endl;
             master_problem_type P(epsilon, OBL_status);
-            return_value = this->run_problem(P);
+            return run_problem(P);
+        } else if (rank <= N * N){ 
+            // I'm a WORKER grid process
+            std::cout << "WORKER grid #" << rank << " OK" << std::endl;
+            worker_grid_problem_type P(epsilon, OBL_status);
+            return run_problem(P);
+        } else if (rank <= 4 * N * (N-1) + 1){
+            // I'm a WORKER in-border process (x-border or y-border or internal cross-border)
+            std::cout << "WORKER in-border #" << rank << " OK" << std::endl;
+            worker_in_border_problem_type P(epsilon, OBL_status);
+            return run_problem(P);
         } else {
-            // I'm a WORKER process
-            std::cout << "WORKER #" << rank << " OK" << std::endl;
-            worker_problem_type P(epsilon, OBL_status);
-            return_value = this->run_problem(P);
+            // I'm a WORKER out-border process (periodic external border)
+            std::cout << "WORKER out-border #" << rank << " OK" << std::endl;
+            worker_out_border_problem_type P(epsilon, OBL_status);
+            return run_problem(P);
         }
-        MPI_Finalize();
-        return return_value;
-    }
+            MPI_Finalize();
+            return return_value;
+        }
 
 private:
 
@@ -131,4 +146,4 @@ private:
 
 } // namespace floe::product
 
-#endif // PRODUCT_SIMU_RUNNER_HP
+#endif // PRODUCT_MPI_PBC_SIMU_RUNNER_HPP

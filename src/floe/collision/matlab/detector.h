@@ -143,6 +143,9 @@ public:
     bool check_interpenetration();
 
     inline proximity_data_type const& data() { return m_prox_data; }
+    bool is_periodic() const { return false; }
+    template <typename TTopology>
+    inline void set_topology(TTopology const& t) {}
 
 protected:
     proximity_data_type m_prox_data;
@@ -177,7 +180,6 @@ protected:
 
     inline virtual contact_type create_contact(std::size_t n1, std::size_t n2, point_type point1, point_type point2) const {
         return { &m_prox_data.get_floe(n1), &m_prox_data.get_floe(n2), point1, point2 }; }
-
 };
 
 //! Some utilities (workaround for distance to circle)

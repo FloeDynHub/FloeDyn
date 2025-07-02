@@ -33,14 +33,14 @@ int main( int argc, char* argv[] )
     auto w = P.get_floe_group().get_initial_window();
     auto win_width = (w[1] - w[0]);
     auto win_height = (w[3] - w[2]);
-    std::cout << "Domain (WxH): " << win_width << " x " << win_height << std::endl;
-
-    std::cout << "initial windows is: " << w[0] << ", " << w[1] << ", " << w[2] << ", " << w[3] << "\n";
+    std::cout << "nb_floes :: " << P.get_floe_group().nb_floes() << std::endl;
+    std::cout << "concentration :: " << (int)(P.get_floe_group().initial_concentration() * 100) << std::endl;
+    std::cout << "Domain_w_h :: " << win_width << "," << win_height << std::endl;
+    std::cout << "initial_window :: " << w[0] << "," << w[1] << "," << w[2] << "," << w[3] << std::endl;
     auto wc = P.get_floe_group().bounding_window(0);
-    std::cout << "current windows is: " << wc[0] << ", " << wc[1] << ", " << wc[2] << ", " << wc[3] << "\n";
-    std::cout << "the current concentration is: " << P.get_floe_group().floe_concentration() << "\n";
-
-    std::cout << "Kinetic energy before setting at rest: " << P.get_floe_group().kinetic_energy() << "\n";
+    std::cout << "current_window :: " << wc[0] << "," << wc[1] << "," << wc[2] << "," << wc[3] << std::endl;
+    std::cout << "current_concentration :: " << P.get_floe_group().floe_concentration() << std::endl;
+    std::cout << "kinetic_energy :: " << P.get_floe_group().kinetic_energy() << std::endl;
 
     value_type max_radius = 0;
     value_type min_radius = std::numeric_limits<value_type>::max();
@@ -50,14 +50,13 @@ int main( int argc, char* argv[] )
         max_radius = std::max(max_radius, floe_global_disk_radius);
         min_radius = std::min(min_radius, floe_global_disk_radius);
     }
-    std::cout << "Floe diameter : "
-        << "max = " << max_radius * 2
-        << ", min = " << min_radius * 2 << std::endl;
+    std::cout << "floe_diameter_max :: " << max_radius * 2 << std::endl;
+    std::cout << "floe_diameter_min :: " << min_radius * 2 << std::endl;
     // MPI grid dim constraint : max_floe_radius < cell_size / 4;
     int n = 1;
     while (win_width / (n+1) > 4 * max_radius) n++; 
-    std::cout << "MPI max grid dim : " << n << "x" << n
-        << " -> average " << floes.size() / (n*n) << " floes per core" << std::endl;
+    std::cout << "mpi_max_grid_dim :: " << n << std::endl;
+    std::cout << "mpi_average_floes_per_core " << floes.size() / (n*n) << std::endl;
 
     return 0;
 }

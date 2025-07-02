@@ -25,7 +25,7 @@ namespace floe { namespace lcp { namespace solver
 
 template<typename T>
 template<typename TContactGraph>
-std::array<vector<typename LCPSolver<T>::real_type>, 2>
+vector<typename LCPSolver<T>::real_type>
 LCPSolver<T>::solve( TContactGraph& graph, bool& success, int lcp_failed_stats[] ) {
 
     floe::lcp::builder::GraphLCP<real_type, decltype(graph)> graph_lcp( graph );
@@ -61,7 +61,7 @@ LCPSolver<T>::solve( TContactGraph& graph, bool& success, int lcp_failed_stats[]
     // %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     // %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% COMPRESSION PHASE: %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     // %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    vector<real_type> Solc(3 * graph_lcp.nb_floes), floe_impulses(graph_lcp.nb_floes, 0);
+    vector<real_type> Solc(3 * graph_lcp.nb_floes);
 
     // variables:
     bool solved=false;
@@ -183,7 +183,7 @@ LCPSolver<T>::solve( TContactGraph& graph, bool& success, int lcp_failed_stats[]
         lcp_failed_stats[0] += 1;
 
         success = 0;
-        return {{graph_lcp.W, floe_impulses}};
+        return graph_lcp.W;
     }
 
     // %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -218,11 +218,12 @@ LCPSolver<T>::solve( TContactGraph& graph, bool& success, int lcp_failed_stats[]
                 if (ECd > 1) {
                     // std::cout << "Oops I'm with an exceed of kinetic energy!\n";
                     lcp_failed_stats[2] += 1;
-                    Sold = (1 + epsilon) * Solc - epsilon * graph_lcp.W; // return this instead of Sold
-                    floe_impulses = graph_lcp.impulse_vector(lcp_orig, epsilon);
+                    real_type coeff = 1 + epsilon;
+                    Sold = coeff * Solc - epsilon * graph_lcp.W; // return this instead of Sold
+                    graph_lcp.compute_impulses(lcp_orig, epsilon);
                 } else {
                     // Impulse calculation
-                    floe_impulses = graph_lcp.impulse_vector(lcp_orig, lcp_d_orig, epsilon);
+                    graph_lcp.compute_impulses(lcp_orig, lcp_d_orig, epsilon);
                 } 
                 solved = true; SR_status = 0; RP_status = 0;
             }
@@ -278,22 +279,22 @@ LCPSolver<T>::solve( TContactGraph& graph, bool& success, int lcp_failed_stats[]
             lcp_failed_stats[1] += 1;
 
             success = 0;
-            floe_impulses = graph_lcp.impulse_vector(lcp_orig, epsilon);
+            graph_lcp.compute_impulses(lcp_orig, epsilon);
             /*! 
              *  \attention when, in the decompression phase, the LCP remains unsolved, we return the solution
              *             given by the linear combination of the velovies before and after the compression phase.
              */
-            return {{(1 + epsilon) * Solc - epsilon * graph_lcp.W, floe_impulses}};
+            return (1 + epsilon) * Solc - epsilon * graph_lcp.W;
         } 
     }
     else {
         success = 1;
-        floe_impulses = graph_lcp.impulse_vector(lcp_orig);
-        return {{Solc, floe_impulses}};
+        graph_lcp.compute_impulses(lcp_orig);
+        return Solc;
     }
 
     success = 1;
-    return {{Sold, floe_impulses}};
+    return Sold;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////

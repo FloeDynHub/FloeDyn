@@ -26,6 +26,7 @@
 #include "floe/geometry/arithmetic/arithmetic.hpp"
 #include "floe/geometry/arithmetic/determinant.hpp"
 #include "floe/lcp/lcp.hpp"
+#include "../product/config/config_base.hpp"
 
 namespace floe { namespace lcp { namespace builder
 {
@@ -70,9 +71,9 @@ public:
     //! Kinetic energy born sup for decompression phase
     T born_sup_d(lcp_type const& lcp_c, T epsilon = 0) const;
     //! Impulse vector in case of compression and decompression LCP solving success
-    ublas::vector<T> impulse_vector(lcp_type const& lcp_c, lcp_type const& lcp_d, T epsilon) const;
+    void compute_impulses(lcp_type const& lcp_c, lcp_type const& lcp_d, T epsilon) const;
     //! Impulse vector in case of decompression LCP solving fail
-    ublas::vector<T> impulse_vector(lcp_type const& lcp_c, T epsilon = 0) const;
+    void compute_impulses(lcp_type const& lcp_c, T epsilon = 0) const;
 
 
     ublas::diagonal_matrix<T>   M;   //!< Mass and momentum matrix.
@@ -88,7 +89,8 @@ public:
 
 private:
     TGraph const& m_graph; //<! The contact graph.
-    ublas::vector<T> calc_floe_impulses(ublas::vector<T> const& normal, ublas::vector<T> const& tangential) const;
+    //! Compute floe impulses from solution of LCP and store them in contact graph
+    void calc_floe_impulses(ublas::vector<T> const& normal, ublas::vector<T> const& tangential) const;
 };
 
 template < typename T, typename TGraph >
@@ -302,14 +304,15 @@ born_sup_d(lcp::LCP<T> const& lcp_c, T epsilon) const
 }
 
 template <typename T, typename TGraph>
-ublas::vector<T>
+void
 GraphLCP<T, TGraph>::
 calc_floe_impulses(ublas::vector<T> const& normal, ublas::vector<T> const& tangential) const {
     std::size_t m = nb_contacts;
-    ublas::vector<T> contact_impulses(m);
+    using point_type = typename types::point_type;
+    std::vector<point_type> contact_impulses(m);
     for (std::size_t i = 0; i < m; ++i)
     {
-        contact_impulses[i] = sqrt(pow(normal[i], 2) + pow(tangential[2*i] + tangential[2*i + 1], 2));
+        contact_impulses[i] = point_type(tangential[2*i] + tangential[2*i + 1], normal[i]);
     }
     std::size_t n = J.size1() / 3;
     ublas::vector<T> floe_impulses(n, 0);
@@ -318,35 +321,45 @@ calc_floe_impulses(ublas::vector<T> const& normal, ublas::vector<T> const& tange
     {
         for ( std::size_t i = 0; i < m_graph[edge].size(); ++i ) // iter over contacts
         {
-            floe_impulses[source(edge, m_graph)] += contact_impulses[j];
-            floe_impulses[target(edge, m_graph)] += contact_impulses[j];
+            T impulse_norm = norm2(contact_impulses[j]);
+            floe_impulses[source(edge, m_graph)] += impulse_norm;
+            floe_impulses[target(edge, m_graph)] += impulse_norm;
+            m_graph[edge][i].add_impulse_received(contact_impulses[j]);
             ++j;
         }
     }
-    return floe_impulses;
+    // Test adding impulses to floes directly
+    for (auto const& v : boost::make_iterator_range(vertices(m_graph)))
+    {
+        m_graph[v].add_impulse_received(floe_impulses[v]);
+    }
 }
 
 template <typename T, typename TGraph>
-ublas::vector<T>
+void
 GraphLCP<T, TGraph>::
-impulse_vector(lcp_type const& lcp_c, lcp_type const& lcp_d, T epsilon) const {
+compute_impulses(lcp_type const& lcp_c, lcp_type const& lcp_d, T epsilon) const {
     auto const& z_c = lcp_c.z;
     auto const& z_d = lcp_d.z;
     std::size_t m= J.size2();
-    auto normal = (1 + epsilon) * subrange(z_c, 0, m) + subrange(z_d, 0, m);
+    // /!\ declaring coeff real_type here because for some reason, 
+    // (1 + epsilon) * subrange(z_c, 0, m) is returning a zero_vector
+    T coeff = 1 + epsilon;
+    auto normal = coeff * subrange(z_c, 0, m) + subrange(z_d, 0, m);
     auto tangential = subrange(z_c, m, 3*m) + subrange(z_d, m, 3*m);
-    return calc_floe_impulses(normal, tangential);
+    calc_floe_impulses(normal, tangential);
 }
 
 template <typename T, typename TGraph>
-ublas::vector<T>
+void
 GraphLCP<T, TGraph>::
-impulse_vector(lcp_type const& lcp_c, T epsilon) const {
+compute_impulses(lcp_type const& lcp_c, T epsilon) const {
     auto const& z_c = lcp_c.z;
     std::size_t m = nb_contacts;
-    auto normal = (1 + epsilon) * subrange(z_c, 0, m);
+    T coeff = 1 + epsilon;
+    auto normal = coeff * subrange(z_c, 0, m);
     auto tangential = subrange(z_c, m, 3*m);
-    return calc_floe_impulses(normal, tangential);
+    calc_floe_impulses(normal, tangential);
 }
 
 

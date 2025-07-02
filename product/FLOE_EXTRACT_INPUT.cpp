@@ -15,7 +15,7 @@ int main( int argc, char* argv[] )
 
     if ( argc < 2 )
     {
-        cout << "Usage: " << argv[0] << " <input_file_name> " << endl;
+        cout << "Usage: " << argv[0] << " <input_file_name> <rec_time>" << endl;
         return 1;
     }
 

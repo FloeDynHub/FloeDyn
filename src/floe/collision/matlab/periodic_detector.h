@@ -38,21 +38,22 @@ public:
     using topology_type = TSpaceTopology;
 
     //! Default constructor
-    PeriodicMatlabDetector() : base_class(), m_topology{nullptr} {}
-
-    // virtual void push_back( floe_type * floe_ptr ) override
-    // {
-    //     base_class::push_back(floe_ptr);
-    //     std::size_t floe_id = base_class::get_nb_floes() - 1;
-    //     for (auto& translation : m_topology->ghosts_0())
-    //     {   
-    //         base_class::m_prox_data.add_ghost(floe_id, translation);
-    //     }
-    // }
+    PeriodicMatlabDetector() : base_class(), m_topology{nullptr} {
+        std::cout << "PeriodicMatlabDetector init" << std::endl;
+    }
 
     virtual void set_floe_group(floe_group_type const& floe_group) override {
         base_class::set_floe_group(floe_group);
-        for (std::size_t floe_id = 0; floe_id<floe_group.get_floes().size(); ++floe_id){
+        this->add_ghosts();
+    }
+
+    virtual void rescan_floe_group() {
+        base_class::rescan_floe_group();
+        this->add_ghosts();
+    }
+
+    virtual void add_ghosts() {
+        for (std::size_t floe_id = 0; floe_id < base_class::m_prox_data.get_floes().size(); ++floe_id){
             for (auto& translation : m_topology->ghosts_0())
             {   
                 base_class::m_prox_data.add_ghost(floe_id, translation);
@@ -61,6 +62,7 @@ public:
     }
 
     inline void set_topology(topology_type const& t) { m_topology = &t; }
+    bool is_periodic() const { return true; }
 
 private:
     topology_type const* m_topology; //!< Space topology

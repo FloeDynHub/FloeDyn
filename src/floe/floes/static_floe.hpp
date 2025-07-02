@@ -65,11 +65,11 @@ public:
 
     //! Default constructor.
     StaticFloe() : m_frame{0,0,0}, m_geometry{nullptr}, m_mesh{nullptr}, m_density{917}, m_mu_static{0.7},
-                    m_thickness{1}, m_C_w{5 * 1e-3}, m_area{-1}, m_moment_cst{-1} {}
-                    
+                    m_thickness{1}, m_C_w{5 * 1e-3}, m_area{-1}, m_moment_cst{-1}, m_min_crack_energy{0} {}
+
     StaticFloe(geometry_type new_border) : m_frame{0,0,0}, m_geometry{new_border}, m_mesh{nullptr}, m_density{917}, m_mu_static{0.7},
-                    m_thickness{1}, m_C_w{5 * 1e-3}, m_area{-1}, m_moment_cst{-1} {}                    
-                   
+                    m_thickness{1}, m_C_w{5 * 1e-3}, m_area{-1}, m_moment_cst{-1}, m_min_crack_energy{0} {}
+
 
     //! Deleted copy-constructor.
     StaticFloe( StaticFloe const& ) = delete;
@@ -91,7 +91,7 @@ public:
     inline  bool                    has_geometry()                          const   { return m_geometry != nullptr; }
     inline  geometry_type const&    get_geometry()                          const   { return *m_geometry; }
     inline  void                    set_geometry( geometry_type const& geometry )
-    { 
+    {
         if (! has_geometry() ) m_geometry = new geometry_type();
         *m_geometry = geometry;
     }
@@ -102,8 +102,8 @@ public:
     inline  mesh_type &             mesh()                              { return *m_mesh; }
     inline  bool                    has_mesh()                  const   { return m_mesh != nullptr; }
     inline  mesh_type const&        get_mesh()                  const   { return *m_mesh; }
-    inline  void                    set_mesh( mesh_type& mesh ) 
-    { 
+    inline  void                    set_mesh( mesh_type& mesh )
+    {
         // if (! has_mesh() ) m_mesh = new mesh_type();
         m_mesh = &mesh;
     }
@@ -134,13 +134,62 @@ public:
     inline real_type   get_density()   const   { return m_density; }
     inline void         set_density( real_type const& density ) { m_density = density; m_moment_cst = -1; }
     inline real_type const&    density()   const { return m_density; }
-    
-	// inline std::vector<StaticFloe> fracture_floe(); //{point_type mass_center {0,0};}
-	inline void update_caracteristic(real_type init_density,real_type init_mu_static, real_type init_thickness, real_type init_C_w);
-	// inline void generate_mesh(); 
-	inline point_type get_mass_center() ;
-	inline std::vector<TGeometry> fracture_floe();
-    inline std::vector<TGeometry> fracture_floe_2();
+
+    inline void update_caracteristic(real_type init_density,real_type init_mu_static, real_type init_thickness, real_type init_C_w);
+    // inline void generate_mesh();
+    inline point_type get_mass_center() ;
+    std::vector<TGeometry> fracture_floe();
+    std::vector<TGeometry> fracture_floe_from_impulses(std::vector<point_type> impulses);
+
+    real_type min_diameter() const
+    {
+        real_type min_radius = std::numeric_limits<real_type>::max();
+        for (size_t i = 0; i < m_geometry->outer().size(); ++i)
+        {
+            auto const& p = m_geometry->outer()[i];
+            for (size_t j = i + 1; j < m_geometry->outer().size(); ++j) {
+                auto const& q = m_geometry->outer()[j];
+                if ((i - j) % m_geometry->outer().size() < m_geometry->outer().size() / 3) // TODO : improve this logic
+                    continue; // Too close to be a valid radius
+                min_radius = std::min(min_radius, norm2(p - q));
+            }
+        }
+        return min_radius;
+    }
+
+    real_type max_diameter() const
+    {
+        real_type max_diam = std::numeric_limits<real_type>::min();
+        for (size_t i = 0; i < m_geometry->outer().size(); ++i)
+        {
+            auto const& p = m_geometry->outer()[i];
+            for (size_t j = 0; j < m_geometry->outer().size(); ++j) {
+                auto const& q = m_geometry->outer()[j];
+                if ((j - i) < m_geometry->outer().size() / 3 || (m_geometry->outer().size() - j + i) < m_geometry->outer().size() / 3) // TODO : improve this logic
+                    continue; // Too close to be a valid radius
+                max_diam = std::max(max_diam, norm2(p - q));
+            }
+        }
+        std::cout << "max_diam : " << max_diam << std::endl;
+        return max_diam;
+    }
+
+    //! Area
+    inline real_type min_crack_energy() const { return (m_min_crack_energy > 0) ? m_min_crack_energy : calc_min_crack_energy(); }
+
+    real_type minimum_distance(point_type v, point_type w, point_type p) {
+        // Return minimum distance between line segment vw and point p
+        const real_type l2 = std::pow(v.x - w.x, 2) + std::pow(v.y - w.y, 2);  // i.e. |w-v|^2 -  avoid a sqrt
+        if (l2 == 0.0) return distance(p, v);   // v == w case
+        // Consider the line extending the segment, parameterized as v + t (w - v).
+        // We find projection of point p onto the line. 
+        // It falls where t = [(p-v) . (w-v)] / |w-v|^2
+        // We clamp t from [0,1] to handle points outside the segment vw.
+        real_type dot = (p - v).x * (w - v).x + (p - v).y * (w - v).y;
+        const real_type t = std::max(0., std::min(1., dot / l2));
+        const point_type projection = v + t * (w - v);  // Projection falls on the segment
+        return distance(p, projection);
+    }
 
 private:
 
@@ -155,6 +204,7 @@ private:
     mutable real_type m_area;  //!< Area (cached)
     // mutable density_type m_mass; //!< Mass (cached)
     mutable real_type m_moment_cst; //!< Momentum constant (cached)
+    mutable real_type m_min_crack_energy; //!< Minimum crack energy
 
     //! Calculate area, if not already done.
     inline
@@ -171,7 +221,7 @@ private:
         if ( m_moment_cst >= 0 || ! has_mesh() ) {
             return m_moment_cst;
         }
-        else 
+        else
         {
             //! \warning To compare results with Matlab code, choose Gauss-Legendre quadrature with 1 point instead of 3 points here.
             const auto strategy = integration::RefGaussLegendre<real_type, 2, 1>(); // Same as the Matlab code.
@@ -190,90 +240,155 @@ private:
         }
     }
 
+    //! Calculate min crack energy
+    real_type calc_min_crack_energy() const
+    {   
+        // Minimum crack energy
+        // Source coeff : MODÉLISATION DE LA FRACTURE DE LA GLACE DE MER PAR LA HOULE, Alexandre TLILI, 2022
+        real_type ice_crack_coeff = 1.5 * 5000; // Gc entre 1,5 J m−2 et 3,5 J m−2
+        m_min_crack_energy = ice_crack_coeff * m_thickness * this->min_diameter();
+        return m_min_crack_energy;
+    }
+
 
 };
 
-template <typename T,typename TPoint,typename TGeometry,typename TMesh,typename TFrame ,typename TDensity>
-std::vector<TGeometry> 
-StaticFloe<T,TPoint,TGeometry,TMesh,TFrame,TDensity>::fracture_floe()
-{
-	// arbitrary choice, there is 24 edges so I choose to have the fracture
-    // crossed on the opposite edge
-    std::size_t crack_it = std::size_t(this->geometry().outer().size() / 2);
-    point_type border1_begin {this->geometry().outer()[0] + (this->geometry().outer()[1] - this->geometry().outer()[0]) * 0.6};
-    point_type border1_end {this->geometry().outer()[crack_it] + (this->geometry().outer()[crack_it + 1] - this->geometry().outer()[crack_it]) * 0.4};
-    point_type border2_begin {this->geometry().outer()[crack_it] + (this->geometry().outer()[crack_it + 1] - this->geometry().outer()[crack_it]) * 0.6};
-    point_type border2_end {this->geometry().outer()[0] + (this->geometry().outer()[1] - this->geometry().outer()[0]) * 0.4};
-	// create geometry type...
-	geometry_type border1;
-	// rajouter des point entre les deux !
-	border1.outer().push_back(border1_begin);
-	for (std::size_t i = 1; i <= crack_it ; ++i){
-		border1.outer().push_back(this->geometry().outer()[i]);
-	}
-	border1.outer().push_back(border1_end);
-	
-	geometry_type border2;
-	border2.outer().push_back(border2_begin);
-	for (std::size_t i = crack_it + 1; i < this->geometry().outer().size() ; ++i){
-		border2.outer().push_back(this->geometry().outer()[i]);
-	}
-    border2.outer().push_back(this->geometry().outer()[0]);
-	border2.outer().push_back(border2_end);
-	
-	// create two floe, generate by the border and caracteristic of the initial floe ?
-	std::vector<TGeometry> new_border {border1,border2};
-    return new_border;
-}
 
+// template <typename T,typename TPoint,typename TGeometry,typename TMesh,typename TFrame ,typename TDensity>
+// std::vector<TGeometry>
+// StaticFloe<T,TPoint,TGeometry,TMesh,TFrame,TDensity>::fracture_floe()
+// {
+//     // Better basic fracture : cutting floe according to crack geometry
+//     auto& boundary = this->geometry().outer();
+//     point_type middle_point = (boundary[0] + boundary[boundary.size() - 1]) / 2;
+//     real_type min_dist = norm2(middle_point);
+//     point_type crack_start = middle_point;
+//     // crack_start will be the closest edge midpoint to floe's mass center ({0, 0})
+//     for (std::size_t i = 0; i < this->geometry().outer().size() - 1; ++i){
+//         middle_point = (boundary[i] + boundary[i + 1])  / 2;
+//         if (norm2(middle_point) < min_dist) {
+//             min_dist = norm2(middle_point);
+//             crack_start = middle_point * 1.1;
+//         }
+//     }
+//     // crack end is opposite to crack_start (crack is a line crossing mamss center)
+//     point_type crack_end = - crack_start * (this->max_diameter() * 1.1 - norm2(crack_start)) / norm2(crack_start);
+//     std::vector<TGeometry> new_borders;
+//     // crack is a long and thin rectangle containing crack_start and floe's mass center
+//     geometry_type crack;
+//     real_type crack_width = std::sqrt(this->area()) * 0.002;
+//     point_type crack_ortho = direct_orthogonal(crack_start) / norm2(crack_start);
+//     point_type crack_delta = crack_ortho * crack_width / 2;
+//     int crack_nb_point = 10;
+//     for (int i = 0; i < crack_nb_point; ++i)
+//     {
+//         crack.outer().push_back(crack_start + (crack_end - crack_start) * i / crack_nb_point - crack_delta);
+//     }
+//     for (int i = 0; i < crack_nb_point; ++i) {
+//         crack.outer().push_back(crack_end + (crack_start - crack_end) * i / crack_nb_point + crack_delta);
+//     }
+//     // crack.outer().push_back(crack_start * 1e6 + crack_delta);
+//     // crack.outer().push_back(crack_start * 1e6 - crack_delta);
+//     // crack.outer().push_back(- crack_start * 1e6 - crack_delta);
+//     // crack.outer().push_back(- crack_start * 1e6 + crack_delta);
+
+//     boost::geometry::correct(crack);
+//     // remove crack from floe geometry
+//     boost::geometry::difference(this->geometry().outer(), crack, new_borders);
+//     return new_borders;
+// }
 
 template <typename T,typename TPoint,typename TGeometry,typename TMesh,typename TFrame ,typename TDensity>
-std::vector<TGeometry> 
-StaticFloe<T,TPoint,TGeometry,TMesh,TFrame,TDensity>::fracture_floe_2()
+std::vector<TGeometry>
+StaticFloe<T,TPoint,TGeometry,TMesh,TFrame,TDensity>::fracture_floe_from_impulses(std::vector<point_type> impulses)
 {
-    // Better basic fracture : cutting floe according to crack geometry
-    auto& boundary = this->geometry().outer();
-    point_type middle_point = (boundary[0] + boundary[boundary.size() - 1]) / 2;
-    real_type min_dist = norm2(middle_point);
-    point_type crack_start = middle_point;
-    // crack_start will be the closest edge midpoint to floe's mass center ({0, 0})
-    for (std::size_t i = 0; i < this->geometry().outer().size() - 1; ++i){
-        middle_point = (boundary[i] + boundary[i + 1])  / 2;
-		if (norm2(middle_point) < min_dist) {
-            min_dist = norm2(middle_point);
-            crack_start = middle_point;
+    real_type min_radius = std::numeric_limits<real_type>::max();
+    std::size_t min_radius_i = 0;
+    std::size_t min_radius_j = 0;
+    point_type crack_start;
+    point_type crack_end;
+    for (size_t i = 0; i < m_geometry->outer().size(); ++i)
+    {
+        auto const& p = m_geometry->outer()[i];
+        for (size_t j = i + 1; j < m_geometry->outer().size(); ++j) {
+            if ((j - i) < m_geometry->outer().size() / 3 || (m_geometry->outer().size() - j + i) < m_geometry->outer().size() / 3) // TODO : improve this logic
+                continue; // Too close to be a valid radius
+            auto q = m_geometry->outer()[j];
+            auto radius = norm2(p - q) * (1. - 0.5 * (1. - 1. / (1. + norm2(impulses[i]) + norm2(impulses[j])))) + 2 * this->minimum_distance(p, q, {0, 0});
+            if (radius < min_radius) {
+                min_radius = radius;
+                crack_start = p;
+                crack_end = q;
+            }
+            // try mid point for q
+            q = (q + m_geometry->outer()[(j + 1) % m_geometry->outer().size()]) / 2;
+            radius = norm2(p - q) * (1. - 0.5 * (1. - 1. / (1. + norm2(impulses[i]) + norm2(impulses[j])))) + 2 * this->minimum_distance(p, q, {0, 0});
+            if (radius < min_radius) {
+                min_radius = radius;
+                crack_start = p;
+                crack_end = q;
+            }
         }
-	}
-	std::vector<TGeometry> new_borders;
+    }
+    auto& boundary = this->geometry().outer();
+    crack_start = crack_start * 1.1; // arbitrary 1.1 (10%) for spacial margin
+    crack_end = crack_end * 1.1;
+    std::vector<TGeometry> new_borders;
     // crack is a long and thin rectangle containing crack_start and floe's mass center
     geometry_type crack;
-    real_type crack_width = std::sqrt(this->area()) * 0.02;
+    real_type crack_width = std::sqrt(this->area()) * 0.002;
     point_type crack_ortho = direct_orthogonal(crack_start) / norm2(crack_start);
     point_type crack_delta = crack_ortho * crack_width / 2;
-    crack.outer().push_back(crack_start * 1e6 + crack_delta);
-    crack.outer().push_back(crack_start * 1e6 - crack_delta);
-    crack.outer().push_back(- crack_start * 1e6 - crack_delta);
-    crack.outer().push_back(- crack_start * 1e6 + crack_delta);
+    int crack_nb_point = 6;
+    for (int i = 0; i <= crack_nb_point; ++i) {
+        crack.outer().push_back(crack_start + (crack_end - crack_start) * i / crack_nb_point - crack_delta);
+    }
+    for (int i = 0; i <= crack_nb_point; ++i) {
+        crack.outer().push_back(crack_end + (crack_start - crack_end) * i / crack_nb_point + crack_delta);
+    }
     boost::geometry::correct(crack);
+    // display geometry, crack_start, crack_end, crack geometry
+    // std::cout << "geometry = [" << std::endl;
+    // for (auto const& p : boundary) {
+    //     std::cout << "[" << p.x << ", " << p.y << "]," << std::endl;
+    // }
+    // std::cout << "]" << std::endl;
+    // std::cout << "#Crack start : " << crack_start <<  std::endl;
+    // std::cout << "#Crack end : " << crack_end <<  std::endl;
+    // std::cout << "crack = [" << std::endl;
+    // for (auto const& p : crack.outer()) {
+    //     std::cout << "[" << p.x << ", " << p.y << "]," << std::endl;
+    // }
+    // std::cout << "]" << std::endl;
     // remove crack from floe geometry
     boost::geometry::difference(this->geometry().outer(), crack, new_borders);
-    return new_borders;
+    // Add points to new borders
+    std::vector<TGeometry> final_borders;
+    for (auto const& border : new_borders) {
+        TGeometry new_border;
+        for (std::size_t i = 0; i < border.outer().size(); ++i) {
+            new_border.outer().push_back(border.outer()[i]);
+            new_border.outer().push_back((border.outer()[i] + border.outer()[(i + 1) % border.outer().size()]) / 2);
+        }
+        boost::geometry::correct(new_border);
+        final_borders.push_back(new_border);
+    }
+    return final_borders;
 }
-
 
 template <typename T,typename TPoint,typename TGeometry,typename TMesh,typename TFrame ,typename TDensity>
 void
 StaticFloe<T,TPoint,TGeometry,TMesh,TFrame,TDensity>::update_caracteristic(real_type init_density,real_type init_mu_static, real_type init_thickness, real_type init_C_w){
-	
-	// generate mesh : récup dans mesh generator 
-	// this->generate_mesh(); // TODO : might be a good idea !
-	this->set_mu_static(init_mu_static);
-	this->set_thickness(init_thickness);
-	this->set_density( init_density);
-	this->set_C_w(init_C_w);
-	this->m_area=this->area();
-	this->m_moment_cst=this->moment_cst();
-}   
+
+    // generate mesh : récup dans mesh generator
+    // this->generate_mesh(); // TODO : might be a good idea !
+    this->set_mu_static(init_mu_static);
+    this->set_thickness(init_thickness);
+    this->set_density( init_density);
+    this->set_C_w(init_C_w);
+    this->m_area=this->area();
+    this->m_moment_cst=this->moment_cst();
+}
 
 
 
@@ -281,9 +396,9 @@ StaticFloe<T,TPoint,TGeometry,TMesh,TFrame,TDensity>::update_caracteristic(real_
 // void
 // StaticFloe<T,TPoint,TGeometry,TMesh,TFrame,TDensity>::generate_mesh()
 // {
-// 		// suppose here border have around 25 vertex
-// 		TMesh mesh =floe::generator::generate_mesh_for_shape<TGeometry,TMesh>(this->geometry()); 
-// 		using integration_strategy = floe::integration::RefGaussLegendre<real_type,2,2>;		
+//         // suppose here border have around 25 vertex
+//         TMesh mesh =floe::generator::generate_mesh_for_shape<TGeometry,TMesh>(this->geometry());
+//         using integration_strategy = floe::integration::RefGaussLegendre<real_type,2,2>;
 //         // Center mesh and shape on floe's center of mass
 //         TPoint mass_center=this->get_mass_center();
 //         // a faire !!
@@ -292,8 +407,8 @@ StaticFloe<T,TPoint,TGeometry,TMesh,TFrame,TDensity>::update_caracteristic(real_
 //         //geometry::transform( *shape_cpy, this->geometry(), geometry::frame::transformer( newframe));
 //         //TMesh mesh_cpy = mesh;
 //         //geometry::transform( mesh_cpy, mesh, geometry::frame::transformer( typename floe_type::frame_type{-mass_center, 0} ));
-//         this->set_mesh(mesh);     
-// } 
+//         this->set_mesh(mesh);
+// }
 
 
 
@@ -303,7 +418,7 @@ template <typename T,typename TPoint,typename TGeometry,typename TMesh,typename 
 TPoint
 StaticFloe<T,TPoint,TGeometry,TMesh,TFrame,TDensity>::get_mass_center()
 {
-		using integration_strategy = floe::integration::RefGaussLegendre<real_type,2,2>;
+        using integration_strategy = floe::integration::RefGaussLegendre<real_type,2,2>;
         TPoint mass_center = floe::integration::integrate(
             [] (real_type x, real_type y) { return point_type{x, y}; },
             m_mesh, integration_strategy()
@@ -311,9 +426,6 @@ StaticFloe<T,TPoint,TGeometry,TMesh,TFrame,TDensity>::get_mass_center()
             [] (real_type x, real_type y) { return 1.; },
             m_mesh,integration_strategy()
         );
-        
-        //TPoint mass_center {0,0};
-        
         return mass_center;
 }
 

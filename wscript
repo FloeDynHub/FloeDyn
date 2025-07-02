@@ -255,6 +255,7 @@ def get_option_dict(debug=True):
         OPTION_DICT.update({
             "linkflags": ['-g'],
             "cxxflags": [
+                '-g',
                 '-std=c++14',
                  '-O0',
                  "-Wall", #"-Wextra",
@@ -301,14 +302,14 @@ def build(bld):
         print("compilation with LCP statistics storage.")
         opts["defines"].append('LCPSTATS')
     if "MPI" in bld.options.target:
-        opts["linkflags"].extend(["-lmpi"])
+        opts["linkflags"].extend(["-lmpi", "-lmpi_cxx"])
         opts["defines"].append('MPIRUN')
         opts["cxxflags"].extend(subprocess.check_output(["mpicc", "--showme:compile"]).strip().split(b" "))
         opts["linkflags"].extend(subprocess.check_output(["mpicc", "--showme:link"]).strip().split(b" "))
-    if bld.options.target in ["FLOE", "FLOE_PBC", "FLOE_MPI"]:
-        opts["source"] = ["product/FLOE.cpp"] + recursive_file_finder("src/floe", "*.cpp")
+    if bld.options.target in ["FLOE", "FLOE_PBC", "FLOE_MPI", "FLOE_MPI_PBC"]:
+        opts["source"] = [f"product/FLOE.cpp"] + recursive_file_finder("src/floe", "*.cpp")
         opts["target"] = bld.options.target
-        if bld.options.target == "FLOE_PBC":
+        if "PBC" in bld.options.target: # ex : FLOE_PBC, FLOE_MPI_PBC
             opts["defines"].append('PBC')
         bld.program(**opts)
     elif "FLOE" in bld.options.target:

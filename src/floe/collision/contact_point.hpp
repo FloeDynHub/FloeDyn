@@ -12,6 +12,7 @@
 // #include <memory>
 
 #include "floe/geometry/frame/uv_frame.hpp"
+#include "floe/geometry/frame/frame_transformers.hpp"
 #include "floe/geometry/core/access.hpp"
 #include "floe/geometry/core/coordinate_type.hpp"
 
@@ -67,7 +68,6 @@ struct ContactPoint
 
         const point_type u { get<1>(pt2) - get<1>(pt1), get<0>(pt1) - get<0>(pt2) };
         typename coordinate_type<point_type>::type const norm_u = std::sqrt( std::pow(get<0>(u), 2) + std::pow(get<1>(u), 2) );
-
         frame = frame_type{ pt1, { get<0>(u)/norm_u, get<1>(u)/norm_u } };
         dist = norm_u;
     }
@@ -113,6 +113,23 @@ struct ContactPoint
         // return relative_speed() < 0;
     }
 
+    //! set received impulse
+    inline void add_impulse_received(point_type const& impulse) const { *m_impulse_received += impulse; }
+    //! get received impulse
+    inline point_type impulse() const { return *m_impulse_received; }
+    //! reset received impulse in absolute frame
+    inline point_type impulse_abs_frame() const {
+        point_type resp;
+        geometry::transform(
+            this->impulse(),
+            resp,
+            geometry::frame::transformer(
+                typename floe_type::frame_type{{0, 0}, this->frame.theta()}
+            )
+        );
+        return resp;
+    }
+
     TFloe const* floe1; //!< First floe in contact
     TFloe const* floe2; //!< Second floe in contact
     TFrame       frame; //!< Frame of contact
@@ -120,6 +137,8 @@ struct ContactPoint
     mutable std::shared_ptr<real_type> m_relative_speed{std::make_shared<real_type>(-1)}; //!< Relative speed cash (for performances)
     //! Floe states changed (Need new relative speed calculation), shared pointer to be shared with subgraphs.
     mutable std::shared_ptr<bool> floe_states_changed{std::make_shared<bool> (true)};
+    //! impulse applied at this contact point during collision resolution
+    mutable std::shared_ptr<point_type> m_impulse_received{std::make_shared<point_type>(0,0)};
 };
 
 //! Exterior function to test if a contact is active (should be the only place ...)

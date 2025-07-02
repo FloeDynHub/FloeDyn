@@ -46,7 +46,7 @@ public:
     LCPSolver(real_type epsilon) : epsilon{epsilon}, m_tolerance{1e-5}, m_coef_perturb{1e-8}, m_ite_max_attempt{10}, m_max_storage_sol{0}, m_max_storage_unsol{0} {}
 
     template<typename TContactGraph>
-    std::array<vector<real_type>, 2> solve( TContactGraph& graph, bool& success, int lcp_failed_stats[] );
+    vector<real_type> solve( TContactGraph& graph, bool& success, int lcp_failed_stats[] );
 
     double chrono_solver{0.0}; // test perf
     double max_chrono_solver{0.0}; // test perf

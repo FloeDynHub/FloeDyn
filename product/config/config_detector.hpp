@@ -11,12 +11,21 @@
 
 #ifdef MPIRUN
 #include "floe/collision/matlab/mpi_detector.hpp"
+#ifdef PBC
+#include "floe/collision/matlab/mpi_periodic_detector.hpp"
+#endif
 #endif
 
 namespace types {
 
 #ifdef MPIRUN
-	using proximity_detector_type = floe::collision::matlab::MPIMatlabDetector<floe_group_type>;
+	#ifdef PBC
+		using master_proximity_detector_type = floe::collision::matlab::MPIPeriodicDetector<floe_group_type>;
+		using proximity_detector_type = floe::collision::matlab::MatlabDetector<floe_group_type>;
+	#else
+		using master_proximity_detector_type = floe::collision::matlab::MPIMatlabDetector<floe_group_type>;
+		using proximity_detector_type = floe::collision::matlab::MatlabDetector<floe_group_type>;
+	#endif
 #else
 	using proximity_detector_type = floe::collision::matlab::MatlabDetector<floe_group_type>;
 #endif

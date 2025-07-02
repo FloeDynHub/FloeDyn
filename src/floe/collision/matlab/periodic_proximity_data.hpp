@@ -45,7 +45,8 @@ public:
     //!Empty floe and optim lists
     virtual void reset() override {
         base_class::reset();
-        m_ghost_floes.clear(); m_ghost_optims.clear();
+        m_ghost_floes.clear();
+        m_ghost_optims.clear();
     }
 
     void add_ghost(std::size_t floe_id, point_type translation){
@@ -109,7 +110,7 @@ PeriodicProximityData<TFloeGroup, TOptim>
 {
     const std::size_t N { this->nb_floes() };
     if (n < N)
-        return *(this->m_optims[n]);
+        return base_class::get_optim_itf(n);
     else
         return m_ghost_optims[n - N];
 }

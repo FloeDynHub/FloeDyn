@@ -79,6 +79,12 @@ public:
     inline T area() const { return delta_x * delta_y; }
     //! Center of the rectangle
     inline TPoint center() const { return { (m_max_x + m_min_x) / 2, (m_max_y + m_min_y) / 2 }; }
+    inline T width() const { return delta_x; }
+    inline T height() const { return delta_y; }
+    inline T min_x() const { return m_min_x; }
+    inline T max_x() const { return m_max_x; }
+    inline T min_y() const { return m_min_y; }
+    inline T max_y() const { return m_max_y; }
 
 private:
     // Space limits

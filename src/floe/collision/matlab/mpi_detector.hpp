@@ -19,13 +19,14 @@ namespace floe { namespace collision { namespace matlab
 template <
     typename TFloeGroup,
     typename TProximityData = ProximityData<TFloeGroup, OptimizedFloe<typename TFloeGroup::floe_type>>,
-    typename TContact = ContactPoint<typename TFloeGroup::floe_type> 
+    typename TContact = ContactPoint<typename TFloeGroup::floe_type>,
+    typename TDetector = MatlabDetector<TFloeGroup>
 >
-class MPIMatlabDetector : public MatlabDetector<TFloeGroup>
+class MPIMatlabDetector : public TDetector
 {
 
 public:
-    using base_class = MatlabDetector<TFloeGroup>;
+    using base_class = TDetector;
     using floe_group_type = TFloeGroup;
     using real_type = typename base_class::real_type;
     using point_type = typename base_class::point_type;
@@ -53,8 +54,6 @@ public:
     MPIMatlabDetector<TFloeGroup, TContact>& operator= (MPIMatlabDetector const&) = delete;
 
     inline floe_distrib_type const& floe_process_distribution() const {
-        // return m_floe_process_distribution;
-        // return m_floe_process_distributions["grid"];
         return m_floe_process_distrib;
     };
     inline process_partition_type const& process_partition() const {
@@ -83,30 +82,13 @@ public:
         }
         return resp;
     }
-    // inline floe_distrib_type const& border_floe_process_distribution() const {
-    //     // return m_border_floe_process_distribution;
-    // };
-    // inline floe_distrib_type const& x_border_floe_process_distribution() const {
-    //     // return m_border_floe_process_distribution;
-    //     return m_floe_process_distributions["x_border"];
-    // };
-    // inline floe_distrib_type const& y_border_floe_process_distribution() const {
-    //     // return m_border_floe_process_distribution;
-    //     return m_floe_process_distributions["x_border"];
-    // };
-    // inline floe_distrib_type const& crossing_floe_process_distribution() const {
-    //     return m_crossing_floe_process_distribution;
-    // };
     
     /* MASTER PART */
 
     void distribute_floes(){
         this->resize_window();
         // Clear previous distribution
-        // m_floe_process_distribution.clear();
-        // m_border_floe_process_distribution.clear();
-        // m_crossing_floe_process_distribution.clear();
-        m_floe_process_distrib.clear();
+        this->m_floe_process_distrib.clear();
         // Ocean division
         for (std::size_t i = 0; i < this->data().get_optims().size(); ++i){
             auto const& optim = this->data().get_optim(i);
@@ -152,18 +134,14 @@ public:
 
     /* WORKER PART */
 
-    void prepare_optims() override {
-        for (std::size_t i=0; i< this->data().nb_floes(); ++i)
-            this->get_optim(i).update();
-    }
+    // void prepare_optims() override {
+    //     for (std::size_t i=0; i< this->data().nb_floes(); ++i)
+    //         this->get_optim(i).update();
+    // }
 
-private:
-    // floe_distrib_type m_floe_process_distribution;
-    // floe_distrib_type m_border_floe_process_distribution;
-    // floe_distrib_type m_crossing_floe_process_distribution;
+protected:
     floe_distrib_type m_floe_process_distrib;
     process_partition_type m_process_partition;
-    // floe_multi_partition_type m_floe_process_distributions;
     std::array<real_type, 4> m_window;
     std::array<int, 2> m_dim_grid;
     int m_nb_workers;
@@ -222,7 +200,7 @@ private:
         m_window = {{ min_x - mg, max_x + mg, min_y - mg, max_y + mg }};
     }
 
-void distribute(optim_type const& optim, std::size_t floe_id){
+    void distribute(optim_type const& optim, std::size_t floe_id){
         // Calc ocean 2D parcel dimension
         real_type parcel_width = (m_window[1] - m_window[0]) / this->grid_dim_x();
         real_type parcel_height = (m_window[3] - m_window[2]) / this->grid_dim_y();
@@ -244,35 +222,19 @@ void distribute(optim_type const& optim, std::size_t floe_id){
         };
         bool xy_border_floe{x_border_floe && y_border_floe};
         // assigning floe to related processes
-        // int NUM_PROC = 1; // Start worker counting at 1 (0 is the master)
-        // int worker_id = Y_id * this->grid_dim_x() + X_id + NUM_PROC ;
         int worker_id = Y_id * this->grid_dim_x() + X_id;
         m_floe_process_distrib[m_process_partition["grid"][worker_id]].push_back(floe_id); // order : left->right, down->up
-        // m_floe_process_distributions["grid"][worker_id].push_back(floe_id);
-        // m_floe_process_distribution[worker_id].push_back(floe_id); // order : left->right, down->up
-        // NUM_PROC += this->grid_dim_x() * this->grid_dim_y();
         if (x_border_floe){
-            // worker_id = Y_id * (this->grid_dim_x() - 1) + (X_border_id -1) + NUM_PROC;
             worker_id = Y_id * (this->grid_dim_x() - 1) + (X_border_id -1);
             m_floe_process_distrib[m_process_partition["x_border"][worker_id]].push_back(floe_id);
-            // m_border_floe_process_distribution[worker_id].push_back(floe_id);
-            // m_floe_process_distributions["x_border"][worker_id].push_back(floe_id);
         }
-        // NUM_PROC += this->grid_dim_y() * (this->grid_dim_x() - 1);
         if (y_border_floe){
-            // worker_id = X_id * (this->grid_dim_y() - 1) + (Y_border_id - 1) + NUM_PROC;
             worker_id = X_id * (this->grid_dim_y() - 1) + (Y_border_id - 1);
             m_floe_process_distrib[m_process_partition["y_border"][worker_id]].push_back(floe_id);
-            // m_border_floe_process_distribution[worker_id].push_back(floe_id);
-            // m_floe_process_distributions["y_border"][worker_id].push_back(floe_id);
         }
-        // NUM_PROC += this->grid_dim_x() * (this->grid_dim_y() - 1);
         if (xy_border_floe){
-            // worker_id = (Y_border_id - 1) * (this->grid_dim_x() - 1) + (X_border_id -1) + NUM_PROC;
             worker_id = (Y_border_id - 1) * (this->grid_dim_x() - 1) + (X_border_id -1);
             m_floe_process_distrib[m_process_partition["crossing"][worker_id]].push_back(floe_id);
-            // m_crossing_floe_process_distribution[worker_id].push_back(floe_id);
-            // m_floe_process_distributions["crossing"][worker_id].push_back(floe_id);
         }
     }
 };

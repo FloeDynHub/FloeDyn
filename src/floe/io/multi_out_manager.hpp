@@ -31,7 +31,7 @@ public:
     {
         TOutManager& second_out_mgr = m_out_managers[1];
         second_out_mgr.set_out_step(10, 0);
-        second_out_mgr.set_out_file_name("io/outputs/out_partial.h5"); // todo : less hardcoded if needed...
+        second_out_mgr.set_out_file_name("out_partial"); // todo : less hardcoded if needed...
     }
 
     inline std::size_t get_size() const {return m_nb_floe_select;}

@@ -83,7 +83,7 @@ public:
             this->init_random_vortex();m_water_mode = 0;
             std::cout << "Storm defined as a wind vortex" << std::endl;
         }
-        else { std::cout << "Error: air and/or water modes: " << m_air_mode << " and " << m_water_mode << " are unknown!" << std::endl; assert(true==false); }
+        else { std::cout << "Error: air and/or water modes: " << m_air_mode << " and " << m_water_mode << " are unknown!" << std::endl; }
     }
     
     //!< Air and water speeds:
@@ -264,6 +264,11 @@ private:
 
         // if (display) {std::cout << "point: " << pt << std::endl;}
         return totalAirVelocityAppliedToPoint;
+    }
+
+    point_type y_increasing(point_type pt = {0,0}, real_type coeff = -1e-3) {
+        return {0, coeff * m_time_ref};
+        // return {0, -10};
     }
 
 };
@@ -524,6 +529,8 @@ PhysicalData<TPoint>::get_speed(point_type pt, int mode, real_type speed){
         case 5:
             // std::cout << "generation of a vortex storm\n";
             return vortex(pt);
+        case 7:
+            return y_increasing(pt);
         case 0:
             return {0,0};
 

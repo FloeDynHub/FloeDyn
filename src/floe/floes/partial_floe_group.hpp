@@ -51,9 +51,9 @@ public:
     virtual void recover_previous_step_states() override { base_class::recover_previous_step_states(); this->post_load_floe(); };
     
     // fracture !
-    // void apply_fracture_from_max_area(const real_type max_area_for_fracture);//{std::cout<<"test"<<std::endl;}
     void add_floe(geometry_type geometry, std::size_t parent_floe_idx);
     void fracture_biggest_floe();
+    int fracture_floes();
     void melt_floes();
     void update_list_ids_active();//{std::cout<<"test"<<std::endl;}
     
@@ -69,14 +69,18 @@ PartialFloeGroup<TFloe, TFloeList>::update_floe_states(message_type const& msg, 
     for (auto const& iter : msg.states()){
         auto const& s = iter.second;
         auto& floe = this->m_list_floe(iter.first);
+        auto& state = floe.state();
         if (update){
-            floe.set_state({{s[0], s[1]}, s[2], {s[3], s[4]}, s[5], floe.state().trans});
+            floe.set_state({{s[0], s[1]}, s[2], {s[3], s[4]}, s[5], { s[7], s[8] }});
         } else {
-            auto& state = floe.state();
-            state.pos = {s[0], s[1]};
-            state.theta = s[2];
+            // auto& state = floe.state();
             state.speed = {s[3], s[4]};
             state.rot = s[5];
+            if (msg.tag() == io::JobTag::move_job) {
+                state.pos = {s[0], s[1]};
+                state.theta = s[2];
+                state.trans = { s[7], s[8] };
+            }
         }
         floe.reset_impulse(s[6]);
         m_states_origin[iter.first] = msg.mpi_source();
@@ -111,6 +115,45 @@ PartialFloeGroup<TFloe, TFloeList>::fracture_biggest_floe()
         floe.static_floe().attach_mesh_ptr(&floe.get_floe_h().m_static_mesh);
         floe.update();
     }
+}
+
+template <typename TFloe, typename TFloeList>
+int 
+PartialFloeGroup<TFloe, TFloeList>::fracture_floes()
+{
+    int n_fractured = 0;
+    std::map<std::size_t, std::vector<geometry_type>> all_new_geometries;
+    // iter over floes
+    for (std::size_t i = 0; i < base_class::get_floes().size(); ++i){
+        auto& floe = base_class::get_floes()[i];
+        if (floe.is_obstacle()) continue;
+        if (floe.area() < 400) continue;
+        auto new_geometries = base_class::get_floes()[i].fracture_floe_from_collisions();
+        if (new_geometries.size() > 0){
+            std::cout << "Floe " << i << " fractured in " << new_geometries.size() << " parts" << std::endl;
+            all_new_geometries[i] = new_geometries;
+            n_fractured++;
+        }
+    }
+
+    // Add new floes
+    for (auto const& iter : all_new_geometries){
+        for (std::size_t j = 0; j < iter.second.size(); ++j){
+            this->add_floe(iter.second[j], iter.first);
+        }
+    }
+    // Desactivate cracked floe
+    for (auto const& iter : all_new_geometries){
+        base_class::get_floes()[iter.first].state().desactivate();
+    }
+
+    this->update_list_ids_active();
+    
+    for (auto & floe : this->get_floes()) { // TODO why is it needed ?
+        floe.static_floe().attach_mesh_ptr(&floe.get_floe_h().m_static_mesh);
+        floe.update();
+    }
+    return n_fractured;
 }
 
 template <typename TFloe, typename TFloeList>
