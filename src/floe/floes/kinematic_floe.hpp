@@ -164,6 +164,9 @@ public:
 
     void add_contact_impulse(point_type contact_point, point_type impulse, real_type time) const;
 
+    //! Apply impulse at a contact point (used in LCP optimization)
+    void apply_impulse(point_type impulse, point_type contact_point) const;
+
     std::vector<point_type> get_dirichlet_condition(real_type time) const;
 
     real_type min_diameter() const {
@@ -303,6 +306,20 @@ std::vector<typename TStaticFloe::geometry_type>
 KinematicFloe<TStaticFloe,TState>::fracture_floe(){
     // fracture floe (almost arbitrary fracture for now)
     return this->static_floe().fracture_floe();
+}
+
+template < typename TStaticFloe, typename TState >
+void
+KinematicFloe<TStaticFloe,TState>::apply_impulse(point_type impulse, point_type contact_point) const
+{
+    if (this->is_obstacle()) return; // no fracture for obstacles
+    // Apply translational impulse
+    m_state.speed += impulse / mass();
+    
+    // Apply rotational impulse: τ = r × F, where r is the vector from center of mass to contact point
+    point_type r = contact_point - m_state.pos;
+    real_type torque = r[0] * impulse[1] - r[1] * impulse[0]; // Cross product in 2D
+    m_state.rot += torque / moment_cst();
 }
 
 template < typename TStaticFloe, typename TState >

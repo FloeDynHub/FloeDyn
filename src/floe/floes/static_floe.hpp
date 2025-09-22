@@ -167,7 +167,6 @@ public:
                 max_diam = std::max(max_diam, norm2(p - q));
             }
         }
-        std::cout << "max_diam : " << max_diam << std::endl;
         return max_diam;
     }
 

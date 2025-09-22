@@ -76,7 +76,7 @@ DynamicsManager<TExternalForces, TFloeGroup>::move_floe(floe_type& floe, real_ty
         if (m_rand_speed_add) {
             static bool w_advice = true;
             if (w_advice) {
-                std::cout << "Warning: additional random velocities are setted with the norm fixed to: " 
+                std::cout << "Warning: additional random velocities are set with the norm fixed to: " 
                     << m_rand_norm << std::endl;
                     w_advice = false;
             }

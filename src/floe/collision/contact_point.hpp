@@ -132,6 +132,9 @@ struct ContactPoint
         return resp;
     }
 
+    //! Getter for impulse received
+    inline point_type const& get_impulse_received() const { return *m_impulse_received; }
+
     TFloe const* floe1; //!< First floe in contact
     TFloe const* floe2; //!< Second floe in contact
     TFrame       frame; //!< Frame of contact

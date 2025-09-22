@@ -17,7 +17,7 @@
 #include <algorithm>
 #include <chrono> // test perf
 #include <vector>
-
+#include <unordered_map> // for m_subgraph_hash_count
 #include <boost/graph/adjacency_list.hpp>
 
 // saving matrix when lcp solver failed for further analysing
@@ -76,7 +76,7 @@ public:
 
     //! Solve collision represented by a contact graph
     template<typename TContactGraph>
-    int solve_contacts(TContactGraph& contact_graph, real_type time);
+    int solve_contacts(TContactGraph& contact_graph, real_type time, real_type dt);
     //! Get solving success ratio in percent
     double success_ratio(){ return (m_nb_lcp == 0)? 100 : 100 * (double)m_nb_lcp_success/m_nb_lcp; }
 
@@ -91,6 +91,10 @@ private:
     
     double chrono_active_subgraph{0.0}; // test perf
     double max_chrono_active_subgraph{0.0}; // test perf
+    
+    std::unordered_map<std::size_t, int> m_subgraph_hash_count; //!< Map to track subgraph hash occurrences
+    std::unordered_map<std::size_t, std::vector<typename types::point_type>> m_subgraph_hash_impulses;
+    std::unordered_map<std::size_t, real_type> m_subgraph_map_timestep; //!< Map to track subgraph hash to time interval corresponding to the impulses stored
 
     //! Update floes state with LCP solution
     template<typename TContactGraph>
@@ -121,14 +125,21 @@ private:
 
 template<typename T>
 template<typename TContactGraph>
-int LCPManager<T>::solve_contacts(TContactGraph& contact_graph, real_type time)
+int LCPManager<T>::solve_contacts(TContactGraph& contact_graph, real_type time, real_type dt)
 {
 
     auto const subgraphs = collision_subgraphs( contact_graph );
     int LCP_count=0, nb_success=0;
-    int nb_lcp_failed_stats[3]={0,0,0}; 
+    int nb_lcp_failed_stats[3]={0,0,0};
+    int optim_jam_start = 10;
 
-    const std::size_t limit_sup_loop_cnt    = 800;//5000; // from Quentin: 1000
+    // Variable for OPTIMJAM guessed impulse
+    typename types::point_type guessed_contact_impulse;
+
+    // Map to track seen hashes in this call OPTIMJAM
+    std::unordered_set<std::size_t> seen_hashes;
+
+    const std::size_t limit_sup_loop_cnt    = 40000;//5000; // from Quentin: 1000 // matthias : 800
     const std::size_t limit_sup_nb_contact  =  800;//500; // from Quentin:   50
 
     // variables for contact informations:
@@ -136,25 +147,78 @@ int LCPManager<T>::solve_contacts(TContactGraph& contact_graph, real_type time)
         static bool end_recording = false;
     #endif
 
-    // m_solver.nb_solver_run = 0; // test perf
-    // m_solver.chrono_solver = 0; // test perf
-    // m_solver.max_chrono_solver = 0; // test perf
-    // chrono_active_subgraph = 0; // test perf
-    // max_chrono_active_subgraph = 0; // test perf
-    // int nb_active_subgraph_loop = 0;// test
-    // auto t_start = std::chrono::high_resolution_clock::now(); // test perf
     for ( auto& subgraph : subgraphs )
     {
-        //  // Big LCP solving
-        // LCP_count += 1;
-        // bool success;
-        // auto Sol = m_solver.solve( subgraph, success );
-        // mark_solved(subgraph, success);
-        // if (success) nb_success++;
-        // update_floes_state(subgraph, Sol, subgraph);
+        // OPTIMJAM
+        // is there active contact in the subgraph ?
+        bool has_active_contact = false;
+        for (auto e : boost::make_iterator_range(edges(subgraph))) {
+            for (std::size_t i = 0; i < subgraph[e].size(); ++i) {
+                if (subgraph[e][i].is_active()) {
+                    has_active_contact = true;
+                    break;
+                }
+            }
+            if (has_active_contact) break;
+        }
+        if (!has_active_contact) continue; // Ne considérer que les subgraphs avec contacts actifs
+
+        // Collect floe pointers to build a unique hash for the subgraph
+        std::vector<std::uintptr_t> floe_ptrs;
+        for (auto v : boost::make_iterator_range(vertices(subgraph))) {
+            floe_ptrs.push_back(reinterpret_cast<std::uintptr_t>(subgraph[v].floe));
+        }
+        std::sort(floe_ptrs.begin(), floe_ptrs.end());
+
+        // Hash: combine floe addresses and number of contacts
+        std::size_t graph_hash = 0;
+        for (auto ptr : floe_ptrs) {
+            graph_hash ^= ptr + 0x9e3779b9 + (graph_hash << 6) + (graph_hash >> 2);
+        }
+        graph_hash ^= num_contacts(subgraph) + 0x9e3779b9 + (graph_hash << 6) + (graph_hash >> 2);
+
+        seen_hashes.insert(graph_hash);
+
+        // Update map: increment if exists, else set to 1
+        auto it = m_subgraph_hash_count.find(graph_hash);
+        if (it != m_subgraph_hash_count.end()) {
+            it->second += 1;
+        } else {
+            m_subgraph_hash_count[graph_hash] = 1;
+            m_subgraph_map_timestep[graph_hash] = 0;
+            m_subgraph_hash_impulses[graph_hash] = std::vector<typename types::point_type>(
+                num_contacts(subgraph), typename types::point_type{0, 0}
+            );
+        }
+
+        std::cout << "Subgraph hash: " << graph_hash
+              << " | Floe count: " << floe_ptrs.size()
+              << " | Contacts: " << num_contacts(subgraph)
+              << " | Seen count: " << m_subgraph_hash_count[graph_hash]
+              << std::endl;
+        // END OPTIMJAM
+
+        // OPTIMJAM : solve subgraph reapplaying impulses from previous timesteps
+        if (m_subgraph_hash_count[graph_hash] >= optim_jam_start) {
+            std::cout << "OPTIM JAM !" << std::endl;
+            int i = 0;
+            for (auto e : boost::make_iterator_range(edges(subgraph))) {
+                for (std::size_t j = 0; j < subgraph[e].size(); ++j) {
+                    guessed_contact_impulse = 0.8 * dt * m_subgraph_hash_impulses[graph_hash][i] / m_subgraph_map_timestep[graph_hash];
+                    subgraph[e][j].add_impulse_received(guessed_contact_impulse);
+                    // get floe1 and floe 2 from edge and add impulse to them
+                    subgraph[source(e, subgraph)].floe->apply_impulse(-subgraph[e][j].impulse_abs_frame(), subgraph[e][j].frame.center());
+                    subgraph[target(e, subgraph)].floe->apply_impulse(subgraph[e][j].impulse_abs_frame(), subgraph[e][j].frame.center());
+                }
+                ++i;
+            }
+        }
 
         // Active subgraph LCP strategy
         auto asubgraphs = active_subgraphs( subgraph );
+        if (asubgraphs.size() == 0) {
+            std::cout << "OptimJam success ! No active contact in the subgraph." << std::endl;
+        }
         std::size_t loop_cnt    = 0;
         int loop_nb_success     = -1;
         bool active_quad_cut    = 0;
@@ -202,13 +266,7 @@ int LCPManager<T>::solve_contacts(TContactGraph& contact_graph, real_type time)
 
                 mark_changed_parent(graph, subgraph); // indicates which floes have been modified
             }
-            // auto t_start2 = std::chrono::high_resolution_clock::now(); // test perf
             asubgraphs = active_subgraphs( subgraph ); // computes the new relative velocitoies from velocities of modified floes 
-            
-            // auto t_end2 = std::chrono::high_resolution_clock::now(); // test perf
-            // auto call_time = std::chrono::duration<double, std::milli>(t_end2-t_start2).count(); // test perf
-            // chrono_active_subgraph += call_time; // test perf
-            // max_chrono_active_subgraph = std::max(max_chrono_active_subgraph, call_time); // test perf
             nb_success += loop_nb_success;
             ++loop_cnt;
 
@@ -219,9 +277,10 @@ int LCPManager<T>::solve_contacts(TContactGraph& contact_graph, real_type time)
             all_solved = false;
             if (loop_nb_success!=0) {contact_loop_stats[1] = 2;}
             std::cout << "End of the while loop without resolution of all contacts!! nb contact: "<< num_contacts(subgraph) << "\n";
-            // LCP_count += asubgraphs.size();
-
             for ( auto const& graph : asubgraphs ) mark_solved(graph, false);
+        }
+        if (loop_nb_success == 0) {
+            std::cout << "No SUCCESS at all!! nb contact: " << num_contacts(subgraph) << " nb active subgraphs : " << asubgraphs.size() << "\n";
         }
 
         // Mat
@@ -236,12 +295,38 @@ int LCPManager<T>::solve_contacts(TContactGraph& contact_graph, real_type time)
         #endif
         // End saving data on LCP
         // EndMat
+        // OPTIMJAM save impulses for this subgraph if solved and if optimization is active
+        if (true) {
+            // iter over edges and contacts to get impulses
+            size_t i = 0;
+            for (auto e : boost::make_iterator_range(edges(subgraph))) {
+                for (std::size_t j = 0; j < subgraph[e].size(); ++j) {
+                    m_subgraph_hash_impulses[graph_hash][i] += subgraph[e][j].get_impulse_received();
+                    ++i;
+                }
+            }
+            m_subgraph_map_timestep[graph_hash] += dt;
+            // print m_subgraph_hash_impulses for this hash
+            // std::cout << "[";
+            // for (auto const& imp : m_subgraph_hash_impulses[graph_hash]) std::cout << "(" << imp[0] / m_subgraph_map_timestep[graph_hash] << ", " << imp[1] / m_subgraph_map_timestep[graph_hash] << "), ";
+            // std::cout << "]," << std::endl;
+        }
+        // END OPTIMJAM
     }
     update_floes_impulses(contact_graph, time);
     m_nb_lcp += LCP_count;
     m_nb_lcp_success += nb_success;
     for (int i=0;i<3;++i){
         m_nb_lcp_failed_stats[i] += nb_lcp_failed_stats[i];
+    }
+
+    // Remove hashes not seen in this call OPTIMJAM
+    for (auto it = m_subgraph_hash_count.begin(); it != m_subgraph_hash_count.end(); ) {
+        if (seen_hashes.find(it->first) == seen_hashes.end()) {
+            it = m_subgraph_hash_count.erase(it);
+        } else {
+            ++it;
+        }
     }
 
     #ifndef MPIRUN

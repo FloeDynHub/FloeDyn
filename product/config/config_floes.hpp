@@ -9,10 +9,8 @@
 
 #include "floe/floes/partial_floe_group.hpp" // TODO : for crack mode 
 #ifdef MPIRUN
-// #include "floe/floes/partial_floe_group.hpp"
 #include "floe/floes/identifiable_mixin.hpp"
 #endif
-// #include "floe/floes/partial_floe_group.hpp"
 
 namespace ff = floe::floes;
 
