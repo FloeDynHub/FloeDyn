@@ -50,11 +50,17 @@ public :
     bool assembleK();
     bool addDirichlet(std::vector<size_t> gamma_d, std::vector<point_type> values);
     bool addContactDirichlet(std::vector<size_t> gamma_d, std::vector<point_type> values);
+    bool addPhanContact(std::vector<size_t> gamma_d, std::vector<point_type> u_values, std::vector<real_type> m_values, std::vector<real_type> k_values);
+    bool addForce(std::vector<size_t> gamma_d, std::vector<point_type> f_values);
+
+    // bool addPhanContact(std::vector<size_t> gamma_d, std::vector<point_type> values, std::vector<point_type> u_values, std::vector<real_type> m_values, std::vector<real_type> k_values);
     std::vector<size_t> get_surr_nodes(size_t i_node);
     bool addFloe(floe_type * floe);
     bool assembleF();
     bool solve();
     bool performComputation(std::vector<size_t> gamma_d, std::vector<point_type> values);
+    bool performComputationWithPercussionAndForce(std::vector<size_t> gamma_d, std::vector<point_type> f_values, std::vector<point_type> u_values, std::vector<real_type> m_values, std::vector<real_type> k_values);
+
     inline Eigen::SparseMatrix<real_type> get_solution() const {return m_Solution;};
     std::vector<real_type> get_solution_vector() const;
     std::vector<real_type> get_stress_vector() const;
@@ -71,6 +77,12 @@ public :
     inline bool is_disabled(){return !m_enabled;};
     std::string get_impact_definition(){return m_fracture_descriptor.get_database_entry();};
     inline FractureDescriptor<floe_type> const& descriptor() {return m_fracture_descriptor;};
+
+    inline real_type get_E () const {return m_E;};
+    inline real_type get_nu () const {return m_nu;};
+    inline real_type get_tenacite () const {return m_tenacite;};
+    inline real_type get_thickness () const {return m_thickness;};
+    inline real_type get_area () const {return m_area;};
 
 private :
     floe_type * m_floe;
@@ -103,15 +115,20 @@ private :
     real_type m_thickness;
     std::stringstream m_impact_definition;
     FractureDescriptor<floe_type> m_fracture_descriptor;
+    real_type m_area;
+    real_type m_collision_pressure_threshold;// threshold for the collision pressure, below which the contact is not treated as a collision but as a force. Expressed in fraction of the minimum caliper diameter
 };
 
 template <typename TFloe>
 FemProblem<TFloe>::FemProblem(floe_type * floe):
     m_floe{floe},
-    m_E{9000000000.0}, // ice, from https://tc.copernicus.org/articles/17/3883/2023/tc-17-3883-2023.pdf
+    // m_E{9000000000.0}, // ice, from https://tc.copernicus.org/articles/17/3883/2023/tc-17-3883-2023.pdf
+    m_E{8950000000}, // ice, from Toai
     // m_E{10000000000.0}, // for verification purposes, to compare with analytical solution from mecagora
-    m_nu{0.3}, // from https://tc.copernicus.org/articles/17/3883/2023/tc-17-3883-2023.pdf
+    // m_nu{0.3}, // from https://tc.copernicus.org/articles/17/3883/2023/tc-17-3883-2023.pdf
+    m_nu{0.295}, // from Toai
     m_tenacite{10}, // Dempsey, J. P.: The fracture toughness of ice, in: Ice-structure interaction, Springer, 109–145, ISBN 978-3-642-84102-6, https://doi.org/10.1007/978-3-642-84100-2_8
+    // m_tenacite{100000}, // pour que ça casse jamais jamais
     // m_tenacite{0.5}, // out of mon chapeau pour que ça casse dans tous les sens
     m_nE{m_floe->mesh().get_n_cells()},
     m_nN{m_floe->mesh().get_n_nodes()},
@@ -127,7 +144,9 @@ FemProblem<TFloe>::FemProblem(floe_type * floe):
     m_e{0},
     m_enabled{true},
     m_thickness{1},
-    m_impact_definition{std::stringstream("")}
+    m_impact_definition{std::stringstream("")},
+    m_area{1.0}, 
+    m_collision_pressure_threshold{0.000001} 
 {}
 
 
@@ -150,6 +169,7 @@ bool FemProblem<TFloe>::addFloe(floe_type * floe)
     m_enabled = true;
     m_thickness = m_floe->static_floe().thickness();
     m_fracture_descriptor.prepare_entry_floe(floe);
+    m_area = m_floe->static_floe().area();
     return true;
 }
 template < typename TFloe>
@@ -328,7 +348,165 @@ FemProblem<TFloe>::addContactDirichlet(std::vector<size_t> gamma_d, std::vector<
         // * enregistrer une fois pour toutes pour chaque noeud une liste des plus proches voisins
         // * combien de voisin pour un contact ? faut voir sur combien de points on l'étale. à voir avec la vraie définition de la CL dirichlet.
         // * en effet, la recherche de voisins doit aller vite car elle est faite à chaque nouveau contact.
-        m_fracture_descriptor.prepare_entry_impact(iDir, values[iDir]);
+        m_fracture_descriptor.prepare_entry_impact(iDir, values[iDir], 0);
+    }
+    return true;
+};
+
+/**
+ * @brief constructs a Dirichlet BC that 'looks like' an impact : 3 consecutive nodes with amplitudes {values/2, values, values/2} respectively.
+ *
+ * @tparam TFloe
+ * @param std::vector<size_t> gamma_d : list of nodes on which there is an impact
+ * @param std::vector<point_type> values : 'amplitudes' of impact
+ * @return bool : true if everything went fine
+ */
+template < typename TFloe>
+bool
+FemProblem<TFloe>::addPhanContact(std::vector<size_t> gamma_d, std::vector<point_type> u_values, std::vector<real_type> m_values, std::vector<real_type> k_values)
+{
+    // gamma_d : list of nodes on which there is an impact
+    // u_values : velocities of impacts 
+    // m_values : masses of the impacting floes 
+    // k_values : stiffness of the impacting floes
+
+    // std::cout << "addPhanContact" << std::endl;
+    // std::cout << "m = " << m_values[0] << std::endl;
+    // std::cout << "k = " << k_values[0] << std::endl;
+    // std::cout << "u = " << u_values[0].x << " ; " << u_values[0].y << std::endl;
+    if (!m_enabled)
+        return false;
+    if (m_largest_value == 0)
+    {
+        std::cerr << "largest_value has not been initialized" << std::endl;
+        return false; // this should have been set to a larger value in the constructor
+    }
+    size_t n_dirichlet(gamma_d.size());
+    // if (values.size() != n_dirichlet)
+    // {
+    //     std::cerr << "Incoherent input" << std::endl;
+    //     return false;
+    // }
+    m_fracture_descriptor.clear_entry_impact();
+
+    real_type very_big_stuff=10000*m_largest_value;
+    m_FTriplet.clear();
+    m_DirichletTriplet.clear();
+
+    m_impact_definition.clear();
+    m_impact_definition << " " << n_dirichlet << " impacts: ";
+    real_type c(0.049); // Constant according to Toais's preliminary results. We expected it to vary with the floe size but neither speed or speed. 
+    real_type min_dirichlet_value_threshold = 0.0001; // 0.001 ? Really usefull when the exponential is smaller than this value, the displacement is truncated to 0 : the BC is imposed only on the nodes closest to the impact
+    real_type max_displacement_threshold = 0.03; // 0.03 according to Toai. when the displacement is larger than this fraction of the min caliper diameter, its value is truncated in order to prevent from having a displacement larger than the floe size. This threshold is chosen to be such that a fracture should happen before the floe is displaced by more than this value.
+    // real_type max_displacement_threshold = 0.0001; // to prevent from fracturing too soon. 
+    for (size_t i_dir = 0; i_dir < n_dirichlet ; ++i_dir)
+    {
+        real_type u_norm = norm2(u_values[i_dir]);
+        real_type u_d_inf = sqrt(m_values[i_dir]/k_values[i_dir])*u_norm;
+        real_type theta_impact(0);
+        real_type min_caliper_diameter = m_floe->get_min_caliper_diameter();
+        // std::cout << "min_caliper_diameter = " << min_caliper_diameter << "; u_d_inf = " << u_d_inf << std::endl;
+
+        if (u_d_inf > max_displacement_threshold*min_caliper_diameter)
+        {
+            // std::cout << "u_d_inf = " << u_d_inf << " has been truncated to " << max_displacement_threshold*min_caliper_diameter << std::endl;
+            u_d_inf = max_displacement_threshold*min_caliper_diameter;
+        }
+        if (u_d_inf < m_collision_pressure_threshold*m_floe->get_min_caliper_diameter())
+        {
+            std::cout << "u_d_inf = " << u_d_inf << " is smaller than the collision pressure threshold " << m_collision_pressure_threshold*m_floe->get_min_caliper_diameter() << " , so we won't treat it as a contact" << std::endl;
+        }
+        if (u_norm > 1e-12)
+        {
+            theta_impact = acos(u_values[i_dir].x/u_norm);
+        }
+        if (u_values[i_dir].y < 0)
+        {
+            theta_impact = -theta_impact;
+        }
+        size_t n_impacted_nodes = 0;
+        
+        for (size_t iNode = 0; iNode < m_nN; ++iNode)
+        {
+            real_type r = sqrt(pow(m_coordinates[iNode].x - m_coordinates[gamma_d[i_dir]].x, 2) + pow(m_coordinates[iNode].y - m_coordinates[gamma_d[i_dir]].y, 2));
+            real_type u_b_x = 0;
+            real_type u_b_y = 0;
+            real_type expo = exp(-c*r);
+            if (expo > min_dirichlet_value_threshold)
+            {
+                u_b_x = u_d_inf*expo*cos(theta_impact);
+                u_b_y = u_d_inf*expo*sin(theta_impact);
+                n_impacted_nodes++;
+            }
+            if (u_d_inf*expo > m_collision_pressure_threshold*m_floe->get_min_caliper_diameter())
+            {
+                m_FTriplet.push_back(Eigen::Triplet<real_type>(iNode*2, 0, very_big_stuff*u_b_x));
+                m_FTriplet.push_back(Eigen::Triplet<real_type>(iNode*2+1, 0, very_big_stuff*u_b_y));
+                m_DirichletTriplet.push_back(Eigen::Triplet<real_type>(iNode*2, iNode*2, very_big_stuff));
+                m_DirichletTriplet.push_back(Eigen::Triplet<real_type>(iNode*2+1, iNode*2+1, very_big_stuff));
+            }
+        }
+
+        m_fracture_descriptor.prepare_entry_impact(i_dir, u_values[i_dir], m_values[i_dir]);
+    }
+    return true;
+};
+
+/**
+ * @brief adds a force 
+ *
+ * @tparam TFloe
+ * @param std::vector<size_t> gamma_d : list of nodes on which there is an impact
+ * @param std::vector<point_type> values : 'amplitudes' of impact
+ * @return bool : true if everything went fine
+ */
+template < typename TFloe>
+bool
+FemProblem<TFloe>::addForce(std::vector<size_t> gamma_d, std::vector<point_type> f_values)
+{
+    // gamma_d : list of nodes on which there is an impact
+    // u_values : velocities of impacts 
+    // f_values : force, averaged on the last time step  
+
+    if (gamma_d.size() != f_values.size())
+    {
+        std::cerr << "In FemProblem::addForce, incoherent input sizes. expected " << gamma_d.size() << " for all inputs, but got " << f_values.size() << std::endl;
+        return false;
+    }
+    // std::cout << "Adding force" << std::endl;
+    // for (size_t i = 0; i < gamma_d.size(); ++i)
+    // {
+    //     std::cout << "gamma_d[" << i << "] = " << gamma_d[i] << "; f_values[" << i << "] = (" << f_values[i].x << ", " << f_values[i].y << ")" << std::endl;
+    // }
+    // std::cout << "-> u = " << u_values[0].x << " ; " << u_values[0].y << std::endl;
+    // std::cout << "-> f = " << f_values[0].x << " ; " << f_values[0].y << std::endl;
+    if (!m_enabled)
+        return false;
+    if (m_largest_value == 0)
+    {
+        std::cerr << "largest_value has not been initialized" << std::endl;
+        return false; // this should have been set to a larger value in the constructor
+    }
+    size_t n_dirichlet(gamma_d.size());
+
+    for (size_t i_dir = 0; i_dir < n_dirichlet ; ++i_dir)
+    {
+        size_t impact_node(0);
+        real_type min_distance(10000);
+        for (size_t iNode = 0; iNode < m_nN; ++iNode)
+        {
+            real_type r = sqrt(pow(m_coordinates[iNode].x - m_coordinates[gamma_d[i_dir]].x, 2) + pow(m_coordinates[iNode].y - m_coordinates[gamma_d[i_dir]].y, 2));
+            if (min_distance > r)
+            {
+                min_distance = r;
+                impact_node = iNode;
+            }
+        }
+
+        m_FTriplet.push_back(Eigen::Triplet<real_type>(impact_node*2, 0, f_values[i_dir].x));
+        m_FTriplet.push_back(Eigen::Triplet<real_type>(impact_node*2+1, 0, f_values[i_dir].y));
+        m_fracture_descriptor.prepare_entry_force(i_dir, f_values[i_dir]);
+        
     }
     return true;
 };
@@ -552,6 +730,7 @@ template < typename TFloe>
 bool
 FemProblem<TFloe>::performComputation(std::vector<size_t> gamma_d, std::vector<point_type> values)
 {
+    std::cout << "In FemProblem::performComputation" << std::endl;
     if (!m_enabled)
         return false;
     if (m_floe->total_received_impulse() == m_last_total_impulse)
@@ -587,6 +766,70 @@ FemProblem<TFloe>::performComputation(std::vector<size_t> gamma_d, std::vector<p
     {
         std::cout << "Could not compute elastic energies " << std::endl;
         std::cerr << "In FemProblem::performComputation, could not compute elastic energies " << std::endl;
+        return false;
+    }
+
+    std::vector<size_t> elems;
+    for (size_t i = 0; i < m_nE; i++)
+        elems.push_back(i);
+    m_e = compute_elastic_energy(elems);
+
+    return true;
+};
+
+/**
+ * @brief performs all computation steps if required : setting new Phan dirichlet condition, solve, compute stress, compute elementary energy, looks for fracture.
+ *
+ * @tparam TFloe
+ * @return bool, true if everything went fine
+ */
+template < typename TFloe>
+bool
+FemProblem<TFloe>::performComputationWithPercussionAndForce(std::vector<size_t> gamma_d, std::vector<point_type> f_values, std::vector<point_type> u_values, std::vector<real_type> m_values, std::vector<real_type> k_values)
+{
+    if (!m_enabled)
+        return false;
+    if (m_floe->total_received_impulse() == m_last_total_impulse)
+    {
+        // No need to solve, no evolution since last time
+        return false;
+    }
+
+    if (!addPhanContact(gamma_d, u_values, m_values, k_values))
+    {
+        std::cout << "Could not build Phan dirichlet condition" << std::endl;
+        std::cerr << "In FemProblem::performComputationWithPercussionAndForce, could not build dirichlet condition" << std::endl;
+        return false;
+    }
+    // WHEREAMI
+    if (!addForce(gamma_d, f_values))
+    {
+        std::cout << "Could not add contact forces" << std::endl;
+        std::cerr << "In FemProblem::performComputationWithPercussionAndForce, could not add forces" << std::endl;
+        return false;
+    }
+    // WHEREAMI
+
+    if (!solve())
+    {
+        std::cout << "Could not solve " << std::endl;
+        std::cerr << "In FemProblem::performComputationWithPercussionAndForce, could not solve " << std::endl;
+        return false;
+    }
+
+    m_stress_is_computed = compute_stress_vector();
+    if (!m_stress_is_computed)
+    {
+        std::cout << "Could not compute stress " << std::endl;
+        std::cerr << "In FemProblem::performComputationWithPercussionAndForce, could not compute stress " << std::endl;
+        return false;
+    }
+
+    m_energies_are_computed = compute_elementary_energies();
+    if (!m_energies_are_computed)
+    {
+        std::cout << "Could not compute elastic energies " << std::endl;
+        std::cerr << "In FemProblem::performComputationWithPercussionAndForce, could not compute elastic energies " << std::endl;
         return false;
     }
 
@@ -839,7 +1082,7 @@ FemProblem<TFloe>::energy_release_by_breaking_along(point_type a, point_type b)
         if (elem_sides[i_elem] < 0) up++;
         else if (elem_sides[i_elem] > 0) down++;
     }
-    // if ((up ==0)||(down == 0)){return -1;}
+    if ((up <3)||(down <3)){return -1;} // to ensure that both sides of the fracture are large enough to be considered as a fracture. To prevent from just peeling a tiny piece off. 
     if ((up + down == m_nE)){return -1;}
 
     // building nodes_on_the_fract and elem_outside_the_fract

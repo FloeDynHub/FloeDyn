@@ -259,16 +259,25 @@ template<typename T>
 template<typename TContactGraph>
 void LCPManager<T>::update_floes_state(TContactGraph& graph, const value_vector Sol, real_type time){
 
+    for ( auto const& edge : make_iterator_range( edges( graph ) ) )
+    {
+        for ( std::size_t i = 0; i < graph[edge].size(); ++i ) // iter over contacts
+        {
+            // Add impact masses and speeds to corresponding floes
+            graph[source(edge, graph)].floe->add_contact_mass_and_speed(graph[edge][i].frame.center(), graph[target(edge, graph)].floe->mass(), graph[target(edge, graph)].floe->get_state().speed, time);
+            graph[target(edge, graph)].floe->add_contact_mass_and_speed(graph[edge][i].frame.center(), graph[source(edge, graph)].floe->mass(), graph[source(edge, graph)].floe->get_state().speed, time);
+        }
+    }
     for ( auto const v : boost::make_iterator_range( vertices(graph) ) )
     {
         graph[v].floe->state().speed = {Sol(3*v), Sol(3*v + 1)}; // fv_test
         graph[v].floe->state().rot = Sol(3*v + 2); // fv_test
     }
     // filling another variable containing only the impulse received during the last impach time step 
-    // for ( auto const v : boost::make_iterator_range( vertices(graph) ) )
-    //     graph[v].floe->reset_current_impulse(); // fv_test    }
     for ( auto const v : boost::make_iterator_range( vertices(graph) ) )
-        graph[v].floe->add_current_impulse(Sol(v)); // fv_test    }
+    {
+        graph[v].floe->add_current_impulse(Sol(3*v)); // fv_test    }
+    }
 }
 
 //! Update floes impulses from contact graph

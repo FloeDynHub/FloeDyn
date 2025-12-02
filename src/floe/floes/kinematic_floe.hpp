@@ -78,11 +78,10 @@ public:
 
 
     KinematicFloe() : m_geometry{nullptr}, m_floe{nullptr}, m_state{ {0,0}, 0, {0,0}, 0, {0,0}, true},
-                      m_obstacle{false}, m_floe_h{}, m_total_impulse_received{0}, m_fem_problem{this}, m_fem_problem_is_set{false} {}
+                      m_obstacle{false}, m_floe_h{}, m_total_impulse_received{0}, m_fem_problem{this}, m_fem_problem_is_set{false}, m_min_caliper_diameter{0}, m_max_caliper_diameter{0}, m_mean_caliper_diameter{0} {}
 
     KinematicFloe(static_floe_type new_static_floe) : m_geometry{nullptr}, m_floe{new_static_floe}, m_state{ {0,0}, 0, {0,0}, 0, {0,0}, true},
-                      m_obstacle{false}, m_floe_h{}, m_total_impulse_received{0}, m_fem_problem_is_set{false}
-    {}
+                      m_obstacle{false}, m_floe_h{}, m_total_impulse_received{0}, m_fem_problem_is_set{false}, m_min_caliper_diameter{0}, m_max_caliper_diameter{0}, m_mean_caliper_diameter{0} {}
 
     //! Deleted copy constructor
     KinematicFloe( KinematicFloe<TStaticFloe,TState> const& ) = delete;
@@ -182,7 +181,7 @@ public:
     void reset_detailed_impulse() const { m_detailed_impulse_received.clear(); }
     std::vector<geometry_type> fracture_floe();
     std::vector<geometry_type> fracture_floe_from_collisions();
-    std::vector<geometry_type> fracture_floe_from_collisions_fem(bool use_predictor, fem::FracturePredictor<KinematicFloe> const &predictor);
+    std::vector<geometry_type> fracture_floe_from_collisions_fem(bool use_predictor, fem::FracturePredictor<KinematicFloe> const &predictor, real_type time_step = 1.0);
 
     void update_after_fracture(const state_type init_state,const bool init_obstacle_m,const real_type init_total_impulse_received, point_type mass_center_floe_init);
 
@@ -195,7 +194,7 @@ public:
 
     bool set_fem_problem();
     bool prepare_elasticity();
-    bool solve_elasticity();
+    bool solve_elasticity(real_type time_step);
     inline std::vector<real_type> get_fem_solution() const {return m_fem_problem.get_solution_vector();};
     // inline std::vector<real_type> get_fem_solution() {return m_fem_problem.get_solution_vector();};
     // inline std::vector<std::vector<real_type>> get_fem_stress() const {return m_fem_problem.get_stress_vector();};
@@ -205,6 +204,7 @@ public:
     }
 
     void add_contact_impulse(point_type contact_point, point_type impulse, real_type time) const;
+    void add_contact_mass_and_speed(point_type contact_point, real_type mass, point_type other_speed, real_type time) const;
 
     std::vector<point_type> get_dirichlet_condition(real_type time) const;
 
@@ -218,6 +218,11 @@ public:
         m_fem_problem_is_set = false;
         return true;
     }
+    real_type effective_stiffness(real_type E, real_type nu, real_type area) const;
+    real_type get_min_caliper_diameter();
+    real_type get_mean_caliper_diameter();
+    real_type get_max_caliper_diameter();
+    bool compute_caliper_diameters();
 
 private:
 
@@ -240,6 +245,11 @@ private:
     mutable std::map<real_type, std::vector<point_type>> m_detailed_impulse_received;
     mutable std::vector<point_type> m_last_impulses;
     mutable std::vector<point_type> m_dirichlet_condition;
+    mutable std::map<size_t, std::vector<real_type> > m_last_collision_data; // to be reset at each time step, the key corresponds to the floe id, the vector contains the mass and relative speed 
+    mutable real_type m_last_collision_time;
+    real_type m_min_caliper_diameter;
+    real_type m_mean_caliper_diameter;
+    real_type m_max_caliper_diameter;
 };
 
 template < typename TStaticFloe, typename TState >
@@ -313,6 +323,68 @@ void KinematicFloe<TStaticFloe,TState>::add_contact_impulse(point_type contact_p
         }
     }
     m_last_impulses[closest_point] += impulse;
+}
+
+template < typename TStaticFloe, typename TState >
+void KinematicFloe<TStaticFloe,TState>::add_contact_mass_and_speed(point_type contact_point, real_type mass, point_type other_speed, real_type time) const {
+    // round time to 1e-2
+    real_type t = std::round(time * 100) / 100;
+    if (m_last_collision_time == 0 || t - m_last_collision_time > 1e-2) {
+        m_last_collision_data.clear();
+        m_last_collision_time = t;
+    }
+    // find closest and farthest boundary point to contact_point, to determine CL location and normal
+    std::size_t closest_point = 0;
+    std::size_t farthest_point = 0;
+    real_type min_dist = norm2(contact_point - this->geometry().outer()[0]);
+    real_type max_dist = 0;
+    auto coordinates = this->mesh().points();
+    point_type barycenter = {0, 0};
+    for (std::size_t i = 1; i < coordinates.size(); ++i) {
+        real_type dist = norm2(contact_point - coordinates[i]);
+        if (dist < min_dist) {
+            min_dist = dist;
+            closest_point = i;
+        }
+        if (dist > max_dist) {
+            max_dist = dist;
+            farthest_point = i;
+        }
+        barycenter += coordinates[i];
+    }
+    point_type relative_speed = other_speed - this->state().speed;
+    barycenter /= coordinates.size();
+    point_type outward_pointing_normal = coordinates[closest_point] - barycenter;
+    outward_pointing_normal = outward_pointing_normal / norm2(outward_pointing_normal);
+
+    // other way of calculating outward pointing normal. Gives worse results. 
+    // point_type left_node;
+    // if (closest_point == 0) {
+    //     left_node = coordinates.back();
+    // } else {
+    //     left_node = coordinates[closest_point - 1];
+    // }
+    // point_type right_node;
+    // if (closest_point == coordinates.size() - 1) {
+    //     right_node = coordinates[0];
+    // } else {
+    //     right_node = coordinates[closest_point + 1];
+    // }
+    // point_type tangent_vec = right_node - left_node;
+    // point_type outward_pointing_normal_v2 = {tangent_vec.y, -tangent_vec.x}; 
+    // outward_pointing_normal_v2 = outward_pointing_normal_v2 / norm2(outward_pointing_normal_v2);
+    
+    
+    
+    // Making sure the relative speed is inward pointing
+    real_type dot_product = relative_speed.x * outward_pointing_normal.x + relative_speed.y * outward_pointing_normal.y;
+    if (dot_product > 0) {
+        relative_speed.x = -relative_speed.x;
+        relative_speed.y = -relative_speed.y;
+    }
+    
+    
+    m_last_collision_data[closest_point] = {mass, relative_speed.x, relative_speed.y};
 }
 
 template < typename TStaticFloe, typename TState >
@@ -407,7 +479,7 @@ KinematicFloe<TStaticFloe,TState>::fracture_floe_from_collisions(){
 template < typename TStaticFloe, typename TState >
 std::vector<typename TStaticFloe::geometry_type>
 // KinematicFloe<TStaticFloe,TState>::fracture_floe_from_collisions_fem(bool use_predictor, FracturePredictor<KinematicFloe> const &predictor){
-KinematicFloe<TStaticFloe,TState>::fracture_floe_from_collisions_fem(bool use_predictor, fem::FracturePredictor<KinematicFloe> const &predictor){
+KinematicFloe<TStaticFloe,TState>::fracture_floe_from_collisions_fem(bool use_predictor, fem::FracturePredictor<KinematicFloe> const &predictor, real_type time_step){
     // 0 - obstacles and blocks that did not collide won't break. Floes without meshes are not considered either.
     if (this->is_obstacle() || m_total_current_impulse_received == 0) return {};
     if (!m_floe->has_mesh()) {WHEREAMI return {};}
@@ -432,7 +504,7 @@ KinematicFloe<TStaticFloe,TState>::fracture_floe_from_collisions_fem(bool use_pr
         return {};
     }
     // 3 - resolution
-    if (!solve_elasticity())
+    if (!solve_elasticity(time_step))
     {
         std::cout << "FEM resolution has failed." << std::endl;
         std::cerr << "FEM resolution has failed." << std::endl;
@@ -470,7 +542,7 @@ KinematicFloe<TStaticFloe,TState>::fracture_floe_from_collisions_fem(bool use_pr
             }
         }
 
-        bool print_summary(false);// enable this only for database building: the features of each impact sample are written in the logs
+        bool print_summary(true);// enable this only for database building and piml training: the features of each impact sample are written in the logs
         if (energy > 0)
         {
             std::cout << std::endl << "Breaking along (" << best_a.x << ";" << best_a.y << ")" << " -- (" << best_b.x << ";" << best_b.y << ")" << std::endl;
@@ -525,7 +597,7 @@ KinematicFloe<TStaticFloe,TState>::prepare_elasticity()
 
 template < typename TStaticFloe, typename TState >
 bool
-KinematicFloe<TStaticFloe,TState>::solve_elasticity()
+KinematicFloe<TStaticFloe,TState>::solve_elasticity(real_type time_step)
 {
     if (!m_fem_problem_is_set){WHEREAMI return false;}
 
@@ -573,30 +645,176 @@ KinematicFloe<TStaticFloe,TState>::solve_elasticity()
     {
         std::vector<size_t> dirichletPoints = {};
         std::vector<point_type> dirichletValues = {};
-        // ça, c'est du gros bluff en attendant une belle expression pour la CL de contact
-        real_type fact_arbitraire(1E-9); // permet de conserver l'ordre de grandeur dans le cas test du bloc circulaire de r = 100m, Ecinétique avant le choc ~ Epotentielle.
+        std::vector<point_type> fValues = {};
+        std::vector<real_type> mValues = {};
+        std::vector<real_type> kValues = {};
+        std::vector<point_type> uValues = {};
+        std::vector<size_t> node_indexes = {};
+        // ça, c'est du bluff en attendant une belle expression pour la CL de contact
+        // real_type fact_arbitraire(1E-9); // permet de conserver l'ordre de grandeur dans le cas test du bloc circulaire de r = 100m, Ecinétique avant le choc ~ Epotentielle.
         size_t nb_points = this->mesh().points().size();
-        for (size_t iPoint = 0; iPoint < m_last_impulses.size(); iPoint++)
+        
+        if (m_last_collision_data.size() > 0)
         {
-            if (norm2(m_last_impulses[iPoint]) > 0)
+            for (auto it = m_last_collision_data.begin(); it != m_last_collision_data.end(); ++it)
             {
-                dirichletValues.push_back(m_last_impulses[iPoint]*fact_arbitraire);
-                dirichletPoints.push_back(iPoint);
+                auto data = it->second;
+                auto index = it->first;
+                real_type mass = data[0];
+                point_type relative_speed = {data[1], data[2]};
+                node_indexes.push_back(index);
+                fValues.push_back(m_last_impulses[index] / time_step);
+                uValues.push_back(relative_speed);
+                mValues.push_back(mass);
+                kValues.push_back(effective_stiffness(m_fem_problem.get_E(), m_fem_problem.get_nu(), m_fem_problem.get_area()*m_floe->thickness()));
+            }
+            // std::cout << m_last_collision_data.size() << " contact points ; ";
+            // m_fem_problem.performComputationWithPercussionAndForce(node_indexes, fValues, uValues, mValues, kValues);
+            try {
+                // std::cout << "Solving FEM with " << node_indexes.size() << " contact points." << std::endl;
+                // std::cout << "contact points : " ;
+                // for (const auto& idx : node_indexes) {
+                //     auto pt = this->mesh().points()[idx];
+                //     std::cout << "(" << pt.x << "," << pt.y << ") ";
+                // } 
+                // std::cout << std::endl;
+                // std::cout << "Forces applied at contact points: ";
+                // for (const auto& f : fValues) {
+                //     std::cout << "(" << f.x << "," << f.y << ") ";
+                // }
+                // std::cout << std::endl;
+                // std::cout << "U, m, k values at contact points: ";
+                // for (size_t i = 0; i < uValues.size(); ++i) {
+                //     std::cout << "U:(" << uValues[i].x << "," << uValues[i].y << "), ";
+                //     std::cout << "m:" << mValues[i] << ", ";
+                //     std::cout << "k:" << kValues[i] << " ; ";
+                // }
+                // std::cout << std::endl;
+                m_fem_problem.performComputationWithPercussionAndForce(node_indexes, fValues, uValues, mValues, kValues);
+                // m_fem_problem.performComputationPhanBC(node_indexes, dirichletValues, uValues, mValues, kValues);
+            } catch (std::exception& e) {
+                std::cerr << "Exception caught during FEM computation with percussion and force: " << e.what() << std::endl;
+                return false;
             }
         }
         // resetting before next time step
         m_last_impulses.clear();
         m_last_impulses.resize(nb_points);
-        if (dirichletPoints.size() > 0)
-        {
-            // std::cout << "Performing resolution with " << dirichletPoints.size() << " contact points" << std::endl;
-            m_fem_problem.performComputation(dirichletPoints, dirichletValues);
-        }
     }
 
     return true;
 }
 
+template < typename TStaticFloe, typename TState >
+typename KinematicFloe<TStaticFloe,TState>::real_type
+KinematicFloe<TStaticFloe,TState>::effective_stiffness(real_type E, real_type nu, real_type volume) const
+{
+    // E : Young's modulus
+    // nu : Poisson's ratio
+    // volume : volume of the floe
+
+    real_type lambda = E*nu/((1+nu)*(1-2*nu)); // https://fr.wikipedia.org/wiki/Coefficients_de_Lam%C3%A9
+    real_type mu = E/(2*(1+nu));
+    
+    real_type a = 32*volume/(9*M_PI*M_PI);
+    real_type b = 3*volume/4;
+    real_type c = 32*volume/(9*M_PI*M_PI);
+    real_type d = -3*volume/4;
+    real_type detA = a*d-b*c;
+    real_type k = 1/detA*(d*lambda-b*mu);
+    real_type g = 1/detA*(-c*lambda+a*mu);
+    real_type K = 25*k; // cf results from Toai, rapport_PHAN-12 
+    // std::cout << "(a,b,c,d) = (" << a << "," << b << "," << c << "," << d << ")" << std::endl;
+    // std::cout << "detA = " << detA << std::endl;
+    // std::cout << "lambda = " << lambda << std::endl;
+    // std::cout << "mu = " << mu << std::endl;
+    // std::cout << "K_i = " << k << std::endl;
+    // std::cout << "G_i = " << g << std::endl;
+    // std::cout << "Effective stiffness : Keff = " << K << std::endl;
+    return K;
+}
+
+template < typename TStaticFloe, typename TState >
+typename KinematicFloe<TStaticFloe,TState>::real_type
+KinematicFloe<TStaticFloe,TState>::get_min_caliper_diameter()
+{
+    if (m_min_caliper_diameter == 0) {
+        compute_caliper_diameters();
+    }
+    return m_min_caliper_diameter;
+}
+
+template < typename TStaticFloe, typename TState >
+typename KinematicFloe<TStaticFloe,TState>::real_type
+KinematicFloe<TStaticFloe,TState>::get_max_caliper_diameter()
+{
+    if (m_max_caliper_diameter == 0) {
+        compute_caliper_diameters();
+    }
+    return m_max_caliper_diameter;
+}
+
+template < typename TStaticFloe, typename TState >
+typename KinematicFloe<TStaticFloe,TState>::real_type
+KinematicFloe<TStaticFloe,TState>::get_mean_caliper_diameter()
+{
+    if (m_mean_caliper_diameter == 0) {
+        compute_caliper_diameters();
+    }
+    return m_mean_caliper_diameter;
+}
+
+
+template < typename TStaticFloe, typename TState >
+bool
+KinematicFloe<TStaticFloe,TState>::compute_caliper_diameters()
+{
+    size_t n_angles = 100; // Number of angles to consider for the caliper diameter
+    if (!has_geometry()) {
+        m_min_caliper_diameter = 0;
+        m_mean_caliper_diameter = 0;
+        m_max_caliper_diameter = 0;
+        return true;
+    }
+    real_type mincd_x(0);
+    real_type mincd_y(0);
+    real_type maxcd_x(0);
+    real_type maxcd_y(0);
+    real_type mincd = std::numeric_limits<real_type>::max();
+    real_type maxcd = 0;
+    real_type diameter_sum(0);
+    
+    for (real_type angle = 0; angle < M_PI; angle += M_PI / n_angles) {
+        std::vector<real_type> rotated_x;
+        for (const auto& pt : m_geometry->outer()) {
+            real_type x = pt.x * std::cos(angle * M_PI) - pt.y * std::sin(angle * M_PI);
+            rotated_x.push_back(x);
+        }
+        real_type min_x = std::numeric_limits<real_type>::max();
+        real_type max_x = 0;
+        for (const auto& x : rotated_x) {
+            if (x < min_x) min_x = x;
+            if (x > max_x) max_x = x;
+        }
+        real_type diameter = max_x - min_x;
+        diameter_sum += diameter;
+
+        if (diameter > maxcd) {
+            maxcd = diameter;
+            maxcd_x = -diameter * std::cos(angle);
+            maxcd_y = diameter * std::sin(angle);
+        }
+        if (diameter < mincd) {
+            mincd = diameter;
+            mincd_x = -diameter * std::cos(angle);
+            mincd_y = diameter * std::sin(angle);
+        }
+    }
+    m_min_caliper_diameter = std::sqrt(mincd_x * mincd_x + mincd_y * mincd_y);
+    m_max_caliper_diameter = std::sqrt(maxcd_x * maxcd_x + maxcd_y * maxcd_y);
+    m_mean_caliper_diameter = diameter_sum / n_angles;
+    return true;
+}
 
 
 }} // namespace floe::floes
