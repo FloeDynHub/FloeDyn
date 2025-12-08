@@ -40,9 +40,9 @@ DynamicsManager<TExternalForces, TFloeGroup>::move_floes(floe_group_type& floe_g
     
     #pragma omp parallel for
     for (std::size_t i=0; i < floe_group.get_floes().size(); ++i){
-        std::cout << "Moving floe " << i << std::endl;
+        // std::cout << "Moving floe " << i << std::endl;
         this->move_floe(floe_group.get_floes()[i], delta_t, t, mode_eight, i==0);
-        WHEREAMI
+        // WHEREAMI
     }
 
     return this->update_ocean(floe_group, delta_t);
@@ -71,7 +71,7 @@ DynamicsManager<TExternalForces, TFloeGroup>::move_floe(floe_type& floe, real_ty
             real_type fy = m_external_forces.get_physical_data().get_water_speed();
             real_type coeffx(1);
             real_type coeffy(1);
-            real_type T(1e6);
+            real_type T(1e5); // Time constant for the drag force 1e6 for the shear test ? 1e5 for the channel ? 
             // to create an oscillation
             // real_type omega = 2*2*3.1415926/86400; 
             // if (t > 600000)  
@@ -80,6 +80,7 @@ DynamicsManager<TExternalForces, TFloeGroup>::move_floe(floe_type& floe, real_ty
             coeffx = fx*(1-exp(-t/T));
             coeffy = fy*(1-exp(-t/T));
             drag_force = point_type({fx*coeffx, fy*coeffy});
+            std::cout << "Mode 8, first floe drag force " << drag_force << std::endl;
         }
        
         new_state.speed += ( delta_t / floe.mass() ) * drag_force
@@ -119,7 +120,7 @@ DynamicsManager<TExternalForces, TFloeGroup>::move_floe(floe_type& floe, real_ty
     //     std::cout << "Mode 8, first floe new state rot " << new_state.rot << std::endl;
         // new_state.speed = {m_external_forces.get_physical_data().get_air_speed(), m_external_forces.get_physical_data().get_water_speed()};
     floe.set_state(new_state);
-    WHEREAMI
+    // WHEREAMI
 }
 
 

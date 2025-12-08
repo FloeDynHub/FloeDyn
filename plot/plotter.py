@@ -124,7 +124,7 @@ class FloePlotter(object):
             ax_mgr.set_patch("window",Polygon(
                 ((w[0], w[2]), (w[0], w[3]), (w[1], w[3]), (w[1], w[2])),
                 # True, facecolor=None, alpha=0.2, edgecolor="white", linewidth=0.2))
-                True, facecolor="none", edgecolor=self.colors["window"], linewidth=1.5))
+                closed=True, facecolor="none", edgecolor=self.colors["window"], linewidth=1.5))
     
     def _display_mesh(self, data, ax_mgr):
         # Display mesh. Vous noterez au passage l'utilite de ce commentaire. 

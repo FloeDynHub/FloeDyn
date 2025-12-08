@@ -290,9 +290,9 @@ void PROBLEM::step_solve(bool crack, bool use_predictor) {
     // fracture
     if (m_fracture && crack) {
     	std::size_t nb_before = m_floe_group.get_floes().size();
-    	m_floe_group.fracture_biggest_floe();
-        auto nb_fractured = 1;
-        // auto nb_fractured = m_floe_group.fracture_floes(m_dynamics_manager.is_mode_eight(), use_predictor);
+    	// m_floe_group.fracture_biggest_floe();
+        // auto nb_fractured = 1;
+        auto nb_fractured = m_floe_group.fracture_floes(m_dynamics_manager.is_mode_eight(), use_predictor, m_domain.time_step());
         if (nb_before != m_floe_group.get_floes().size() || nb_fractured > 0) {
             this->update_optim_vars();
             std::cout << "Fracture of " << nb_fractured << " floes - nb floes : " << nb_before << " -> " << m_floe_group.get_floes().size() << std::endl;
@@ -336,7 +336,7 @@ void PROBLEM::safe_move_floe_group(){
         if (m_domain.time_step() < m_domain.default_time_step() / 1e8) // 1e8 from Q.Jouet
         {   
             // Hack to bypass repeating interpenetrations...
-            std::cout << "dt too small -> RECOVER STATES FROM OUT FILE (safe_move_floe_group)" << std::endl;
+            std::cout << "dt too small (" << m_domain.time_step() << ") -> RECOVER STATES FROM OUT FILE (safe_move_floe_group)" << std::endl;
             // m_floe_group.get_floes().filter_off();
             // m_out_manager.save_step(this->m_domain.time(), this->m_dynamics_manager);
             // m_floe_group.get_floes().filter_on();
