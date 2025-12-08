@@ -36,7 +36,9 @@ public :
 
     FractureDescriptor();
     bool prepare_entry_floe(floe_type * floe);
-    bool prepare_entry_impact(size_t i_impact, point_type impact);
+    // bool prepare_entry_impact(size_t i_impact, point_type impact);
+    bool prepare_entry_impact(size_t i_impact, point_type u, real_type m);
+    bool prepare_entry_force(size_t i_impact, point_type f);
     bool clear_entry_impact();
     std::string get_database_entry() {return m_entry_floe.str() + m_entry_impact.str();};
     std::vector<double> caliper_diameters(std::vector<point_type> geometry, size_t n_angles);
@@ -57,15 +59,34 @@ public :
     inline double maxcd_x() const {return m_maxcd_x;}
     inline double maxcd_y() const {return m_maxcd_y;}
     inline double meancd() const {return m_meancd;}
-    inline double impact_y() const {return m_impact_y;}
-    inline double impact_x() const {return m_impact_x;}
-    inline double impact() const {return m_impact;}
+    inline double momentum_y() const {return m_momentum_y;}
+    inline double momentum_x() const {return m_momentum_x;}
+    inline double momentum() const {return m_momentum;}
+    inline double impact_speed_y() const {return m_impact_speed_y;}
+    inline double impact_speed_x() const {return m_impact_speed_x;}
+    inline double impact_speed() const {return m_impact_speed;}
+    inline double impact_mass() const {return m_impact_mass;}
+    // inline double impact_y() const {return m_impact_y;}
+    // inline double impact_x() const {return m_impact_x;}
+    // inline double impact() const {return m_impact;}
     inline double phi_0() const {return m_phi_0;}
     inline double phi_1() const {return m_phi_1;}
     inline double phi_2() const {return m_phi_2;}
     inline double phi_3() const {return m_phi_3;}
     inline double phi_4() const {return m_phi_4;}
     inline double phi_5() const {return m_phi_5;}
+    inline double phi_6() const {return m_phi_6;}
+    inline double phi_7() const {return m_phi_7;}
+    inline double phi_8() const {return m_phi_8;}
+    inline double phi_9() const {return m_phi_9;}
+    inline double phi_10() const {return m_phi_10;}
+    inline double phi_11() const {return m_phi_11;}
+    inline double phi_12() const {return m_phi_12;}
+    inline double phi_13() const {return m_phi_13;}
+    inline double phi_14() const {return m_phi_14;}
+    inline double phi_15() const {return m_phi_15;}
+    inline double phi_16() const {return m_phi_16;}
+    inline double phi_17() const {return m_phi_17;}
 
 private :
     double m_area;
@@ -83,15 +104,38 @@ private :
     double m_maxcd_x;
     double m_maxcd_y;
     double m_meancd;
-    double m_impact_y;
-    double m_impact_x;
-    double m_impact;
+    double m_momentum_y;
+    double m_momentum_x;
+    double m_momentum;
+    double m_impact_speed_y;
+    double m_impact_speed_x;
+    double m_impact_speed;
+    double m_impact_mass;
+    double m_force; 
+    double m_force_x; 
+    double m_force_y; 
+    // double m_impact_y;
+    // double m_impact_x;
+    // double m_impact;
     double m_phi_0;
     double m_phi_1;
     double m_phi_2;
     double m_phi_3;
     double m_phi_4;
     double m_phi_5;
+    double m_phi_6;
+    double m_phi_7;
+    double m_phi_8;
+    double m_phi_9;
+    double m_phi_10;
+    double m_phi_11;
+    double m_phi_12;
+    double m_phi_13;
+    double m_phi_14;
+    double m_phi_15;
+    double m_phi_16;
+    double m_phi_17;
+    std::stringstream m_entry_force;
     std::stringstream m_entry_floe;
     std::stringstream m_entry_impact;
 };
@@ -114,15 +158,28 @@ FractureDescriptor<TFloe>::FractureDescriptor():
     m_maxcd_x{0},
     m_maxcd_y{0},
     m_meancd{0},
-    m_impact_y{0},
-    m_impact_x{0},
-    m_impact{0},
+    m_momentum_y{0},
+    m_momentum_x{0},
+    m_momentum{0},
+    m_impact_speed_y{0},
+    m_impact_speed_x{0},
+    m_impact_speed{0},
+    m_impact_mass{0},
+    // m_impact_y{0},
+    // m_impact_x{0},
+    // m_impact{0},
     m_phi_0{0},
     m_phi_1{0},
     m_phi_2{0},
     m_phi_3{0},
     m_phi_4{0},
     m_phi_5{0},
+    m_phi_6{0},
+    m_phi_7{0},
+    m_phi_8{0},
+    m_phi_9{0},
+    m_phi_10{0},
+    m_phi_11{0},
     m_entry_floe{std::stringstream("")},
     m_entry_impact{std::stringstream("")}
 {}
@@ -287,9 +344,16 @@ bool FractureDescriptor<TFloe>::clear_entry_impact()
 {
     m_entry_impact.str("");
     m_entry_impact.clear();
-    m_impact_x = 0;
-    m_impact_y = 0;
-    m_impact = 0;
+    m_momentum_x = 0;
+    m_momentum_y = 0;
+    m_momentum = 0;
+    m_impact_speed_x = 0;
+    m_impact_speed_y = 0;
+    m_impact_speed = 0;
+    m_impact_mass = 0;
+    // m_impact_x = 0;
+    // m_impact_y = 0;
+    // m_impact = 0;
     m_phi_0 = 0;
     m_phi_1 = 0;
     m_phi_2 = 0;
@@ -299,22 +363,75 @@ bool FractureDescriptor<TFloe>::clear_entry_impact()
     return true;
 }
 
+// template <typename TFloe>
+// bool FractureDescriptor<TFloe>::prepare_entry_impact(size_t i_impact, point_type impact)
+// {
+//     m_entry_impact.str("");
+//     m_entry_impact.clear();
+//     m_impact_x += impact.x;
+//     m_impact_y += impact.y;
+//     m_impact += norm2(impact);
+//     // bug potentiel : faut-il ajouter une rotation pour se mettre dans le repère du floe ? à vérifier avec le setup one ball one beam 
+//     m_phi_0 += m_mincd_x * impact.x + m_mincd_y * impact.y;
+//     m_phi_1 += m_maxcd_x * impact.x + m_maxcd_y * impact.y;
+//     m_phi_2 += (m_mincd_x * impact.x + m_mincd_y * impact.y) / m_mincd;
+//     m_phi_3 += (m_maxcd_x * impact.x + m_maxcd_y * impact.y) / m_maxcd;
+//     m_phi_4 += (m_mincd_x * impact.x + m_mincd_y * impact.y) / (m_mincd * m_mincd);
+//     m_phi_5 += (m_maxcd_x * impact.x + m_maxcd_y * impact.y) / (m_maxcd * m_maxcd);
+//     m_entry_impact << "; impact_id = " << i_impact << " ; impact_y = " << m_impact_y << " ; impact_x = " << m_impact_x << " ; impact = " << m_impact << " ; phi_0 = " << m_phi_0 << " ; phi_1 = " << m_phi_1 << " ; phi_2 = " << m_phi_2 << " ; phi_3 = " << m_phi_3 << " ; phi_4 = " << m_phi_4 << " ; phi_5 = " << m_phi_5 << " ; ";
+//     return true;
+// }
+
 template <typename TFloe>
-bool FractureDescriptor<TFloe>::prepare_entry_impact(size_t i_impact, point_type impact)
+bool FractureDescriptor<TFloe>::prepare_entry_impact(size_t i_impact, point_type u, real_type m)
 {
     m_entry_impact.str("");
     m_entry_impact.clear();
-    m_impact_x += impact.x;
-    m_impact_y += impact.y;
-    m_impact += norm2(impact);
-    // bug potentiel : faut-il ajouter une rotation pour se mettre dans le repère du floe ? à vérifier avec le setup one ball one beam 
-    m_phi_0 += m_mincd_x * impact.x + m_mincd_y * impact.y;
-    m_phi_1 += m_maxcd_x * impact.x + m_maxcd_y * impact.y;
-    m_phi_2 += (m_mincd_x * impact.x + m_mincd_y * impact.y) / m_mincd;
-    m_phi_3 += (m_maxcd_x * impact.x + m_maxcd_y * impact.y) / m_maxcd;
-    m_phi_4 += (m_mincd_x * impact.x + m_mincd_y * impact.y) / (m_mincd * m_mincd);
-    m_phi_5 += (m_maxcd_x * impact.x + m_maxcd_y * impact.y) / (m_maxcd * m_maxcd);
-    m_entry_impact << "; impact_id = " << i_impact << " ; impact_y = " << m_impact_y << " ; impact_x = " << m_impact_x << " ; impact = " << m_impact << " ; phi_0 = " << m_phi_0 << " ; phi_1 = " << m_phi_1 << " ; phi_2 = " << m_phi_2 << " ; phi_3 = " << m_phi_3 << " ; phi_4 = " << m_phi_4 << " ; phi_5 = " << m_phi_5 << " ; ";
+    m_momentum_x += m*u.x;
+    m_momentum_y += m*u.y;
+    m_momentum += m*norm2(u);
+    m_impact_mass += m;
+    m_impact_speed_x += u.x;
+    m_impact_speed_y += u.y;
+    m_impact_speed += norm2(u);
+    m_phi_0 += m_mincd_x * m*u.x + m_mincd_y * m*u.y;
+    m_phi_1 += m_maxcd_x * m*u.x + m_maxcd_y * m*u.y;
+    m_phi_2 += (m_mincd_x * m*u.x + m_mincd_y * m*u.y) / m_mincd;
+    m_phi_3 += (m_maxcd_x * m*u.x + m_maxcd_y * m*u.y) / m_maxcd;
+    m_phi_4 += (m_mincd_x * m*u.x + m_mincd_y * m*u.y) / (m_mincd * m_mincd);
+    m_phi_5 += (m_maxcd_x * m*u.x + m_maxcd_y * m*u.y) / (m_maxcd * m_maxcd);
+    m_phi_6 += m_mincd_x * u.x + m_mincd_y * u.y;
+    m_phi_7 += m_maxcd_x * u.x + m_maxcd_y * u.y;
+    m_phi_8 += (m_mincd_x * u.x + m_mincd_y * u.y) / m_mincd;
+    m_phi_9 += (m_maxcd_x * u.x + m_maxcd_y * u.y) / m_maxcd;
+    m_phi_10 += (m_mincd_x * u.x + m_mincd_y * u.y) / (m_mincd * m_mincd);
+    m_phi_11 += (m_maxcd_x * u.x + m_maxcd_y * u.y) / (m_maxcd * m_maxcd);
+    // m_entry_impact << "; impact_id = " << i_impact << " ; impact_y = " << m_impact_y << " ; impact_x = " << m_impact_x << " ; impact = " << m_impact << " ; phi_0 = " << m_phi_0 << " ; phi_1 = " << m_phi_1 << " ; phi_2 = " << m_phi_2 << " ; phi_3 = " << m_phi_3 << " ; phi_4 = " << m_phi_4 << " ; phi_5 = " << m_phi_5 << " ; ";
+    // m_entry_impact << 0;
+
+    return true;
+}
+
+template <typename TFloe>
+bool FractureDescriptor<TFloe>::prepare_entry_force(size_t i_impact, point_type f)
+{
+    m_entry_force.str("");
+    m_entry_force.clear();
+    // m_momentum_x += m*u.x;
+    // m_momentum_y += m*u.y;
+    m_force += norm2(f);
+    // m_impact_mass += m;
+    m_force_x += f.x;
+    m_force_y += f.y;
+    m_phi_12 += m_mincd_x * f.x + m_mincd_y * f.y;
+    m_phi_13 += m_maxcd_x * f.x + m_maxcd_y * f.y;
+    m_phi_14 += (m_mincd_x * f.x + m_mincd_y * f.y) / m_mincd;
+    m_phi_15 += (m_maxcd_x * f.x + m_maxcd_y * f.y) / m_maxcd;
+    m_phi_16 += (m_mincd_x * f.x + m_mincd_y * f.y) / (m_mincd * m_mincd);
+    m_phi_17 += (m_maxcd_x * f.x + m_maxcd_y * f.y) / (m_maxcd * m_maxcd);
+    // m_entry_impact << "; impact_id = " << i_impact << " ; impact_y = " << m_impact_y << " ; impact_x = " << m_impact_x << " ; impact = " << m_impact << " ; phi_0 = " << m_phi_0 << " ; phi_1 = " << m_phi_1 << " ; phi_2 = " << m_phi_2 << " ; phi_3 = " << m_phi_3 << " ; phi_4 = " << m_phi_4 << " ; phi_5 = " << m_phi_5 << " ; ";
+    // m_entry_impact << 0;
+
     return true;
 }
 

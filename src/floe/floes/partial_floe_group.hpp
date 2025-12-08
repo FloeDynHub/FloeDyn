@@ -46,15 +46,15 @@ public:
 
     PartialFloeGroup(bool use_predictor = false) : m_fracture_predictor()
     {
-        if (use_predictor)
-        {
-            m_fracture_predictor.prepare_predictor();
-            std::cout << "READYORNOT Fracture predictor is ready" << std::endl;
-        }
-        else 
-        {
-            std::cout << "READYORNOT Fracture predictor is not used" << std::endl;
-        }
+        // if (use_predictor)
+        // {
+        //     m_fracture_predictor.prepare_predictor();
+        //     std::cout << "READYORNOT Fracture predictor is ready" << std::endl;
+        // }
+        // else 
+        // {
+        //     std::cout << "READYORNOT Fracture predictor is not used" << std::endl;
+        // }
     };
 
     void update_partial_list(std::vector<std::size_t> floe_id_list){
@@ -72,7 +72,7 @@ public:
     void add_floe(geometry_type geometry, std::size_t parent_floe_idx);
     void fracture_biggest_floe();
     // size_t fracture_above_threshold(real_type threshold);
-    int fracture_floes(bool mode_eight = false, bool use_predictor = false);
+    int fracture_floes(bool mode_eight = false, bool use_predictor = false, real_type time_step = 1.0);
     void melt_floes();
     void update_list_ids_active();//{std::cout<<"test"<<std::endl;}
 
@@ -183,11 +183,13 @@ PartialFloeGroup<TFloe, TFloeList>::fracture_biggest_floe()
 
 template <typename TFloe, typename TFloeList>
 int
-PartialFloeGroup<TFloe, TFloeList>::fracture_floes(bool mode_eight, bool use_predictor)
+PartialFloeGroup<TFloe, TFloeList>::fracture_floes(bool mode_eight, bool use_predictor, real_type time_step)
 {
     int n_fractured = 0;
-    real_type min_area(400);
-    // real_type min_area(10);
+    // real_type min_area(400);
+    // real_type min_area(0.0001);
+    // real_type min_area(500);
+    real_type min_area(10);
     std::map<std::size_t, std::vector<geometry_type>> all_new_geometries;
     for (std::size_t i = 0; i < base_class::get_floes().size(); ++i){
         auto& floe = base_class::get_floes()[i];
@@ -213,10 +215,15 @@ PartialFloeGroup<TFloe, TFloeList>::fracture_floes(bool mode_eight, bool use_pre
             continue;
         }
         // auto new_geometries = base_class::get_floes()[i].fracture_floe_from_collisions();
-        auto new_geometries = floe.fracture_floe_from_collisions_fem(use_predictor, m_fracture_predictor);
+        auto new_geometries = floe.fracture_floe_from_collisions_fem(use_predictor, m_fracture_predictor, time_step);
         std::cout << "Looking for fracture in Floe " << i << ":";
         if (new_geometries.size() > 0){
-            std::cout << " fractured in " << new_geometries.size() << " parts" << std::endl;
+            std::cout << " fractured in " << new_geometries.size() << " parts, of sizes :"; 
+            // check geometry area and output the sizes ;
+            for (std::size_t j = 0; j < new_geometries.size(); ++j){
+                std::cout << " " << geometry::area(new_geometries[j]);
+            }
+            std::cout << std::endl;
             all_new_geometries[i] = new_geometries;
             n_fractured++;
         }
@@ -228,12 +235,20 @@ PartialFloeGroup<TFloe, TFloeList>::fracture_floes(bool mode_eight, bool use_pre
     // Add new floes
     for (auto const& iter : all_new_geometries){
         for (std::size_t j = 0; j < iter.second.size(); ++j){
+            // check geometry area
+            if (geometry::area(iter.second[j]) < min_area)
+            {
+                std::cout << "  - New floe " << j << " is too small and will be ignored. " << std::endl;
+                continue;
+            }
+            // std::cout << "  - Adding new floe " << j << std::endl ;
             this->add_floe(iter.second[j], iter.first);
         }
     }
     // Desactivate cracked floe
     for (auto const& iter : all_new_geometries){
         base_class::get_floes()[iter.first].state().desactivate();
+        std::cout << "  - Desactivating cracked floe " << iter.first << std::endl ;
     }
     // this->update_list_ids_active();
 

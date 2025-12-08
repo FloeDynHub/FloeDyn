@@ -53,7 +53,8 @@ TMesh generate_mesh_for_shape(TShape const& shape)
     auto out_of_domain_point = Point(1e10, 1e10);
     list_of_seeds.push_back(out_of_domain_point);
 
-    const int nb_cells = 20;
+    // const int nb_cells = 20;
+    const int nb_cells = 100;
     const real_type cell_size{ sqrt(2 * floe::geometry::area(shape) / nb_cells) };
     // CGAL::refine_Delaunay_mesh_2(cdt, Criteria(0.125, cell_size));
 
