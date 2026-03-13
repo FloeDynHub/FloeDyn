@@ -1,5 +1,5 @@
 cd deps
-git clone git://git.code.sf.net/p/matio/matio
+git clone https://github.com/tbeu/matio.git
 cd matio
 ./autogen.sh
 ./configure
