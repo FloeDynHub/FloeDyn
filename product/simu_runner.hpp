@@ -97,7 +97,7 @@ public:
             }
             generator_type G( alpha, nbfpersize );
             G.set_exit_signal(&QUIT); // clean interrupt
-            G.generate_floe_set(nb_floes, concentration, max_size, force_modes, force_speeds);
+            G.generate_floe_set(nb_floes, concentration, max_size, min_size, force_modes, force_speeds);
             P.set_floe_group(G.get_floe_group());
             #ifdef PBC
             auto win = P.get_floe_group().get_initial_window();
@@ -226,6 +226,7 @@ protected:
     value_type              min_thickness           = 0.01;
     string                  matlab_topaz_filename   = "io/library/DataTopaz01.mat";
     value_type              max_size                = 250;
+    value_type              min_size                = 0;
     bool                    fracture                = 0;
     bool                    melting                 = 0;
     bool                    rand_speed_add          = 1;
@@ -242,7 +243,7 @@ protected:
         // The third is description
         ("help,h", "print usage message")
         ("input,i", po::value(&input_file_name)->required(), "input file path")
-        ("output", po::value<string>(&output_file_name)->default_value("output.txt"), "name of the output file") // New option
+        ("output", po::value<string>(&output_file_name)->default_value(""), "name of the output file") // New option
         ("fext, z", po::value(&matlab_topaz_filename)->default_value(matlab_topaz_filename), "external forces input file")
         #ifdef MULTIOUTPUT
             ("nbsefloes", po::value<std::size_t>(&nb_floe_select)->required(), "the size of the floe selection for the multiple output files")
@@ -305,6 +306,8 @@ protected:
         ("concentration,c", po::value<value_type>(), "generator : floes concentration (between 0 and 1)")
         ("maxsize,m", po::value(&max_size)->default_value(
             max_size, std::to_string(max_size)), "generator : floe max size (radius)")
+        ("minsize", po::value(&min_size)->default_value(
+            min_size, std::to_string(min_size)), "generator : floe min size (radius)")
         ("alpha,a", po::value<value_type>(&alpha), "generator : fractal dimension for the distribution power law.")
         ("nbfpersize", po::value<int>(&nbfpersize), "generator : number of floes per size for the distribution power law.")
 

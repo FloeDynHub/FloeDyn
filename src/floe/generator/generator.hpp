@@ -51,7 +51,7 @@ using scale_transformer = boost::geometry::strategy::transform::scale_transforme
 
 template<typename TProblem>
 void
-Generator<TProblem>::generate_floe_set(std::size_t nb_floes, real_type concentration, real_type max_size, std::vector<int> force_modes,
+Generator<TProblem>::generate_floe_set(std::size_t nb_floes, real_type concentration, real_type max_size, real_type min_size, std::vector<int> force_modes,
     std::vector<real_type> force_speeds)
 {   
     // basic process : 
@@ -67,7 +67,7 @@ Generator<TProblem>::generate_floe_set(std::size_t nb_floes, real_type concentra
     load_biblio_floe("io/library/Biblio_Floes.mat");
     discretize_biblio_floe(25);
     generate_meshes();
-    random_floe_group(nb_floes, max_size);
+    random_floe_group(nb_floes, max_size, min_size);
     real_type mu_static = 0;
     m_problem.get_floe_group().set_mu_static(mu_static);
     std::cout << "the ice/ice static friction coefficient is fixed to: " << mu_static << std::endl;
@@ -140,11 +140,11 @@ Generator<TProblem>::generate_floe_set(std::size_t nb_floes, real_type concentra
 
 template<typename TProblem>
 void
-Generator<TProblem>::random_floe_group(std::size_t n, real_type max_size)
+Generator<TProblem>::random_floe_group(std::size_t n, real_type max_size, real_type min_size)
 {
     auto& list_floes = m_problem.get_floe_group().get_floes();
     // auto sizes = random_size_repartition(n, max_size);
-    auto sizes = exp_size_repartition(n, max_size);
+    auto sizes = exp_size_repartition(n, max_size, min_size);
     std::vector<double>::iterator result = std::min_element(std::begin(sizes), std::end(sizes));
     std::cout << "min diameter: " << *result << "\n";
     auto min_s = *result;
@@ -214,15 +214,14 @@ Generator<TProblem>::random_size_repartition(std::size_t n, real_type R_max)
 
 template<typename TProblem>
 std::vector<typename Generator<TProblem>::real_type>
-Generator<TProblem>::exp_size_repartition(std::size_t n, real_type R_max)
+Generator<TProblem>::exp_size_repartition(std::size_t n, real_type R_max, real_type R_min)
 {
     std::random_device rd;
     std::mt19937 g(rd());
 
     std::cout << "The exponent of the power law is: " << m_alpha << " and the floe number per size is: " << m_nbfpersize << std::endl;
     std::vector<real_type> v;
-    real_type R_min = 0; // no min (resize if min floe too small)
-    // int nb_floes_per_size = 1; // allow to generate more than one floe per size categories! 
+    // allow to generate more than one floe per size categories! 
     // Useful for making easier the init. config. generation!
     // Yet, warning, since the exponential distribution of size is no longer corresponding to m_alpha!! 
     for (std::size_t i = 1; i <= n/m_nbfpersize; i++)
