@@ -122,7 +122,7 @@ private:
         if (epsilon!=0.4) {std::cout << "Warning: the restitution coefficient is fixed to: " << epsilon << std::endl;}
         if (!P.get_floe_group().h5_contains_floes_characs(input_file_name)) {
             P.get_floe_group().randomize_floes_thickness(this->vm["sigma"].as<value_type>());
-            P.get_floe_group().randomize_floes_oceanic_skin_drag(0.01);
+            P.get_floe_group().randomize_floes_oceanic_skin_drag(random_oceanic_skin_drag_coeff);
         }
         P.solve(this->vm["tend"].as<value_type>(), this->vm["step"].as<value_type>(), this->vm["outstep"].as<value_type>());
         return 0;

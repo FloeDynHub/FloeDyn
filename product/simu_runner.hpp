@@ -66,7 +66,7 @@ public:
                     std::cout << "Randomizing floes thickness and oceanic skin drag coeff" << std::endl;
                     P.get_floe_group().randomize_floes_thickness(random_thickness_coeff);
                     // adding a random ocean drag coefficient for simulating the heterogeneity of the floe bottom surface:
-                    P.get_floe_group().randomize_floes_oceanic_skin_drag(0.01);
+                    P.get_floe_group().randomize_floes_oceanic_skin_drag(random_oceanic_skin_drag_coeff);
                 } else {
                     std::cout << "Reading floes thickness and oceanic skin drag coeff from input file" << std::endl;
                 }
@@ -105,7 +105,7 @@ public:
             #endif
             // randomize created floes' characteristics and create input file
             P.get_floe_group().randomize_floes_thickness(random_thickness_coeff);
-            P.get_floe_group().randomize_floes_oceanic_skin_drag(0.01);
+            P.get_floe_group().randomize_floes_oceanic_skin_drag(random_oceanic_skin_drag_coeff);
             P.make_input_file();
         }
 
@@ -223,6 +223,7 @@ protected:
     value_type              epsilon                 = 0.4;
     value_type              mu_static               = 0.7;
     value_type              random_thickness_coeff  = 0.01;
+    value_type              random_oceanic_skin_drag_coeff = 0.01;
     value_type              min_thickness           = 0.01;
     string                  matlab_topaz_filename   = "io/library/DataTopaz01.mat";
     value_type              max_size                = 250;
@@ -314,6 +315,9 @@ protected:
         ("sigma", po::value(&random_thickness_coeff)->default_value(
             random_thickness_coeff, std::to_string(random_thickness_coeff)),
             "Normal distribution coeff (sigma) for random ice thickness variation around 1m")
+        ("sigma2", po::value(&random_oceanic_skin_drag_coeff)->default_value(
+            random_oceanic_skin_drag_coeff, std::to_string(random_oceanic_skin_drag_coeff)),
+            "Normal distribution coeff (sigma2) for random oceanic skin drag coefficient variation around 5*1e-3")
         ("vortexCharacs,v", po::value< std::vector<value_type> >(&vortex_characs)->multitoken(),
             "vortex characteristics (for mode 6) as a vector of size 4:\n"
             "   1/ the total number of vortex: \n"
