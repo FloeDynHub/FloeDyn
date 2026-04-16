@@ -136,6 +136,10 @@ Generator<TProblem>::generate_floe_set(std::size_t nb_floes, real_type concentra
     // } while (m_problem.get_floe_group().kinetic_energy() != 0 && end_time < 1e6 && (concentration-m_problem.floe_concentration() > 2e-3) );
     // m_problem.get_floe_group().stop_floes_in_window(win_width, win_width);
     m_problem.get_floe_group().reset_impulses();
+    // set thickness to 0 for having the same initial configuration as the one generated with the input file (since thickness was not present in the input file before 2023)
+    for (auto& floe : m_problem.get_floe_group().get_floes()){
+        floe.static_floe().set_thickness(0);
+    }
 }
 
 template<typename TProblem>

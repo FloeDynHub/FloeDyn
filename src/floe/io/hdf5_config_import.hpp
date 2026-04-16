@@ -133,7 +133,7 @@ void import_floes_from_hdf5(H5std_string filename, TFloeGroup& floe_group)
                 {states_data_out[floe_id][3], states_data_out[floe_id][4]}, states_data_out[floe_id][5],
                 {0,0}
             });
-            if (states_data_out[floe_id].size() >= 11) { // thickness (11th value) was not present before 2023
+            if (states_data_out[floe_id].size() >= 11 && states_data_out[floe_id][10] > 0) { // thickness (11th value) was not present before 2023
                 floe.static_floe().set_thickness(states_data_out[floe_id][10]);
             } else {
                 try {
