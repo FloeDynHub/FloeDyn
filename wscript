@@ -54,6 +54,7 @@ def timeit(func):
 floedyn_deps = {
     'gmp' : ['gmp'],
     'boost' : ['boost_system', 'boost_program_options', 'boost_thread'],
+    # 'boost' : ['boost_program_options', 'boost_thread'],
     'eigen' : [], # header only
     'matio' : ['matio'],
     'hdf5'  : ['hdf5_cpp'],
@@ -241,7 +242,7 @@ def get_option_dict(debug=True):
     OPTION_DICT = {
         "includes": ['../src'
                     ], #+ [path for path in os.environ["PATH"].split(":") if not "bin" in path],
-        "lib": ['boost_system',
+        "lib": [#'boost_system',
                 'boost_program_options',
                 'matio',
                 "hdf5",
@@ -294,9 +295,13 @@ import subprocess
 def build(bld):
     opts = get_option_dict(bld.options.debug)
     opts['use']= []
+    opts["rpath"] = []
     bld.options.install_path = '${PREFIX}'
     for dep in floedyn_deps:
         opts['use'].append(dep.upper())
+    for dep in floedyn_deps:
+        libpaths = getattr(bld.env, 'LIBPATH_' + dep.upper(), [])
+        opts["rpath"].extend(libpaths)
     if bld.options.omp:
         opts["linkflags"].append("-fopenmp")
         opts["cxxflags"].append("-fopenmp")
