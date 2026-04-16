@@ -192,6 +192,7 @@ public:
         return m_state.speed + m_state.rot * fg::direct_orthogonal(p - m_state.pos);
     }
 
+    bool update_fem_problem();
     bool set_fem_problem();
     bool prepare_elasticity();
     bool solve_elasticity(real_type time_step);
@@ -571,6 +572,14 @@ KinematicFloe<TStaticFloe,TState>::update_after_fracture(const state_type init_s
     this->set_total_impulse_received(init_total_impulse_received);
     this->update(); // update frame ect..
     m_fem_problem.addFloe(this);
+}
+
+//! Update femproblem, to be called each time the floe list is updated.
+template < typename TStaticFloe, typename TState >
+bool
+KinematicFloe<TStaticFloe,TState>::update_fem_problem()
+{
+    return m_fem_problem.updateFloe(this);
 }
 
 

@@ -56,6 +56,7 @@ public :
     // bool addPhanContact(std::vector<size_t> gamma_d, std::vector<point_type> values, std::vector<point_type> u_values, std::vector<real_type> m_values, std::vector<real_type> k_values);
     std::vector<size_t> get_surr_nodes(size_t i_node);
     bool addFloe(floe_type * floe);
+    bool updateFloe(floe_type * floe);
     bool assembleF();
     bool solve();
     bool performComputation(std::vector<size_t> gamma_d, std::vector<point_type> values);
@@ -172,6 +173,16 @@ bool FemProblem<TFloe>::addFloe(floe_type * floe)
     m_area = m_floe->static_floe().area();
     return true;
 }
+
+
+
+template <typename TFloe>
+bool FemProblem<TFloe>::updateFloe(floe_type * floe)
+{
+    m_floe = floe;
+    return true;
+}
+
 template < typename TFloe>
 bool FemProblem<TFloe>::assembleF()
 {
@@ -399,6 +410,7 @@ FemProblem<TFloe>::addPhanContact(std::vector<size_t> gamma_d, std::vector<point
     real_type min_dirichlet_value_threshold = 0.0001; // 0.001 ? Really usefull when the exponential is smaller than this value, the displacement is truncated to 0 : the BC is imposed only on the nodes closest to the impact
     real_type max_displacement_threshold = 0.03; // 0.03 according to Toai. when the displacement is larger than this fraction of the min caliper diameter, its value is truncated in order to prevent from having a displacement larger than the floe size. This threshold is chosen to be such that a fracture should happen before the floe is displaced by more than this value.
     // real_type max_displacement_threshold = 0.0001; // to prevent from fracturing too soon. 
+    bool at_least_one_contact = false; // ther must be at least one contact in order to be able to solve the problem
     for (size_t i_dir = 0; i_dir < n_dirichlet ; ++i_dir)
     {
         real_type u_norm = norm2(u_values[i_dir]);
@@ -414,7 +426,11 @@ FemProblem<TFloe>::addPhanContact(std::vector<size_t> gamma_d, std::vector<point
         }
         if (u_d_inf < m_collision_pressure_threshold*m_floe->get_min_caliper_diameter())
         {
-            std::cout << "u_d_inf = " << u_d_inf << " is smaller than the collision pressure threshold " << m_collision_pressure_threshold*m_floe->get_min_caliper_diameter() << " , so we won't treat it as a contact" << std::endl;
+            // std::cout << "u_d_inf = " << u_d_inf << " is smaller than the collision pressure threshold " << m_collision_pressure_threshold*m_floe->get_min_caliper_diameter() << ", so we won't treat it as a impact" << std::endl;
+        }
+        else
+        {
+            at_least_one_contact = true;
         }
         if (u_norm > 1e-12)
         {
@@ -446,6 +462,13 @@ FemProblem<TFloe>::addPhanContact(std::vector<size_t> gamma_d, std::vector<point
                 m_DirichletTriplet.push_back(Eigen::Triplet<real_type>(iNode*2+1, iNode*2+1, very_big_stuff));
             }
         }
+        if (!at_least_one_contact){
+            // on impose au moins une condition de contact, sinon le système est mal posé. Au hasard, on impose un déplacement nul sur le premier noeud en contact. 
+            m_FTriplet.push_back(Eigen::Triplet<real_type>(gamma_d[0]*2, 0, 0));
+            m_FTriplet.push_back(Eigen::Triplet<real_type>(gamma_d[0]*2+1, 0, 0));
+            m_DirichletTriplet.push_back(Eigen::Triplet<real_type>(gamma_d[0]*2, gamma_d[0]*2, very_big_stuff));
+            m_DirichletTriplet.push_back(Eigen::Triplet<real_type>(gamma_d[0]*2+1, gamma_d[0]*2+1, very_big_stuff));
+        }
 
         m_fracture_descriptor.prepare_entry_impact(i_dir, u_values[i_dir], m_values[i_dir]);
     }
@@ -473,7 +496,7 @@ FemProblem<TFloe>::addForce(std::vector<size_t> gamma_d, std::vector<point_type>
         std::cerr << "In FemProblem::addForce, incoherent input sizes. expected " << gamma_d.size() << " for all inputs, but got " << f_values.size() << std::endl;
         return false;
     }
-    // std::cout << "Adding force" << std::endl;
+    std::cout << "Adding force" << std::endl;
     // for (size_t i = 0; i < gamma_d.size(); ++i)
     // {
     //     std::cout << "gamma_d[" << i << "] = " << gamma_d[i] << "; f_values[" << i << "] = (" << f_values[i].x << ", " << f_values[i].y << ")" << std::endl;

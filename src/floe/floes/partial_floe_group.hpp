@@ -268,6 +268,7 @@ PartialFloeGroup<TFloe, TFloeList>::fracture_floes(bool mode_eight, bool use_pre
         floe.update();
         floe.unset_fem_problem_prepared();
         floe.reset_current_impulse();
+        floe.update_fem_problem();
     }
 
     return n_fractured;
@@ -387,7 +388,12 @@ PartialFloeGroup<TFloe, TFloeList>::update_list_ids_active()
 	for (std::size_t i = 0; i < base_class::get_floes().size(); ++i){
     	if ( base_class::get_floes()[i].state().is_active()) { m_list_id_active_floe.push_back(i); }
     }
+
+    for (std::size_t i = 0; i < base_class::get_floes().size(); ++i){
+    	if ( base_class::get_floes()[i].state().is_active()) { base_class::get_floes()[i].update_fem_problem(); }
+    }
     this->update_partial_list(m_list_id_active_floe);
+
     base_class::get_floes().filter_on();
 }
 
