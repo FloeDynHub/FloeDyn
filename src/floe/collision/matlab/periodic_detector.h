@@ -49,6 +49,7 @@ public:
         base_class::rescan_floe_group();
         this->add_ghosts();
         base_class::m_prox_data.auto_resize();
+        base_class::update();
     }
 
     virtual void add_ghosts() {

@@ -250,7 +250,7 @@ PartialFloeGroup<TFloe, TFloeList>::fracture_floes(bool mode_eight, bool use_pre
         base_class::get_floes()[iter.first].state().desactivate();
         std::cout << "  - Desactivating cracked floe " << iter.first << std::endl ;
     }
-    // this->update_list_ids_active();
+    this->update_list_ids_active();
 
     // Deactivate too small floes
     for (auto & floe : base_class::get_floes()){
