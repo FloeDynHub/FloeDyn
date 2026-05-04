@@ -236,12 +236,16 @@ import h5py
 import datetime
 import math
 import sys 
+
+
+verbose = False
 if len(sys.argv) == 1:
     filename = "../io/outputs/1_test.h5"
     print(f"you did not specify output file name. Default file is {filename}")
 else:
     filename = (sys.argv[1])
-    print("Converting {}.".format(filename))
+    if verbose:
+        print("Converting {}.".format(filename))
 data_file = h5py.File(filename, 'r')
 rawData = read_data(data_file)
 
@@ -255,9 +259,10 @@ data = rawData
 # print(data.get("floe_meshes_connect")[0].shape)
 # print(data.get("floe_elem_data")[0].shape)
 # export_vtk(filename, data.get("floe_meshes_coord")[0], data.get("floe_meshes_connect")[0], np.zeros((nNodes, 1)), dataname)
-print('the mesh contains {} elements and {} nodes.'.format(nElem, nNodes))
-print('size de node data : {}'.format(data["floe_node_data"].shape))
-print('size de elem data : {}'.format(data["floe_elem_data"].shape))
+if verbose:
+    print('the mesh contains {} elements and {} nodes.'.format(nElem, nNodes))
+    print('size de node data : {}'.format(data["floe_node_data"].shape))
+    print('size de elem data : {}'.format(data["floe_elem_data"].shape))
 
 # loop over the time steps, faut translate/rotate puis extract only useful floes at give time step 
 for iTime in range(0, nTime):
