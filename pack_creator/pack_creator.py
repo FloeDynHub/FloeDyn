@@ -59,7 +59,12 @@ def get_window(floes_list):
 
 def write_input_file(floes_list, filename):
     """Creates hdf5 input file for floe list"""
-    with h5py.File(f"io/inputs/{filename}.h5", "w") as f:
+    if filename[0] != "/":
+        filename = f"io/inputs/{filename}"
+    if filename[-3:] != ".h5":
+        filename = f"{filename}.h5"
+    print(f"Writing {filename}")
+    with h5py.File(filename, "w") as f:
         states_dset = f.create_dataset("floe_states", (1, len(floes_list), 9), dtype='float64') # 1 = t0, nb_floe, state_size
         grp = f.create_group("floe_shapes")
         for i, floe in enumerate(floes_list):
