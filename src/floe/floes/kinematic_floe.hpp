@@ -546,9 +546,21 @@ KinematicFloe<TStaticFloe,TState>::fracture_floe_from_collisions_fem(bool use_pr
         bool print_summary(true);// enable this only for database building and piml training: the features of each impact sample are written in the logs
         if (energy > 0)
         {
-            std::cout << std::endl << "Breaking along (" << best_a.x << ";" << best_a.y << ")" << " -- (" << best_b.x << ";" << best_b.y << ")" << std::endl;
-            if (print_summary)
+            if (print_summary){    
+                std::cout << std::endl << "Breaking along (" << best_a.x << ";" << best_a.y << ")" << " -- (" << best_b.x << ";" << best_b.y << ")" << std::endl;
+                std::cout << "energy released : " << energy << std::endl;
+                const auto& vec = m_fem_problem.get_stress_vector();
+                auto max_it = std::max_element(vec.begin(), vec.end());
+                if (max_it != vec.end()) {
+                    std::cout << "maximum value of stress : " << *max_it << std::endl;
+                }
+                const auto& vec2 = m_fem_problem.get_solution_vector();
+                auto max_it2 = std::max_element(vec2.begin(), vec2.end());
+                if (max_it2 != vec2.end()) {
+                    std::cout << "maximum value of displacement : " << *max_it2 << std::endl;
+                }
                 std::cout << "Impact summary : " <<  m_fem_problem.get_impact_definition() << " ; theta = " << m_state.theta << " ; is_broken = True " << std::endl; // this print is used to help build a database by parsing the logs 
+            }
             return this->static_floe().fracture_floe_along(best_a, best_b);
         }
         else if (print_summary)
@@ -648,7 +660,9 @@ KinematicFloe<TStaticFloe,TState>::solve_elasticity(real_type time_step)
         point_type a(0,0);
         std::vector<size_t> dirichletPoints = {2, 3, 41};
         std::vector<point_type> dirichletValues = {a, a, a};
-        m_fem_problem.performComputation(dirichletPoints, dirichletValues);
+        if (!m_fem_problem.performComputation(dirichletPoints, dirichletValues)){
+            std::cout << "Error while performing computation" << std::endl;
+        }
     }
     else
     {
@@ -699,7 +713,9 @@ KinematicFloe<TStaticFloe,TState>::solve_elasticity(real_type time_step)
                 //     std::cout << "k:" << kValues[i] << " ; ";
                 // }
                 // std::cout << std::endl;
-                m_fem_problem.performComputationWithPercussionAndForce(node_indexes, fValues, uValues, mValues, kValues);
+                if (!m_fem_problem.performComputationWithPercussionAndForce(node_indexes, fValues, uValues, mValues, kValues)){
+                    std::cout << "Error while performing computation" << std::endl;
+                }
                 // m_fem_problem.performComputationPhanBC(node_indexes, dirichletValues, uValues, mValues, kValues);
             } catch (std::exception& e) {
                 std::cerr << "Exception caught during FEM computation with percussion and force: " << e.what() << std::endl;
