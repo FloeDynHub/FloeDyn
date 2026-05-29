@@ -8,7 +8,6 @@
 #define VARIABLE_FLOES_HPP
 
 #include <iostream>
-#include "floe/floes/floe_group_h.hpp"
 #include "floe/io/hdf5_config_import.hpp"
 
 #include "floe/io/matlab/list_so_to_floes.hpp"
@@ -36,9 +35,6 @@ class FloeGroup
 public:
 
     using floe_type = TFloe;
-    using floe_group_h_type = floe::floes::FloeGroup_h<
-        typename floe_type::floe_h_type
-    >;
     using real_type = typename TFloe::real_type;
     using point_type = typename TFloe::point_type;
     // using floe_list_type = std::vector<floe_type>;
@@ -56,8 +52,6 @@ public:
     virtual void post_load_floe(){;}
 
     // Accessors
-    inline floe_group_h_type const& get_floe_group_h() const { return m_floe_group_h; }
-    inline floe_group_h_type& get_floe_group_h() { return m_floe_group_h; }
     // inline floe_list_type const& get_all_floes() const { return m_list_floe; }
     // inline floe_list_type& get_all_floes() { return m_list_floe; }
     // virtual inline floe_list_type const& get_floes() const { return get_all_floes(); }
@@ -143,7 +137,6 @@ public:
 protected:
 
     floe_list_type m_list_floe; //!< List of floes
-    floe_group_h_type m_floe_group_h; //!< Discrete floe group (access to floes discretisation)
     //! initial reference window (min_x, max_x, min_y, max_y)
     window_type m_window; //!< determined during the generation phase.
     real_type m_min_thickness; //!< Minimal floe thickness (used with melting model)
@@ -161,10 +154,8 @@ void FloeGroup<TFloe, TFloeList>::load_matlab_config(std::string filename) {
     read_list_so_from_file( filename, list_so);
     cout << "Importing floes ... " << endl;
     list_so_to_floes( list_so, m_list_floe );
-    for ( auto& floe : m_list_floe ){
+    for ( auto& floe : m_list_floe )
         floe.update();
-        m_floe_group_h.add_floe(floe.get_floe_h());
-    }
     this->post_load_floe();
 };
 

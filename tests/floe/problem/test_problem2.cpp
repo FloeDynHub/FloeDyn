@@ -14,8 +14,7 @@ template <
 >
 void Problem<TFloe,TProxymityDetector,TCollisionManager,
              TDynamicsManager, TDomain>::test(){
-    REQUIRE(m_floe_group.get_floes().size() ==
-            m_floe_group.get_floe_group_h().m_list_floe_h.size());
+    REQUIRE(m_floe_group.get_floes().size() > 0);
 }
 
 }} // namespace floe::problem

@@ -26,14 +26,12 @@ namespace floe { namespace problem
  * It represents the discrete problem.
  *
  * \tparam TDomain_h            Discrete domain type
- * \tparam TFloeGroup_h         Discrete floe group variable type
  * \tparam TDetector            Detector type for collisions
  * \tparam TCollisionManager_h  Discrete collision manager type
  *
  */
 template <
     typename TDomain_h,
-    typename TFloeGroup_h,
     typename TDetector,
     typename TCollisionManager_h
 >
@@ -42,8 +40,7 @@ class Problem_h
 
 public:
      //! Default constructor.
-    Problem_h() : m_floe_group_h{nullptr}, m_detector{nullptr}, 
-                  m_collision_manager_h{nullptr} {}
+    Problem_h() : m_detector{nullptr}, m_collision_manager_h{nullptr} {}
 
     using detector_h_type = TDetector;
     using time_scale_manager_type = domain::TimeScaleManager<detector_h_type>;
@@ -54,14 +51,10 @@ public:
          step_solve();
     };
 
-    //! Discrete floes group accessor
-    inline TFloeGroup_h& get_floe_group_h() { return *m_floe_group_h; }
-    inline void set_floe_group_h( TFloeGroup_h& floe_group_h){ m_floe_group_h = &floe_group_h; }
-
     inline void set_detector_h(detector_h_type& detector){ m_detector = &detector; }
 
-    inline void set_collision_manager_h ( TCollisionManager_h& manager_h ) { 
-        m_collision_manager_h = &manager_h; 
+    inline void set_collision_manager_h ( TCollisionManager_h& manager_h ) {
+        m_collision_manager_h = &manager_h;
     }
     inline void set_domain_h(TDomain_h& domain){ m_domain_h = &domain; }
 
@@ -69,9 +62,6 @@ private:
 
     // domain
     TDomain_h* m_domain_h; //!< Discrete domain (same as smooth domain at the moment)
-
-    // variable
-    TFloeGroup_h* m_floe_group_h; //!< Discrete floes group (group of discrete floes)
 
     // operators
     detector_h_type* m_detector; //!< Proximity Detector at discrete level
@@ -89,36 +79,21 @@ private:
 
 };
 
-template <
-    typename TDomain_h,
-    typename TFloeGroup_h,
-    typename TDetector,
-    typename TCollisionManager_h
->
-void Problem_h<TDomain_h, TFloeGroup_h, TDetector, TCollisionManager_h>
+template <typename TDomain_h, typename TDetector, typename TCollisionManager_h>
+void Problem_h<TDomain_h, TDetector, TCollisionManager_h>
 ::do_detection(){
     if (!m_detector->update()) // we have a floe interpenetration
         m_domain_h->rewind_time();
 }
 
-template <
-    typename TDomain_h,
-    typename TFloeGroup_h,
-    typename TDetector,
-    typename TCollisionManager_h
->
-void Problem_h<TDomain_h, TFloeGroup_h, TDetector, TCollisionManager_h>
+template <typename TDomain_h, typename TDetector, typename TCollisionManager_h>
+void Problem_h<TDomain_h, TDetector, TCollisionManager_h>
 ::manage_collisions(){
     m_collision_manager_h->solve_contacts(m_detector->contact_graph());
 }
 
-template <
-    typename TDomain_h,
-    typename TFloeGroup_h,
-    typename TDetector,
-    typename TCollisionManager_h
->
-void Problem_h<TDomain_h, TFloeGroup_h, TDetector, TCollisionManager_h>
+template <typename TDomain_h, typename TDetector, typename TCollisionManager_h>
+void Problem_h<TDomain_h, TDetector, TCollisionManager_h>
 ::step_solve(){
     do_detection();
     manage_collisions();

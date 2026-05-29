@@ -96,8 +96,7 @@ list_so_to_floes( TMatlabListSolid const& list_so, std::vector<TKinematicFloe>& 
         
         
         // Import mesh
-        TMesh& mesh = floe.get_floe_h().m_static_mesh;
-        
+        TMesh mesh;
         auto& points = mesh.points();
         for ( auto const& point : solid.pt_own_mark.S.vertices )
             points.push_back( { point[0], point[1] } );
@@ -111,7 +110,7 @@ list_so_to_floes( TMatlabListSolid const& list_so, std::vector<TKinematicFloe>& 
             );
         }
         
-        floe.static_floe().attach_mesh_ptr(&mesh);
+        floe.static_floe().set_mesh(mesh);
         // Done.
         
     }

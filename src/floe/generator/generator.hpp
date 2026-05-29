@@ -166,11 +166,13 @@ Generator<TProblem>::random_floe_group(std::size_t n, real_type max_size, real_t
     for (std::size_t i = 0; i < n; i++)
     {
         int idx = distribution(generator);
+        // int idx = 0;
         auto& base_shape = m_biblio_floe_h[idx];
         auto mesh = m_biblio_floe_h_meshes[idx];
         polygon_type shape;
-        geometry::transform( base_shape, shape, scale_transformer<real_type>{ sizes[i] } );
-        geometry::transform( mesh, mesh, scale_transformer<real_type>{ sizes[i] } );
+        auto size = sizes[i];
+        geometry::transform( base_shape, shape, scale_transformer<real_type>{ size } );
+        geometry::transform( mesh, mesh, scale_transformer<real_type>{ size } );
 
         // Create Kinematic floe
         auto& floe = list_floes[i];
@@ -184,12 +186,8 @@ Generator<TProblem>::random_floe_group(std::size_t n, real_type max_size, real_t
         static_floe.attach_geometry_ptr(std::move(geometry));
         
         // Import mesh
-        mesh_type& floe_mesh = floe.get_floe_h().m_static_mesh;
-        floe_mesh = mesh;
-        floe.static_floe().attach_mesh_ptr(&floe_mesh);
+        floe.static_floe().set_mesh(mesh);
         // Done.
-
-        m_problem.get_floe_group().get_floe_group_h().add_floe(floe.get_floe_h());
 
         // Set space-time state
         typename floe_type::state_type state {{0, 0}, 0, {0, 0}, 0, {0, 0}};

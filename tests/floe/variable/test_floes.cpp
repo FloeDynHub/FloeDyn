@@ -36,8 +36,6 @@ TEST_CASE( "Test Floes", "[variable]" ) {
     std::string mat_file_name = "tests/floe/io/matlab/r1day_set_up_250sm_sz_60_list_so_350_str.mat";
     F.load_matlab_config(mat_file_name);
     REQUIRE(F.get_floes().size() == 350);
-    // is discrete group correctly instanciated ?
-    REQUIRE(F.get_floe_group_h().m_list_floe_h.size() == 350);
 
 
     /* TEST Floe center of mass

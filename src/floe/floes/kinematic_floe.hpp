@@ -13,8 +13,6 @@
 
 #include "floe/state/space_time_state.hpp"
 #include "floe/geometry/frame/frame_transformers.hpp"
-
-#include "floe/floes/floe_h.hpp"
 #include "floe/geometry/arithmetic/dot_product.hpp"
 #include "floe/geometry/arithmetic/arithmetic.hpp"
 // #include "floe/geometry/arithmetic/point_operators.hpp"
@@ -58,32 +56,17 @@ public:
     using frame_type = typename TStaticFloe::frame_type;
     using static_floe_type = TStaticFloe;
     using state_type = TState;
-    using floe_h_type = floe::floes::Floe_h<mesh_type>;
     using Uptr_geometry_type = std::unique_ptr<geometry_type>;
     using floe_interface_type = FloeInterface<TStaticFloe, TState>;
 
     KinematicFloe() : m_geometry{nullptr}, m_floe{nullptr}, m_state{ {0,0}, 0, {0,0}, 0, {0,0}, true},
-                      m_obstacle{false}, m_floe_h{}, m_total_impulse_received{0} {}
-
-    KinematicFloe(static_floe_type new_static_floe) : m_geometry{nullptr}, m_floe{new_static_floe}, m_state{ {0,0}, 0, {0,0}, 0, {0,0}, true},
-                      m_obstacle{false}, m_floe_h{}, m_total_impulse_received{0} {} //comment je fais avec floe_h ????
+                      m_obstacle{false}, m_kinematic_mesh{}, m_total_impulse_received{0} {}
 
     //! Deleted copy constructor
     KinematicFloe( KinematicFloe<TStaticFloe,TState> const& ) = delete;
 
-    //! move constructor — re-attaches m_mesh after m_floe_h moves to a new address
-    KinematicFloe( KinematicFloe<TStaticFloe, TState>&& o ) noexcept
-        : m_geometry(std::move(o.m_geometry)),
-          m_floe(std::move(o.m_floe)),
-          m_state(std::move(o.m_state)),
-          m_obstacle(o.m_obstacle),
-          m_floe_h(std::move(o.m_floe_h)),
-          m_total_impulse_received(o.m_total_impulse_received),
-          m_detailed_impulse_received(std::move(o.m_detailed_impulse_received)),
-          m_dirichlet_condition(std::move(o.m_dirichlet_condition))
-    {
-        if (m_floe) m_floe->attach_mesh_ptr(&m_floe_h.m_static_mesh);
-    }
+    //! Move constructor — default is safe: StaticFloe (owning m_mesh by value) is heap-allocated
+    KinematicFloe( KinematicFloe<TStaticFloe, TState>&& ) = default;
 
     //! Deleted copy operator
     KinematicFloe& operator= (KinematicFloe<TStaticFloe,TState> const& ) = delete;
@@ -117,10 +100,9 @@ public:
     inline bool                     has_geometry()      const   { return m_geometry != nullptr; }
 
     //! Mesh accessors
-    inline mesh_type const&     get_mesh()      const   { return m_floe_h.m_kinematic_mesh; }
-    inline mesh_type const&     mesh()          const   { return m_floe_h.m_kinematic_mesh; }
-    inline mesh_type&     mesh()            { return m_floe_h.m_kinematic_mesh; }
-    // inline bool                 has_mesh()      const   { return m_mesh != nullptr; }
+    inline mesh_type const&     get_mesh()      const   { return m_kinematic_mesh; }
+    inline mesh_type const&     mesh()          const   { return m_kinematic_mesh; }
+    inline mesh_type&           mesh()                  { return m_kinematic_mesh; }
 
     //! Area
     inline real_type area() const { return has_static_floe() ? ( m_floe->area() ) : -1; }
@@ -150,9 +132,6 @@ public:
     //! Mu accessors
     inline real_type    mu_static() const   { return has_static_floe() ? m_floe->mu_static() : -1; }
     inline void set_mu_static(real_type mu_static) { if (has_static_floe()) m_floe->set_mu_static(mu_static); }
-
-    //! Floe_h accessor
-    inline floe_h_type& get_floe_h() { return m_floe_h; }
 
     //! Kinetic energy
     real_type kinetic_energy() const;
@@ -199,7 +178,7 @@ private:
     mutable state_type  m_state;        //!< Time-Space state
     bool m_obstacle;            //!< true if this floe is an obstacle
 
-    floe_h_type m_floe_h; //!< Discretisation of the Floe
+    mesh_type m_kinematic_mesh; //!< Floe mesh in absolute frame
     mutable real_type m_total_impulse_received; //!< Sum all collision impulses this floe received
 
     /*! keep track of recent collisions
