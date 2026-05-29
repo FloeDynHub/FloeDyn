@@ -475,7 +475,7 @@ class FloePlotter(object):
             file_time_dependant_keys =["time", "floe_states"] # allow input files to be plotted
         if single_step == "OFF":
             for key in file_time_dependant_keys:
-                d[key] = data_file.get(key)[:10000:self.OPTIONS.step]
+                d[key] = data_file.get(key)[self.OPTIONS.begin:self.OPTIONS.end:self.OPTIONS.step]
         else:
             for key in file_time_dependant_keys:
                 if img and key == "time" and not "time" in data_file: # plot input files
@@ -484,8 +484,9 @@ class FloePlotter(object):
                     d[key] = [data_file.get(key)[single_step]]
         if not img:
             d["total_time"] = d["time"]
+            print("Total number of time steps: {}".format(len(d["time"])), "last time: {}".format(d["time"][-1]))
         if self.OPTIONS.version == 1:
-            d["floe_outlines"] = {k : dataset[::self.OPTIONS.step]
+            d["floe_outlines"] = {k : dataset[self.OPTIONS.begin:self.OPTIONS.end:self.OPTIONS.step]
                 for k, dataset in data_file.get("floe_outlines").items()}
         elif self.OPTIONS.version >= 2:
             if data_file.get("floe_shapes") is not None:

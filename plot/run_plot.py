@@ -11,6 +11,8 @@ def run():
     parser.add_argument('function', metavar='Function', type=str, help='Function to call (anim, fast_vid, 1step)')
     parser.add_argument('-v,', '--version', type=int, default=2, help='init/update version') # TODO improve this design
     parser.add_argument('-f', '--file', dest="filename", help='FloeDyn output file to read (ex: io/outputs/out_1.h5)')
+    parser.add_argument('--begin', type=int, default=0, help='Data reading beginning index')
+    parser.add_argument('--end', type=int, default=-1, help='Data reading ending index')
     parser.add_argument('--step', type=int, default=1, help='Data reading step')
     parser.add_argument('-w', '--window', action="store_true", dest="disp_window", default=False, help='Display window')
     parser.add_argument('--circles', action="store_true", dest="disp_circles", default=False, help='Display floes bounding circles')
