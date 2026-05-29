@@ -88,15 +88,6 @@ void import_floes_from_hdf5(H5std_string filename, TFloeGroup& floe_group)
     std::size_t previous_nb_floes = floe_list.size();
     floe_list.resize(previous_nb_floes + nb_floes);
 
-    // Vector reallocation moves KinematicFloe objects in memory, invalidating
-    // the raw m_mesh pointer in each StaticFloe (which pointed into m_floe_h.m_static_mesh).
-    // Re-attach those pointers so they reflect the new in-memory addresses.
-    for (std::size_t i = 0; i < previous_nb_floes; ++i) {
-        auto& floe = floe_list(i);
-        if (floe.has_static_floe())
-            floe.static_floe().attach_mesh_ptr(&floe.get_floe_h().m_static_mesh);
-    }
-
     for (std::size_t floe_id = 0; floe_id < nb_floes; ++floe_id)
     {
         try

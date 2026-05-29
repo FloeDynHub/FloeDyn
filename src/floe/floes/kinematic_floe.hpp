@@ -71,8 +71,19 @@ public:
     //! Deleted copy constructor
     KinematicFloe( KinematicFloe<TStaticFloe,TState> const& ) = delete;
 
-    //! move constructor
-    KinematicFloe( KinematicFloe<TStaticFloe, TState>&& ) = default;
+    //! move constructor — re-attaches m_mesh after m_floe_h moves to a new address
+    KinematicFloe( KinematicFloe<TStaticFloe, TState>&& o ) noexcept
+        : m_geometry(std::move(o.m_geometry)),
+          m_floe(std::move(o.m_floe)),
+          m_state(std::move(o.m_state)),
+          m_obstacle(o.m_obstacle),
+          m_floe_h(std::move(o.m_floe_h)),
+          m_total_impulse_received(o.m_total_impulse_received),
+          m_detailed_impulse_received(std::move(o.m_detailed_impulse_received)),
+          m_dirichlet_condition(std::move(o.m_dirichlet_condition))
+    {
+        if (m_floe) m_floe->attach_mesh_ptr(&m_floe_h.m_static_mesh);
+    }
 
     //! Deleted copy operator
     KinematicFloe& operator= (KinematicFloe<TStaticFloe,TState> const& ) = delete;
