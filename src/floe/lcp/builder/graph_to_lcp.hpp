@@ -312,8 +312,12 @@ calc_floe_impulses(ublas::vector<T> const& normal, ublas::vector<T> const& tange
     std::vector<point_type> contact_impulses(m);
     for (std::size_t i = 0; i < m; ++i)
     {
-        contact_impulses[i] = point_type(tangential[2*i] + tangential[2*i + 1], normal[i]);
+        contact_impulses[i] = point_type(tangential[2*i] - tangential[2*i + 1], normal[i]);
+        // std::cout << "Contact " << i << " normal: " << normal[i] << ", tangential 2i: " << tangential[2*i] << ", tangential 2i+1: " << tangential[2*i + 1] << std::endl;    
     }
+    // for (std::size_t i = 0; i < contact_impulses.size(); ++i) {
+    //     std::cout << "Contact " << i << " impulse: " << contact_impulses[i] << std::endl;
+    // }
     std::size_t n = J.size1() / 3;
     ublas::vector<T> floe_impulses(n, 0);
     std::size_t j = 0;
