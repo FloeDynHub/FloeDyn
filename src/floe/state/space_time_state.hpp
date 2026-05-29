@@ -52,6 +52,7 @@ struct SpaceTimeState
     TPos    trans; // total translation (periodic boundaries gaps sum)
 
     bool active {true}; // false if floe is inactive (after a fracture)
+    bool jammed {false}; // true if floe is blocked in a jam
     // faut il le mettre en real pour plus de facilité lors du traitement en hdf5 ? voir hdf5 manager    l.81 for (auto& val: .....
      
     //activate and desactivate floe
@@ -59,7 +60,10 @@ struct SpaceTimeState
     inline void desactivate() { active=false; }
     inline void set_active(bool val) { active = val; }
     inline bool is_active() const { return active; }
-    
+
+    inline void set_jammed(bool val) { jammed = val; }
+    inline bool is_jammed() const { return jammed; }
+
      //! real position ( ignoring periodic boundaries gaps )
     inline TPos real_position() const { return pos + trans; }
 

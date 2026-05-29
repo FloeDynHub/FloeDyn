@@ -130,6 +130,12 @@ public:
 
     // returns the number of floes which are out of the window 
     size_t count_floes_outside_window(real_type width, real_type height);
+    //! Unjam all floes
+    void unjam_all_floes() {
+        for (auto& floe : get_floes()) {
+            floe.state().set_jammed(false);
+        }
+    }
 
 protected:
 

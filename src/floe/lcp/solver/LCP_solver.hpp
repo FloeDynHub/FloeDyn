@@ -28,7 +28,19 @@ template<typename T>
 template<typename TContactGraph>
 vector<real_type>
 LCPSolver<T>::solve( TContactGraph& graph, bool& success, int lcp_failed_stats[] ) {
-
+    // Calc tolerance from the biggest floe in the graph if it is bigger than a reference floe
+    real_type err_tolerance = m_tolerance;
+    real_type ref_mass = 2 * 1e8; // circular floe with diam 500m
+    real_type max_mass = 0;
+    for ( auto const v : boost::make_iterator_range( vertices(graph) ) )
+    {
+        if (!graph[v].floe->is_obstacle()) {
+            max_mass = std::max(max_mass, graph[v].floe->mass());
+        } // TODO else ?
+    }
+    if (max_mass > ref_mass) {
+        err_tolerance *= (max_mass / ref_mass) * (max_mass / ref_mass);
+    }
     floe::lcp::builder::GraphLCP<real_type, decltype(graph)> graph_lcp( graph );
     auto lcp_orig = graph_lcp.getLCP();
 
@@ -75,8 +87,9 @@ LCPSolver<T>::solve( TContactGraph& graph, bool& success, int lcp_failed_stats[]
     const int Z0  = 2*lcp_a.dim;    // artificial variable associated with the covering vector
     
     while (!solved && count_attempt<=m_ite_max_attempt) {
+        err_tolerance *= 4;
 
-        error_status = lexicolemke_MR(m_tolerance, lcp_a, itermax);
+        error_status = lexicolemke_MR(err_tolerance, lcp_a, itermax);
 
         // Always comparing to the orignal one: (lcp.M could be perturbed)
         lcp_orig.z = lcp_a.z;
@@ -92,7 +105,7 @@ LCPSolver<T>::solve( TContactGraph& graph, bool& success, int lcp_failed_stats[]
         }
 
         // accurate solution is found
-        if (LCP_err<=m_tolerance) {  
+        if (LCP_err<=err_tolerance) {  
             // corresponding solution:
             Solc = calcSolc(graph_lcp, lcp_orig);
 
@@ -129,7 +142,7 @@ LCPSolver<T>::solve( TContactGraph& graph, bool& success, int lcp_failed_stats[]
 
         if (SR_status) { // secondary ray, go through an adjacent cone
 
-            int    is_done = lcp_a.go_through_adj_cone( lcp_orig, Z0, m_tolerance ); // is_done = 0 for failed SR
+            int    is_done = lcp_a.go_through_adj_cone( lcp_orig, Z0, err_tolerance ); // is_done = 0 for failed SR
             // is_done = 1 for successful SR with unique pivoting operation
             // is_done = 2 for successful SR with direct inversing operation
 
@@ -206,14 +219,14 @@ LCPSolver<T>::solve( TContactGraph& graph, bool& success, int lcp_failed_stats[]
 
         while (!solved && count_attempt<=m_ite_max_attempt) {
 
-            error_status = lexicolemke_MR(m_tolerance, lcp_a, itermax);
+            error_status = lexicolemke_MR(err_tolerance, lcp_a, itermax);
 
             // Always comparing to the original one: (lcp.M could be perturbed)
             lcp_d_orig.z = lcp_a.z;
             T LCP_err = lcp_d_orig.LCP_error();
 
             // accurate solution is found
-            if (LCP_err<=m_tolerance) {    
+            if (LCP_err<=err_tolerance) {    
                 Sold = calcSold(graph_lcp, lcp_orig, lcp_d_orig, Solc);
                 auto ECd = calcEc(Sold, graph_lcp.M, graph_lcp.W);
                 if (ECd > 1) {
@@ -255,7 +268,7 @@ LCPSolver<T>::solve( TContactGraph& graph, bool& success, int lcp_failed_stats[]
             }
 
             if (SR_status) { // secondary ray, go through an adjacent cone
-                int    is_done = lcp_a.go_through_adj_cone( lcp_orig, Z0, m_tolerance ); // is_done = 0 for failed SR
+                int    is_done = lcp_a.go_through_adj_cone( lcp_orig, Z0, err_tolerance ); // is_done = 0 for failed SR
                 // is_done = 1 for successful SR with unique pivoting operation
                 // is_done = 2 for successful SR with direct inversing operation
 

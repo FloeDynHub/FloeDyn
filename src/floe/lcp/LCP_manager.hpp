@@ -93,7 +93,8 @@ private:
     double max_chrono_active_subgraph{0.0}; // test perf
     
     std::unordered_map<std::size_t, int> m_subgraph_hash_count; //!< Map to track subgraph hash occurrences
-    std::unordered_map<std::size_t, std::vector<typename types::point_type>> m_subgraph_hash_impulses;
+    std::unordered_map<std::size_t, std::vector<typename types::point_type>> m_subgraph_hash_cp_impulses;
+    std::unordered_map<std::size_t, std::vector<real_type>> m_subgraph_hash_floe_impulses;
     std::unordered_map<std::size_t, real_type> m_subgraph_map_timestep; //!< Map to track subgraph hash to time interval corresponding to the impulses stored
 
     //! Update floes state with LCP solution
@@ -171,23 +172,48 @@ int LCPManager<T>::solve_contacts(TContactGraph& contact_graph, real_type time, 
         std::sort(floe_ptrs.begin(), floe_ptrs.end());
 
         // Hash: combine floe addresses and number of contacts
+        /* V1
         std::size_t graph_hash = 0;
         for (auto ptr : floe_ptrs) {
             graph_hash ^= ptr + 0x9e3779b9 + (graph_hash << 6) + (graph_hash >> 2);
         }
         graph_hash ^= num_contacts(subgraph) + 0x9e3779b9 + (graph_hash << 6) + (graph_hash >> 2);
+        */
+        // V2 : use floe_ptr AND contact points (round position x and y to unit (1m))
+        std::size_t graph_hash = 0;
+        for (auto v : boost::make_iterator_range(vertices(subgraph))) {
+            auto floe = subgraph[v].floe;
+            std::uintptr_t ptr = reinterpret_cast<std::uintptr_t>(floe);
+            graph_hash ^= ptr + 0x9e3779b9 + (graph_hash << 6) + (graph_hash >> 2);
+        }
+        for (auto e : boost::make_iterator_range(edges(subgraph))) {
+            for (std::size_t i = 0; i < subgraph[e].size(); ++i) {
+                auto contact = subgraph[e][i];
+                auto pos = contact.frame.center();
+                std::size_t contact_hash = 0;
+                // TODO adapt resolution to the scale of the problem.
+                double resolution = 100.0; // 1 unit in hash corresponds to 1m in position
+                contact_hash ^= static_cast<std::size_t>(static_cast<std::int64_t>(std::llround(pos.x / resolution))) + 0x9e3779b9 + (contact_hash << 6) + (contact_hash >> 2);
+                contact_hash ^= static_cast<std::size_t>(static_cast<std::int64_t>(std::llround(pos.y / resolution))) + 0x9e3779b9 + (contact_hash << 6) + (contact_hash >> 2);
+                graph_hash ^= contact_hash + 0x9e3779b9 + (graph_hash << 6) + (graph_hash >> 2);
+            }
+        }
+
 
         seen_hashes.insert(graph_hash);
 
         // Update map: increment if exists, else set to 1
         auto it = m_subgraph_hash_count.find(graph_hash);
         if (it != m_subgraph_hash_count.end()) {
-            it->second += 1;
+            it->second += 3;
         } else {
             m_subgraph_hash_count[graph_hash] = 1;
             m_subgraph_map_timestep[graph_hash] = 0;
-            m_subgraph_hash_impulses[graph_hash] = std::vector<typename types::point_type>(
+            m_subgraph_hash_cp_impulses[graph_hash] = std::vector<typename types::point_type>(
                 num_contacts(subgraph), typename types::point_type{0, 0}
+            );
+            m_subgraph_hash_floe_impulses[graph_hash] = std::vector<real_type>(
+                num_vertices(subgraph), 0
             );
         }
 
@@ -199,18 +225,63 @@ int LCPManager<T>::solve_contacts(TContactGraph& contact_graph, real_type time, 
         // END OPTIMJAM
 
         // OPTIMJAM : solve subgraph reapplaying impulses from previous timesteps
-        if (m_subgraph_hash_count[graph_hash] >= optim_jam_start) {
-            std::cout << "OPTIM JAM !" << std::endl;
-            int i = 0;
-            for (auto e : boost::make_iterator_range(edges(subgraph))) {
-                for (std::size_t j = 0; j < subgraph[e].size(); ++j) {
-                    guessed_contact_impulse = 0.8 * dt * m_subgraph_hash_impulses[graph_hash][i] / m_subgraph_map_timestep[graph_hash];
-                    subgraph[e][j].add_impulse_received(guessed_contact_impulse);
-                    // get floe1 and floe 2 from edge and add impulse to them
-                    subgraph[source(e, subgraph)].floe->apply_impulse(-subgraph[e][j].impulse_abs_frame(), subgraph[e][j].frame.center());
-                    subgraph[target(e, subgraph)].floe->apply_impulse(subgraph[e][j].impulse_abs_frame(), subgraph[e][j].frame.center());
+
+        if (m_subgraph_hash_count[graph_hash] >= 3 * optim_jam_start and m_subgraph_map_timestep[graph_hash] > dt * 10) {
+            // int i = 0;
+            // idea #2 compute floes average speed in the subgraph (excluding obstacles) and subtract it to each floe
+            typename types::point_type total_speed = {0, 0};
+            real_type total_mass = 0;
+            real_type max_v2 = 0;
+            for (auto v : boost::make_iterator_range(vertices(subgraph))) {
+                if (!subgraph[v].floe->is_obstacle()) {
+                    total_speed += subgraph[v].floe->state().speed * subgraph[v].floe->mass();
+                    total_mass += subgraph[v].floe->mass();
+                    auto v2 = subgraph[v].floe->kinetic_energy() / subgraph[v].floe->mass();
+                    if (v2 > max_v2) {
+                        max_v2 = v2;
+                    }
                 }
-                ++i;
+            }
+            std::cout << "max v2 in subgraph: " << max_v2 << std::endl;
+            if (total_mass > 0 && max_v2 < 0.01) { // TODO find good threshold for max_v2
+                std::cout << "OPTIM JAM !" << std::endl;
+                // if the subgraph is almost jammed, we set speed to 0 to avoid numerical issues in LCP solver
+                // and speed up collision computing
+                // auto avg_speed = total_speed / total_mass;
+                // std::cout << "Average speed in subgraph: (" << avg_speed[0] << ", " << avg_speed[1] << ")" << std::endl;
+                int k = 0;
+                for (auto v : boost::make_iterator_range(vertices(subgraph))) {
+                    if (!subgraph[v].floe->is_obstacle()) {
+                        // subgraph[v].floe->state().speed -= 2 * avg_speed;
+                        subgraph[v].floe->state().speed = {0, 0};
+                        subgraph[v].floe->state().rot = 0;
+                        subgraph[v].floe->state().set_jammed(true);
+                    }
+                    double guessed_impulse_norm = 1 * dt * m_subgraph_hash_floe_impulses[graph_hash][k] / m_subgraph_map_timestep[graph_hash];
+                    subgraph[v].add_impulse_received(guessed_impulse_norm);
+                    ++k;
+                }
+                // for (auto e : boost::make_iterator_range(edges(subgraph))) {
+                //     for (std::size_t j = 0; j < subgraph[e].size(); ++j) {
+                //         guessed_contact_impulse = 1 * dt * m_subgraph_hash_cp_impulses[graph_hash][i] / m_subgraph_map_timestep[graph_hash];
+                //         // Print floe speeds before impulse
+                //         // auto& floe_src = *subgraph[source(e, subgraph)].floe;
+                //         // auto& floe_tgt = *subgraph[target(e, subgraph)].floe;
+                //         // // idea #1 re-apply guessed impulse
+                //         // subgraph[e][j].add_impulse_received(guessed_contact_impulse);
+                //         // // get floe1 and floe 2 from edge and add impulse to them
+                //         // subgraph[source(e, subgraph)].floe->apply_impulse(-subgraph[e][j].impulse_abs_frame(), subgraph[e][j].frame.center());
+                //         // subgraph[target(e, subgraph)].floe->apply_impulse(subgraph[e][j].impulse_abs_frame(), subgraph[e][j].frame.center());
+                //         // Set received impulses to floes (visu only)
+                //         real_type impulse_norm = norm2(guessed_contact_impulse);
+                //         subgraph[source(e, subgraph)].add_impulse_received(impulse_norm);
+                //         subgraph[target(e, subgraph)].add_impulse_received(impulse_norm);
+                //         *subgraph[e][j].floe_states_changed = true;
+                //     }
+                //     ++i;
+                //     subgraph[e].mark_changed();
+                // }
+                mark_changed(subgraph); // indicates which floes have been modified
             }
         }
 
@@ -233,6 +304,14 @@ int LCPManager<T>::solve_contacts(TContactGraph& contact_graph, real_type time, 
                                             // or no enough iteration (2)
         contact_loop_stats[0] = static_cast<int>(num_contacts(subgraph));
         contact_loop_stats[1] = 1;
+
+        // UTEST Save floes speed and rot before LCP
+        std::vector<typename types::point_type> utest_before_speeds;
+        std::vector<real_type> utest_before_rots;
+        for (auto const v : boost::make_iterator_range(vertices(subgraph))) {
+            utest_before_speeds.push_back(subgraph[v].floe->state().speed);
+            utest_before_rots.push_back(subgraph[v].floe->state().rot);
+        }
 
         while (asubgraphs.size() != 0
                && loop_cnt < std::min( 100 * num_contacts(subgraph), limit_sup_loop_cnt) // 60 * num_contacts(subgraph)
@@ -299,20 +378,153 @@ int LCPManager<T>::solve_contacts(TContactGraph& contact_graph, real_type time, 
         if (true) {
             // iter over edges and contacts to get impulses
             size_t i = 0;
+            std::vector<std::pair<int, int>> contact_coords;
+            std::vector<std::pair<std::uintptr_t, std::uintptr_t>> floe_ptr_pairs;
+            std::vector<std::pair<double, double>> impulses_per_dt;
             for (auto e : boost::make_iterator_range(edges(subgraph))) {
-                for (std::size_t j = 0; j < subgraph[e].size(); ++j) {
-                    m_subgraph_hash_impulses[graph_hash][i] += subgraph[e][j].get_impulse_received();
-                    ++i;
-                }
+            for (std::size_t j = 0; j < subgraph[e].size(); ++j) {
+                auto impulse = subgraph[e][j].get_impulse_received();
+                m_subgraph_hash_cp_impulses[graph_hash][i] += impulse;
+                // Get contact point coordinates, round to int
+                // auto pt = subgraph[e][j].frame.center();
+                // contact_coords.emplace_back(static_cast<int>(std::round(pt[0])), static_cast<int>(std::round(pt[1])));
+                // // Store floe pointer address pairs
+                // auto src_ptr = reinterpret_cast<std::uintptr_t>(subgraph[source(e, subgraph)].floe);
+                // auto tgt_ptr = reinterpret_cast<std::uintptr_t>(subgraph[target(e, subgraph)].floe);
+                // floe_ptr_pairs.emplace_back(src_ptr, tgt_ptr);
+                // // Store impulse/dt
+                // impulses_per_dt.emplace_back(impulse[0] / dt, impulse[1] / dt);
+                // ++i;
             }
+            }
+            int k = 0;
+            for (auto v : boost::make_iterator_range(vertices(subgraph))) {
+                auto impulse = subgraph[v].impulse();
+                m_subgraph_hash_floe_impulses[graph_hash][k] += impulse;
+                ++k;
+            }
+            
+            // Print as python list
+            // std::cout << "cp_coords.append([";
+            // for (size_t k = 0; k < contact_coords.size(); ++k) {
+            // std::cout << "(" << contact_coords[k].first << ", " << contact_coords[k].second << ")";
+            // if (k + 1 != contact_coords.size()) std::cout << ", ";
+            // }
+            // std::cout << "])" << std::endl;
+
+            // // Print floe pointer address pairs
+            // std::cout << "floe_ptr_pairs.append([";
+            // for (size_t k = 0; k < floe_ptr_pairs.size(); ++k) {
+            // std::cout << "(" << floe_ptr_pairs[k].first << ", " << floe_ptr_pairs[k].second << ")";
+            // if (k + 1 != floe_ptr_pairs.size()) std::cout << ", ";
+            // }
+            // std::cout << "])" << std::endl;
+
+            // Print impulses/dt as python list
+            // std::cout << "impulses_per_dt.append([";
+            // for (size_t k = 0; k < impulses_per_dt.size(); ++k) {
+            // std::cout << "(" << impulses_per_dt[k].first << ", " << impulses_per_dt[k].second << ")";
+            // if (k + 1 != impulses_per_dt.size()) std::cout << ", ";
+            // }
+            // std::cout << "])" << std::endl;
+            
             m_subgraph_map_timestep[graph_hash] += dt;
-            // print m_subgraph_hash_impulses for this hash
+            // print m_subgraph_hash_cp_impulses for this hash
+            // std::cout << "IMP " << m_subgraph_hash_floe_impulses[graph_hash][] << ", " << m_subgraph_map_timestep[graph_hash] << " = " << m_subgraph_hash_cp_impulses[graph_hash][0] / m_subgraph_map_timestep[graph_hash] << std::endl;
             // std::cout << "[";
-            // for (auto const& imp : m_subgraph_hash_impulses[graph_hash]) std::cout << "(" << imp[0] / m_subgraph_map_timestep[graph_hash] << ", " << imp[1] / m_subgraph_map_timestep[graph_hash] << "), ";
+            // for (auto const& imp : m_subgraph_hash_cp_impulses[graph_hash]) std::cout << "(" << imp[0] / m_subgraph_map_timestep[graph_hash] << ", " << imp[1] / m_subgraph_map_timestep[graph_hash] << "), ";
             // std::cout << "]," << std::endl;
+            // std::cout << "[";
+            // for (auto const& imp : m_subgraph_hash_floe_impulses[graph_hash]) std::cout << imp / m_subgraph_map_timestep[graph_hash] << ", ";
+            // std::cout << "]," << std::endl;
+            
         }
         // END OPTIMJAM
+
+        
+        // // UTEST save after speeds and rots
+        // std::vector<typename types::point_type> utest_after_speeds;
+        // std::vector<real_type> utest_after_rots;
+        // for (auto const v : boost::make_iterator_range(vertices(subgraph))) {
+        //     utest_after_speeds.push_back(subgraph[v].floe->state().speed);
+        //     utest_after_rots.push_back(subgraph[v].floe->state().rot);
+        // }
+        
+        // // UTEST now reset floe speeds and rots to before LCP and apply impulses stored in contact points to later check if we get the same result
+        // size_t idx = 0;
+        // for (auto v : boost::make_iterator_range(vertices(subgraph))) {
+        //     subgraph[v].floe->state().speed = utest_before_speeds[idx];
+        //     subgraph[v].floe->state().rot = utest_before_rots[idx];
+        //     ++idx;
+        // }
+
+        // // UTEST Apply guessed impulses from previous steps to contact points and floes
+        // size_t i = 0;
+        // for (auto const& e : boost::make_iterator_range(edges(subgraph))) {
+        //     for (std::size_t j = 0; j < subgraph[e].size(); ++j) {
+        //         // Apply impulses to floe1 and floe2
+        //         // if (!subgraph[source(e, subgraph)].floe->is_obstacle()) {
+        //         //     std::cout << "Source floe area: " << subgraph[source(e, subgraph)].floe->area()
+        //         //               << " -> received impulse (abs frame): x = " << -subgraph[e][j].impulse_abs_frame()[0]
+        //         //               << ", y = " << -subgraph[e][j].impulse_abs_frame()[1]
+        //         //               << " at contact point (" << subgraph[e][j].frame.center()[0]
+        //         //               << ", " << subgraph[e][j].frame.center()[1] << ")" << std::endl;
+        //         // }
+        //         // if (!subgraph[target(e, subgraph)].floe->is_obstacle()) {
+        //         //     std::cout << "Target floe area: " << subgraph[target(e, subgraph)].floe->area()
+        //         //               << " -> received impulse (abs frame): x = " << subgraph[e][j].impulse_abs_frame()[0]
+        //         //               << ", y = " << subgraph[e][j].impulse_abs_frame()[1]
+        //         //               << " at contact point (" << subgraph[e][j].frame.center()[0]
+        //         //               << ", " << subgraph[e][j].frame.center()[1] << ")" << std::endl;
+        //         // }
+        //         subgraph[source(e, subgraph)].floe->apply_impulse(-subgraph[e][j].impulse_abs_frame(), subgraph[e][j].frame.center());
+        //         subgraph[target(e, subgraph)].floe->apply_impulse(subgraph[e][j].impulse_abs_frame(), subgraph[e][j].frame.center());
+        //         ++i;
+        //     }
+        // }
+
+        // // UTEST Check if we get the same result as after LCP
+        // bool utest_success = true;
+        // idx = 0;
+        // for (auto v : boost::make_iterator_range(vertices(subgraph))) {
+        //     auto speed_diff = subgraph[v].floe->state().speed - utest_after_speeds[idx];
+        //     auto rot_diff = subgraph[v].floe->state().rot - utest_after_rots[idx];
+        //     double speed_diff_norm = std::sqrt(speed_diff[0]*speed_diff[0] + speed_diff[1]*speed_diff[1]);
+        //     if (speed_diff_norm > 1e-5 || std::abs(rot_diff) > 1e-5) {
+        //     utest_success = false;
+        //     std::cout << "UTEST FAILED for floe idx " << idx << ": speed diff = (" 
+        //         << speed_diff[0] << ", " << speed_diff[1] << "), rot diff = " << rot_diff << std::endl;
+        //     }
+        //     ++idx;
+        // }
+        // if (utest_success) {
+        //     std::cout << "UTEST SUCCESS: Floe states match after reapplying impulses." << std::endl;
+        // }
+        // End UTEST
+        // Compute and print average distance between contact points in the subgraph
+        double total_dist = 0.0;
+        double min_dist = std::numeric_limits<double>::max();
+        size_t contact_count = 0;
+        for (auto const& e : boost::make_iterator_range(edges(subgraph))) {
+            for (std::size_t j = 0; j < subgraph[e].size(); ++j) {
+            double dist = subgraph[e][j].dist;
+            total_dist += dist;
+            if (dist < min_dist) min_dist = dist;
+            ++contact_count;
+            }
+        }
+        double sgec = 0.0;
+        for (auto const v : boost::make_iterator_range(vertices(subgraph))) {
+            sgec += subgraph[v].floe->kinetic_energy();
+        }
+        if (contact_count > 0) {
+            double avg_dist = total_dist / contact_count;
+            std::cout << "Average contact point distance in subgraph: " << avg_dist
+                  << ", min: " << min_dist << " ; kinetic energy : " << sgec << std::endl;
+        }
+        
     }
+
     update_floes_impulses(contact_graph, time);
     m_nb_lcp += LCP_count;
     m_nb_lcp_success += nb_success;
@@ -322,8 +534,17 @@ int LCPManager<T>::solve_contacts(TContactGraph& contact_graph, real_type time, 
 
     // Remove hashes not seen in this call OPTIMJAM
     for (auto it = m_subgraph_hash_count.begin(); it != m_subgraph_hash_count.end(); ) {
-        if (seen_hashes.find(it->first) == seen_hashes.end()) {
-            it = m_subgraph_hash_count.erase(it);
+        if (seen_hashes.find(it->first) == seen_hashes.end() || it->second > 500) {
+            std::size_t key = it->first;
+            it->second -= 1;
+            if (it->second <= 0 || it->second >= 500) {
+                m_subgraph_hash_cp_impulses.erase(key);
+                m_subgraph_hash_floe_impulses.erase(key);
+                m_subgraph_map_timestep.erase(key);
+                it = m_subgraph_hash_count.erase(it);
+            } else {
+                ++it;
+            }
         } else {
             ++it;
         }

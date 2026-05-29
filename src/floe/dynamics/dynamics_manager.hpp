@@ -49,11 +49,14 @@ void
 DynamicsManager<TExternalForces, TFloeGroup>::move_floe(floe_type& floe, real_type delta_t)
 {
     state_type new_state = floe.state();
-    // Inertic motion
-    new_state.pos += delta_t * floe.state().speed;
-    new_state.theta += delta_t * floe.state().rot;
+    if (!floe.state().is_jammed()) {
+        // Inertic motion
+        new_state.pos += delta_t * floe.state().speed;
+        new_state.theta += delta_t * floe.state().rot;
+    }
 
     if (!floe.is_obstacle()) { // Obstacles do not react to external forces
+        
         // Translation part
         auto drag_force = floe::integration::integrate(
             m_external_forces.total_drag(floe),
@@ -70,7 +73,7 @@ DynamicsManager<TExternalForces, TFloeGroup>::move_floe(floe_type& floe, real_ty
             integration_strategy<real_type>()
         );
         new_state.rot += ( delta_t / floe.moment_cst() ) * rot_drag_force;
-
+        
         /* Adding random perturbation to speed and rot
         (improve collision computing, physically justifiable) */
         if (m_rand_speed_add) {
