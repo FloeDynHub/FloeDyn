@@ -595,6 +595,11 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::write_shapes() {
         auto val = this->get_floe(i).get_static_floe().C_w();
         Attribute att = dataset.createAttribute("C_w", datatype, att_space );
         att.write( datatype, &val );
+        
+        // add attribute for obstacle status
+        int obstacle_val = this->get_floe(i).is_obstacle() ? 1 : 0;
+        Attribute obstacle_att = dataset.createAttribute("obstacle", PredType::NATIVE_INT, att_space );
+        obstacle_att.write( PredType::NATIVE_INT, &obstacle_val );
     }
 
     m_nb_floe_shapes_written = this->nb_considered_floes();
