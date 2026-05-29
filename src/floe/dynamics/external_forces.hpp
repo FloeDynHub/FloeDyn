@@ -35,7 +35,7 @@ public:
     using physical_data_type = TPhysicalData;
     // using physical_data_type = PhysicalData<point_type>;
 
-    ExternalForces(real_type const& time_ref) : m_physical_data{time_ref} {}
+    ExternalForces(real_type const& time_ref) : m_physical_data{time_ref}, m_O_latitude{80.207} {}
 
     //! Sum of different drag effects on a floe
     std::function<point_type (real_type, real_type)> total_drag(floe_type& floe);
@@ -48,6 +48,9 @@ public:
     inline void load_matlab_topaz_data(std::string const& filename) {
         m_physical_data.load_matlab_topaz_data(filename);
     }
+
+    //! Set origin latitude for Coriolis effect
+    inline void set_O_latitude(real_type lat) { m_O_latitude = lat; }
 
     //! Surface mass of Oceaninc Boundary Layer
     inline real_type OBL_surface_mass() const { return h_w * rho_w; }
@@ -83,7 +86,7 @@ private:
     const real_type R_earth = 6371 * 1e3; //!< (m) Earth radius.
     const real_type V_earth = 7.292 * 1e-5; //!< (s^-1) Earth angular velocity.
 
-    const real_type O_latitude = 80.207; //!< (rad) Origin latitude.
+    real_type m_O_latitude; //!< (deg) Origin latitude.
 
     const real_type gamma = 1e-5; //!< (m/s) friction velocity within the OBL.
     const real_type h_w = 15; //!< (m) Ocean Boundary Layer (OBL) height.
@@ -160,7 +163,7 @@ template <typename TFloe, typename TPhysicalData>
 value<TFloe>
 ExternalForces<TFloe, TPhysicalData>::coriolis_coeff(point_type p)
 {
-    auto phi = (O_latitude * M_PI / 180 + p.y / R_earth); // in radian
+    auto phi = (m_O_latitude * M_PI / 180 + p.y / R_earth); // in radian
     return 2 * V_earth * sin(phi);
 }
 

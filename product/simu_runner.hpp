@@ -59,6 +59,7 @@ public:
 
         problem_type P(epsilon, OBL_status);
         P.QUIT = &QUIT;
+        P.get_dynamics_manager().get_external_forces().set_O_latitude(O_latitude);
         if (!generate_floes){
             try {
                 P.load_config(input_file_name);
@@ -222,6 +223,7 @@ protected:
     int                     OBL_status              = 0;
     value_type              epsilon                 = 0.4;
     value_type              mu_static               = 0.7;
+    value_type              O_latitude              = 80.207;
     value_type              random_thickness_coeff  = 0.01;
     value_type              min_thickness           = 0.01;
     string                  matlab_topaz_filename   = "io/library/DataTopaz01.mat";
@@ -314,6 +316,7 @@ protected:
         ("epsilon,e", po::value(&epsilon)->default_value(
             epsilon, std::to_string(epsilon)), "collision restitution coeff")
         ("mu", po::value(&mu_static)->default_value(mu_static, std::to_string(mu_static)), "ice/ice static friction coeff")
+        ("lat0", po::value(&O_latitude)->default_value(O_latitude, std::to_string(O_latitude)), "origin latitude for Coriolis effect (degrees)")
         ("sigma", po::value(&random_thickness_coeff)->default_value(
             random_thickness_coeff, std::to_string(random_thickness_coeff)),
             "Normal distribution coeff (sigma) for random ice thickness variation around 1m")

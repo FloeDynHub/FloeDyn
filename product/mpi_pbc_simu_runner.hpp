@@ -44,21 +44,25 @@ public:
             // I'm the MASTER process
             std::cout << "MASTER OK" << std::endl;
             master_problem_type P(epsilon, OBL_status);
+            P.get_dynamics_manager().get_external_forces().set_O_latitude(O_latitude);
             return run_problem(P);
         } else if (rank <= N * N){ 
             // I'm a WORKER grid process
             std::cout << "WORKER grid #" << rank << " OK" << std::endl;
             worker_grid_problem_type P(epsilon, OBL_status);
+            P.get_dynamics_manager().get_external_forces().set_O_latitude(O_latitude);
             return run_problem(P);
         } else if (rank <= 4 * N * (N-1) + 1){
             // I'm a WORKER in-border process (x-border or y-border or internal cross-border)
             std::cout << "WORKER in-border #" << rank << " OK" << std::endl;
             worker_in_border_problem_type P(epsilon, OBL_status);
+            P.get_dynamics_manager().get_external_forces().set_O_latitude(O_latitude);
             return run_problem(P);
         } else {
             // I'm a WORKER out-border process (periodic external border)
             std::cout << "WORKER out-border #" << rank << " OK" << std::endl;
             worker_out_border_problem_type P(epsilon, OBL_status);
+            P.get_dynamics_manager().get_external_forces().set_O_latitude(O_latitude);
             return run_problem(P);
         }
             MPI_Finalize();
