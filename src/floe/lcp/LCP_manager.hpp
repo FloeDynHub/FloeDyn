@@ -39,10 +39,10 @@
 #include <omp.h>
 #endif
 
-using namespace types;
-
 namespace floe { namespace lcp
 {
+
+using namespace types;
 
 /*! LCPManager
  *
@@ -121,7 +121,7 @@ private:
 
 template<typename T>
 template<typename TContactGraph>
-int LCPManager<T>::solve_contacts(TContactGraph& contact_graph, typename T::real_type time)
+int LCPManager<T>::solve_contacts(TContactGraph& contact_graph, real_type time)
 {
 
     auto const subgraphs = collision_subgraphs( contact_graph );

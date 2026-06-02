@@ -37,10 +37,10 @@
 #include <omp.h>
 #endif
 
-using namespace types;
-
 namespace floe { namespace collision { namespace matlab
 {
+
+using namespace types;
 
 namespace ublas = boost::numeric::ublas;
 

@@ -29,10 +29,10 @@
 #include "floe/geometry/geometries/circle.hpp"
 #include "floe/geometry/geometries/multi_circle.hpp"
 
-using namespace types;
-
 namespace floe { namespace collision { namespace matlab
 {
+
+using namespace types;
 
 /*! Detector optimization for a ghost floe
  *  Refers to the real floe's optimization

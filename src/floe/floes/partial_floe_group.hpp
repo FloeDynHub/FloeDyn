@@ -12,10 +12,11 @@
 #include "floe/io/inter_process_message.hpp"
 #include "floe/generator/mesh_generator.hpp"
  
-using namespace types;
 
 namespace floe { namespace floes
 {
+
+using namespace types;
 
 /*! FloeGroup
  *

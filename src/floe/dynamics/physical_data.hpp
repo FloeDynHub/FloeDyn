@@ -15,11 +15,10 @@
 #include <cassert>
 #include <random>
 
-
-using namespace types;
-
 namespace floe { namespace dynamics
 {
+
+using namespace types;
 
 /*! PhysicalData
  *

@@ -12,11 +12,10 @@
 #include "floe/collision/matlab/ghost_optimized_floe.hpp"
 #include "floe/floes/ghost_floe.hpp"
 
-
-using namespace types;
-
 namespace floe { namespace collision { namespace matlab
 {
+
+using namespace types;
 
 namespace ublas = boost::numeric::ublas;
 

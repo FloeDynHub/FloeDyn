@@ -15,9 +15,12 @@
 #include "floe/geometry/frame/frame_transformers.hpp"
 #include "floe/geometry/core/access.hpp"
 #include "floe/geometry/core/coordinate_type.hpp"
+#include "../product/config/config_base.hpp"
 
 namespace floe { namespace collision
 {
+
+using namespace types;
 
 /*! Contact point between two floes.
  *
@@ -30,7 +33,7 @@ namespace floe { namespace collision
  */
 template <
     typename TFloe,
-    typename TPoint = typename TFloe::point_type,
+    typename TPoint = point_type,
     typename TFrame = floe::geometry::frame::UVFrame<TPoint>
 >
 struct ContactPoint
@@ -38,7 +41,6 @@ struct ContactPoint
     typedef TPoint      point_type;
     typedef TFrame      frame_type;
     typedef TFloe       floe_type;
-    using real_type = typename floe_type::real_type;
 
     //! Default constructor
     ContactPoint() : floe1{nullptr}, floe2{nullptr}, frame{}, dist{std::numeric_limits<real_type>::max()} {}

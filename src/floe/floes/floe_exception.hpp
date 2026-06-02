@@ -10,10 +10,10 @@
 #include <exception>
 #include <string>
 
-using namespace types;
-
 namespace floe { namespace floes
 {
+
+using namespace types;
 
 //! Floe exception
 class FloeException

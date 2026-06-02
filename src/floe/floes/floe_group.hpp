@@ -17,10 +17,10 @@
 #include <algorithm>
 #include <random>
 
-using namespace types;
-
 namespace floe { namespace floes
 {
+
+using namespace types;
 
 /*! FloeGroup
  *

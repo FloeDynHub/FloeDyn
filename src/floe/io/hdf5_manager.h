@@ -22,11 +22,10 @@
 // #endif
 #include "../product/config/config.hpp"
 
-
-using namespace types;
-
 namespace floe { namespace io
 {
+
+using namespace types;
     using namespace H5;
 
 /*! HDF5Manager

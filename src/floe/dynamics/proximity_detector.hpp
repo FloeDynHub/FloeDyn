@@ -8,10 +8,10 @@
 #define PROBLEM_PROXIMITY_DETECTOR_HPP
  
 
-using namespace types;
-
 namespace floe { namespace dynamics
 {
+
+using namespace types;
 
 /*! ProximityDetector
  *

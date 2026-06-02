@@ -23,6 +23,8 @@
 namespace floe { namespace dynamics
 {
 
+using namespace types;
+
 template<typename T>
 using integration_strategy = floe::integration::RefGaussLegendre<T,2,2>;
 

@@ -11,11 +11,11 @@
 #include "floe/collision/matlab/detector.h"
 #include "floe/collision/periodic_contact_point.hpp"
 #include "floe/collision/matlab/periodic_proximity_data.hpp"
-using namespace types;
-
 
 namespace floe { namespace collision { namespace matlab
 {
+
+using namespace types;
 
 
 template <

@@ -14,10 +14,10 @@
 #include "floe/problem/mpi_problem.hpp"
 #include "floe/collision/contact_graph.hpp" // for graph vertices access (collision job response), todo move elsewhere
 
-using namespace types;
-
 namespace floe { namespace problem
 {
+
+using namespace types;
 
 /*! Problem
  *

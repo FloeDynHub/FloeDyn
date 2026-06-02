@@ -12,10 +12,10 @@
 
 #include <iostream> // debug
 
-using namespace types;
-
 namespace floe { namespace problem
 {
+
+using namespace types;
 
 /*! Problem
  *

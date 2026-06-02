@@ -9,11 +9,10 @@
 
 #include "floe/dynamics/dynamics_manager.h"
 
-
-using namespace types;
-
 namespace floe { namespace dynamics
 {
+
+using namespace types;
 
 /*! DynamicsManager
  *

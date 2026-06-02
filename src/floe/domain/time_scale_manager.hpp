@@ -20,10 +20,10 @@
 #include <omp.h>
 #endif
 
-using namespace types;
-
 namespace floe { namespace domain
 {
+
+using namespace types;
 
 /*! TimeScaleManager
  *

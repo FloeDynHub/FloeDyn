@@ -7,11 +7,10 @@
 #ifndef FLOE_COLLISION_FLOE_VERTEX_HPP
 #define FLOE_COLLISION_FLOE_VERTEX_HPP
 
-
-using namespace types;
-
 namespace floe { namespace collision
 {
+
+using namespace types;
 
 /*! Contact between two floes.
  *

@@ -31,10 +31,10 @@
 #include "floe/collision/matlab/optim_interface.hpp"
 #include "../product/config/config.hpp"
 
-using namespace types;
-
 namespace floe { namespace collision { namespace matlab
 {
+
+using namespace types;
 
 /*! Detector optimization for a floe
  *

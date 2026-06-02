@@ -22,10 +22,10 @@
 #include "floe/generator/mesh_generator.hpp"
 #include "floe/geometry/arithmetic/point_operators.hpp"
 
-using namespace types;
-
 namespace floe { namespace floes
 {
+
+using namespace types;
 
 /*! Static Floe
  *

@@ -19,10 +19,10 @@
 
 #include "floe/floes/floe_interface.hpp"
 
-using namespace types;
-
 namespace floe { namespace floes
 {
+
+using namespace types;
 
 /*! Kinematic of a floe
  *

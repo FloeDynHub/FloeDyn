@@ -12,10 +12,10 @@
 #include "floe/collision/matlab/detector.h"
 #include <math.h>
 
-using namespace types;
-
 namespace floe { namespace collision { namespace matlab
 {
+
+using namespace types;
 
 
 template <

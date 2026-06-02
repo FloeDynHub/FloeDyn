@@ -13,10 +13,10 @@
 #include "floe/geometry/frame/theta_frame.hpp"   
 #include "floe/floes/floe_interface.hpp"
 
-using namespace types;
-
 namespace floe { namespace floes
 {
+
+using namespace types;
 
 /*! Reflection of a floe (in periodic space)
  *

@@ -7,10 +7,10 @@
 #ifndef FLOE_FLOES_IDENTIFIABLE_MIXIN_HPP
 #define FLOE_FLOES_IDENTIFIABLE_MIXIN_HPP
 
-using namespace types;
-
 namespace floe { namespace floes
 {
+
+using namespace types;
 
 /*! Mixin adding identifier to any class
  *

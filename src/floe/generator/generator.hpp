@@ -33,9 +33,9 @@
 #include "floe/integration/gauss_legendre.hpp"
 #include "floe/integration/integrate.hpp"
 
-using namespace types;
-
 namespace floe { namespace generator {
+
+using namespace types;
 
 // CGAL typedefs
 using K = CGAL::Exact_predicates_inexact_constructions_kernel;

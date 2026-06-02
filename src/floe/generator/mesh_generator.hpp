@@ -16,10 +16,9 @@
 #include <CGAL/Delaunay_mesh_face_base_2.h>
 #include <CGAL/Delaunay_mesh_size_criteria_2.h>
 
+namespace floe { namespace generator {
 
 using namespace types;
-
-namespace floe { namespace generator {
 
 // CGAL typedefs
 using K = CGAL::Exact_predicates_inexact_constructions_kernel;

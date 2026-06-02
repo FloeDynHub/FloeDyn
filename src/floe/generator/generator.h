@@ -24,6 +24,7 @@
 
 namespace floe { namespace generator {
 
+using namespace types;
 
 template<typename TProblem>
 class Generator
@@ -40,7 +41,7 @@ public:
     //! Generate floe set with given number of floe and concentration
     void generate_floe_set(std::size_t number, real_type concentration, real_type max_size, real_type min_size,
         std::vector<int> force_modes, std::vector<real_type> force_speeds);
-    typename TProblem::floe_group_type& get_floe_group() { return m_problem.get_floe_group(); }
+    floe_group_type& get_floe_group() { return m_problem.get_floe_group(); }
     // std::array<real_type, 4> get_window() const { return m_window; }
     // real_type window_area() const { return (m_window[1] - m_window[0]) * (m_window[3] - m_window[2]); }
     void set_exit_signal(std::atomic<bool>* QUIT){ m_problem.QUIT = QUIT; }

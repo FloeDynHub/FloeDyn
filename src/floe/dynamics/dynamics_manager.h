@@ -18,6 +18,8 @@
 namespace floe { namespace dynamics
 {
 
+using namespace types;
+
 /*! DynamicsManager
  *
  * Operator for dynamics processing (Floes and ocean kinematics)
@@ -30,6 +32,8 @@ class DynamicsManager
 {
 
 public:
+    using external_forces_type = TExternalForces;
+
     //! Constructor
     DynamicsManager(real_type const& time_ref, int OBL_status) : m_external_forces{time_ref}, m_ocean_window_area{0},
         m_OBL_status{OBL_status}, m_rand_speed_add{false}, m_rand_norm{1e-7} {}

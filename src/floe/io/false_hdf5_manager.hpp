@@ -13,10 +13,10 @@
 #include <string>
 #include "floe/floes/floe_group.hpp"
 
-using namespace types;
-
 namespace floe { namespace io
 {
+
+using namespace types;
 
 /*! HDF5Manager
  *

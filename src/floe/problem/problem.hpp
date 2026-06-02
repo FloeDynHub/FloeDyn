@@ -20,10 +20,10 @@
 
 #include <numeric> // FOR TEST
 
-using namespace types;
-
 namespace floe { namespace problem
 {
+
+using namespace types;
 
 /*! Problem
  *
@@ -401,7 +401,7 @@ void PROBLEM::compute_time_step(){
 
 
 TEMPLATE_PB
-typename TFloeGroup::point_type PROBLEM::move_floe_group(){
+point_type PROBLEM::move_floe_group(){
     point_type resp = m_dynamics_manager.move_floes(m_floe_group, m_domain.time_step());
     m_domain.update_time();
     return resp;

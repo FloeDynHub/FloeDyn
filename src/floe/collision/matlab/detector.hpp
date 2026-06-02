@@ -10,9 +10,11 @@
 
 #include "floe/collision/matlab/detector.h"
 
-using namespace types;
 namespace floe { namespace collision { namespace matlab
 {
+
+using namespace types;
+using segment_type = std::pair<point_type, point_type>;
 
 namespace ublas = boost::numeric::ublas;
 
@@ -309,6 +311,7 @@ detect_step4(
 )
 {
     using namespace floe::geometry;
+    using point_type = types::point_type;
 
     auto const& opt1 = get_optim_itf(n1);
     auto const& opt2 = get_optim_itf(n2);

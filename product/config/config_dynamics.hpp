@@ -4,7 +4,25 @@
 #include "../product/config/config_floes.hpp"
 
 #include "floe/dynamics/physical_data.hpp"
+
+namespace types {
+
+using physical_data_type = floe::dynamics::PhysicalData<point_type>;
+using generator_physical_data_type = floe::dynamics::PhysicalData<point_type>;
+#define SAME_PHYSICAL_DATA_FOR_GENERATOR
+using state_type = typename floe_type::state_type;
+
+} // namespace types
+
 #include "floe/dynamics/external_forces.hpp"
+
+namespace types {
+
+using external_forces_type = floe::dynamics::ExternalForces<floe_type, physical_data_type>;
+using generator_external_forces_type = floe::dynamics::ExternalForces<floe_type, generator_physical_data_type>;
+
+} // namespace types
+
 #include "floe/dynamics/dynamics_manager.h"
 #include "floe/domain/domain.hpp"
 
@@ -14,18 +32,12 @@
 
 namespace types {
 
-using physical_data_type = floe::dynamics::PhysicalData<point_type>;
-using external_forces_type = floe::dynamics::ExternalForces<floe_type, physical_data_type>;
-using generator_physical_data_type = floe::dynamics::PhysicalData<point_type>;
-#define SAME_PHYSICAL_DATA_FOR_GENERATOR
-using generator_external_forces_type = floe::dynamics::ExternalForces<floe_type, generator_physical_data_type>;
-using generator_dynamics_manager_type = floe::dynamics::DynamicsManager<generator_external_forces_type, floe_group_type>;
-
 using domain_type = floe::domain::Domain<value_type>;
+using generator_dynamics_manager_type = floe::dynamics::DynamicsManager<generator_external_forces_type, floe_group_type>;
 
 #ifdef PBC
 using dynamics_manager_type = floe::dynamics::PeriodicDynamicsManager<external_forces_type, floe_group_type, topology_type>;
-#else // Free boundary conditions types
+#else
 using dynamics_manager_type = floe::dynamics::DynamicsManager<external_forces_type, floe_group_type>;
 #endif
 

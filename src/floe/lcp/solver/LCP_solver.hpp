@@ -18,11 +18,11 @@
 #include <chrono>
 
 using namespace boost::numeric::ublas;
-using namespace types;
-
 
 namespace floe { namespace lcp { namespace solver
 {
+
+using namespace types;
 
 template<typename T>
 template<typename TContactGraph>
@@ -310,7 +310,7 @@ LCPSolver<T>::calcEc(const Tvect& S, const Tmat& M, const Tvect& w)
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 template<typename T>
 template<typename TGraphLCP>
-real_type>
+vector<real_type>
 LCPSolver<T>::calcSolc(TGraphLCP& graph_lcp, LCPSolver<T>::lcp_type& lcp)
 {   
     const std::size_t m = graph_lcp.nb_contacts;
@@ -323,7 +323,7 @@ LCPSolver<T>::calcSolc(TGraphLCP& graph_lcp, LCPSolver<T>::lcp_type& lcp)
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 template<typename T>
 template<typename TGraphLCP>
-real_type>
+vector<real_type>
 LCPSolver<T>::calcSold(TGraphLCP& graph_lcp, lcp_type& lcp_c, lcp_type& lcp_d, vector<real_type> Solc )
 {   
     const std::size_t m = graph_lcp.nb_contacts;

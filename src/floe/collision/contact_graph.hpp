@@ -27,10 +27,10 @@
 #include <iostream> // DEBUG
 // #include <chrono> // test
 
-using namespace types;
-
 namespace floe { namespace collision
 {
+
+using namespace types;
 
 using namespace boost;
 

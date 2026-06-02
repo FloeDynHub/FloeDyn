@@ -13,10 +13,10 @@
 
 #include "floe/problem/mpi_problem.hpp"
 
-using namespace types;
-
 namespace floe { namespace problem
 {
+
+using namespace types;
 
 /*! Problem
  *

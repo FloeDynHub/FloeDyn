@@ -7,10 +7,10 @@
 #ifndef FLOE_FLOES_FLOE_INTERFACE_HPP
 #define FLOE_FLOES_FLOE_INTERFACE_HPP
 
-using namespace types;
-
 namespace floe { namespace floes
 {
+
+using namespace types;
 
 /*! public interface of a floe
  */

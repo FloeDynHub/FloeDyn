@@ -12,10 +12,10 @@
 #include "floe/collision/matlab/mpi_detector.hpp"
 #include <math.h>
 
-using namespace types;
-
 namespace floe { namespace collision { namespace matlab
 {
+
+using namespace types;
 
 
 template <
