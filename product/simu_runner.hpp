@@ -110,8 +110,11 @@ public:
             P.make_input_file();
         }
 
-        //std::cout << "read TOPAZ" << std::endl;
-        P.load_matlab_topaz_data(matlab_topaz_filename);
+        if (force_modes[0] == 9 && force_modes[1] == 9) {
+            P.get_dynamics_manager().get_external_forces().get_physical_data().load_nc_forcing_data(forcing_file_name);
+        } else if (force_modes[0] == 1 || force_modes[1] == 1) {
+            P.load_matlab_topaz_data(forcing_file_name);
+        }
         P.get_dynamics_manager().set_rand_speed_add(rand_speed_add);
         P.get_dynamics_manager().set_norm_rand_speed(rand_norm);
         if (vortex_characs[0]>0) {
@@ -226,7 +229,7 @@ protected:
     value_type              O_latitude              = 80.207;
     value_type              random_thickness_coeff  = 0.01;
     value_type              min_thickness           = 0.01;
-    string                  matlab_topaz_filename   = "io/library/DataTopaz01.mat";
+    string                  forcing_file_name       = "io/library/DataTopaz01.mat";
     value_type              max_size                = 250;
     value_type              min_size                = 0;
     bool                    fracture                = 0;
@@ -246,7 +249,8 @@ protected:
         ("help,h", "print usage message")
         ("input,i", po::value(&input_file_name)->required(), "input file path")
         ("output", po::value<string>(&output_file_name)->default_value(""), "name of the output file") // New option
-        ("fext, z", po::value(&matlab_topaz_filename)->default_value(matlab_topaz_filename), "external forces input file")
+        ("ffile", po::value(&forcing_file_name)->default_value(forcing_file_name),
+            "forcing file: topaz .mat for mode 1 (default: DataTopaz01.mat), NetCDF for mode 9")
         #ifdef MULTIOUTPUT
             ("nbsefloes", po::value<std::size_t>(&nb_floe_select)->required(), "the size of the floe selection for the multiple output files")
         #endif
@@ -273,7 +277,10 @@ protected:
 
             "   For the simulation of percution against an obstacle: \n"
             "       air mode: 4      water mode: 0\n"
-            "   or  air mode: 0     water mode: 4\n\n")
+            "   or  air mode: 0     water mode: 4\n\n"
+
+            "   Inhomogeneous forcing from a NetCDF file (requires --ffile): \n"
+            "       air mode: 9      water mode: 9\n\n")
 
         ("fspeeds", po::value< std::vector<value_type> >(&force_speeds)->multitoken(), "forces speeds [air, water] (m/s).\n"
             "Possibilities: \n\n"

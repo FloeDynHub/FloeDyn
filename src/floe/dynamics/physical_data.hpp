@@ -9,7 +9,10 @@
 
 #include "floe/geometry/arithmetic/point_operators.hpp"
 #include "floe/io/matlab/topaz_import.hpp"
+#include "floe/io/nc_forcing_import.hpp"
+#include <algorithm>
 #include <cmath>
+#include <cstdint>
 #include <vector>
 #include <iostream> // DEBUG
 #include <cassert>
@@ -57,6 +60,8 @@ public:
     void set_OBL_speed(point_type speed) { m_geo_relative_water_speed = speed; }
     //! Load ocean and wind data from a topaz file
     void load_matlab_topaz_data(std::string const& filename);
+    //! Load inhomogeneous ocean and wind fields from a NetCDF4 file (mode 9)
+    void load_nc_forcing_data(std::string const& filename);
     //! For modes depending on an artificial ocean window (generator)
     void set_window_size(real_type width, real_type height) {
         m_window_width = width;
@@ -82,6 +87,9 @@ public:
         else if (m_air_mode==6) {
             this->init_random_vortex();m_water_mode = 0;
             std::cout << "Storm defined as a wind vortex" << std::endl;
+        }
+        else if (m_air_mode==9 && m_water_mode==9) {
+            std::cout << "Inhomogeneous atmospheric and ocean forcing from NetCDF file" << std::endl;
         }
         else { std::cout << "Error: air and/or water modes: " << m_air_mode << " and " << m_water_mode << " are unknown!" << std::endl; }
     }
@@ -126,6 +134,14 @@ private:
     point_vector m_air_data_minutes; //!< Geostrophic datas
     real_type const& m_time_ref; //!< reference to time variable in second
 
+    // Mode 9: inhomogeneous NetCDF forcing, flattened [t * ny * nx + iy * nx + ix]
+    std::vector<double>   m_nc_time;
+    std::vector<int64_t>  m_nc_x, m_nc_y;
+    double m_nc_delta_x{40.0}, m_nc_delta_y{50.0};
+    std::size_t m_nc_nt{0}, m_nc_ny{0}, m_nc_nx{0};
+    std::vector<double> m_nc_air_x, m_nc_air_y;
+    std::vector<double> m_nc_ocean_x, m_nc_ocean_y;
+
     point_type m_geo_relative_water_speed; //!< Water speed correction compared to geostrophic data
 
     // window dimension (for generator)
@@ -159,6 +175,8 @@ private:
     point_type geostrophic_water_speed(point_type = {0,0});
     //! Get topaz air speed
     point_type topaz_air_speed(point_type = {0,0});
+    //! Get inhomogeneous NetCDF speed at a given point (mode 9)
+    point_type nc_speed(point_type pt, bool is_air) const;
     //! Mode router to get air or water speed
     point_type get_speed(point_type pt = {0,0}, int mode=0, real_type speed=0);
     //! center convergent current (negative coeff will give divergent field)
@@ -277,7 +295,9 @@ template <typename TPoint>
 TPoint
 PhysicalData<TPoint>::water_speed(point_type pt) {
     point_type resp;
-    if (m_water_mode == 1){
+    if (m_water_mode == 9) {
+        resp = nc_speed(pt, false);
+    } else if (m_water_mode == 1){
         resp = geostrophic_water_speed();
     } else {
         resp = get_speed(pt, m_water_mode, m_water_speed);
@@ -288,7 +308,9 @@ PhysicalData<TPoint>::water_speed(point_type pt) {
 template <typename TPoint>
 TPoint
 PhysicalData<TPoint>::air_speed(point_type pt) {
-    if (m_air_mode == 1){
+    if (m_air_mode == 9) {
+        return nc_speed(pt, true);
+    } else if (m_air_mode == 1){
         return topaz_air_speed(pt);
     } else {
         return get_speed(pt, m_air_mode, m_air_speed);
@@ -539,6 +561,49 @@ PhysicalData<TPoint>::get_speed(point_type pt, int mode, real_type speed){
 
     }
 }
+
+template <typename TPoint>
+void
+PhysicalData<TPoint>::load_nc_forcing_data(std::string const& filename) {
+    auto data = floe::io::read_nc_forcing(filename);
+    m_nc_time    = std::move(data.time);
+    m_nc_x       = std::move(data.x);
+    m_nc_y       = std::move(data.y);
+    m_nc_delta_x = data.delta_x;
+    m_nc_delta_y = data.delta_y;
+    m_nc_nt      = data.nt;
+    m_nc_ny      = data.ny;
+    m_nc_nx      = data.nx;
+    m_nc_air_x   = std::move(data.wind_x);
+    m_nc_air_y   = std::move(data.wind_y);
+    m_nc_ocean_x = std::move(data.ocean_x);
+    m_nc_ocean_y = std::move(data.ocean_y);
+}
+
+
+template <typename TPoint>
+TPoint
+PhysicalData<TPoint>::nc_speed(point_type pt, bool is_air) const {
+    // Time: last step where time <= m_time_ref, clamped to last
+    auto it_iter = std::upper_bound(m_nc_time.begin(), m_nc_time.end(), (double)m_time_ref);
+    if (it_iter != m_nc_time.begin()) --it_iter;
+    std::size_t it = std::distance(m_nc_time.begin(), it_iter);
+
+    // Nearest grid cell, clamped to domain
+    long long ix_val = std::llround(pt.x / m_nc_delta_x);
+    ix_val = std::max((long long)m_nc_x.front(), std::min((long long)m_nc_x.back(), ix_val));
+    std::size_t ix = (std::size_t)(ix_val - m_nc_x.front());
+
+    long long iy_val = std::llround(pt.y / m_nc_delta_y);
+    iy_val = std::max((long long)m_nc_y.front(), std::min((long long)m_nc_y.back(), iy_val));
+    std::size_t iy = (std::size_t)(iy_val - m_nc_y.front());
+
+    std::size_t idx = it * m_nc_ny * m_nc_nx + iy * m_nc_nx + ix;
+    const auto& vx = is_air ? m_nc_air_x : m_nc_ocean_x;
+    const auto& vy = is_air ? m_nc_air_y : m_nc_ocean_y;
+    return {static_cast<real_type>(vx[idx]), static_cast<real_type>(vy[idx])};
+}
+
 
 }} // namespace floe::dynamics
 
