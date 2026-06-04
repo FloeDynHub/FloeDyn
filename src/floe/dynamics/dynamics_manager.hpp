@@ -23,11 +23,13 @@
 namespace floe { namespace dynamics
 {
 
+using namespace types;
+
 template<typename T>
 using integration_strategy = floe::integration::RefGaussLegendre<T,2,2>;
 
 template <typename TExternalForces, typename TFloeGroup>
-typename TFloeGroup::floe_type::point_type
+point_type
 DynamicsManager<TExternalForces, TFloeGroup>::move_floes(floe_group_type& floe_group, real_type delta_t)
 {   
     // OpenMP doesn't like this syntax
@@ -94,7 +96,7 @@ DynamicsManager<TExternalForces, TFloeGroup>::move_floe(floe_type& floe, real_ty
 
 
 template <typename TExternalForces, typename TFloeGroup>
-typename TFloeGroup::floe_type::point_type
+point_type
 DynamicsManager<TExternalForces, TFloeGroup>::update_ocean(
     floe_group_type& floe_group,
     real_type delta_t,

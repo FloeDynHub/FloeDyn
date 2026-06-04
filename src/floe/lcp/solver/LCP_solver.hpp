@@ -19,13 +19,14 @@
 
 using namespace boost::numeric::ublas;
 
-
 namespace floe { namespace lcp { namespace solver
 {
 
+using namespace types;
+
 template<typename T>
 template<typename TContactGraph>
-vector<typename LCPSolver<T>::real_type>
+vector<real_type>
 LCPSolver<T>::solve( TContactGraph& graph, bool& success, int lcp_failed_stats[] ) {
 
     floe::lcp::builder::GraphLCP<real_type, decltype(graph)> graph_lcp( graph );
@@ -300,7 +301,7 @@ LCPSolver<T>::solve( TContactGraph& graph, bool& success, int lcp_failed_stats[]
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 template<typename T>
 template<typename Tmat, typename Tvect>
-typename LCPSolver<T>::real_type 
+real_type 
 LCPSolver<T>::calcEc(const Tvect& S, const Tmat& M, const Tvect& w)
 {
     return inner_prod(prod(S, M), S) / inner_prod(prod(w, M), w);
@@ -309,7 +310,7 @@ LCPSolver<T>::calcEc(const Tvect& S, const Tmat& M, const Tvect& w)
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 template<typename T>
 template<typename TGraphLCP>
-vector<typename LCPSolver<T>::real_type>
+vector<real_type>
 LCPSolver<T>::calcSolc(TGraphLCP& graph_lcp, LCPSolver<T>::lcp_type& lcp)
 {   
     const std::size_t m = graph_lcp.nb_contacts;
@@ -322,7 +323,7 @@ LCPSolver<T>::calcSolc(TGraphLCP& graph_lcp, LCPSolver<T>::lcp_type& lcp)
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 template<typename T>
 template<typename TGraphLCP>
-vector<typename LCPSolver<T>::real_type>
+vector<real_type>
 LCPSolver<T>::calcSold(TGraphLCP& graph_lcp, lcp_type& lcp_c, lcp_type& lcp_d, vector<real_type> Solc )
 {   
     const std::size_t m = graph_lcp.nb_contacts;

@@ -12,18 +12,16 @@
 #include <vector>
 #include <type_traits>
 
-
 namespace floe { namespace io
 {
+
+using namespace types;
 
 template <typename TOutManager>
 class MultiOutManager
 {
 
 public:
-    using floe_group_type = typename TOutManager::floe_group_type;
-    using dynamics_mgr_type = typename TOutManager::dynamics_mgr_type;
-    using real_type = typename TOutManager::real_type;
     //! Default constructor.
     MultiOutManager(floe_group_type const& floe_group) :
         m_out_managers{floe_group, floe_group},
@@ -111,11 +109,11 @@ public:
     }
 
     //! make input file from floe_group
-    void make_input_file(const dynamics_mgr_type& dynamics_manager){
+    void make_input_file(const dynamics_manager_type& dynamics_manager){
         this->m_out_managers[0].make_input_file(dynamics_manager);
     };
     //! Calls save_step() if this time needs to be saved
-    void save_step_if_needed(real_type time, const dynamics_mgr_type& dyn_mgr){
+    void save_step_if_needed(real_type time, const dynamics_manager_type& dyn_mgr){
         if (!this->m_out_managers[1].is_restrained()){ // initialization of the selection. This is the
             std::cout << "We are using an multi out_manager (actually a vector of out_manager).\n"
             << "The second stores a selection of floes within a sub domain." << std::endl;
@@ -130,7 +128,7 @@ public:
     }
     //! Recover simulation state from file
     double recover_states(H5std_string filename, real_type time, floe_group_type& floe_group,
-        dynamics_mgr_type& dyn_mgr, bool keep_as_outfile)
+        dynamics_manager_type& dyn_mgr, bool keep_as_outfile)
     {
         real_type recover_time = m_out_managers[0].recover_states(
             filename, time, floe_group, dyn_mgr, keep_as_outfile

@@ -308,7 +308,6 @@ void
 GraphLCP<T, TGraph>::
 calc_floe_impulses(ublas::vector<T> const& normal, ublas::vector<T> const& tangential) const {
     std::size_t m = nb_contacts;
-    using point_type = typename types::point_type;
     std::vector<point_type> contact_impulses(m);
     for (std::size_t i = 0; i < m; ++i)
     {

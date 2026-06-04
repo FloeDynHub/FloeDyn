@@ -15,6 +15,8 @@
 namespace floe { namespace problem
 {
 
+using namespace types;
+
 /*! Problem
  *
  * It represents the whole problem of moving N floes in interval time [0, T], in a space with periodic border conditions.
@@ -40,8 +42,6 @@ class PeriodicProblem : public Problem<TFloeGroup, TProxymityDetector, TCollisio
 {
 public:
     using base_class = Problem<TFloeGroup, TProxymityDetector, TCollisionManager, TDynamicsManager, TDomain>;
-    using real_type = typename TFloeGroup::floe_type::real_type;
-    using point_type = typename TFloeGroup::floe_type::point_type;
 
     //! Default constructor
     PeriodicProblem(real_type epsilon, int OBL_status) : base_class(epsilon, OBL_status) {}

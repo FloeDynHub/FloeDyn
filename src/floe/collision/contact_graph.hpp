@@ -30,6 +30,8 @@
 namespace floe { namespace collision
 {
 
+using namespace types;
+
 using namespace boost;
 
 /*! Contact Graph as an undirected adjacency_list with vertex and edge properties
@@ -47,8 +49,7 @@ using ContactGraph = adjacency_list<
     vecS, // Out Edge List
     vecS, // Vertex List
     undirectedS, // (un)Directed
-    // typename TContactPoint::floe_type const*, // Vertex Property
-    FloeVertex<typename TContactPoint::floe_type>, // Vertex Property
+    FloeVertex<floe_type>, // Vertex Property
     FloeContact<TContactPoint> // Edge Property
 >;
 
@@ -317,7 +318,6 @@ template < typename TGraph >
 std::vector<TGraph>
 quad_cut( TGraph const& graph )
 {
-    using real_type = double;
     // Calc window
     real_type mg = 1e-8; // margin
     real_type min_x, min_y, max_x, max_y;

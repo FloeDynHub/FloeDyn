@@ -10,32 +10,29 @@
 #include <iostream>
 #include "floe/generator/mesh_generator.hpp"
 #include "boost/multi_array.hpp"
+#include "../product/config/config.hpp"
 
 #include "H5Cpp.h"
 // #ifndef H5_NO_NAMESPACE
 // using namespace H5;
 // #endif
 
-
 namespace floe { namespace io
 {
+
+using namespace types;
 
 
 template <typename TFloeGroup>
 void import_floes_from_hdf5(H5std_string filename, TFloeGroup& floe_group)
-{
+{   
     using namespace H5;
-    
-    // using floe_type = typename TFloeList::real_type;
-    using floe_type = typename TFloeGroup::floe_type;
-    using geometry_type = typename floe_type::geometry_type;
-    using mesh_type = typename floe_type::mesh_type;
-    using point_type = typename floe_type::point_type;
-    using real_type = typename floe_type::real_type;
-    using static_floe_type = typename floe_type::static_floe_type;
-    using array_2d_type = boost::multi_array<real_type, 2>;
-
     auto& floe_list = floe_group.get_floes();
+    using floe_t = typename std::decay<decltype(floe_list[0])>::type;
+    using geometry_type = typename floe_t::geometry_type;
+    using mesh_type = typename floe_t::mesh_type;
+    using static_floe_type = typename floe_t::static_floe_type;
+    using array_2d_type = boost::multi_array<real_type, 2>;
     /*
      * Open the specified file and the specified dataset in the file.
      */
@@ -114,7 +111,7 @@ void import_floes_from_hdf5(H5std_string filename, TFloeGroup& floe_group)
             }
             // create mesh
             auto mesh = floe::generator::generate_mesh_for_shape<geometry_type, mesh_type>(shape);
-            floe_type& floe = floe_list[previous_nb_floes + floe_id];
+            auto& floe = floe_list[previous_nb_floes + floe_id];
             // link static floe
             floe.attach_static_floe_ptr(std::unique_ptr<static_floe_type>(new static_floe_type()));
             auto& static_floe = floe.static_floe();
@@ -188,15 +185,6 @@ template <typename TFloeGroup>
 bool floes_characs_in_hdf5(H5std_string filename, TFloeGroup& floe_group)
 {
     using namespace H5;
-    
-    // using floe_type = typename TFloeList::real_type;
-    using floe_type = typename TFloeGroup::floe_type;
-    using geometry_type = typename floe_type::geometry_type;
-    using mesh_type = typename floe_type::mesh_type;
-    using point_type = typename floe_type::point_type;
-    using real_type = typename floe_type::real_type;
-    using static_floe_type = typename floe_type::static_floe_type;
-    using array_2d_type = boost::multi_array<real_type, 2>;
 
     auto& floe_list = floe_group.get_floes();
     /*

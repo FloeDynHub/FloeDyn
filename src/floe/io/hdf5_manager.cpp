@@ -1,5 +1,6 @@
-#include "../product/config/config_dynamics.hpp"
-#include "../product/config/config_floes.hpp"
+// #include "../product/config/config_dynamics.hpp"
+// #include "../product/config/config_floes.hpp"
+#include "../product/config/config.hpp"
 #include "floe/io/hdf5_manager.hpp"
 #include <type_traits>
 

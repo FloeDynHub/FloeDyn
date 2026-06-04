@@ -10,11 +10,13 @@
 
 #include "floe/geometry/arithmetic/arithmetic.hpp"
 #include "floe/geometry/arithmetic/point_operators.hpp"
+#include "../product/config/config.hpp"
 #include <cmath>
-
 
 namespace floe { namespace dynamics
 {
+
+using namespace types;
 
 /*! ExternalForces
  *
@@ -29,11 +31,8 @@ class ExternalForces
 {
 
 public:
-    using floe_type = TFloe;
-    using point_type = typename floe_type::point_type;
-    using real_type = typename floe_type::real_type;
+
     using physical_data_type = TPhysicalData;
-    // using physical_data_type = PhysicalData<point_type>;
 
     ExternalForces(real_type const& time_ref) : m_physical_data{time_ref}, m_O_latitude{80.207} {}
 
@@ -107,13 +106,9 @@ private:
 };
 
 
-template<typename TFloe>
-using value = typename TFloe::real_type;
-
-
 template <typename TFloe, typename TPhysicalData>
-std::function<typename TFloe::point_type (
-    typename TFloe::point_type&)>
+std::function<point_type (
+    point_type&)>
 ExternalForces<TFloe, TPhysicalData>::ocean_drag(floe_type& floe)
 {   
     auto& state = floe.state();
@@ -127,8 +122,8 @@ ExternalForces<TFloe, TPhysicalData>::ocean_drag(floe_type& floe)
 }
 
 template <typename TFloe, typename TPhysicalData>
-std::function<typename TFloe::point_type (
-    value<TFloe>, value<TFloe>)>
+std::function<point_type (
+    real_type, real_type)>
 ExternalForces<TFloe, TPhysicalData>::ocean_drag_2(floe_type& floe)
 {   
     return [&](real_type x, real_type y)
@@ -140,8 +135,8 @@ ExternalForces<TFloe, TPhysicalData>::ocean_drag_2(floe_type& floe)
 
 
 template <typename TFloe, typename TPhysicalData>
-std::function<typename TFloe::point_type (
-    typename TFloe::point_type&)>
+std::function<point_type (
+    point_type&)>
 ExternalForces<TFloe, TPhysicalData>::air_drag()
 {
     return [&](point_type& p)
@@ -153,14 +148,14 @@ ExternalForces<TFloe, TPhysicalData>::air_drag()
 
 
 template <typename TFloe, typename TPhysicalData>
-typename TFloe::point_type
+point_type
 ExternalForces<TFloe, TPhysicalData>::coriolis_effect(floe_type& floe)
 {
     return - coriolis_coeff(floe.state().pos) * fg::direct_orthogonal(floe.state().speed);
 }
 
 template <typename TFloe, typename TPhysicalData>
-value<TFloe>
+real_type
 ExternalForces<TFloe, TPhysicalData>::coriolis_coeff(point_type p)
 {
     auto phi = (m_O_latitude * M_PI / 180 + p.y / R_earth); // in radian
@@ -169,8 +164,8 @@ ExternalForces<TFloe, TPhysicalData>::coriolis_coeff(point_type p)
 
 
 template <typename TFloe, typename TPhysicalData>
-std::function<typename TFloe::point_type (
-    value<TFloe>, value<TFloe>)>
+std::function<point_type (
+    real_type, real_type)>
 ExternalForces<TFloe, TPhysicalData>::total_drag(floe_type& floe)
 {
     return [&](real_type x, real_type y)
@@ -182,8 +177,8 @@ ExternalForces<TFloe, TPhysicalData>::total_drag(floe_type& floe)
 
 
 template <typename TFloe, typename TPhysicalData>
-std::function<value<TFloe> (
-    value<TFloe>, value<TFloe>)>
+std::function<real_type (
+    real_type, real_type)>
 ExternalForces<TFloe, TPhysicalData>::total_rot_drag(floe_type& floe)
 {
     return [&](real_type x, real_type y)
@@ -195,7 +190,7 @@ ExternalForces<TFloe, TPhysicalData>::total_rot_drag(floe_type& floe)
 
 
 template <typename TFloe, typename TPhysicalData>
-typename ExternalForces<TFloe, TPhysicalData>::point_type
+point_type
 ExternalForces<TFloe, TPhysicalData>::air_drag_ocean()
 {   
     auto f = air_speed({0,0}); // Wind is uniform in space for now
@@ -203,14 +198,14 @@ ExternalForces<TFloe, TPhysicalData>::air_drag_ocean()
 }
 
 template <typename TFloe, typename TPhysicalData>
-typename ExternalForces<TFloe, TPhysicalData>::point_type
+point_type
 ExternalForces<TFloe, TPhysicalData>::ocean_coriolis(point_type p)
 {   
     return - coriolis_coeff(p) * fg::direct_orthogonal(m_physical_data.water_speed());
 }
 
 template <typename TFloe, typename TPhysicalData>
-typename ExternalForces<TFloe, TPhysicalData>::point_type
+point_type
 ExternalForces<TFloe, TPhysicalData>::deep_ocean_friction()
 {   
     return - ( gamma / h_w ) * m_physical_data.water_speed();

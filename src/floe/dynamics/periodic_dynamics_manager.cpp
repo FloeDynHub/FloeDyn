@@ -1,6 +1,7 @@
 #ifdef PBC
 
-#include "../product/config/config_dynamics.hpp"
+// #include "../product/config/config_dynamics.hpp"
+#include "../product/config/config.hpp"
 #include "floe/dynamics/periodic_dynamics_manager.hpp"
 
 using namespace types;

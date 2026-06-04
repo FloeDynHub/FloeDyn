@@ -24,7 +24,7 @@ namespace floe { namespace collision
 template <
     typename TFloe,
     typename TGhostFloe,
-    typename TPoint = typename TFloe::point_type,
+    typename TPoint = point_type,
     typename TFrame = floe::geometry::frame::UVFrame<TPoint>
 >
 struct PeriodicContactPoint : public ContactPoint<TFloe>

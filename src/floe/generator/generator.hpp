@@ -35,6 +35,8 @@
 
 namespace floe { namespace generator {
 
+using namespace types;
+
 // CGAL typedefs
 using K = CGAL::Exact_predicates_inexact_constructions_kernel;
 using Vb = CGAL::Triangulation_vertex_base_2<K>;
@@ -199,7 +201,7 @@ Generator<TProblem>::random_floe_group(std::size_t n, real_type max_size, real_t
 
 
 template<typename TProblem>
-std::vector<typename Generator<TProblem>::real_type>
+std::vector<real_type>
 Generator<TProblem>::random_size_repartition(std::size_t n, real_type R_max)
 {
     std::vector<real_type> v;
@@ -215,7 +217,7 @@ Generator<TProblem>::random_size_repartition(std::size_t n, real_type R_max)
 }
 
 template<typename TProblem>
-std::vector<typename Generator<TProblem>::real_type>
+std::vector<real_type>
 Generator<TProblem>::exp_size_repartition(std::size_t n, real_type R_max, real_type R_min)
 {
     std::random_device rd;
@@ -241,7 +243,7 @@ Generator<TProblem>::exp_size_repartition(std::size_t n, real_type R_max, real_t
 }
 
 template<typename TProblem>
-std::vector<typename Generator<TProblem>::point_type>
+std::vector<point_type>
 Generator<TProblem>::spiral_distribution(std::vector<real_type> const& size_distribution, real_type Rmax)
 {
     std::vector<point_type> v;

@@ -13,6 +13,9 @@
 namespace floe { namespace collision { namespace matlab
 {
 
+using namespace types;
+using segment_type = std::pair<point_type, point_type>;
+
 namespace ublas = boost::numeric::ublas;
 
 //! Update detector
@@ -299,7 +302,7 @@ template <
     typename TContact
 >
 template <typename TAdjacency>
-typename MatlabDetector<TFloe, TData, TContact>::real_type
+real_type
 MatlabDetector<TFloe, TData, TContact>::
 detect_step4( 
     std::size_t n1, std::size_t n2, 
@@ -308,6 +311,7 @@ detect_step4(
 )
 {
     using namespace floe::geometry;
+    using point_type = types::point_type;
 
     auto const& opt1 = get_optim_itf(n1);
     auto const& opt2 = get_optim_itf(n2);
@@ -517,7 +521,7 @@ template <
     typename TData,
     typename TContact
 >
-typename MatlabDetector<TFloe, TData, TContact>::real_type
+real_type
 MatlabDetector<TFloe, TData, TContact>::segment_pos( segment_type const& segment, point_type const& point ) const
 {
     const point_type u = segment.second - segment.first;
@@ -536,7 +540,7 @@ template <
     typename TData,
     typename TContact
 >
-typename MatlabDetector<TFloe, TData, TContact>::real_type
+real_type
 MatlabDetector<TFloe, TData, TContact>::segment_dist( segment_type const& segment, point_type const& point ) const
 {
     const point_type u = segment.second - segment.first;
@@ -556,7 +560,7 @@ template <
     typename TData,
     typename TContact
 >
-typename MatlabDetector<TFloe, TData, TContact>::segment_type
+segment_type
 MatlabDetector<TFloe, TData, TContact>::segment_from_id1( std::size_t n, std::size_t id1 ) const
 {
     auto const& boundary = get_floe_itf(n).geometry().outer();
@@ -579,7 +583,7 @@ template <
     typename TData,
     typename TContact
 >
-typename MatlabDetector<TFloe, TData, TContact>::segment_type
+segment_type
 MatlabDetector<TFloe, TData, TContact>::segment_from_id2( std::size_t n, std::size_t id2 ) const
 {
     auto const& boundary = get_floe_itf(n).geometry().outer();
@@ -601,7 +605,7 @@ template <
     typename TData,
     typename TContact
 >
-typename MatlabDetector<TFloe, TData, TContact>::point_type
+point_type
 MatlabDetector<TFloe, TData, TContact>::point_from_id( std::size_t n, std::size_t id ) const
 {
     auto const& boundary = get_floe_itf(n).geometry().outer();
@@ -622,7 +626,7 @@ template <
     typename TContact
 >
 inline
-typename MatlabDetector<TFloe, TData, TContact>::point_type
+point_type
 MatlabDetector<TFloe, TData, TContact>::point_from_pos( segment_type const& segment, real_type pos ) const
 {
     return (1.-pos) * segment.first + pos * segment.second;

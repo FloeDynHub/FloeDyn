@@ -18,6 +18,8 @@
 namespace floe { namespace dynamics
 {
 
+using namespace types;
+
 /*! DynamicsManager
  *
  * Operator for dynamics processing (Floes and ocean kinematics)
@@ -31,11 +33,6 @@ class DynamicsManager
 
 public:
     using external_forces_type = TExternalForces;
-    using floe_group_type = TFloeGroup;
-    using floe_type = typename floe_group_type::floe_type;
-    using point_type = typename floe_type::point_type;
-    using real_type = typename floe_type::real_type;
-    using state_type = typename floe_type::state_type;
 
     //! Constructor
     DynamicsManager(real_type const& time_ref, int OBL_status) : m_external_forces{time_ref}, m_ocean_window_area{0},

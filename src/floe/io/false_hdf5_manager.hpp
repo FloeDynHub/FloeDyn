@@ -16,6 +16,8 @@
 namespace floe { namespace io
 {
 
+using namespace types;
+
 /*! HDF5Manager
  *
  * Empty version (for g++ testing)
@@ -30,8 +32,6 @@ class HDF5Manager
 {
 
 public:
-    using floe_group_type = TFloeGroup;
-    using real_type = typename TFloeGroup::real_type;
     using dynamics_mgr_type = TDynamicsMgr;
 
     HDF5Manager(floe_group_type const& floe_group) {}

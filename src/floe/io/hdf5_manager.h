@@ -20,10 +20,12 @@
 // #ifndef H5_NO_NAMESPACE
 // using namespace H5;
 // #endif
-
+#include "../product/config/config.hpp"
 
 namespace floe { namespace io
 {
+
+using namespace types;
     using namespace H5;
 
 /*! HDF5Manager
@@ -55,8 +57,6 @@ public:
     using vector = std::vector<T>;
     using floe_group_type = TFloeGroup;
     using dynamics_mgr_type = TDynamicsMgr;
-    using real_type = typename TFloeGroup::real_type;
-    using point_type = typename TFloeGroup::point_type; 
     using saved_state_type = std::array<real_type, 11>; //!< state dataset chunk size for each floe / time step
 
     //! Default constructor.
@@ -142,7 +142,7 @@ private:
     void write_kinE();
 
     inline std::size_t nb_considered_floes() const { return m_floe_ids.size() ? m_floe_ids.size() : m_floe_group->get_floes().size(); }
-    inline typename floe_group_type::floe_type const& get_floe(std::size_t id) const {
+    inline floe_type const& get_floe(std::size_t id) const {
         return m_floe_ids.size() ? m_floe_group->get_floes()[m_floe_ids[id]] : m_floe_group->get_floes()[id];
     }
 

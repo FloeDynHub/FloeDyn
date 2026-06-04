@@ -1,6 +1,6 @@
 #ifdef PBC
-
-#include "../product/config/config_floes.hpp"
+// #include "../product/config/config_floes.hpp"
+#include "../product/config/config.hpp"
 #include "floe/collision/matlab/periodic_detector.hpp"
 
 namespace fcm = floe::collision::matlab;

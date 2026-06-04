@@ -17,6 +17,8 @@
 namespace floe { namespace problem
 {
 
+using namespace types;
+
 /*! Problem
  *
  * It represents the whole problem of moving N floes in interval time [0, T], for concurrent runtime with mpi.
@@ -36,8 +38,6 @@ class MPIWorkerProblem : public MPIProblem<TProblem>
 {
 public:
     using base_class = MPIProblem<TProblem>;
-    using real_type = typename TProblem::floe_group_type::floe_type::real_type;
-    using point_type = typename TProblem::floe_group_type::floe_type::point_type;
     using message_type = typename base_class::message_type;
 
     //! Default constructor

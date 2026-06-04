@@ -9,10 +9,10 @@
 #include <iostream> // debug
 #include <cmath>
 
-
-
 namespace floe { namespace domain
 {
+
+using namespace types;
 
 /*! Domain
  *

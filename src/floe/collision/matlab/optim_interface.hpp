@@ -26,6 +26,8 @@
 namespace floe { namespace collision { namespace matlab
 {
 
+using namespace types;
+
 /*! Minimal interface for optimized floe
  *
  *
@@ -39,12 +41,9 @@ class OptimInterface
 
 public:
     // Type traits
-    using floe_type = TFloe;
-    using point_type = typename floe_type::point_type;
     using circle_type = floe::geometry::Circle<point_type>;
     using multi_circle_type = floe::geometry::MultiCircle<circle_type>;
     using local_points_type = std::vector<std::size_t>;
-    using real_type = typename floe_type::real_type;
 
     //! Global disk accessor
     virtual circle_type const& global_disk() const = 0;

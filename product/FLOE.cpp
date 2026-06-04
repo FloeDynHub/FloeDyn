@@ -4,6 +4,7 @@
 #include <chrono>
 
 using namespace std::chrono;
+using namespace types;
 
 /*
 Main FloeDyn simulation (sequential, no MPI, no PBC)

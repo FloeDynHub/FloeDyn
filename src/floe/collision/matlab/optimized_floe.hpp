@@ -29,9 +29,12 @@
 #include "floe/geometry/geometries/multi_circle.hpp"
 
 #include "floe/collision/matlab/optim_interface.hpp"
+#include "../product/config/config.hpp"
 
 namespace floe { namespace collision { namespace matlab
 {
+
+using namespace types;
 
 /*! Detector optimization for a floe
  *
@@ -48,14 +51,11 @@ class OptimizedFloe : public OptimInterface<TFloe>
 
 public:
     // Type traits
-    using floe_type = TFloe;
     using optim_interface_type = OptimInterface<TFloe>;
     using frame_type = typename floe_type::frame_type;
-    using point_type = typename optim_interface_type::point_type;
     using circle_type = typename optim_interface_type::circle_type;
     using multi_circle_type = typename optim_interface_type::multi_circle_type;
     using local_points_type = typename optim_interface_type::local_points_type;
-    using real_type = typename optim_interface_type::real_type;
 
     /*! Constructor
      *
@@ -123,14 +123,12 @@ template <
 TCircle circle_envelope ( TMultiPoint const& points )
 {
     using namespace floe::geometry;
-    typedef typename point_type<TMultiPoint>::type point_type;
-    typedef typename coordinate_type<TCircle>::type real_type;
 
     // Circle center
-    const auto center = return_centroid<point_type>(points);
+    const auto center = return_centroid<types::point_type>(points);
 
     // Circle radius
-    point_type max_p;
+    types::point_type max_p;
     real_type max_d = 0;
     for ( const auto& pt : points )
     {
@@ -171,7 +169,7 @@ OptimizedFloe<TFloe>::init()
     m_local_points.resize(0);
 
     // Construction of the disks
-    MultiPoint<point_type> points;
+    MultiPoint<types::point_type> points;
     m_local_points.push_back(0);
     std::size_t cnt = 0;
     auto it = closing_iterator<decltype(boundary)>{boundary};

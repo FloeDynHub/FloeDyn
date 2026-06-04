@@ -20,6 +20,8 @@
 namespace floe { namespace floes
 {
 
+using namespace types;
+
 /*! FloeGroup
  *
  * It represents the set of Floes.
@@ -33,11 +35,6 @@ class FloeGroup
 {
 
 public:
-
-    using floe_type = TFloe;
-    using real_type = typename TFloe::real_type;
-    using point_type = typename TFloe::point_type;
-    // using floe_list_type = std::vector<floe_type>;
     using floe_list_type = TFloeList;
     using window_type = std::array<real_type, 4>;
 
@@ -141,7 +138,7 @@ protected:
     window_type m_window; //!< determined during the generation phase.
     real_type m_min_thickness; //!< Minimal floe thickness (used with melting model)
     //! floes previous states backup
-    std::vector<typename floe_type::state_type> m_previous_step_states;
+    std::vector<typename TFloe::state_type> m_previous_step_states;
 
 };
 
@@ -173,32 +170,32 @@ bool FloeGroup<TFloe, TFloeList>::h5_contains_floes_characs(std::string filename
 
 
 template <typename TFloe, typename TFloeList>
-typename FloeGroup<TFloe, TFloeList>::real_type
+real_type
 FloeGroup<TFloe, TFloeList>::kinetic_energy() const
 {
     return std::accumulate(
         get_floes().begin(), get_floes().end(), 0. , 
-        [](real_type partial_sum, floe_type const& floe) { return partial_sum + floe.kinetic_energy(); }
+        [](real_type partial_sum, TFloe const& floe) { return partial_sum + floe.kinetic_energy(); }
     );
 }
 
 template <typename TFloe, typename TFloeList>
-typename FloeGroup<TFloe, TFloeList>::real_type
+real_type
 FloeGroup<TFloe, TFloeList>::total_area() const
 {
     return std::accumulate(
         get_floes().begin(), get_floes().end(), 0. , 
-        [](real_type partial_sum, floe_type const& floe) { return partial_sum + floe.area(); }
+        [](real_type partial_sum, TFloe const& floe) { return partial_sum + floe.area(); }
     );
 }
 
 template <typename TFloe, typename TFloeList>
-typename FloeGroup<TFloe, TFloeList>::real_type
+real_type
 FloeGroup<TFloe, TFloeList>::total_mass() const
 {
     return std::accumulate(
         get_floes().begin(), get_floes().end(), 0. , 
-        [](real_type partial_sum, floe_type const& floe) {
+        [](real_type partial_sum, TFloe const& floe) {
             real_type resp = partial_sum;
             if (floe.is_active()) resp += floe.mass();
             return resp;
@@ -207,12 +204,12 @@ FloeGroup<TFloe, TFloeList>::total_mass() const
 }
 
 template <typename TFloe, typename TFloeList>
-typename FloeGroup<TFloe, TFloeList>::point_type
+point_type
 FloeGroup<TFloe, TFloeList>::mass_center() const
 {
     return std::accumulate(
         get_floes().begin(), get_floes().end(), point_type{0,0} , 
-        [](point_type partial_sum, floe_type const& floe) {
+        [](point_type partial_sum, TFloe const& floe) {
             point_type resp = partial_sum;
             if (floe.is_active()) resp += + floe.mass() * floe.state().real_position();
             return resp;
@@ -221,7 +218,7 @@ FloeGroup<TFloe, TFloeList>::mass_center() const
 }
 
 template <typename TFloe, typename TFloeList>
-std::array<typename FloeGroup<TFloe, TFloeList>::real_type, 4>
+std::array<real_type, 4>
 FloeGroup<TFloe, TFloeList>::bounding_window(real_type margin) const
 {
     real_type min_x, min_y, max_x, max_y;
@@ -240,20 +237,20 @@ FloeGroup<TFloe, TFloeList>::bounding_window(real_type margin) const
 }
 
 template <typename TFloe, typename TFloeList>
-typename FloeGroup<TFloe, TFloeList>::real_type
+real_type
 FloeGroup<TFloe, TFloeList>::bounding_window_area(real_type margin) const {
     auto a = bounding_window(margin);
     return ((a[1] - a[0]) * (a[3] - a[2]));
 }
 
 template <typename TFloe, typename TFloeList>
-typename FloeGroup<TFloe, TFloeList>::real_type
+real_type
 FloeGroup<TFloe, TFloeList>::floe_concentration() const {
     return total_area() / bounding_window_area(0);
 }
 
 template <typename TFloe, typename TFloeList>
-typename FloeGroup<TFloe, TFloeList>::real_type
+real_type
 FloeGroup<TFloe, TFloeList>::initial_concentration() const {
     return total_area() / initial_window_area();
 }
@@ -284,7 +281,7 @@ void FloeGroup<TFloe, TFloeList>::reset_impulses() const
 }
 
 template <typename TFloe, typename TFloeList>
-typename FloeGroup<TFloe, TFloeList>::real_type
+real_type
 FloeGroup<TFloe, TFloeList>::ocean_window_area() const
 {
     if (initial_window_area()) return initial_window_area();
@@ -339,7 +336,7 @@ FloeGroup<TFloe, TFloeList>::randomize_floes_oceanic_skin_drag(real_type coeff)
 }
 
 template <typename TFloe, typename TFloeList>
-std::vector<typename FloeGroup<TFloe, TFloeList>::real_type>
+std::vector<real_type>
 FloeGroup<TFloe, TFloeList>::get_KinematicFloeWithMaxKineticEnergy()
 {
     real_type maxKE = -1;

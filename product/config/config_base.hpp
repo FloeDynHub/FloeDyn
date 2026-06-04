@@ -7,6 +7,7 @@
 namespace types {
 
 using value_type = double;
+using real_type = value_type;
 using point_type = floe::geometry::Point<value_type>;
 
 #ifdef PBC

@@ -7,9 +7,10 @@
 #ifndef FLOE_COLLISION_FLOE_VERTEX_HPP
 #define FLOE_COLLISION_FLOE_VERTEX_HPP
 
-
 namespace floe { namespace collision
 {
+
+using namespace types;
 
 /*! Contact between two floes.
  *
@@ -21,7 +22,6 @@ template <
 >
 struct FloeVertex
 {
-	using real_type = typename TFloe::real_type;
 	FloeVertex() : floe{nullptr} {}
 	FloeVertex(TFloe const* floe_ptr) : floe{floe_ptr} {}
 	//! Get received impulse

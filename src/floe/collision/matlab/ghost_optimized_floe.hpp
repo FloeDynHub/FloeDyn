@@ -32,6 +32,8 @@
 namespace floe { namespace collision { namespace matlab
 {
 
+using namespace types;
+
 /*! Detector optimization for a ghost floe
  *  Refers to the real floe's optimization
  *
@@ -40,17 +42,15 @@ namespace floe { namespace collision { namespace matlab
 template <
     typename TOptim
 >
-class GhostOptimizedFloe : public OptimInterface<typename TOptim::floe_type>
+class GhostOptimizedFloe : public OptimInterface<floe_type>
 {
 
 public:
     // Type traits
     using optim_type = TOptim;
-    using point_type = typename optim_type::point_type;
     using circle_type = typename optim_type::circle_type;
     using multi_circle_type = typename optim_type::multi_circle_type;
     using local_points_type = typename optim_type::local_points_type;
-    using real_type = typename optim_type::real_type;
     using translate_strategy_type = boost::geometry::strategy::transform::translate_transformer<real_type, 2,2>;
 
 

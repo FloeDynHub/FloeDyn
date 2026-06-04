@@ -25,6 +25,8 @@
 namespace floe { namespace floes
 {
 
+using namespace types;
+
 /*! Static Floe
  *
  * It represent a floe without knowledge of speed, acceleration, etc.

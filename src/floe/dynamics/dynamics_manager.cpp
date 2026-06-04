@@ -1,4 +1,5 @@
-#include "../product/config/config_dynamics.hpp"
+// #include "../product/config/config_dynamics.hpp"
+#include "../product/config/config.hpp"
 #include "floe/dynamics/dynamics_manager.hpp"
 #include <type_traits>
 

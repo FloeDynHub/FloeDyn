@@ -10,6 +10,8 @@
 namespace floe { namespace floes
 {
 
+using namespace types;
+
 /*! public interface of a floe
  */
 template< typename TFloe, typename TState = typename TFloe::state_type >

@@ -12,16 +12,17 @@
 #include "floe/collision/periodic_contact_point.hpp"
 #include "floe/collision/matlab/periodic_proximity_data.hpp"
 
-
 namespace floe { namespace collision { namespace matlab
 {
+
+using namespace types;
 
 
 template <
     typename TFloeGroup,
     typename TSpaceTopology,
-    typename TProximityData = PeriodicProximityData<TFloeGroup, OptimizedFloe<typename TFloeGroup::floe_type>>,
-    typename TContact = PeriodicContactPoint<typename TFloeGroup::floe_type, typename TProximityData::ghost_floe_type> 
+    typename TProximityData = PeriodicProximityData<TFloeGroup, OptimizedFloe<floe_type>>,
+    typename TContact = PeriodicContactPoint<floe_type, typename TProximityData::ghost_floe_type> 
 >
 class PeriodicMatlabDetector : public MatlabDetector<TFloeGroup, TProximityData, TContact>
 {
@@ -30,11 +31,6 @@ public:
 
     using proximity_data_type = TProximityData;
     using contact_type = TContact;
-
-    using floe_group_type = TFloeGroup;
-    using floe_type = typename floe_group_type::floe_type;
-    using real_type = typename floe_type::real_type;
-    using point_type = typename floe_type::point_type;
     using topology_type = TSpaceTopology;
 
     //! Default constructor

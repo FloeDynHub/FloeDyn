@@ -14,10 +14,12 @@
 #include "../product/config/config.hpp"
 #include <boost/program_options.hpp>
 namespace po = boost::program_options;
-using namespace types;
+
 using namespace std;
 
 namespace product {
+
+using namespace types;
 
 /* Function used to check that of 'for_what' is specified, then
    'required_option' is specified too. */

@@ -10,6 +10,8 @@
 namespace floe { namespace floes
 {
 
+using namespace types;
+
 /*! Mixin adding identifier to any class
  *
  * This adds id accessors for any class without hidding his own methods and properties.

@@ -16,10 +16,13 @@
 #include <Eigen/SVD> // saving lcp
 
 // saving matrix when lcp solver failed for further analysing
-#include "H5Cpp.h"                    
+#include "H5Cpp.h"
+#include "../product/config/config_base.hpp"
 
 namespace floe { namespace lcp { namespace solver
 {
+
+using namespace types;
 
 /*! LCPSolver
  *
@@ -35,7 +38,6 @@ class LCPSolver
 
 public:
     using lcp_type = floe::lcp::LCP<T>;
-    using real_type = T;
 
     /** A constructor
      *

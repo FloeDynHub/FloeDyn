@@ -15,11 +15,13 @@
 namespace floe { namespace collision { namespace matlab
 {
 
+using namespace types;
+
 
 template <
     typename TFloeGroup,
-    typename TProximityData = ProximityData<TFloeGroup, OptimizedFloe<typename TFloeGroup::floe_type>>,
-    typename TContact = ContactPoint<typename TFloeGroup::floe_type>,
+    typename TProximityData = ProximityData<TFloeGroup, OptimizedFloe<floe_type>>,
+    typename TContact = ContactPoint<floe_type>,
     typename TDetector = MatlabDetector<TFloeGroup>
 >
 class MPIMatlabDetector : public TDetector
@@ -27,9 +29,6 @@ class MPIMatlabDetector : public TDetector
 
 public:
     using base_class = TDetector;
-    using floe_group_type = TFloeGroup;
-    using real_type = typename base_class::real_type;
-    using point_type = typename base_class::point_type;
     using optim_type = typename base_class::optim_type;
     using floe_interface_type = typename base_class::floe_interface_type;
     using optim_interface_type = typename base_class::optim_interface_type;

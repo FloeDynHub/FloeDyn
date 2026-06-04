@@ -13,6 +13,8 @@
 namespace floe { namespace floes
 {
 
+using namespace types;
+
 //! Floe exception
 class FloeException
     : std::exception
