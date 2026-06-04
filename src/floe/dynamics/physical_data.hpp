@@ -286,7 +286,7 @@ private:
 
     point_type y_increasing(point_type pt = {0,0}, real_type coeff = -1e-3) {
         // return {0, coeff * m_time_ref};
-        return {1, -1};
+        return {0, -10};
     }
 
 };
@@ -582,7 +582,7 @@ PhysicalData<TPoint>::load_nc_forcing_data(std::string const& filename) {
 
 
 template <typename TPoint>
-TPoint
+point_type
 PhysicalData<TPoint>::nc_speed(point_type pt, bool is_air) const {
     // Time: last step where time <= m_time_ref, clamped to last
     auto it_iter = std::upper_bound(m_nc_time.begin(), m_nc_time.end(), (double)m_time_ref);

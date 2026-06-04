@@ -119,6 +119,7 @@ public:
         }
         P.get_dynamics_manager().set_rand_speed_add(rand_speed_add);
         P.get_dynamics_manager().set_norm_rand_speed(rand_norm);
+        P.get_lcp_manager().set_optim_jam(optim_jam); // OPTIMJAM
         if (vortex_characs[0]>0) {
             P.get_dynamics_manager().get_external_forces().get_physical_data().set_nb_vortex(vortex_characs[0]);
            P.get_dynamics_manager().get_external_forces().get_physical_data().set_nbVortexByZone(vortex_characs[1]);
@@ -236,6 +237,7 @@ protected:
     value_type              min_size                = 0;
     bool                    fracture                = 0;
     bool                    melting                 = 0;
+    bool                    optim_jam               = 0; //!< OPTIMJAM: enable the jamming optimization
     bool                    rand_speed_add          = 1;
     value_type              rand_norm               = 1e-7;
     value_type              alpha                   = 1.5;
@@ -340,6 +342,10 @@ protected:
             "   4/ the distance of the first ring to the ice field origin (in [km]).\n")
         ("crack", po::value<bool>(&fracture), "1 to activate floe cracking model.\n")
         ("melting", po::value<bool>(&melting), "1 to activate floe melting model.\n")
+        ("optim_jam", po::value<bool>(&optim_jam)->default_value(false),
+            "1 to activate the jamming optimization: detect floes blocked against an obstacle and freeze "
+            "them to skip the costly LCP resolution of near-static contacts (uniform constant forcing, "
+            "fracture off). Default 0 (exact baseline physics).\n")
         ("minthick", po::value(&min_thickness)->default_value(
             min_thickness, std::to_string(min_thickness)),
             "Minimum floe thickness : considered molten and disappears under this value")

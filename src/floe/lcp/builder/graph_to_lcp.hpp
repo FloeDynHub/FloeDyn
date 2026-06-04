@@ -113,11 +113,14 @@ init()
 
     for ( size_t i = 0; i < 3*n; i += 3 )
     {
-        if ( m_graph[i/3].floe->is_obstacle() ) // fv_test
+        // OPTIMJAM: a jammed floe is treated as a fixed wall (infinite mass) for this solve, exactly
+        // like an obstacle. An incoming floe bounces off it and the deep frozen core drops out of the
+        // active subgraph entirely, so only the moving region (+ its interface) is solved.
+        if ( m_graph[i/3].floe->is_obstacle() || m_graph[i/3].floe->state().is_jammed() ) // fv_test
         {
             M(i+2,i+2)  = M(i+1, i+1)  = M(i, i) = std::numeric_limits<T>::max();
             invM(i+2,i+2) = invM(i+1, i+1) = invM(i, i) = 0;
-        } 
+        }
         else 
         {
             M(i+1, i+1) = M(i, i) = m_graph[i/3].floe->mass(); // fv_test

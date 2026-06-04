@@ -53,8 +53,9 @@ struct SpaceTimeState
 
     bool active {true}; // false if floe is inactive (after a fracture)
     bool jammed {false}; // true if floe is blocked in a jam
+    int  jam_count {0};  // OPTIMJAM: consecutive low-velocity+anchored steps (jamming detection hysteresis)
     // faut il le mettre en real pour plus de facilité lors du traitement en hdf5 ? voir hdf5 manager    l.81 for (auto& val: .....
-     
+
     //activate and desactivate floe
     inline void activate() { active=true; }
     inline void desactivate() { active=false; }
@@ -63,6 +64,11 @@ struct SpaceTimeState
 
     inline void set_jammed(bool val) { jammed = val; }
     inline bool is_jammed() const { return jammed; }
+
+    // OPTIMJAM: jamming-detection counter (not touched by the arithmetic operators below)
+    inline void inc_jam_count() { ++jam_count; }
+    inline void reset_jam_count() { jam_count = 0; }
+    inline int  get_jam_count() const { return jam_count; }
 
      //! real position ( ignoring periodic boundaries gaps )
     inline TPos real_position() const { return pos + trans; }
