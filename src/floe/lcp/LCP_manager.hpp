@@ -83,16 +83,24 @@ public:
     //! \param min_contacts   minimum number of contacts for a component to be routed to Gauss-Seidel
     //! \param max_iter       maximum number of Gauss-Seidel sweeps
     //! \param rel_speed_max  route only components whose max contact approach speed (m/s) is below this
-    inline void set_gs_params(int min_contacts, int max_iter, real_type rel_speed_max, real_type freeze_disp) {
+    //! \param eps            net-progress threshold, fraction of the floe diameter (temporal freeze)
+    //! \param stuck_N        consecutive no-progress steps before freezing a floe
+    //! \param probe_K        probe period: every K steps release a frozen floe to retest its mobility
+    inline void set_gs_params(int min_contacts, int max_iter, real_type rel_speed_max,
+                              real_type eps, int stuck_N, int probe_K) {
         if (min_contacts > 0)  m_gs_min_contacts = min_contacts;
         m_gs_solver.set_max_iter(max_iter);
         if (rel_speed_max > 0) m_gs_rel_speed_max = rel_speed_max;
-        if (freeze_disp > 0)   m_gs_freeze_disp = freeze_disp;
+        if (eps > 0)           m_gs_eps = eps;
+        if (stuck_N > 0)       m_gs_stuck_N = stuck_N;
+        if (probe_K > 0)       m_gs_probe_K = probe_K;
         if (m_optim_jam)
             std::cout << "OPTIMJAM params: min_contacts=" << m_gs_min_contacts
                       << " gs_max_iter=" << m_gs_solver.max_iter()
                       << " rel_speed_max=" << m_gs_rel_speed_max
-                      << " freeze_disp=" << m_gs_freeze_disp << std::endl;
+                      << " eps=" << m_gs_eps
+                      << " stuck_N=" << m_gs_stuck_N
+                      << " probe_K=" << m_gs_probe_K << std::endl;
     }
 
     /*! OPTIMJAM: freeze the *move* of floes of a component the GS solver resolved as a held equilibrium.
@@ -128,7 +136,12 @@ private:
     int       m_gs_min_contacts{50};              //!< route a component to GS above this many contacts
     real_type m_gs_rel_speed_max{0.5};            //!< route only components with max contact approach speed below this (m/s)
     bool      m_gs_freeze{true};                  //!< freeze the move of GS-confirmed held floes (prevents creep/Zeno/NaN)
-    real_type m_gs_freeze_disp{1e-3};             //!< freeze a floe whose predicted step displacement |v|*dt is below this fraction of its diameter
+    // Temporal jam-detection knobs (replace the failed per-instant |v|*dt criterion): freeze a floe whose
+    // net displacement stays below m_gs_eps*diameter for m_gs_stuck_N consecutive steps; every m_gs_probe_K
+    // steps skip the freeze (staggered per floe) to let a released floe prove it can move again.
+    real_type m_gs_eps{1e-3};                     //!< net-progress threshold, as a fraction of the floe diameter
+    int       m_gs_stuck_N{5};                    //!< consecutive no-progress steps before freezing
+    int       m_gs_probe_K{20};                   //!< probe period: every K steps, release to retest mobility
     solver::GaussSeidelSolver<real_type> m_gs_solver; //!< the alternative contact solver
 
     //! OPTIMJAM: should this contact component be routed to the Gauss-Seidel solver ?
@@ -221,23 +234,52 @@ int LCPManager<T>::solve_contacts(TContactGraph& contact_graph, real_type time, 
             if ( m_gs_solver.solve( subgraph, gs_iters, gs_resid, gs_vmax ) )
             {
                 long frozen = 0;
-                // Freeze the MOVE only of floes that would not actually advance this step: those whose
-                // predicted displacement |v|*dt is below a small fraction of their own diameter. This is
-                // the physically meaningful "cannot move" test (a cantilever floe with real tangential
-                // velocity advances and is NOT frozen, so it rolls/falls into place), and it self-regulates
-                // the Zeno collapse: when dt shrinks because some floe is geometrically stuck, |v|*dt drops
-                // below the threshold for everyone and the pack freezes for that step (breaking the Zeno),
-                // then dt recovers and the genuinely-moving floes advance again next step.
+                // Freeze the MOVE of floes that are geometrically blocked, detected over TIME, not per
+                // instant. A jammed floe has a real (drift) velocity — it *wants* to move — but is held by
+                // its neighbours, so no instantaneous velocity/|v|*dt test can tell "moving" from "wants-
+                // to-move-but-blocked" (both failed: they leave the Zeno dt-collapse in place). The reliable
+                // signal is the ACTUAL NET DISPLACEMENT over several steps: a floe whose net progress stays
+                // below eps*diameter for stuck_N consecutive steps is blocked -> freeze it. A frozen floe
+                // makes 0 progress, so it would stay stuck forever; hence every probe_K steps we skip the
+                // freeze (staggered per floe by the vertex index, to avoid a synchronous mass release that
+                // would re-jam) to let a floe whose constraint was released show it can move again. Because
+                // the freeze decision is history-based, not dt-based, it is immune to the timing problem of
+                // the old criterion (the dt-collapse happens later, in safe_move's rewind, without re-
+                // running solve_contacts — but the is_jammed flag set here already holds through that loop).
                 (void)gs_vmax;
+                long dbg_reset = 0; int dbg_maxcnt = 0; real_type dbg_maxratio = 0, dbg_diam = 0; // DIAG
                 if ( m_gs_freeze )
                 {
                     for ( auto v : boost::make_iterator_range(vertices(subgraph)) )
                     {
                         auto* floe = subgraph[v].floe;
                         if ( floe->is_obstacle() ) continue;
-                        const auto& sp = floe->state().speed;
-                        const real_type step_disp = std::sqrt(sp.x*sp.x + sp.y*sp.y) * dt;
-                        if ( step_disp < m_gs_freeze_disp * floe->min_diameter() )
+                        dbg_diam = floe->static_floe().max_diameter(); // characteristic floe size (min_diameter() returns ~0)
+                        const auto cur = floe->state().real_position();
+                        if ( !floe->jam_tracked() ) // first observation: capture the reference, don't freeze
+                        {
+                            floe->set_jam_ref_pos(cur);
+                            floe->set_jam_tracked(true);
+                            floe->set_jam_stuck_counter(0);
+                            continue;
+                        }
+                        const auto ref = floe->jam_ref_pos();
+                        const real_type dx = cur.x - ref.x, dy = cur.y - ref.y;
+                        const real_type net_disp = std::sqrt(dx*dx + dy*dy);
+                        const real_type thresh = m_gs_eps * dbg_diam; // = m_gs_eps * max_diameter (already computed above)
+                        if ( thresh > 0 && net_disp / thresh > dbg_maxratio ) dbg_maxratio = net_disp / thresh; // DIAG
+                        if ( net_disp > thresh ) // genuine net progress -> moving
+                        {
+                            floe->set_jam_ref_pos(cur);
+                            floe->set_jam_stuck_counter(0);
+                            ++dbg_reset; // DIAG
+                            continue;
+                        }
+                        const int cnt = floe->jam_stuck_counter() + 1; // no net progress this step
+                        floe->set_jam_stuck_counter(cnt);
+                        if ( cnt > dbg_maxcnt ) dbg_maxcnt = cnt; // DIAG
+                        const bool probe = ( (cnt + (int)v) % m_gs_probe_K == 0 );
+                        if ( cnt >= m_gs_stuck_N && !probe )
                         {
                             floe->state().set_jammed(true);
                             ++frozen;
@@ -248,6 +290,8 @@ int LCPManager<T>::solve_contacts(TContactGraph& contact_graph, real_type time, 
                           << " contacts=" << num_contacts(subgraph)
                           << " sweeps=" << gs_iters << " residual=" << gs_resid
                           << " frozen=" << frozen << "/" << num_vertices(subgraph)
+                          << " | reset=" << dbg_reset << " maxcnt=" << dbg_maxcnt
+                          << " maxratio=" << dbg_maxratio << " diam=" << dbg_diam // DIAG
                           << " (committed)" << std::endl;
                 continue;
             }

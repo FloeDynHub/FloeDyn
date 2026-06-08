@@ -123,6 +123,18 @@ public:
     inline bool const&  is_obstacle()   const   { return m_obstacle; }
     inline bool &       is_obstacle()           { return m_obstacle; }
 
+    /*! OPTIMJAM — temporal jam-detection bookkeeping (NOT physical state, hence kept on the floe object
+     *  and out of SpaceTimeState). The Gauss-Seidel freeze path tracks each floe's net displacement since
+     *  a reference position over several steps: a floe with velocity but ~0 net progress is geometrically
+     *  blocked (no per-instant criterion can tell that apart) and is frozen; a periodic probe releases it.
+     *  See LCP_manager::solve_contacts. Mutable: updated through the const floe handle held by the graph. */
+    inline point_type const& jam_ref_pos()           const { return m_jam_ref_pos; }
+    inline void  set_jam_ref_pos(point_type const& p) const { m_jam_ref_pos = p; }
+    inline int   jam_stuck_counter()                  const { return m_jam_stuck_counter; }
+    inline void  set_jam_stuck_counter(int c)         const { m_jam_stuck_counter = c; }
+    inline bool  jam_tracked()                        const { return m_jam_tracked; }
+    inline void  set_jam_tracked(bool b)              const { m_jam_tracked = b; }
+
     //! Momentum constant
     inline real_type moment_cst()  const { return has_static_floe() ? ( m_floe->moment_cst() ) : -1; } // Better throw an exception ...
 
@@ -183,6 +195,11 @@ private:
 
     mesh_type m_kinematic_mesh; //!< Floe mesh in absolute frame
     mutable real_type m_total_impulse_received; //!< Sum all collision impulses this floe received
+
+    // OPTIMJAM — temporal jam-detection state (see the jam_* accessors above)
+    mutable point_type m_jam_ref_pos{0,0}; //!< reference position for the net-displacement test
+    mutable int  m_jam_stuck_counter{0};   //!< consecutive GS steps with no net progress
+    mutable bool m_jam_tracked{false};     //!< false until the reference position is first captured
 
     /*! keep track of recent collisions
      *  accumulate projected impulses on floe's boundary edges for discretized time

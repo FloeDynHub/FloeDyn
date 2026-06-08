@@ -121,8 +121,9 @@ public:
         P.get_dynamics_manager().set_norm_rand_speed(rand_norm);
         P.get_lcp_manager().set_optim_jam(optim_jam); // OPTIMJAM
         P.get_lcp_manager().set_gs_freeze(jam_freeze);
-        if (jam_params.size() >= 4)
-            P.get_lcp_manager().set_gs_params((int)jam_params[0], (int)jam_params[1], jam_params[2], jam_params[3]);
+        if (jam_params.size() >= 6)
+            P.get_lcp_manager().set_gs_params((int)jam_params[0], (int)jam_params[1], jam_params[2],
+                                              jam_params[3], (int)jam_params[4], (int)jam_params[5]);
         if (vortex_characs[0]>0) {
             P.get_dynamics_manager().get_external_forces().get_physical_data().set_nb_vortex(vortex_characs[0]);
            P.get_dynamics_manager().get_external_forces().get_physical_data().set_nbVortexByZone(vortex_characs[1]);
@@ -242,7 +243,7 @@ protected:
     bool                    melting                 = 0;
     bool                    optim_jam               = 0; //!< OPTIMJAM: enable the Gauss-Seidel path
     bool                    jam_freeze              = 1; //!< OPTIMJAM: freeze the move of GS-confirmed held components
-    std::vector<value_type> jam_params              = std::vector<value_type>{50, 2000, 0.5, 1e-3}; //!< OPTIMJAM: [min_contacts, gs_max_iter, rel_speed_max, freeze_disp]
+    std::vector<value_type> jam_params              = std::vector<value_type>{50, 2000, 0.5, 1e-3, 5, 20}; //!< OPTIMJAM: [min_contacts, gs_max_iter, rel_speed_max, eps, stuck_N, probe_K]
     bool                    rand_speed_add          = 1;
     value_type              rand_norm               = 1e-7;
     value_type              alpha                   = 1.5;
@@ -356,14 +357,19 @@ protected:
             "held equilibrium (prevents the held pack from creeping closed, which otherwise collapses the "
             "time step and creates degenerate NaN contacts). Set 0 to compare with the GS solver alone.\n")
         ("jam_params", po::value< std::vector<value_type> >(&jam_params)->multitoken(),
-            "OPTIMJAM tuning, 4 values [min_contacts gs_max_iter rel_speed_max freeze_frac]:\n"
+            "OPTIMJAM tuning, 6 values [min_contacts gs_max_iter rel_speed_max eps stuck_N probe_K]:\n"
             "   min_contacts : route a contact component to Gauss-Seidel above this many contacts (default 50)\n"
             "   gs_max_iter  : maximum number of Gauss-Seidel sweeps (default 2000)\n"
             "   rel_speed_max: only route components whose max contact approach speed (m/s) is below this\n"
             "                  (default 0.5). Raise it to also route faster-grinding anchored jams.\n"
-            "   freeze_disp  : freeze a floe whose predicted step displacement |v|*dt is below this fraction\n"
-            "                  of its diameter (default 1e-3). This is the physical/speed trade-off knob:\n"
-            "                  lower = freeze fewer (more physical, more Zeno cost); higher = freeze more.\n")
+            "   eps          : temporal freeze — net-progress threshold as a fraction of the floe diameter\n"
+            "                  (default 1e-3). A floe whose net displacement stays below eps*diameter is\n"
+            "                  considered not moving. Lower = freeze fewer (more physical, more Zeno cost).\n"
+            "   stuck_N      : consecutive no-progress steps before freezing a floe (default 5). Higher =\n"
+            "                  more faithful but slower to react to a blockage.\n"
+            "   probe_K      : every K steps, release a frozen floe (staggered per floe) to retest whether\n"
+            "                  it can move again (default 20). Lower = follow releases faster but re-pay the\n"
+            "                  Zeno cost at probes; higher = more stable/faster but laggier releases.\n")
         ("minthick", po::value(&min_thickness)->default_value(
             min_thickness, std::to_string(min_thickness)),
             "Minimum floe thickness : considered molten and disappears under this value")
