@@ -24,6 +24,8 @@
 #include "H5Cpp.h"
 #include "floe/utils/random.hpp"                    // for saving lcp statistic matrix
 
+#include "floe/lcp/solver/GS_solver.hpp"            // OPTIMJAM: alternative Gauss-Seidel contact solver
+
 
 #ifdef _OPENMP
 #include <omp.h>
@@ -64,12 +66,44 @@ public:
     //! LCP solver accessor
     inline solver_type& get_solver() { return m_solver; }
 
-    //! OPTIMJAM: enable/disable the jamming optimization (off => behaviour identical to baseline)
+    /*! OPTIMJAM: enable/disable the alternative Gauss-Seidel path.
+     *
+     *  When enabled, large *anchored* and *quasi-static* contact components (dense jams) are routed to
+     *  a single projected Gauss-Seidel solve (see GS_solver.hpp) instead of the Lemke + active-subgraph
+     *  resolution. Everything else (impulsive collisions) keeps using the historical Lemke solver.
+     *  When disabled, behaviour is identical to baseline.
+     */
     inline void set_optim_jam(bool v) {
         m_optim_jam = v;
-        std::cout << "OPTIMJAM optimization is " << (v ? "ENABLED" : "disabled") << std::endl;
+        std::cout << "OPTIMJAM (Gauss-Seidel path) is " << (v ? "ENABLED" : "disabled") << std::endl;
     }
     inline bool optim_jam() const { return m_optim_jam; }
+
+    //! OPTIMJAM: routing/solver tuning.
+    //! \param min_contacts   minimum number of contacts for a component to be routed to Gauss-Seidel
+    //! \param max_iter       maximum number of Gauss-Seidel sweeps
+    //! \param rel_speed_max  route only components whose max contact approach speed (m/s) is below this
+    inline void set_gs_params(int min_contacts, int max_iter, real_type rel_speed_max, real_type freeze_disp) {
+        if (min_contacts > 0)  m_gs_min_contacts = min_contacts;
+        m_gs_solver.set_max_iter(max_iter);
+        if (rel_speed_max > 0) m_gs_rel_speed_max = rel_speed_max;
+        if (freeze_disp > 0)   m_gs_freeze_disp = freeze_disp;
+        if (m_optim_jam)
+            std::cout << "OPTIMJAM params: min_contacts=" << m_gs_min_contacts
+                      << " gs_max_iter=" << m_gs_solver.max_iter()
+                      << " rel_speed_max=" << m_gs_rel_speed_max
+                      << " freeze_disp=" << m_gs_freeze_disp << std::endl;
+    }
+
+    /*! OPTIMJAM: freeze the *move* of floes of a component the GS solver resolved as a held equilibrium.
+     *
+     *  The GS solver gives the correct held contact forces but does not stop the floes from slowly
+     *  creeping closer under the wind/ocean drag applied during the move (drag is added after the contact
+     *  solve). Over time that creep closes the gaps, which (a) collapses the adaptive time step (Zeno) and
+     *  (b) produces exactly-overlapping contacts with a degenerate (NaN) normal. Skipping the position
+     *  integration of a GS-confirmed held component (via the existing is_jammed flag, re-decided every
+     *  step) prevents the creep, hence both pathologies. Disable to compare with GS alone. */
+    inline void set_gs_freeze(bool v) { m_gs_freeze = v; }
 
     //! Solve collision represented by a contact graph
     template<typename TContactGraph>
@@ -89,19 +123,26 @@ private:
     double chrono_active_subgraph{0.0}; // test perf
     double max_chrono_active_subgraph{0.0}; // test perf
 
-    bool   m_optim_jam{false}; //!< OPTIMJAM: master switch for the jamming optimization
-    long   m_jam_frozen_total{0}; //!< OPTIMJAM: number of floes frozen on the previous step (for transition prints)
+    // OPTIMJAM — Gauss-Seidel alternative solver and routing
+    bool      m_optim_jam{false};                 //!< master switch for the GS path
+    int       m_gs_min_contacts{50};              //!< route a component to GS above this many contacts
+    real_type m_gs_rel_speed_max{0.5};            //!< route only components with max contact approach speed below this (m/s)
+    bool      m_gs_freeze{true};                  //!< freeze the move of GS-confirmed held floes (prevents creep/Zeno/NaN)
+    real_type m_gs_freeze_disp{1e-3};             //!< freeze a floe whose predicted step displacement |v|*dt is below this fraction of its diameter
+    solver::GaussSeidelSolver<real_type> m_gs_solver; //!< the alternative contact solver
 
-    //! OPTIMJAM: detect jammed clusters and freeze them (see implementation for the full rationale).
-    template<typename TSubgraphs>
-    void detect_and_freeze_jam(TSubgraphs& subgraphs, real_type dt);
+    //! OPTIMJAM: should this contact component be routed to the Gauss-Seidel solver ?
+    //! Route only large, anchored (touching an obstacle) and quasi-static components: that is exactly
+    //! the dense-jam regime where Lemke + active-subgraph explodes and fails to converge.
+    template<typename TSubgraph>
+    bool route_to_gs(TSubgraph const& subgraph) const;
 
     //! Update floes state with LCP solution
     template<typename TContactGraph>
     void update_floes_state(TContactGraph& graph, const value_vector Sol, real_type time);
     //! Update floes impulses with LCP solution
     template<typename TContactGraph>
-    void update_floes_impulses(TContactGraph& graph, real_type time, real_type dt);
+    void update_floes_impulses(TContactGraph& graph, real_type time);
 
     /*! \fn bool saving_contact_graph_in_hdf5(int lCP_count, std::size_t loop_count, std::size_t size_a_sub_graph, bool all_solved )
         \brief Saves information on the contact graph in the same file as LCP statistics.
@@ -123,82 +164,29 @@ private:
 };
 
 
-/*! OPTIMJAM — jamming detection & freezing.
- *
- *  Called once per step, BEFORE the LCP loop. It decides, floe by floe, which floes are "jammed"
- *  and freezes them (velocity = 0, jammed flag set). A jammed floe is then treated as a fixed wall
- *  (infinite mass) by the LCP builder (see graph_to_lcp.hpp), so:
- *    - a fully jammed cluster has no active contact left  => its LCP is skipped entirely;
- *    - in a hybrid cluster (floes still raining on a jammed pack), only the moving region and its
- *      interface with the pack are solved, the deep frozen core drops out.
- *
- *  Detection is per-floe (NOT per-subgraph-hash): a new floe landing on the pack does not reset the
- *  state of the floes already jammed underneath. A floe is frozen when, for JAM_CONFIRM_STEPS
- *  consecutive steps, it is slow (kinetic energy per unit mass below JAM_V2_THRESHOLD) AND anchored
- *  (its connected component contains an obstacle — a force chain can only hold against a fixed boundary).
- *
- *  "Restart before resolve" is automatic: every step PROBLEM::step_solve() calls unjam_all_floes()
- *  and the move step applies wind/ocean drag to every floe (jammed ones keep their position frozen but
- *  still accumulate the drag in their velocity). Hence whenever the LCP does run, the floes carry their
- *  correct free velocity (the wind/current push) and the solver produces the true load-bearing forces
- *  against the obstacles — never the spurious "a floe hits a group at rest" problem.
- *
- *  Un-jamming: every JAM_PROBE_PERIOD steps a confirmed-jammed floe is left UNfrozen for one step, so
- *  the LCP re-evaluates it with the current load. If it comes back moving (e.g. an arch that yielded
- *  under accumulated pressure), its counter resets and it is released; otherwise it re-freezes.
- *
- *  \warning v1 validity domain: meant for spatially & temporally uniform forcing, fracture OFF.
- *           Spontaneous (noise-triggered) collapse of a cluster under constant load+composition is
- *           suppressed by the freeze; collapse here is load-triggered (re-evaluated on the probe step).
- */
 template<typename T>
-template<typename TSubgraphs>
-void LCPManager<T>::detect_and_freeze_jam(TSubgraphs& subgraphs, real_type /*dt*/)
+template<typename TSubgraph>
+bool LCPManager<T>::route_to_gs(TSubgraph const& subgraph) const
 {
-    const real_type JAM_V2_THRESHOLD  = 1e-2; //!< kinetic_energy/mass threshold (~|v| < 0.14 m/s) for "slow"
-    const int       JAM_CONFIRM_STEPS = 20;   //!< consecutive slow+anchored steps before freezing (cf. the "20x" memory)
-    const int       JAM_PROBE_PERIOD  = 100;  //!< re-evaluate a frozen floe with a real LCP solve every N steps
+    if ((int)num_contacts(subgraph) < m_gs_min_contacts) return false;
 
-    long frozen_now = 0;
+    // Must be anchored to a fixed boundary (obstacle): a force chain can only hold against one.
+    bool anchored = false;
+    for (auto v : boost::make_iterator_range(vertices(subgraph)))
+        if (subgraph[v].floe->is_obstacle()) { anchored = true; break; }
+    if (!anchored) return false;
 
-    for (auto& subgraph : subgraphs)
-    {
-        // A cluster can only jam if it is anchored to a fixed boundary (obstacle).
-        bool anchored = false;
-        for (auto v : boost::make_iterator_range(vertices(subgraph)))
-            if (subgraph[v].floe->is_obstacle()) { anchored = true; break; }
-
-        for (auto v : boost::make_iterator_range(vertices(subgraph)))
+    // Route only if the contacts are quasi-static: max contact *approach* speed below threshold. This
+    // gates on relative contact velocity (held / slowly grinding) rather than absolute floe velocity,
+    // so an anchored pack that is barely rearranging routes to GS even if its kinetic energy is high.
+    real_type max_approach = 0;
+    for (auto e : boost::make_iterator_range(edges(subgraph)))
+        for (std::size_t i = 0; i < subgraph[e].size(); ++i)
         {
-            auto* floe = subgraph[v].floe;
-            if (floe->is_obstacle()) continue;
-            auto& st = floe->state();
-
-            const real_type v2 = floe->kinetic_energy() / floe->mass();
-            if (anchored && v2 < JAM_V2_THRESHOLD)
-                st.inc_jam_count();
-            else
-                st.reset_jam_count();
-
-            const bool confirmed = anchored && st.get_jam_count() >= JAM_CONFIRM_STEPS;
-            const bool probe     = confirmed && (st.get_jam_count() % JAM_PROBE_PERIOD == 0);
-            if (confirmed && !probe)
-            {
-                st.speed = {0, 0};
-                st.rot   = 0;
-                st.set_jammed(true);
-                ++frozen_now;
-            }
+            const real_type rs = subgraph[e][i].relative_speed(); // < 0 means approaching
+            if (-rs > max_approach) max_approach = -rs;
         }
-    }
-
-    if (frozen_now != m_jam_frozen_total)
-    {
-        std::cout << "OPTIMJAM | frozen floes: " << m_jam_frozen_total << " -> " << frozen_now
-                  << (frozen_now > m_jam_frozen_total ? "  (jam growing)" : "  (jam releasing)")
-                  << std::endl;
-    }
-    m_jam_frozen_total = frozen_now;
+    return max_approach < m_gs_rel_speed_max;
 }
 
 
@@ -214,12 +202,6 @@ int LCPManager<T>::solve_contacts(TContactGraph& contact_graph, real_type time, 
     const std::size_t limit_sup_loop_cnt    = 800;//5000; // from Quentin: 1000
     const std::size_t limit_sup_nb_contact  =  800;//500; // from Quentin:   50
 
-    // OPTIMJAM: decide & freeze jammed floes before solving. Freezing makes them infinite-mass walls
-    // for the LCP, so fully-frozen clusters generate no active subgraph (their LCP is skipped) and
-    // hybrid clusters only solve their moving region. No effect when the optimization is disabled.
-    if (m_optim_jam)
-        detect_and_freeze_jam( subgraphs, dt );
-
     // variables for contact informations:
     #ifdef LCPSTATS
         static bool end_recording = false;
@@ -227,6 +209,55 @@ int LCPManager<T>::solve_contacts(TContactGraph& contact_graph, real_type time, 
 
     for ( auto& subgraph : subgraphs )
     {
+        // OPTIMJAM: route large, anchored, quasi-static components to the Gauss-Seidel solver, which
+        // solves the whole component in one (degeneracy-tolerant) pass instead of thousands of Lemke
+        // active-subgraph solves. The GS solver is a *safe fast-path*: it commits a solution only if it
+        // reaches feasibility (no penetration velocity); otherwise it leaves the floes untouched and we
+        // fall through to the historical Lemke resolution below. Everything else uses Lemke too.
+        if ( m_optim_jam && route_to_gs( subgraph ) )
+        {
+            int gs_iters = 0;
+            real_type gs_resid = 0, gs_vmax = 0;
+            if ( m_gs_solver.solve( subgraph, gs_iters, gs_resid, gs_vmax ) )
+            {
+                long frozen = 0;
+                // Freeze the MOVE only of floes that would not actually advance this step: those whose
+                // predicted displacement |v|*dt is below a small fraction of their own diameter. This is
+                // the physically meaningful "cannot move" test (a cantilever floe with real tangential
+                // velocity advances and is NOT frozen, so it rolls/falls into place), and it self-regulates
+                // the Zeno collapse: when dt shrinks because some floe is geometrically stuck, |v|*dt drops
+                // below the threshold for everyone and the pack freezes for that step (breaking the Zeno),
+                // then dt recovers and the genuinely-moving floes advance again next step.
+                (void)gs_vmax;
+                if ( m_gs_freeze )
+                {
+                    for ( auto v : boost::make_iterator_range(vertices(subgraph)) )
+                    {
+                        auto* floe = subgraph[v].floe;
+                        if ( floe->is_obstacle() ) continue;
+                        const auto& sp = floe->state().speed;
+                        const real_type step_disp = std::sqrt(sp.x*sp.x + sp.y*sp.y) * dt;
+                        if ( step_disp < m_gs_freeze_disp * floe->min_diameter() )
+                        {
+                            floe->state().set_jammed(true);
+                            ++frozen;
+                        }
+                    }
+                }
+                std::cout << "OPTIMJAM GS | floes=" << num_vertices(subgraph)
+                          << " contacts=" << num_contacts(subgraph)
+                          << " sweeps=" << gs_iters << " residual=" << gs_resid
+                          << " frozen=" << frozen << "/" << num_vertices(subgraph)
+                          << " (committed)" << std::endl;
+                continue;
+            }
+            std::cout << "OPTIMJAM GS | floes=" << num_vertices(subgraph)
+                      << " contacts=" << num_contacts(subgraph)
+                      << " sweeps=" << gs_iters << " residual=" << gs_resid
+                      << " (NOT converged -> Lemke fallback)" << std::endl;
+            // fall through to the Lemke active-subgraph resolution below
+        }
+
         // Active subgraph LCP strategy
         auto asubgraphs = active_subgraphs( subgraph );
         std::size_t loop_cnt    = 0;
@@ -304,7 +335,7 @@ int LCPManager<T>::solve_contacts(TContactGraph& contact_graph, real_type time, 
         // End saving data on LCP
         // EndMat
     }
-    update_floes_impulses(contact_graph, time, dt);
+    update_floes_impulses(contact_graph, time);
     m_nb_lcp += LCP_count;
     m_nb_lcp_success += nb_success;
     for (int i=0;i<3;++i){
@@ -333,26 +364,10 @@ void LCPManager<T>::update_floes_state(TContactGraph& graph, const value_vector 
 //! Update floes impulses from contact graph
 template<typename T>
 template<typename TContactGraph>
-void LCPManager<T>::update_floes_impulses(TContactGraph& graph, real_type time, real_type dt){
+void LCPManager<T>::update_floes_impulses(TContactGraph& graph, real_type time){
     for ( auto const v : boost::make_iterator_range( vertices(graph) ) )
     {
-        auto* floe = graph[v].floe;
-        const real_type imp = graph[v].impulse(); // fv_test
-
-        if (m_optim_jam && floe->state().is_jammed() && imp == 0)
-        {
-            // Deep-frozen floe that was excluded from the LCP this step: re-inject the cached
-            // impulse rate so its cumulative impulse ("red") keeps growing at the correct rate.
-            floe->add_impulse(floe->get_jam_impulse_rate() * dt);
-        }
-        else
-        {
-            floe->add_impulse(imp);
-            // Remember the per-second impulse while the floe is actually solved (and not frozen),
-            // so we have a fresh value to re-inject once it freezes.
-            if (m_optim_jam && !floe->state().is_jammed() && dt > 0)
-                floe->set_jam_impulse_rate(imp / dt);
-        }
+        graph[v].floe->add_impulse(graph[v].impulse()); // fv_test
     }
     for ( auto const& edge : make_iterator_range( edges( graph ) ) )
     {

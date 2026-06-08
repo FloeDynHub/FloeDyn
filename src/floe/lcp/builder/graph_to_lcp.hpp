@@ -32,6 +32,7 @@ namespace floe { namespace lcp { namespace builder
 {
 
 namespace ublas = boost::numeric::ublas;
+using namespace types; // for point_type, real_type, ... (self-sufficient regardless of include order)
 
 
 /*! LCP build from a contact graph.
@@ -74,6 +75,13 @@ public:
     void compute_impulses(lcp_type const& lcp_c, lcp_type const& lcp_d, T epsilon) const;
     //! Impulse vector in case of decompression LCP solving fail
     void compute_impulses(lcp_type const& lcp_c, T epsilon = 0) const;
+    //! Public entry point to push externally-computed contact impulses (e.g. from the Gauss-Seidel
+    //! solver) into the contact graph, reusing the same bookkeeping as the Lemke path.
+    //! \param normal      per-contact normal impulses (size m)
+    //! \param tangential  per-contact tangential impulses, 2 per contact (size 2m, +/- directions)
+    void apply_impulses(ublas::vector<T> const& normal, ublas::vector<T> const& tangential) const {
+        calc_floe_impulses(normal, tangential);
+    }
 
 
     ublas::diagonal_matrix<T>   M;   //!< Mass and momentum matrix.
@@ -113,10 +121,7 @@ init()
 
     for ( size_t i = 0; i < 3*n; i += 3 )
     {
-        // OPTIMJAM: a jammed floe is treated as a fixed wall (infinite mass) for this solve, exactly
-        // like an obstacle. An incoming floe bounces off it and the deep frozen core drops out of the
-        // active subgraph entirely, so only the moving region (+ its interface) is solved.
-        if ( m_graph[i/3].floe->is_obstacle() || m_graph[i/3].floe->state().is_jammed() ) // fv_test
+        if ( m_graph[i/3].floe->is_obstacle() ) // fv_test
         {
             M(i+2,i+2)  = M(i+1, i+1)  = M(i, i) = std::numeric_limits<T>::max();
             invM(i+2,i+2) = invM(i+1, i+1) = invM(i, i) = 0;

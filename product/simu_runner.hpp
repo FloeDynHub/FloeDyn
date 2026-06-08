@@ -120,6 +120,9 @@ public:
         P.get_dynamics_manager().set_rand_speed_add(rand_speed_add);
         P.get_dynamics_manager().set_norm_rand_speed(rand_norm);
         P.get_lcp_manager().set_optim_jam(optim_jam); // OPTIMJAM
+        P.get_lcp_manager().set_gs_freeze(jam_freeze);
+        if (jam_params.size() >= 4)
+            P.get_lcp_manager().set_gs_params((int)jam_params[0], (int)jam_params[1], jam_params[2], jam_params[3]);
         if (vortex_characs[0]>0) {
             P.get_dynamics_manager().get_external_forces().get_physical_data().set_nb_vortex(vortex_characs[0]);
            P.get_dynamics_manager().get_external_forces().get_physical_data().set_nbVortexByZone(vortex_characs[1]);
@@ -237,7 +240,9 @@ protected:
     value_type              min_size                = 0;
     bool                    fracture                = 0;
     bool                    melting                 = 0;
-    bool                    optim_jam               = 0; //!< OPTIMJAM: enable the jamming optimization
+    bool                    optim_jam               = 0; //!< OPTIMJAM: enable the Gauss-Seidel path
+    bool                    jam_freeze              = 1; //!< OPTIMJAM: freeze the move of GS-confirmed held components
+    std::vector<value_type> jam_params              = std::vector<value_type>{50, 2000, 0.5, 1e-3}; //!< OPTIMJAM: [min_contacts, gs_max_iter, rel_speed_max, freeze_disp]
     bool                    rand_speed_add          = 1;
     value_type              rand_norm               = 1e-7;
     value_type              alpha                   = 1.5;
@@ -343,9 +348,22 @@ protected:
         ("crack", po::value<bool>(&fracture), "1 to activate floe cracking model.\n")
         ("melting", po::value<bool>(&melting), "1 to activate floe melting model.\n")
         ("optim_jam", po::value<bool>(&optim_jam)->default_value(false),
-            "1 to activate the jamming optimization: detect floes blocked against an obstacle and freeze "
-            "them to skip the costly LCP resolution of near-static contacts (uniform constant forcing, "
-            "fracture off). Default 0 (exact baseline physics).\n")
+            "1 to activate the Gauss-Seidel path: large anchored quasi-static contact components (dense "
+            "jams) are solved by a single projected Gauss-Seidel pass instead of the Lemke active-subgraph "
+            "resolution; impulsive collisions keep using Lemke. Default 0 (exact baseline physics).\n")
+        ("jam_freeze", po::value<bool>(&jam_freeze)->default_value(true),
+            "OPTIMJAM: 1 (default) to freeze the move of components the Gauss-Seidel solver resolved as a "
+            "held equilibrium (prevents the held pack from creeping closed, which otherwise collapses the "
+            "time step and creates degenerate NaN contacts). Set 0 to compare with the GS solver alone.\n")
+        ("jam_params", po::value< std::vector<value_type> >(&jam_params)->multitoken(),
+            "OPTIMJAM tuning, 4 values [min_contacts gs_max_iter rel_speed_max freeze_frac]:\n"
+            "   min_contacts : route a contact component to Gauss-Seidel above this many contacts (default 50)\n"
+            "   gs_max_iter  : maximum number of Gauss-Seidel sweeps (default 2000)\n"
+            "   rel_speed_max: only route components whose max contact approach speed (m/s) is below this\n"
+            "                  (default 0.5). Raise it to also route faster-grinding anchored jams.\n"
+            "   freeze_disp  : freeze a floe whose predicted step displacement |v|*dt is below this fraction\n"
+            "                  of its diameter (default 1e-3). This is the physical/speed trade-off knob:\n"
+            "                  lower = freeze fewer (more physical, more Zeno cost); higher = freeze more.\n")
         ("minthick", po::value(&min_thickness)->default_value(
             min_thickness, std::to_string(min_thickness)),
             "Minimum floe thickness : considered molten and disappears under this value")

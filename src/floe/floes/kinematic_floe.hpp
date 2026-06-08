@@ -146,12 +146,6 @@ public:
     //! Reset received impulse
     void reset_impulse(real_type new_impulse = 0) const { m_total_impulse_received = new_impulse; }
     void reset_detailed_impulse() const { m_detailed_impulse_received.clear(); }
-
-    //! OPTIMJAM: last known impulse-per-second this floe received (cached from the last full LCP solve).
-    //! Re-injected each step while the floe is frozen so its cumulative impulse / "red" keeps growing
-    //! at the physically correct rate under steady load, despite the LCP being skipped for it.
-    real_type get_jam_impulse_rate() const { return m_jam_impulse_rate; }
-    void set_jam_impulse_rate(real_type rate) const { m_jam_impulse_rate = rate; }
     std::vector<geometry_type> fracture_floe();
     std::vector<geometry_type> fracture_floe_from_collisions();
 
@@ -189,7 +183,6 @@ private:
 
     mesh_type m_kinematic_mesh; //!< Floe mesh in absolute frame
     mutable real_type m_total_impulse_received; //!< Sum all collision impulses this floe received
-    mutable real_type m_jam_impulse_rate{0}; //!< OPTIMJAM: cached impulse-per-second (see get/set_jam_impulse_rate)
 
     /*! keep track of recent collisions
      *  accumulate projected impulses on floe's boundary edges for discretized time
