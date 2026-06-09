@@ -121,6 +121,7 @@ public:
         P.get_dynamics_manager().set_norm_rand_speed(rand_norm);
         P.get_lcp_manager().set_optim_jam(optim_jam); // OPTIMJAM
         P.get_lcp_manager().set_gs_freeze(jam_freeze);
+        P.get_lcp_manager().set_gs_warm_start(jam_warmstart);
         if (jam_params.size() >= 6)
             P.get_lcp_manager().set_gs_params((int)jam_params[0], (int)jam_params[1], jam_params[2],
                                               jam_params[3], (int)jam_params[4], (int)jam_params[5]);
@@ -243,6 +244,7 @@ protected:
     bool                    melting                 = 0;
     bool                    optim_jam               = 0; //!< OPTIMJAM: enable the Gauss-Seidel path
     bool                    jam_freeze              = 1; //!< OPTIMJAM: freeze the move of GS-confirmed held components
+    bool                    jam_warmstart           = 1; //!< OPTIMJAM: warm-start the Gauss-Seidel solver across steps
     std::vector<value_type> jam_params              = std::vector<value_type>{50, 2000, 0.5, 1e-3, 5, 20}; //!< OPTIMJAM: [min_contacts, gs_max_iter, rel_speed_max, eps, stuck_N, probe_K]
     bool                    rand_speed_add          = 1;
     value_type              rand_norm               = 1e-7;
@@ -356,6 +358,10 @@ protected:
             "OPTIMJAM: 1 (default) to freeze the move of components the Gauss-Seidel solver resolved as a "
             "held equilibrium (prevents the held pack from creeping closed, which otherwise collapses the "
             "time step and creates degenerate NaN contacts). Set 0 to compare with the GS solver alone.\n")
+        ("jam_warmstart", po::value<bool>(&jam_warmstart)->default_value(true),
+            "OPTIMJAM: 1 (default) to warm-start the Gauss-Seidel solver from the previous step's contact "
+            "impulses (a held jam barely changes step to step, so it resumes near-converged and needs far "
+            "fewer sweeps). Set 0 for a cold start each step (to measure the warm-start speed-up).\n")
         ("jam_params", po::value< std::vector<value_type> >(&jam_params)->multitoken(),
             "OPTIMJAM tuning, 6 values [min_contacts gs_max_iter rel_speed_max eps stuck_N probe_K]:\n"
             "   min_contacts : route a contact component to Gauss-Seidel above this many contacts (default 50)\n"

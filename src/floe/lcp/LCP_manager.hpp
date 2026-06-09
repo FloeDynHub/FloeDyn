@@ -113,6 +113,11 @@ public:
      *  step) prevents the creep, hence both pathologies. Disable to compare with GS alone. */
     inline void set_gs_freeze(bool v) { m_gs_freeze = v; }
 
+    /*! OPTIMJAM: enable/disable warm-starting the Gauss-Seidel solver across time steps (default on).
+     *  Seeds each contact's impulses from the previous step's solution so a held jam — whose configuration
+     *  barely changes step to step — resumes near-converged and needs far fewer sweeps. See GS_solver.hpp. */
+    inline void set_gs_warm_start(bool v) { m_gs_solver.set_warm_start(v); }
+
     //! Solve collision represented by a contact graph
     template<typename TContactGraph>
     int solve_contacts(TContactGraph& contact_graph, real_type time, real_type dt);
@@ -212,6 +217,10 @@ int LCPManager<T>::solve_contacts(TContactGraph& contact_graph, real_type time, 
     int LCP_count=0, nb_success=0;
     int nb_lcp_failed_stats[3]={0,0,0};
 
+    // OPTIMJAM: rotate the Gauss-Seidel warm-start cache once per step (last step's impulses become the
+    // seed for this step's solves; the new step's solutions are accumulated for the next one).
+    if ( m_optim_jam ) m_gs_solver.begin_step();
+
     const std::size_t limit_sup_loop_cnt    = 800;//5000; // from Quentin: 1000
     const std::size_t limit_sup_nb_contact  =  800;//500; // from Quentin:   50
 
@@ -229,75 +238,117 @@ int LCPManager<T>::solve_contacts(TContactGraph& contact_graph, real_type time, 
         // fall through to the historical Lemke resolution below. Everything else uses Lemke too.
         if ( m_optim_jam && route_to_gs( subgraph ) )
         {
-            int gs_iters = 0;
-            real_type gs_resid = 0, gs_vmax = 0;
-            if ( m_gs_solver.solve( subgraph, gs_iters, gs_resid, gs_vmax ) )
+            // OPTIMJAM (C): decide the per-floe freeze BEFORE the solve, so the Gauss-Seidel solve is
+            // consistent with what actually moves (it treats frozen floes as fixed anchors — see GS_solver).
+            // This removes the dominant, first-order interpenetration the old solve-then-freeze order caused:
+            // a mobile floe approaching a neighbour the solve assumed was mobile but which we then pinned.
+            //
+            // The freeze criterion is TEMPORAL, not per-instant. A jammed floe has a real (drift) velocity —
+            // it *wants* to move — but is held by its neighbours, so no instantaneous velocity/|v|*dt test
+            // can tell "moving" from "wants-to-move-but-blocked". The reliable signal is the ACTUAL NET
+            // DISPLACEMENT over several steps: a floe whose net progress stays below eps*diameter for stuck_N
+            // consecutive steps is blocked -> freeze it. A frozen floe makes 0 progress, so it would stay
+            // stuck forever; hence every probe_K steps we skip the freeze (staggered per floe by vertex index,
+            // to avoid a synchronous mass release that would re-jam) to let a floe whose constraint was
+            // released show it can move again — and the consistent solve then sorts it out: a still-blocked
+            // probe gets v~0 (no INTER), a probe with free space actually moves (the pile can collapse).
+            long frozen = 0;
+            long dbg_reset = 0; int dbg_maxcnt = 0; real_type dbg_maxratio = 0, dbg_diam = 0; // DIAG
+            if ( m_gs_freeze )
             {
-                long frozen = 0;
-                // Freeze the MOVE of floes that are geometrically blocked, detected over TIME, not per
-                // instant. A jammed floe has a real (drift) velocity — it *wants* to move — but is held by
-                // its neighbours, so no instantaneous velocity/|v|*dt test can tell "moving" from "wants-
-                // to-move-but-blocked" (both failed: they leave the Zeno dt-collapse in place). The reliable
-                // signal is the ACTUAL NET DISPLACEMENT over several steps: a floe whose net progress stays
-                // below eps*diameter for stuck_N consecutive steps is blocked -> freeze it. A frozen floe
-                // makes 0 progress, so it would stay stuck forever; hence every probe_K steps we skip the
-                // freeze (staggered per floe by the vertex index, to avoid a synchronous mass release that
-                // would re-jam) to let a floe whose constraint was released show it can move again. Because
-                // the freeze decision is history-based, not dt-based, it is immune to the timing problem of
-                // the old criterion (the dt-collapse happens later, in safe_move's rewind, without re-
-                // running solve_contacts — but the is_jammed flag set here already holds through that loop).
-                (void)gs_vmax;
-                long dbg_reset = 0; int dbg_maxcnt = 0; real_type dbg_maxratio = 0, dbg_diam = 0; // DIAG
-                if ( m_gs_freeze )
+                for ( auto v : boost::make_iterator_range(vertices(subgraph)) )
                 {
-                    for ( auto v : boost::make_iterator_range(vertices(subgraph)) )
+                    auto* floe = subgraph[v].floe;
+                    if ( floe->is_obstacle() ) continue;
+                    dbg_diam = floe->static_floe().max_diameter(); // characteristic floe size (min_diameter() returns ~0)
+                    const auto cur = floe->state().real_position();
+                    if ( !floe->jam_tracked() ) // first observation: capture the reference, don't freeze
                     {
-                        auto* floe = subgraph[v].floe;
-                        if ( floe->is_obstacle() ) continue;
-                        dbg_diam = floe->static_floe().max_diameter(); // characteristic floe size (min_diameter() returns ~0)
-                        const auto cur = floe->state().real_position();
-                        if ( !floe->jam_tracked() ) // first observation: capture the reference, don't freeze
-                        {
-                            floe->set_jam_ref_pos(cur);
-                            floe->set_jam_tracked(true);
-                            floe->set_jam_stuck_counter(0);
-                            continue;
-                        }
-                        const auto ref = floe->jam_ref_pos();
-                        const real_type dx = cur.x - ref.x, dy = cur.y - ref.y;
-                        const real_type net_disp = std::sqrt(dx*dx + dy*dy);
-                        const real_type thresh = m_gs_eps * dbg_diam; // = m_gs_eps * max_diameter (already computed above)
-                        if ( thresh > 0 && net_disp / thresh > dbg_maxratio ) dbg_maxratio = net_disp / thresh; // DIAG
-                        if ( net_disp > thresh ) // genuine net progress -> moving
-                        {
-                            floe->set_jam_ref_pos(cur);
-                            floe->set_jam_stuck_counter(0);
-                            ++dbg_reset; // DIAG
-                            continue;
-                        }
-                        const int cnt = floe->jam_stuck_counter() + 1; // no net progress this step
-                        floe->set_jam_stuck_counter(cnt);
-                        if ( cnt > dbg_maxcnt ) dbg_maxcnt = cnt; // DIAG
-                        const bool probe = ( (cnt + (int)v) % m_gs_probe_K == 0 );
-                        if ( cnt >= m_gs_stuck_N && !probe )
-                        {
-                            floe->state().set_jammed(true);
-                            ++frozen;
-                        }
+                        floe->set_jam_ref_pos(cur);
+                        floe->set_jam_tracked(true);
+                        floe->set_jam_stuck_counter(0);
+                        continue;
                     }
+                    const auto ref = floe->jam_ref_pos();
+                    const real_type dx = cur.x - ref.x, dy = cur.y - ref.y;
+                    const real_type net_disp = std::sqrt(dx*dx + dy*dy);
+                    const real_type thresh = m_gs_eps * dbg_diam; // = m_gs_eps * max_diameter (already computed above)
+                    if ( thresh > 0 && net_disp / thresh > dbg_maxratio ) dbg_maxratio = net_disp / thresh; // DIAG
+                    if ( net_disp > thresh ) // genuine net progress -> moving
+                    {
+                        floe->set_jam_ref_pos(cur);
+                        floe->set_jam_stuck_counter(0);
+                        ++dbg_reset; // DIAG
+                        continue;
+                    }
+                    const int cnt = floe->jam_stuck_counter() + 1; // no net progress this step
+                    floe->set_jam_stuck_counter(cnt);
+                    if ( cnt > dbg_maxcnt ) dbg_maxcnt = cnt; // DIAG
+                    const bool probe = ( (cnt + (int)v) % m_gs_probe_K == 0 );
+                    if ( cnt >= m_gs_stuck_N && !probe )
+                    {
+                        floe->state().set_jammed(true);
+                        ++frozen;
+                    }
+                }
+            }
+
+            // (beta) TWO passes per component (see GS_solver::Mode):
+            //  - DYNAMICS first: the (C) heuristic (frozen floes = fixed rest anchors) gives the velocities
+            //    we actually move with -> stable dt.
+            //  - FORCES second: a TRUE-mass solve on the floes' FREE (pre-resolution) velocities computes the
+            //    physical force chain we record (fracture + visualisation), without moving anyone. The force a
+            //    held floe transmits comes from its free, drag-loaded velocity, so the force pass must read
+            //    those — but the dynamics pass overwrites the velocities, so we snapshot/restore around it.
+            // The force pass runs only when the dynamics pass committed; otherwise the component falls back to
+            // Lemke, which records its own impulses (so no double counting), and the freezes are undone.
+            using gs_mode = typename decltype(m_gs_solver)::Mode;
+
+            std::vector<std::array<real_type,3>> v_free; // free (pre-resolution) velocities of the component
+            v_free.reserve(num_vertices(subgraph));
+            for ( auto v : boost::make_iterator_range(vertices(subgraph)) ) {
+                auto const& st = subgraph[v].floe->state();
+                v_free.push_back({ st.speed.x, st.speed.y, st.rot });
+            }
+
+            int d_it = 0; real_type d_resid = 0, d_vmax = 0;
+            if ( m_gs_solver.solve( subgraph, gs_mode::Dynamics, d_it, d_resid, d_vmax ) )
+            {
+                (void)d_vmax;
+                // Capture the committed dynamics velocities, restore the free velocities for the force pass,
+                // run the force pass (records impulses, moves nobody), then restore the dynamics velocities.
+                std::vector<std::array<real_type,3>> v_dyn;
+                v_dyn.reserve(num_vertices(subgraph));
+                std::size_t k = 0;
+                for ( auto v : boost::make_iterator_range(vertices(subgraph)) ) {
+                    auto& st = subgraph[v].floe->state();
+                    v_dyn.push_back({ st.speed.x, st.speed.y, st.rot });
+                    st.speed = { v_free[k][0], v_free[k][1] }; st.rot = v_free[k][2]; ++k;
+                }
+                int f_it = 0; real_type f_resid = 0, f_vmax = 0;
+                m_gs_solver.solve( subgraph, gs_mode::Forces, f_it, f_resid, f_vmax ); // records the force chain
+                k = 0;
+                for ( auto v : boost::make_iterator_range(vertices(subgraph)) ) {
+                    auto& st = subgraph[v].floe->state();
+                    st.speed = { v_dyn[k][0], v_dyn[k][1] }; st.rot = v_dyn[k][2]; ++k;
                 }
                 std::cout << "OPTIMJAM GS | floes=" << num_vertices(subgraph)
                           << " contacts=" << num_contacts(subgraph)
-                          << " sweeps=" << gs_iters << " residual=" << gs_resid
+                          << " dyn_sweeps=" << d_it << " dyn_resid=" << d_resid
+                          << " frc_sweeps=" << f_it << " frc_resid=" << f_resid
                           << " frozen=" << frozen << "/" << num_vertices(subgraph)
                           << " | reset=" << dbg_reset << " maxcnt=" << dbg_maxcnt
                           << " maxratio=" << dbg_maxratio << " diam=" << dbg_diam // DIAG
                           << " (committed)" << std::endl;
                 continue;
             }
+            // Dynamics pass declined: undo the freezes we set for this component so the Lemke fallback runs its
+            // baseline (it solves and moves all the floes, and records its own impulses). Counters stay as set.
+            for ( auto v : boost::make_iterator_range(vertices(subgraph)) )
+                subgraph[v].floe->state().set_jammed(false);
             std::cout << "OPTIMJAM GS | floes=" << num_vertices(subgraph)
                       << " contacts=" << num_contacts(subgraph)
-                      << " sweeps=" << gs_iters << " residual=" << gs_resid
+                      << " dyn_sweeps=" << d_it << " dyn_resid=" << d_resid
                       << " (NOT converged -> Lemke fallback)" << std::endl;
             // fall through to the Lemke active-subgraph resolution below
         }

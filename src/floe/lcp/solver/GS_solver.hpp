@@ -30,6 +30,8 @@
 #include <cmath>
 #include <algorithm>
 #include <limits>
+#include <map>
+#include <utility>
 
 #include <boost/numeric/ublas/vector.hpp>
 #include <boost/range/iterator_range.hpp>
@@ -62,6 +64,28 @@ public:
     int  max_iter() const { return m_max_iter; }
     T    tol()      const { return m_tol; }
 
+    /*! Two solve modes (the "two passes" of OPTIMJAM, run per component per step):
+     *  - Forces:   true masses for every floe (only real obstacles are fixed), reads the floes' free
+     *              (drag-loaded) pre-resolution velocities — which is what sets the pressure on the
+     *              boundary. RECORDS the resulting contact impulses (the physical force chain, for the
+     *              fracture model and visualisation) and does NOT move any floe.
+     *  - Dynamics: the (C) heuristic — frozen floes are treated as fixed rest anchors (inverse mass 0,
+     *              velocity 0) so the mobile floes' solved velocities are consistent with what actually
+     *              moves (kills the first-order interpenetration / dt collapse). COMMITS velocities; does
+     *              NOT record impulses (those come from the Forces pass). */
+    enum class Mode { Forces = 0, Dynamics = 1 };
+
+    /*! OPTIMJAM warm-start: seed each contact's impulses from the previous step's solution for the same
+     *  floe-pair (nearest contact-point position). A held jam barely changes between steps, so projected
+     *  Gauss-Seidel resumes near-converged and reaches a low residual in a few sweeps instead of the
+     *  thousands a cold start needs. begin_step() MUST be called once per time step (it rotates the
+     *  previous/next caches, separately per mode); set_warm_start(false) falls back to the cold start. */
+    void set_warm_start(bool v) { m_warm_start = v; }
+    bool warm_start() const { return m_warm_start; }
+    void begin_step() {
+        for (int mo = 0; mo < 2; ++mo) { m_warm_prev[mo].swap(m_warm_next[mo]); m_warm_next[mo].clear(); }
+    }
+
     /*! Solve the contact problem on the whole component \p graph by projected Gauss-Seidel.
      *
      *  Writes back the post-contact velocities into the floes and the contact impulses into the graph
@@ -75,9 +99,13 @@ public:
      *  \return true if a solution was committed (best-effort); false if it declined to genuine garbage.
      */
     template <typename TGraph>
-    bool solve(TGraph const& graph, int& out_iters, T& out_residual, T& out_vmax_free) const
+    bool solve(TGraph const& graph, Mode mode, int& out_iters, T& out_residual, T& out_vmax_free)
     {
         using floe::lcp::builder::GraphLCP;
+
+        const bool dynamics = (mode == Mode::Dynamics);
+        auto& warm_prev = m_warm_prev[(int)mode];
+        auto& warm_next = m_warm_next[(int)mode];
 
         GraphLCP<T, TGraph> glcp(graph); // assembles M, invM, J, D, mu (no big LCP matrix built)
         const int n = glcp.nb_floes;
@@ -87,10 +115,22 @@ public:
         out_vmax_free = 0;
         if (m == 0) return true;
 
+        // Which floes are FIXED anchors in this solve. Obstacles always are. In the Dynamics pass, frozen
+        // floes also are — the (C) heuristic: the freeze is decided BEFORE the solve (see LCP_manager), so
+        // the mobile floes come out consistent with what actually moves (no first-order interpenetration
+        // from a mover approaching a pinned neighbour the solve wrongly assumed was mobile). In the Forces
+        // pass, frozen floes keep their TRUE mass and free velocity, so the physical force chain (load
+        // pressing down to the boundary) is computed — only real obstacles are fixed there.
+        std::vector<char> is_fixed(n, 0);
+        for (int i = 0; i < n; ++i)
+            is_fixed[i] = (graph[i].floe->is_obstacle() || (dynamics && graph[i].floe->state().is_jammed())) ? 1 : 0;
+
         // Free velocity v = current floe velocities (already include the wind/ocean drag of the
         // previous move; solve_contacts runs before the next move). This is the "restart" velocity.
+        // Fixed floes are clamped to rest so the contact solve sees them as immovable anchors.
         ublas::vector<T> v(3 * n);
         for (int i = 0; i < n; ++i) {
+            if (is_fixed[i]) { v(3 * i) = v(3 * i + 1) = v(3 * i + 2) = 0; continue; }
             auto const st = graph[i].floe->state();
             v(3 * i)     = st.speed.x;
             v(3 * i + 1) = st.speed.y;
@@ -102,6 +142,9 @@ public:
         struct Row { int idx; T jn; T dtg; T im; };
         std::vector<std::array<Row, 6>> rows(m);
         std::vector<T> Wnn(m, 0), Wtt(m, 0), muv(m, 0);
+        // Per-contact identity for warm-start matching across steps: the floe pair and the contact point.
+        std::vector<WarmKey> ckey(m);
+        std::vector<T> cx(m, 0), cy(m, 0);
         {
             int a = 0;
             for (auto const& edge : boost::make_iterator_range(edges(graph)))
@@ -118,12 +161,17 @@ public:
                         const int idx = base[k];
                         const T jn  = glcp.J(idx, a);
                         const T dtg = glcp.D(idx, 2 * a);
-                        const T im  = glcp.invM(idx, idx);
+                        // Fixed (obstacle or frozen) floes have zero inverse mass: impulses don't move them.
+                        const T im  = is_fixed[idx / 3] ? T(0) : glcp.invM(idx, idx);
                         rows[a][k] = Row{ idx, jn, dtg, im };
                         Wnn[a] += im * jn * jn;
                         Wtt[a] += im * dtg * dtg;
                     }
                     muv[a] = glcp.mu(a, a);
+                    auto const& cp = graph[edge][c];
+                    ckey[a] = make_key(cp.floe1, cp.floe2);
+                    auto const cc = cp.frame.center();
+                    cx[a] = cc.x; cy[a] = cc.y;
                     ++a;
                 }
             }
@@ -142,6 +190,31 @@ public:
         out_vmax_free = vmax_free;
         const T W_guard = std::max(T(1e-30), Wnn_max * T(1e-12));
         const T tol_feasible = std::max(T(1e-9), m_tol * vmax_free); // "converged" reporting threshold
+
+        // OPTIMJAM warm-start: seed the contact impulses from the previous step's committed solution
+        // (matched per floe-pair, then by nearest contact-point position), and bring v into consistency
+        // with the seeded impulses so the first sweep's relative velocities J*v are correct (PGS invariant
+        // v = v_free + W p). Computed AFTER vmax_free/tol_feasible above, which must use the *free* velocity.
+        if (m_warm_start && !warm_prev.empty())
+        {
+            for (int a = 0; a < m; ++a)
+            {
+                auto it = warm_prev.find(ckey[a]);
+                if (it == warm_prev.end()) continue;
+                const WarmContact* best = nullptr; T best_d2 = std::numeric_limits<T>::max();
+                for (auto const& w : it->second) {
+                    const T d2 = (w.x - cx[a]) * (w.x - cx[a]) + (w.y - cy[a]) * (w.y - cy[a]);
+                    if (d2 < best_d2) { best_d2 = d2; best = &w; }
+                }
+                if (best) { pn(a) = best->pn; pt(a) = best->pt; }
+            }
+            for (int a = 0; a < m; ++a)
+                if (pn(a) != T(0) || pt(a) != T(0))
+                    for (int k = 0; k < 6; ++k) {
+                        auto const& r = rows[a][k];
+                        v(r.idx) += r.im * (r.jn * pn(a) + r.dtg * pt(a));
+                    }
+        }
 
         // Keep the BEST (lowest penetration velocity) solution seen, and commit it even if not perfectly
         // converged. FloeDyn philosophy: a slightly imperfect contact solution that lets the simulation
@@ -210,23 +283,39 @@ public:
         if (!std::isfinite(vmax_post) || vmax_post > V_CAP) return false;
         (void)converged;
 
-        // Commit the best velocities (obstacles keep their state).
-        for (int i = 0; i < n; ++i)
+        // DYNAMICS pass only: commit the best velocities (this is what the move uses). Obstacles keep their
+        // state; frozen floes are set to rest (held immobile in the anchored structure — this also stops the
+        // wind/ocean drag from accumulating a phantom velocity in a floe that never moves, which would
+        // otherwise fire it out on release). Only mobile floes receive their solved velocity. The FORCES pass
+        // does NOT touch velocities, so the Forces pass (run first) reads the intact free velocities.
+        if (dynamics)
+            for (int i = 0; i < n; ++i)
+            {
+                if (graph[i].floe->is_obstacle()) continue;
+                auto& st = graph[i].floe->state();
+                if (st.is_jammed()) { st.speed = { 0, 0 }; st.rot = 0; continue; }
+                st.speed = { v_best(3 * i), v_best(3 * i + 1) };
+                st.rot   = v_best(3 * i + 2);
+            }
+
+        // FORCES pass only: feed the physical contact impulses back into the graph (the force chain that the
+        // fracture model and the visualisation read). The Dynamics pass must NOT do this — its (C) infinite
+        // masses produce non-physical, sometimes divergent impulses (a floe squeezed between rigid anchors).
+        if (!dynamics)
         {
-            if (graph[i].floe->is_obstacle()) continue;
-            auto& st = graph[i].floe->state();
-            st.speed = { v_best(3 * i), v_best(3 * i + 1) };
-            st.rot   = v_best(3 * i + 2);
+            ublas::vector<T> normal(m), tangential(2 * m);
+            for (int a = 0; a < m; ++a) {
+                normal(a)          = pn_best(a);
+                tangential(2 * a)     = pt_best(a);
+                tangential(2 * a + 1) = 0;
+            }
+            glcp.apply_impulses(normal, tangential);
         }
 
-        // Feed the best contact impulses back into the graph (same bookkeeping as the Lemke path).
-        ublas::vector<T> normal(m), tangential(2 * m);
-        for (int a = 0; a < m; ++a) {
-            normal(a)          = pn_best(a);
-            tangential(2 * a)     = pt_best(a);
-            tangential(2 * a + 1) = 0;
-        }
-        glcp.apply_impulses(normal, tangential);
+        // OPTIMJAM warm-start: record this pass's impulses for the next step's seed (per-mode cache).
+        if (m_warm_start)
+            for (int a = 0; a < m; ++a)
+                warm_next[ckey[a]].push_back(WarmContact{ cx[a], cy[a], pn_best(a), pt_best(a) });
 
         return true; // committed (best-effort)
     }
@@ -234,6 +323,18 @@ public:
 private:
     int m_max_iter; //!< maximum number of sweeps
     T   m_tol;      //!< convergence tolerance (velocity-scaled impulse change of a sweep)
+
+    // OPTIMJAM warm-start state. A contact is identified across steps by its (unordered) floe pointer pair;
+    // a pair may carry several contact points, disambiguated by position at lookup. Caches are rotated by
+    // begin_step() once per time step: solve() reads warm_prev and appends to warm_next, so the several
+    // components solved within one step do not clobber each other (their keys are disjoint). One pair of
+    // caches PER MODE (Forces / Dynamics), since the two passes have different (finite- vs infinite-mass)
+    // impulse solutions — indexed by (int)Mode.
+    bool m_warm_start{true};                                       //!< master switch for warm-starting
+    struct WarmContact { T x, y, pn, pt; };                        //!< stored contact point + impulses
+    using WarmKey = std::pair<const void*, const void*>;           //!< unordered floe-pointer pair
+    std::map<WarmKey, std::vector<WarmContact>> m_warm_prev[2], m_warm_next[2];
+    static WarmKey make_key(const void* a, const void* b) { return (a < b) ? WarmKey{a, b} : WarmKey{b, a}; }
 };
 
 }}} // namespace floe::lcp::solver
