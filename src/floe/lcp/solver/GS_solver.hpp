@@ -136,6 +136,7 @@ public:
             v(3 * i + 1) = st.speed.y;
             v(3 * i + 2) = st.rot;
         }
+        ublas::vector<T> v_free_vec = v; // pre-resolution velocities, kept for the kinetic-energy guard below
 
         // Per-contact local data: the (up to) 6 dof rows (3 per floe), the normal and tangential
         // jacobian values, the inverse-mass on each row, and the diagonal Delassus blocks Wnn / Wtt.
@@ -282,6 +283,37 @@ public:
         const T V_CAP = std::max(T(1e3), T(100) * vmax_free);
         if (!std::isfinite(vmax_post) || vmax_post > V_CAP) return false;
         (void)converged;
+
+        // OPTIMJAM energy guard (Dynamics pass only): an inelastic (e=0) contact solve must NOT inject
+        // kinetic energy. A non-converged sweep or a divergent impulse (a floe squeezed between near-rigid
+        // anchors) can make a single floe "explode" and shake/collapse the pack. Cap any floe whose post-
+        // solve kinetic energy exceeds the WHOLE component's free (pre-solve) kinetic energy — no single
+        // floe can carry more energy than the system started with. This is surgical: gross outliers are
+        // scaled back, normal floes (and legitimate momentum transfer below that bound) are untouched. It
+        // mirrors the kinetic-energy non-increase condition the Lemke path enforces (LCP_solver, calcEc>1).
+        // KE is proportional to v^2 / invM (mass = 1/invM); the common 1/2 factor cancels in the comparison.
+        if (dynamics)
+        {
+            T ke_free_tot = 0;
+            for (int i = 0; i < n; ++i) if (!is_fixed[i])
+                for (int d = 0; d < 3; ++d) {
+                    const T iM = glcp.invM(3*i+d, 3*i+d);
+                    if (iM > 0) ke_free_tot += v_free_vec(3*i+d) * v_free_vec(3*i+d) / iM;
+                }
+            if (ke_free_tot > 0)
+                for (int i = 0; i < n; ++i) if (!is_fixed[i])
+                {
+                    T ke_i = 0;
+                    for (int d = 0; d < 3; ++d) {
+                        const T iM = glcp.invM(3*i+d, 3*i+d);
+                        if (iM > 0) ke_i += v_best(3*i+d) * v_best(3*i+d) / iM;
+                    }
+                    if (ke_i > ke_free_tot) {
+                        const T s = std::sqrt(ke_free_tot / ke_i);
+                        v_best(3*i) *= s; v_best(3*i+1) *= s; v_best(3*i+2) *= s;
+                    }
+                }
+        }
 
         // DYNAMICS pass only: commit the best velocities (this is what the move uses). Obstacles keep their
         // state; frozen floes are set to rest (held immobile in the anchored structure — this also stops the
