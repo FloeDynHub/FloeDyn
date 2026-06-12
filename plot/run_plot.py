@@ -27,6 +27,10 @@ def run():
     parser.add_argument('--ghosts', action="store_true", default=False, help="Display ghost floes (PBC)")
     parser.add_argument('--crack', dest="fracture", action="store_true", default=False, help="Floes can fracture")
     parser.add_argument('--hd', action="store_true", default=False, help="Make HD video")
+    parser.add_argument('-j', '--jobs', type=int, default=4,
+                        help='Max parallel workers for mkvid (default 4). Each worker holds an HD '
+                             'matplotlib figure + an ffmpeg encoder: too many gets ffmpeg OOM-killed '
+                             '(SIGKILL) in memory-limited containers.')
     parser.add_argument('-c', '--codec', dest="codec", default=None, help='Video codec')
     parser.add_argument('-a', '--axes', dest="static_axes", type=str, help='Initial Axes (xmin,xmax,ymin,ymax)', default=None)
     parser.add_argument('-o', '--outname', dest="outname", help='Plot output filename to write (without extension, ex: my_name)')

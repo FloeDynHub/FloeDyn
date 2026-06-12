@@ -445,7 +445,10 @@ class FloePlotter(object):
             # Create multiple partial videos
             trunks = self._get_trunks(nb_step)
             nb_process = len(trunks)
-            temp_dir = 'plot_tmp'
+            # Unique temp dir per run: concurrent mkvid runs must not share/clobber their partial
+            # videos (and a stale dir from a crashed run must not pollute the final concat).
+            temp_dir = 'plot_tmp_{}'.format(os.getpid())
+            call(['rm', '-rf', temp_dir])
             call(['mkdir', temp_dir])
             partial_file_names = ["{}/{}.mpg".format(temp_dir, i) for i in range(nb_process)]
             # Read Usefull data from file
@@ -454,8 +457,10 @@ class FloePlotter(object):
         L = [( partial_file_names[i],
                self._get_useful_trunk_data(data_global, trunk),
                 self.OPTIONS.version ) for i,trunk in enumerate(trunks)]
-        # Launch process pool 
-        p = Pool(nb_process)
+        # Launch process pool. Workers capped (--jobs): each one holds an HD matplotlib figure and
+        # an ffmpeg encoder fed by a rawvideo pipe; running all trunks at once OOM-kills ffmpeg
+        # (SIGKILL) in memory-limited containers. Trunk count is unchanged, only concurrency is.
+        p = Pool(min(nb_process, max(1, getattr(self.OPTIONS, "jobs", 4))))
         partial_video_maker = self.make_partial_floe_video_helper if not self.OPTIONS.dual else self.make_partial_floe_video_dual_plot_helper
         p.map(partial_video_maker, L)
         p.close()
@@ -525,9 +530,10 @@ class FloePlotter(object):
     def _get_useful_trunk_data(self, data_global, trunk):
         """Slice global datas for a partial video"""
         d = {}
-        trunked_keys = ["time", "floe_states", "impulses", "mass_center"]
+        trunked_keys = ["time", "floe_states", "impulses", "speeds", "mass_center"]
         global_keys = [
-            "total_time","total_impulses", "MAX_IMPULSE", "max_received_impulse_special_indices", "window",
+            "total_time","total_impulses", "MAX_IMPULSE", "MAX_SPEED", "color_key", "max_color_key",
+            "max_received_impulse_special_indices", "window",
             "special_indices", "static_axes", "ghosts_trans", "cumul_impulses"
         ]
         print(trunk)
