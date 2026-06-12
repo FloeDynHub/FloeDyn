@@ -333,11 +333,29 @@ void PROBLEM::safe_move_floe_group(){
         {   
             // Hack to bypass repeating interpenetrations...
             std::cout << "dt too small -> RECOVER STATES FROM OUT FILE (safe_move_floe_group)" << std::endl;
+            // OPTIMJAM diagnostic: who was intersecting on the last (smallest-dt) attempt? Tells whether
+            // the culprits are inside the jam (frozen? probed?) or elsewhere (e.g. the discharge stream).
+            {
+                auto const& pairs = m_proximity_detector.interpenetration_pairs();
+                std::size_t shown = 0;
+                for (auto const& p : pairs) {
+                    if (shown++ >= 5) { std::cout << "  ... and " << pairs.size() - 5 << " more pairs" << std::endl; break; }
+                    auto const& s1 = m_proximity_detector.get_floe_itf(p.first).state();
+                    auto const& s2 = m_proximity_detector.get_floe_itf(p.second).state();
+                    std::cout << "  INTER pair " << p.first << (s1.is_jammed() ? "[frozen]" : "")
+                              << " pos(" << s1.pos.x << "," << s1.pos.y << ")"
+                              << " / " << p.second << (s2.is_jammed() ? "[frozen]" : "")
+                              << " pos(" << s2.pos.x << "," << s2.pos.y << ")" << std::endl;
+                }
+            }
             // m_floe_group.get_floes().filter_off();
             // m_out_manager.save_step(this->m_domain.time(), this->m_dynamics_manager);
             // m_floe_group.get_floes().filter_on();
             // *this->QUIT = true;
             recover_states_from_file(m_out_manager.out_file_name(), m_domain.time() + 1);
+            // OPTIMJAM guard-rail: report the recovery; repeated recoveries without simulated-time progress
+            // trigger an emergency en-bloc freeze of the routed components (see LCPManager::notify_recover).
+            m_collision_manager.notify_recover(m_domain.time());
             // adding a random velocity component to avoid infinite loops
             // used only in generator mode. 
             if (m_is_generator) 
@@ -381,6 +399,7 @@ void PROBLEM::detect_proximity(){
         m_out_manager.flush();
         std::cout << "dt too small -> RECOVER STATES FROM OUT FILE (detect_proximity)" << std::endl;
         recover_states_from_file(m_out_manager.out_file_name(), m_domain.time() + 1);
+        m_collision_manager.notify_recover(m_domain.time()); // OPTIMJAM guard-rail (see safe_move_floe_group)
     }
     if (!m_proximity_detector.update()) // we have a floe interpenetration
         m_domain.rewind_time();

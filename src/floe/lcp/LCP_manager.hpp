@@ -17,6 +17,7 @@
 #include <algorithm>
 #include <chrono> // test perf
 #include <vector>
+#include <limits>
 
 #include <boost/graph/adjacency_list.hpp>
 
@@ -61,6 +62,18 @@ public:
                         << "LCP_failed compression phase: " << m_nb_lcp_failed_stats[0] <<
                         ", LCP_failed decompression phase: " << m_nb_lcp_failed_stats[1] << "\n" <<
                         ", LCP_solved with solution maintaining the kinetic energy: " << m_nb_lcp_failed_stats[2] << "\n";
+        // OPTIMJAM end-of-run summary (mirrors the #TOTAL LCP block above): how often the GS path ran, how
+        // healthy its two passes were, and how often the guard-rails had to intervene. These numbers are the
+        // measurable counterpart of the tuning knobs (jam_params) for the fidelity/speed trade-off.
+        if (m_gs_routed)
+            std::cout   << "#OPTIMJAM GS: " << m_gs_committed << "/" << m_gs_routed << " components committed, "
+                        << m_gs_fallback << " Lemke fallbacks\n"
+                        << "  dynamics pass: avg sweeps " << (m_gs_committed ? m_gs_dyn_sweeps / m_gs_committed : 0)
+                        << ", saturated (best-effort commit) " << m_gs_dyn_saturated << "/" << m_gs_committed << "\n"
+                        << "  forces pass:   avg sweeps " << (m_gs_committed ? m_gs_frc_sweeps / m_gs_committed : 0)
+                        << ", saturated (chain not fully converged) " << m_gs_frc_saturated << "/" << m_gs_committed << "\n"
+                        << "  energy clamps (floes): " << m_gs_solver.energy_clamps()
+                        << " | emergency en-bloc freezes: " << m_nb_emergencies << "\n";
     }
 
     //! LCP solver accessor
@@ -118,6 +131,30 @@ public:
      *  barely changes step to step — resumes near-converged and needs far fewer sweeps. See GS_solver.hpp. */
     inline void set_gs_warm_start(bool v) { m_gs_solver.set_warm_start(v); }
 
+    /*! OPTIMJAM guard-rail: called by the problem each time "dt too small" forces a state recovery
+     *  (safe_move_floe_group / detect_proximity). If recovery repeats WITHOUT simulated-time progress, the
+     *  run is trapped in a deterministic INTER/RECOVER limit cycle (observed in practice: with --bustle 0
+     *  everything is deterministic, the recovery restores the exact same state, and the only evolving state
+     *  — the per-floe stuck counters — drives a probe pattern that is periodic mod probe_K). Response, in
+     *  the same spirit as the active-subgraph loop guard (exit unresolved so life goes on): freeze the
+     *  routed components EN BLOC (suspend probes) for the next few steps, so nothing in the jam moves, dt
+     *  recovers and time advances; then resume normal probing/freezing. Imperfect but unblocking. */
+    inline void notify_recover(real_type time) {
+        if (!m_optim_jam) return;
+        if (time <= m_last_recover_time) {  // recovered again without advancing past the previous recovery
+            if (++m_recover_repeat >= 2 && m_emergency_steps_left == 0) {
+                m_emergency_steps_left = 20;
+                ++m_nb_emergencies;
+                std::cout << "OPTIMJAM EMERGENCY: recover loop detected (no time progress) -> "
+                          << "freezing the stuck floes (counter>=1) of routed components for "
+                          << m_emergency_steps_left << " steps" << std::endl;
+            }
+        } else {
+            m_recover_repeat = 0;
+        }
+        m_last_recover_time = time;
+    }
+
     //! Solve collision represented by a contact graph
     template<typename TContactGraph>
     int solve_contacts(TContactGraph& contact_graph, real_type time, real_type dt);
@@ -144,10 +181,25 @@ private:
     // Temporal jam-detection knobs (replace the failed per-instant |v|*dt criterion): freeze a floe whose
     // net displacement stays below m_gs_eps*diameter for m_gs_stuck_N consecutive steps; every m_gs_probe_K
     // steps skip the freeze (staggered per floe) to let a released floe prove it can move again.
-    real_type m_gs_eps{1e-3};                     //!< net-progress threshold, as a fraction of the floe diameter
-    int       m_gs_stuck_N{5};                    //!< consecutive no-progress steps before freezing
-    int       m_gs_probe_K{20};                   //!< probe period: every K steps, release to retest mobility
+    real_type m_gs_eps{3e-4};                     //!< net-progress threshold, as a fraction of the floe diameter
+    int       m_gs_stuck_N{10};                   //!< consecutive no-progress steps before freezing
+    int       m_gs_probe_K{10};                   //!< probe period: every K steps, release to retest mobility
     solver::GaussSeidelSolver<real_type> m_gs_solver; //!< the alternative contact solver
+
+    // OPTIMJAM anti-limit-cycle guard-rail state (see notify_recover)
+    int       m_emergency_steps_left{0};          //!< >0: freeze routed components en bloc for that many steps
+    int       m_recover_repeat{0};                //!< consecutive recoveries without simulated-time progress
+    real_type m_last_recover_time{-std::numeric_limits<real_type>::max()}; //!< sim time of the last recovery
+    long      m_nb_emergencies{0};                //!< stats: how many times the guard-rail fired
+
+    // OPTIMJAM end-of-run stats (printed by the destructor, like the historical #TOTAL LCP block)
+    long m_gs_routed{0};         //!< components routed to the GS path
+    long m_gs_committed{0};      //!< components the GS dynamics pass committed
+    long m_gs_fallback{0};       //!< components declined by GS -> Lemke fallback
+    long m_gs_dyn_sweeps{0};     //!< cumulated dynamics-pass sweeps (avg = /m_gs_committed)
+    long m_gs_frc_sweeps{0};     //!< cumulated forces-pass sweeps
+    long m_gs_dyn_saturated{0};  //!< dynamics passes that hit the sweep cap (best-effort commits)
+    long m_gs_frc_saturated{0};  //!< forces passes that hit the sweep cap (recorded chain not fully converged)
 
     //! OPTIMJAM: should this contact component be routed to the Gauss-Seidel solver ?
     //! Route only large, anchored (touching an obstacle) and quasi-static components: that is exactly
@@ -218,8 +270,13 @@ int LCPManager<T>::solve_contacts(TContactGraph& contact_graph, real_type time, 
     int nb_lcp_failed_stats[3]={0,0,0};
 
     // OPTIMJAM: rotate the Gauss-Seidel warm-start cache once per step (last step's impulses become the
-    // seed for this step's solves; the new step's solutions are accumulated for the next one).
-    if ( m_optim_jam ) m_gs_solver.begin_step();
+    // seed for this step's solves; the new step's solutions are accumulated for the next one), and tick
+    // down the anti-limit-cycle emergency window (see notify_recover).
+    if ( m_optim_jam ) {
+        m_gs_solver.begin_step();
+        if ( m_emergency_steps_left > 0 ) --m_emergency_steps_left;
+    }
+    const bool gs_emergency = ( m_emergency_steps_left > 0 );
 
     const std::size_t limit_sup_loop_cnt    = 800;//5000; // from Quentin: 1000
     const std::size_t limit_sup_nb_contact  =  800;//500; // from Quentin:   50
@@ -252,6 +309,7 @@ int LCPManager<T>::solve_contacts(TContactGraph& contact_graph, real_type time, 
             // to avoid a synchronous mass release that would re-jam) to let a floe whose constraint was
             // released show it can move again — and the consistent solve then sorts it out: a still-blocked
             // probe gets v~0 (no INTER), a probe with free space actually moves (the pile can collapse).
+            ++m_gs_routed;
             long frozen = 0;
             long dbg_reset = 0; int dbg_maxcnt = 0; real_type dbg_maxratio = 0, dbg_diam = 0; // DIAG
             if ( m_gs_freeze )
@@ -260,6 +318,15 @@ int LCPManager<T>::solve_contacts(TContactGraph& contact_graph, real_type time, 
                 {
                     auto* floe = subgraph[v].floe;
                     if ( floe->is_obstacle() ) continue;
+                    // Anti-limit-cycle emergency (see notify_recover): freeze the floes already showing
+                    // a blockage (stuck counter >= 1), probes suppressed for them, counters paused. The
+                    // storm culprits (wedged floes, e.g. against a wall) have high counters -> covered.
+                    // Floes flowing freely (counter 0 — e.g. a lattice of floes falling onto the jam,
+                    // which belongs to the same routed component) are NOT pinned mid-flight: en-bloc
+                    // freezing them caused visible artifacts (suspended blocks, shear gaps opening in
+                    // the falling lattice), since a frozen floe is also committed at rest (v=0).
+                    if ( gs_emergency && floe->jam_tracked() && floe->jam_stuck_counter() >= 1 )
+                        { floe->state().set_jammed(true); ++frozen; continue; }
                     dbg_diam = floe->static_floe().max_diameter(); // characteristic floe size (min_diameter() returns ~0)
                     const auto cur = floe->state().real_position();
                     if ( !floe->jam_tracked() ) // first observation: capture the reference, don't freeze
@@ -315,6 +382,9 @@ int LCPManager<T>::solve_contacts(TContactGraph& contact_graph, real_type time, 
             if ( m_gs_solver.solve( subgraph, gs_mode::Dynamics, d_it, d_resid, d_vmax ) )
             {
                 (void)d_vmax;
+                ++m_gs_committed;
+                m_gs_dyn_sweeps += d_it;
+                if ( d_it >= m_gs_solver.max_iter() ) ++m_gs_dyn_saturated;
                 // Capture the committed dynamics velocities, restore the free velocities for the force pass,
                 // run the force pass (records impulses, moves nobody), then restore the dynamics velocities.
                 std::vector<std::array<real_type,3>> v_dyn;
@@ -327,6 +397,8 @@ int LCPManager<T>::solve_contacts(TContactGraph& contact_graph, real_type time, 
                 }
                 int f_it = 0; real_type f_resid = 0, f_vmax = 0;
                 m_gs_solver.solve( subgraph, gs_mode::Forces, f_it, f_resid, f_vmax ); // records the force chain
+                m_gs_frc_sweeps += f_it;
+                if ( f_it >= m_gs_solver.max_iter() ) ++m_gs_frc_saturated;
                 k = 0;
                 for ( auto v : boost::make_iterator_range(vertices(subgraph)) ) {
                     auto& st = subgraph[v].floe->state();
@@ -344,6 +416,7 @@ int LCPManager<T>::solve_contacts(TContactGraph& contact_graph, real_type time, 
             }
             // Dynamics pass declined: undo the freezes we set for this component so the Lemke fallback runs its
             // baseline (it solves and moves all the floes, and records its own impulses). Counters stay as set.
+            ++m_gs_fallback;
             for ( auto v : boost::make_iterator_range(vertices(subgraph)) )
                 subgraph[v].floe->state().set_jammed(false);
             std::cout << "OPTIMJAM GS | floes=" << num_vertices(subgraph)

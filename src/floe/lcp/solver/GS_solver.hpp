@@ -52,7 +52,7 @@ template <typename T>
 class GaussSeidelSolver
 {
 public:
-    GaussSeidelSolver(int max_iter = 2000, T tol = T(1e-8))
+    GaussSeidelSolver(int max_iter = 20000, T tol = T(1e-8))
         : m_max_iter(max_iter), m_tol(tol) {}
 
     void set_params(int max_iter, T tol) {
@@ -82,6 +82,8 @@ public:
      *  previous/next caches, separately per mode); set_warm_start(false) falls back to the cold start. */
     void set_warm_start(bool v) { m_warm_start = v; }
     bool warm_start() const { return m_warm_start; }
+    //! Total number of per-floe kinetic-energy clamps applied by the Dynamics pass (run stats).
+    long energy_clamps() const { return m_energy_clamps; }
     void begin_step() {
         for (int mo = 0; mo < 2; ++mo) { m_warm_prev[mo].swap(m_warm_next[mo]); m_warm_next[mo].clear(); }
     }
@@ -311,6 +313,7 @@ public:
                     if (ke_i > ke_free_tot) {
                         const T s = std::sqrt(ke_free_tot / ke_i);
                         v_best(3*i) *= s; v_best(3*i+1) *= s; v_best(3*i+2) *= s;
+                        ++m_energy_clamps; // stats: reported at end of run
                     }
                 }
         }
@@ -363,6 +366,7 @@ private:
     // caches PER MODE (Forces / Dynamics), since the two passes have different (finite- vs infinite-mass)
     // impulse solutions — indexed by (int)Mode.
     bool m_warm_start{true};                                       //!< master switch for warm-starting
+    long m_energy_clamps{0};                                       //!< total per-floe energy clamps (stats)
     struct WarmContact { T x, y, pn, pt; };                        //!< stored contact point + impulses
     using WarmKey = std::pair<const void*, const void*>;           //!< unordered floe-pointer pair
     std::map<WarmKey, std::vector<WarmContact>> m_warm_prev[2], m_warm_next[2];

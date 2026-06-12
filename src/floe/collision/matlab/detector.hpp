@@ -490,6 +490,7 @@ bool
 MatlabDetector<TFloe, TData, TContact>::check_interpenetration()
 {
     std::vector<bool> v;
+    m_inter_pairs.clear(); // OPTIMJAM diagnostic: remember who intersects (read on dt-collapse recovery)
     for (std::size_t n1 = 0; n1 < m_prox_data.size1(); ++n1)
         for (std::size_t n2 = n1 + 1; n2 < m_prox_data.size2(); ++n2)
         {
@@ -499,6 +500,7 @@ MatlabDetector<TFloe, TData, TContact>::check_interpenetration()
                 v.push_back(I);
                 if (I)
                 {
+                    m_inter_pairs.push_back({n1, n2});
                     if (m_prox_data.get_indic(n1, n2) == 1)
                         m_prox_data.set_indic(n1, n2, -1);
                     else if (m_prox_data.get_indic(n1, n2) < 0)

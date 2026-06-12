@@ -245,7 +245,7 @@ protected:
     bool                    optim_jam               = 0; //!< OPTIMJAM: enable the Gauss-Seidel path
     bool                    jam_freeze              = 1; //!< OPTIMJAM: freeze the move of GS-confirmed held components
     bool                    jam_warmstart           = 1; //!< OPTIMJAM: warm-start the Gauss-Seidel solver across steps
-    std::vector<value_type> jam_params              = std::vector<value_type>{50, 2000, 0.5, 1e-3, 5, 20}; //!< OPTIMJAM: [min_contacts, gs_max_iter, rel_speed_max, eps, stuck_N, probe_K]
+    std::vector<value_type> jam_params              = std::vector<value_type>{50, 20000, 0.5, 3e-4, 10, 10}; //!< OPTIMJAM: [min_contacts, gs_max_iter, rel_speed_max, eps, stuck_N, probe_K] (validated set)
     bool                    rand_speed_add          = 1;
     value_type              rand_norm               = 1e-7;
     value_type              alpha                   = 1.5;
@@ -363,19 +363,21 @@ protected:
             "impulses (a held jam barely changes step to step, so it resumes near-converged and needs far "
             "fewer sweeps). Set 0 for a cold start each step (to measure the warm-start speed-up).\n")
         ("jam_params", po::value< std::vector<value_type> >(&jam_params)->multitoken(),
-            "OPTIMJAM tuning, 6 values [min_contacts gs_max_iter rel_speed_max eps stuck_N probe_K]:\n"
+            "OPTIMJAM tuning, 6 values [min_contacts gs_max_iter rel_speed_max eps stuck_N probe_K]\n"
+            "(defaults are the validated set 50 20000 0.5 3e-4 10 10):\n"
             "   min_contacts : route a contact component to Gauss-Seidel above this many contacts (default 50)\n"
-            "   gs_max_iter  : maximum number of Gauss-Seidel sweeps (default 2000)\n"
+            "   gs_max_iter  : maximum number of Gauss-Seidel sweeps (default 20000; cheap thanks to the\n"
+            "                  warm start — held jams resume near-converged)\n"
             "   rel_speed_max: only route components whose max contact approach speed (m/s) is below this\n"
             "                  (default 0.5). Raise it to also route faster-grinding anchored jams.\n"
             "   eps          : temporal freeze — net-progress threshold as a fraction of the floe diameter\n"
-            "                  (default 1e-3). A floe whose net displacement stays below eps*diameter is\n"
+            "                  (default 3e-4). A floe whose net displacement stays below eps*diameter is\n"
             "                  considered not moving. Lower = freeze fewer (more physical, more Zeno cost).\n"
-            "   stuck_N      : consecutive no-progress steps before freezing a floe (default 5). Higher =\n"
+            "   stuck_N      : consecutive no-progress steps before freezing a floe (default 10). Higher =\n"
             "                  more faithful but slower to react to a blockage.\n"
             "   probe_K      : every K steps, release a frozen floe (staggered per floe) to retest whether\n"
-            "                  it can move again (default 20). Lower = follow releases faster but re-pay the\n"
-            "                  Zeno cost at probes; higher = more stable/faster but laggier releases.\n")
+            "                  it can move again (default 10). Lower = follow releases faster (more physical)\n"
+            "                  at a small dt cost; higher = more stable/faster but laggier releases.\n")
         ("minthick", po::value(&min_thickness)->default_value(
             min_thickness, std::to_string(min_thickness)),
             "Minimum floe thickness : considered molten and disappears under this value")

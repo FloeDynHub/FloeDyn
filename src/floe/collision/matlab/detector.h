@@ -140,6 +140,13 @@ public:
     //! is there any floe interpenetration ? returns true if not.
     bool check_interpenetration();
 
+    //! OPTIMJAM diagnostic: the floe index pairs found intersecting by the LAST check_interpenetration()
+    //! call. Read by the problem when "dt too small" forces a state recovery, to identify the culprits
+    //! (which floes, frozen or not, in or out of the jam) of a repeating INTER/RECOVER loop.
+    inline std::vector<std::pair<std::size_t, std::size_t>> const& interpenetration_pairs() const {
+        return m_inter_pairs;
+    }
+
     inline proximity_data_type const& data() { return m_prox_data; }
     bool is_periodic() const { return false; }
     template <typename TTopology>
@@ -150,6 +157,7 @@ protected:
     contact_graph_type m_contacts; //!< Contact graph
     bool m_detection_mode; //! Detection mode ('eta_min' in matlab)
     bool m_detection_chgt; //! Detection status ('eta_chgt' in matlab)
+    std::vector<std::pair<std::size_t, std::size_t>> m_inter_pairs; //!< pairs found intersecting by the last check (diagnostic)
 
     inline optim_type& get_optim(std::size_t n) { return m_prox_data.get_optim(n); }
 
