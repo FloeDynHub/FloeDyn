@@ -213,6 +213,17 @@ contre du progrès, jamais de la validité.
 | `K` (10) | période de sonde (release) | pack sur-figé, dégels tardifs | dégels réactifs (quasi gratuit depuis le solve cohérent) ; un peu plus de mobiles par pas |
 | `--jam_freeze` (1) | 0 = GS seul, sans gel | — | pour comparer ; GS seul = Zeno garanti |
 | `--jam_warmstart` (1) | 0 = cold start | — | pour mesurer le gain (~×10 sur le solve) |
+| `--jam_probe_ring R` (0=off) | sonde collective : toutes les R sondes d'un floe coincé, exempte aussi ses voisins de contact (test du mode charnière) | sondes collectives plus rares | plus fréquentes (R=3-5) : casse les arches collectivement instables que les sondes individuelles maintenaient |
+| `--jam_contagion` (0) | un floe qui bouge vraiment réveille ses voisins (cascade à vitesse physique) | — | 1 = cascades de release plus vives |
+| `--jam_forces` (1) | calcule la passe forces (chaîne de forces : fracture + viz) | — | **0 = ~2× plus rapide**, dynamique identique, mais aucune force enregistrée dans les jams — pour études vitesses (temps de jamming) |
+| `--jam_frc_iter N` (0) | plafond de sweeps séparé pour la passe forces (0 = comme gs_max_iter) | — | abaisser (~5000) si on veut la chaîne mais plus vite : la passe forces, diagnostique, tolère un plafond bas |
+
+**Le coût et la passe forces (mesuré sur le chenal réel w25, ~29 jours simulés).** La passe forces est
+*diagnostique* : elle n'affecte ni la dynamique ni le pas de temps, mais sur les amas durs elle domine le
+coût (~70 % des sweeps Gauss-Seidel, et sature souvent son plafond). Pour les **plans de simulation
+statistiques** dont l'observable est cinématique (temps de jamming = temps passé sous un seuil de vitesse),
+elle est inutile : `--jam_forces 0` rend la dynamique strictement identique pour ~2× moins de temps. Ne la
+garder (éventuellement avec `--jam_frc_iter 5000`) que pour les rendus de chaînes de forces ou la fracture.
 
 **Budget d'erreur, pour les physiciens** : l'unique hypothèse de modélisation ajoutée est
 *« un floe qui, sur N pas consécutifs, n'a pas progressé de plus de eps×diamètre est considéré
@@ -251,17 +262,38 @@ Après correction des scènes : **zéro `RECOVER`** sur les runs.
 
 ---
 
-## 9. Résultats (état au 2026-06-11)
+## 9. Résultats (état au 2026-06-15)
 
 - Problème A : collisions ~ms au lieu de ~22 s ; plus besoin de `--bustle`.
-- Problème B : plus d'effondrement de dt sur les scènes corrigées ; simulations complètes
-  (28 jours simulés en quelques heures) là où la baseline ne terminait pas.
+- Problème B : plus d'effondrement de dt sur les scènes corrigées ; simulations complètes là où la
+  baseline ne terminait pas (ex. chenal réel w25, ~29 jours simulés, run complet).
 - Chaînes de forces qualitativement correctes (arches en X ancrées base+parois, écrantage de type
   Janssen, cône déchargé sous la surface libre) ; forces croissant avec le forçage.
 - Warm-start : ~×10 sur le solve à résidu égal. Garde énergie : plus d'« explosions ».
 
-**Reste au backlog** : options CLI nommées + `max_iter` séparé dynamique/forces ; reset du tracking
-jam et des caches warm-start sur RECOVER/fracture ; champs DIAG du log derrière un flag verbose ;
-validation A/B quantitative vs Lemke (courbes d'énergie, débit de décharge) pour chiffrer le budget
-d'erreur ; à terme, routage par régime physique (idée du directeur : sélection de solveur apprise —
-désormais réaliste : deux solveurs et des métriques comparables existent).
+**Fidélité des structures tenues (arches) — limite connue, quantifiée.** Le gel ajoute une cohésion
+artificielle aux structures *collectivement* marginales : un test de redémarrage (rejouer une arche
+extraite : au restart les compteurs sont à zéro, donc l'arche est testée tout-mobile) a montré qu'une
+arche « tenue 3 jours » pouvait s'effondrer immédiatement → elle était maintenue par nos sondes
+individuelles, pas par la physique. La **sonde collective** (`--jam_probe_ring`) corrige ce biais (une
+arche qui y survit est *prouvée* mécaniquement stable). Conséquence pour les **études statistiques** :
+le biais est **unilatéral** (le gel ne fait que *prolonger* les blocages — le commit à v=0 retire de
+l'énergie, les sondes n'en injectent jamais), donc le temps de jamming mesuré est une **borne
+supérieure** ; protocole recommandé = pousser (eps, K, R) vers l'agressif jusqu'au **plateau** de
+l'observable, et vérifier σ_algo ≪ σ_physique. Règle ferme : **eps ≤ 3e-4** en production (un eps trop
+grand laisse le fluage re-capturer les arches, même sous sonde collective).
+
+**Architecture** : toute la machinerie OPTIMJAM est dans `src/floe/lcp/jam_manager.hpp` (classe
+`JamManager`) ; `LCPManager::solve_contacts` n'en garde qu'un point d'entrée
+`if (m_jam.try_solve_component(subgraph)) continue;` et reste le chemin Lemke historique.
+
+**Reste au backlog** : reset du tracking jam et des caches warm-start sur RECOVER/fracture ; champs
+DIAG du log derrière un flag verbose ; validation A/B quantitative vs Lemke sur petit cas (le jam pur
+casse Lemke, donc comparaison seulement hors-blocage) ; convergence (eps,K,R) → plateau pour l'étude
+temps-de-jamming ; coût résiduel de la passe dynamique (~4700 sweeps sur le chenal réel) → sur-relaxation
+(SOR) ou meilleur appariement du warm-start au réarrangement ; à terme, routage par régime physique
+(idée du directeur : sélection de solveur apprise — réaliste maintenant : deux solveurs + métriques).
+
+*Fait (juin 2026) : extraction `JamManager` ; instrumentation `probes/released/sat/ring/woken` ; sonde
+collective `--jam_probe_ring` + contagion `--jam_contagion` ; passe forces optionnelle `--jam_forces` +
+plafond séparé `--jam_frc_iter`.*

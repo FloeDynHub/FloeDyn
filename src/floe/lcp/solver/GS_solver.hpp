@@ -59,9 +59,15 @@ public:
         if (max_iter > 0) m_max_iter = max_iter;
         if (tol > 0)      m_tol = tol;
     }
+    //! Sweep caps, per mode. The Dynamics pass drives the simulation (its convergence sets dt), the
+    //! Forces pass is diagnostic only (records the chain) — on hard channels it saturates often, so it
+    //! can be capped much lower without affecting the physics. set_max_iter_forces(0) tracks the
+    //! dynamics cap (the historical single-cap behaviour).
     void set_max_iter(int max_iter) { if (max_iter > 0) m_max_iter = max_iter; }
+    void set_max_iter_forces(int max_iter) { m_max_iter_forces = (max_iter > 0) ? max_iter : 0; }
 
     int  max_iter() const { return m_max_iter; }
+    int  max_iter_forces() const { return m_max_iter_forces > 0 ? m_max_iter_forces : m_max_iter; }
     T    tol()      const { return m_tol; }
 
     /*! Two solve modes (the "two passes" of OPTIMJAM, run per component per step):
@@ -84,6 +90,10 @@ public:
     bool warm_start() const { return m_warm_start; }
     //! Total number of per-floe kinetic-energy clamps applied by the Dynamics pass (run stats).
     long energy_clamps() const { return m_energy_clamps; }
+    //! Instrumentation (last FORCES pass): contacts touching >=1 frozen floe whose friction sits on
+    //! the Coulomb cone boundary (slipping point), and the count of active such contacts.
+    int last_saturated_frozen() const { return m_last_sat_frozen; }
+    int last_active_frozen()    const { return m_last_act_frozen; }
     void begin_step() {
         for (int mo = 0; mo < 2; ++mo) { m_warm_prev[mo].swap(m_warm_next[mo]); m_warm_next[mo].clear(); }
     }
@@ -148,6 +158,7 @@ public:
         // Per-contact identity for warm-start matching across steps: the floe pair and the contact point.
         std::vector<WarmKey> ckey(m);
         std::vector<T> cx(m, 0), cy(m, 0);
+        std::vector<char> touches_frozen(m, 0); // instrumentation: contact involves >=1 frozen floe
         {
             int a = 0;
             for (auto const& edge : boost::make_iterator_range(edges(graph)))
@@ -175,6 +186,7 @@ public:
                     ckey[a] = make_key(cp.floe1, cp.floe2);
                     auto const cc = cp.frame.center();
                     cx[a] = cc.x; cy[a] = cc.y;
+                    touches_frozen[a] = (cp.floe1->state().is_jammed() || cp.floe2->state().is_jammed()) ? 1 : 0;
                     ++a;
                 }
             }
@@ -227,9 +239,10 @@ public:
         T pen_best = std::numeric_limits<T>::max();
         bool finite_ok = true;
 
+        const int max_iter = (mode == Mode::Forces) ? max_iter_forces() : m_max_iter;
         int it = 0;
         bool converged = false;
-        for (; it < m_max_iter; ++it)
+        for (; it < max_iter; ++it)
         {
             T pen = 0;
             for (int a = 0; a < m; ++a)
@@ -345,6 +358,20 @@ public:
                 tangential(2 * a + 1) = 0;
             }
             glcp.apply_impulses(normal, tangential);
+
+            // Instrumentation: Coulomb saturation of the committed (physical) force chain. A contact is
+            // "saturated" when its tangential impulse sits on the friction-cone boundary (|pt| = mu*pn):
+            // it is at the slipping point. Restricted to contacts touching at least one FROZEN floe,
+            // this is the precursor signal for arch failures (held members about to slip) — watch its
+            // evolution before a release cascade to tell physical collapses from algorithmic ones.
+            m_last_act_frozen = m_last_sat_frozen = 0;
+            for (int a = 0; a < m; ++a) {
+                if (!touches_frozen[a]) continue;
+                const T bound = muv[a] * pn_best(a);
+                if (bound <= T(0)) continue;       // inactive contact (or frictionless): not informative
+                ++m_last_act_frozen;
+                if (std::abs(pt_best(a)) >= T(0.999) * bound) ++m_last_sat_frozen;
+            }
         }
 
         // OPTIMJAM warm-start: record this pass's impulses for the next step's seed (per-mode cache).
@@ -356,7 +383,8 @@ public:
     }
 
 private:
-    int m_max_iter; //!< maximum number of sweeps
+    int m_max_iter;          //!< maximum number of sweeps (Dynamics pass; drives dt)
+    int m_max_iter_forces{0}; //!< Forces-pass sweep cap (0 = use m_max_iter; diagnostic pass, can be lower)
     T   m_tol;      //!< convergence tolerance (velocity-scaled impulse change of a sweep)
 
     // OPTIMJAM warm-start state. A contact is identified across steps by its (unordered) floe pointer pair;
@@ -367,6 +395,8 @@ private:
     // impulse solutions — indexed by (int)Mode.
     bool m_warm_start{true};                                       //!< master switch for warm-starting
     long m_energy_clamps{0};                                       //!< total per-floe energy clamps (stats)
+    int  m_last_sat_frozen{0};                                     //!< instrumentation: see last_saturated_frozen()
+    int  m_last_act_frozen{0};                                     //!< instrumentation: see last_active_frozen()
     struct WarmContact { T x, y, pn, pt; };                        //!< stored contact point + impulses
     using WarmKey = std::pair<const void*, const void*>;           //!< unordered floe-pointer pair
     std::map<WarmKey, std::vector<WarmContact>> m_warm_prev[2], m_warm_next[2];

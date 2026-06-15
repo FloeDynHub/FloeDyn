@@ -97,6 +97,38 @@ public:
      *  sweeps. See GS_solver.hpp. */
     inline void set_warm_start(bool v) { m_gs_solver.set_warm_start(v); }
 
+    /*! CLUSTER (ring) probe period (CLI --jam_probe_ring, 0 = off): every R-th individual probe of a
+     *  stuck floe also exempts its contact neighbours from freezing, testing the cluster TOGETHER —
+     *  the fix for the collective-lock bias demonstrated by the arch lab (clogging statistics were
+     *  set by the knobs, not the physics). See the freeze-pass comments in try_solve_component. */
+    inline void set_probe_ring(int r) {
+        m_probe_ring = (r > 0) ? r : 0;
+        if (m_probe_ring)
+            std::cout << "OPTIMJAM cluster probe ENABLED: every " << m_probe_ring
+                      << "-th probe of a floe exempts its contact ring" << std::endl;
+    }
+
+    /*! Contagion wake (CLI --jam_contagion, default off): a floe that genuinely moved (net progress
+     *  crossed eps) wakes its contact neighbours — exempted from freezing this step, counters reset —
+     *  so release cascades propagate at physical speed instead of the probe cadence. */
+    inline void set_contagion(bool v) {
+        m_contagion = v;
+        if (v) std::cout << "OPTIMJAM contagion wake ENABLED" << std::endl;
+    }
+
+    /*! Compute the FORCES pass (CLI --jam_forces, default on). It records the physical force chain
+     *  (fracture model + visualisation) but does NOT affect the dynamics or the time step. On hard
+     *  channels it dominates the cost (saturates often). Set 0 for velocity-only studies (e.g. jamming
+     *  time): dynamics identical, ~2x faster, but no force chain recorded in jam components. */
+    inline void set_compute_forces(bool v) {
+        m_compute_forces = v;
+        if (!v) std::cout << "OPTIMJAM forces pass DISABLED (no force chain recorded in jams; ~2x faster)" << std::endl;
+    }
+
+    /*! Separate sweep cap for the FORCES pass (CLI --jam_frc_iter, 0 = same as the dynamics cap). The
+     *  diagnostic force chain tolerates a much lower cap than the dynamics solve that sets dt. */
+    inline void set_forces_max_iter(int n) { m_gs_solver.set_max_iter_forces(n); }
+
     /*! Guard-rail: called by the problem each time "dt too small" forces a state recovery
      *  (safe_move_floe_group / detect_proximity). If recovery repeats WITHOUT simulated-time
      *  progress, the run is trapped in a deterministic INTER/RECOVER limit cycle (observed in
@@ -152,7 +184,13 @@ public:
                         << "  forces pass:   avg sweeps " << (m_gs_committed ? m_gs_frc_sweeps / m_gs_committed : 0)
                         << ", saturated (chain not fully converged) " << m_gs_frc_saturated << "/" << m_gs_committed << "\n"
                         << "  energy clamps (floes): " << m_gs_solver.energy_clamps()
-                        << " | emergency en-bloc freezes: " << m_nb_emergencies << "\n";
+                        << " | emergency en-bloc freezes: " << m_nb_emergencies << "\n"
+                        << "  probes fired: " << m_probes_total
+                        << ", stuck-floe releases: " << m_released_total
+                        << " (success ratio "
+                        << (m_probes_total ? 100.0 * m_released_total / m_probes_total : 0.0) << "%)\n"
+                        << "  cluster-probe exemptions: " << m_ring_exempt_total
+                        << " | contagion wakes: " << m_contagion_woken_total << "\n";
     }
 
 private:
@@ -173,6 +211,9 @@ private:
     real_type m_gs_eps{3e-4};                     //!< net-progress threshold, as a fraction of the floe diameter
     int       m_gs_stuck_N{10};                   //!< consecutive no-progress steps before freezing
     int       m_gs_probe_K{10};                   //!< probe period: every K steps, release to retest mobility
+    int       m_probe_ring{0};                    //!< cluster-probe period (every R-th probe; 0 = off)
+    bool      m_contagion{false};                 //!< contagion wake (movers wake their contact neighbours)
+    bool      m_compute_forces{true};             //!< run the diagnostic forces pass (off = ~2x faster, no chain)
     solver::GaussSeidelSolver<real_type> m_gs_solver; //!< the alternative contact solver
 
     // Anti-limit-cycle guard-rail state (see notify_recover)
@@ -189,6 +230,10 @@ private:
     long m_gs_frc_sweeps{0};     //!< cumulated forces-pass sweeps
     long m_gs_dyn_saturated{0};  //!< dynamics passes that hit the sweep cap (best-effort commits)
     long m_gs_frc_saturated{0};  //!< forces passes that hit the sweep cap (recorded chain not fully converged)
+    long m_probes_total{0};      //!< stuck floes left mobile for a mobility re-test (cumulated)
+    long m_released_total{0};    //!< stuck floes that escaped (net progress crossed eps; ~probe successes)
+    long m_ring_exempt_total{0};      //!< would-freeze floes exempted by cluster probes (cumulated)
+    long m_contagion_woken_total{0};  //!< would-freeze floes woken by a moving neighbour (cumulated)
 };
 
 
@@ -241,8 +286,32 @@ bool JamManager::try_solve_component(TSubgraph const& subgraph)
     ++m_gs_routed;
     long frozen = 0;
     long dbg_reset = 0; int dbg_maxcnt = 0; real_type dbg_maxratio = 0, dbg_diam = 0; // DIAG
+    long probes = 0;    // stuck floes (counter >= N) left mobile this step to retest their mobility
+    long released = 0;  // stuck floes that escaped: net progress crossed eps (only a probed — or
+                        // emergency-exempt — stuck floe can move, so released ~ probe successes;
+                        // a burst of releases over a few steps = a collapse cascade signature)
+    long ring_exempt = 0;     // would-freeze floes left mobile by a CLUSTER (ring) probe (see below)
+    long contagion_woken = 0; // would-freeze floes left mobile because a contact neighbour genuinely moved
     if ( m_gs_freeze )
     {
+        // The freeze decision runs in three passes (identical outcome to the historical single pass
+        // when the cluster-probe and contagion options are off — freezing is merely deferred, and no
+        // decision below reads a neighbour's is_jammed):
+        //  1. per-floe temporal tracking, recording would-freeze candidates, this step's CLUSTER-probe
+        //     initiators and the genuine movers;
+        //  2. exemptions. CLUSTER (ring) probe [--jam_probe_ring R]: every R-th individual probe of a
+        //     stuck floe also exempts its contact neighbours, so the cluster is tested TOGETHER — the
+        //     arch-lab proved per-floe probes cannot detect collective (hinge) instability: a member
+        //     probed alone between frozen neighbours is wedge-locked, and clogging statistics ended up
+        //     set by the knobs instead of the physics. A mechanically stable cluster yields v~0 for
+        //     all (costless); a hinge-unstable arch moves as a whole and dies at its physical time.
+        //     CONTAGION [--jam_contagion]: a floe that genuinely moved wakes its contact neighbours
+        //     (exempted now, counters reset), so release cascades propagate at physical speed instead
+        //     of the probe cadence;
+        //  3. apply the freeze to the remaining candidates.
+        const std::size_t nv = num_vertices(subgraph);
+        std::vector<char> would_freeze(nv, 0), exempt(nv, 0);
+        std::vector<std::size_t> ring_initiators, movers;
         for ( auto v : boost::make_iterator_range(vertices(subgraph)) )
         {
             auto* floe = subgraph[v].floe;
@@ -272,39 +341,67 @@ bool JamManager::try_solve_component(TSubgraph const& subgraph)
             if ( thresh > 0 && net_disp / thresh > dbg_maxratio ) dbg_maxratio = net_disp / thresh; // DIAG
             if ( net_disp > thresh ) // genuine net progress -> moving
             {
+                if ( floe->jam_stuck_counter() >= m_gs_stuck_N ) ++released; // a stuck floe escaped
                 floe->set_jam_ref_pos(cur);
                 floe->set_jam_stuck_counter(0);
                 ++dbg_reset; // DIAG
+                if ( m_contagion ) movers.push_back(v);
                 continue;
             }
             const int cnt = floe->jam_stuck_counter() + 1; // no net progress this step
             floe->set_jam_stuck_counter(cnt);
             if ( cnt > dbg_maxcnt ) dbg_maxcnt = cnt; // DIAG
             const bool probe = ( (cnt + (int)v) % m_gs_probe_K == 0 );
-            if ( cnt >= m_gs_stuck_N && !probe )
-            {
-                floe->state().set_jammed(true);
-                ++frozen;
-            }
+            if ( cnt >= m_gs_stuck_N && probe ) ++probes; // left mobile: mobility re-test
+            if ( cnt >= m_gs_stuck_N && !probe ) would_freeze[v] = 1;
+            if ( m_probe_ring > 0 && cnt >= m_gs_stuck_N
+                 && ( (cnt + (int)v) % (m_gs_probe_K * m_probe_ring) == 0 ) )
+                ring_initiators.push_back(v); // its own probe fired too (K*R is a multiple of K)
         }
+        // Pass 2 — exemptions (no-ops when both options are off)
+        for ( auto v : ring_initiators )
+            for ( auto w : boost::make_iterator_range(adjacent_vertices(v, subgraph)) )
+                if ( would_freeze[w] && !exempt[w] ) { exempt[w] = 1; ++ring_exempt; }
+        for ( auto v : movers )
+            for ( auto w : boost::make_iterator_range(adjacent_vertices(v, subgraph)) )
+            {
+                auto* nb = subgraph[w].floe;
+                if ( nb->is_obstacle() ) continue;
+                if ( would_freeze[w] && !exempt[w] ) { exempt[w] = 1; ++contagion_woken; }
+                if ( nb->jam_tracked() && nb->jam_stuck_counter() > 0 ) nb->set_jam_stuck_counter(0);
+            }
+        // Pass 3 — apply the freeze
+        for ( std::size_t v = 0; v < nv; ++v )
+            if ( would_freeze[v] && !exempt[v] )
+                { subgraph[v].floe->state().set_jammed(true); ++frozen; }
     }
 
-    // (beta) TWO passes per component (see GS_solver::Mode):
+    m_probes_total += probes;
+    m_released_total += released;
+    m_ring_exempt_total += ring_exempt;
+    m_contagion_woken_total += contagion_woken;
+
+    // (beta) Up to TWO passes per component (see GS_solver::Mode):
     //  - DYNAMICS first: the (C) heuristic (frozen floes = fixed rest anchors) gives the velocities
     //    we actually move with -> stable dt.
-    //  - FORCES second: a TRUE-mass solve on the floes' FREE (pre-resolution) velocities computes the
-    //    physical force chain we record (fracture + visualisation), without moving anyone. The force a
-    //    held floe transmits comes from its free, drag-loaded velocity, so the force pass must read
-    //    those — but the dynamics pass overwrites the velocities, so we snapshot/restore around it.
+    //  - FORCES second (only if m_compute_forces): a TRUE-mass solve on the floes' FREE (pre-resolution)
+    //    velocities computes the physical force chain we record (fracture + visualisation), without
+    //    moving anyone. The force a held floe transmits comes from its free, drag-loaded velocity, so
+    //    the force pass must read those — but the dynamics pass overwrites the velocities, so we
+    //    snapshot/restore around it. This pass is DIAGNOSTIC: it does not affect the dynamics or dt, and
+    //    on hard channels it dominates the cost (saturates often). --jam_forces 0 skips it entirely
+    //    (~2x faster, no recorded chain in jam components) for studies that only need velocities.
     // The force pass runs only when the dynamics pass committed; otherwise the component falls back to
     // Lemke, which records its own impulses (so no double counting), and the freezes are undone.
     using gs_mode = typename decltype(m_gs_solver)::Mode;
 
-    std::vector<std::array<real_type,3>> v_free; // free (pre-resolution) velocities of the component
-    v_free.reserve(num_vertices(subgraph));
-    for ( auto v : boost::make_iterator_range(vertices(subgraph)) ) {
-        auto const& st = subgraph[v].floe->state();
-        v_free.push_back({ st.speed.x, st.speed.y, st.rot });
+    std::vector<std::array<real_type,3>> v_free; // free (pre-resolution) velocities, only needed for the force pass
+    if ( m_compute_forces ) {
+        v_free.reserve(num_vertices(subgraph));
+        for ( auto v : boost::make_iterator_range(vertices(subgraph)) ) {
+            auto const& st = subgraph[v].floe->state();
+            v_free.push_back({ st.speed.x, st.speed.y, st.rot });
+        }
     }
 
     int d_it = 0; real_type d_resid = 0, d_vmax = 0;
@@ -314,30 +411,37 @@ bool JamManager::try_solve_component(TSubgraph const& subgraph)
         ++m_gs_committed;
         m_gs_dyn_sweeps += d_it;
         if ( d_it >= m_gs_solver.max_iter() ) ++m_gs_dyn_saturated;
-        // Capture the committed dynamics velocities, restore the free velocities for the force pass,
-        // run the force pass (records impulses, moves nobody), then restore the dynamics velocities.
-        std::vector<std::array<real_type,3>> v_dyn;
-        v_dyn.reserve(num_vertices(subgraph));
-        std::size_t k = 0;
-        for ( auto v : boost::make_iterator_range(vertices(subgraph)) ) {
-            auto& st = subgraph[v].floe->state();
-            v_dyn.push_back({ st.speed.x, st.speed.y, st.rot });
-            st.speed = { v_free[k][0], v_free[k][1] }; st.rot = v_free[k][2]; ++k;
-        }
         int f_it = 0; real_type f_resid = 0, f_vmax = 0;
-        m_gs_solver.solve( subgraph, gs_mode::Forces, f_it, f_resid, f_vmax ); // records the force chain
-        m_gs_frc_sweeps += f_it;
-        if ( f_it >= m_gs_solver.max_iter() ) ++m_gs_frc_saturated;
-        k = 0;
-        for ( auto v : boost::make_iterator_range(vertices(subgraph)) ) {
-            auto& st = subgraph[v].floe->state();
-            st.speed = { v_dyn[k][0], v_dyn[k][1] }; st.rot = v_dyn[k][2]; ++k;
+        if ( m_compute_forces )
+        {
+            // Capture the committed dynamics velocities, restore the free velocities for the force pass,
+            // run the force pass (records impulses, moves nobody), then restore the dynamics velocities.
+            std::vector<std::array<real_type,3>> v_dyn;
+            v_dyn.reserve(num_vertices(subgraph));
+            std::size_t k = 0;
+            for ( auto v : boost::make_iterator_range(vertices(subgraph)) ) {
+                auto& st = subgraph[v].floe->state();
+                v_dyn.push_back({ st.speed.x, st.speed.y, st.rot });
+                st.speed = { v_free[k][0], v_free[k][1] }; st.rot = v_free[k][2]; ++k;
+            }
+            m_gs_solver.solve( subgraph, gs_mode::Forces, f_it, f_resid, f_vmax ); // records the force chain
+            m_gs_frc_sweeps += f_it;
+            if ( f_it >= m_gs_solver.max_iter_forces() ) ++m_gs_frc_saturated;
+            k = 0;
+            for ( auto v : boost::make_iterator_range(vertices(subgraph)) ) {
+                auto& st = subgraph[v].floe->state();
+                st.speed = { v_dyn[k][0], v_dyn[k][1] }; st.rot = v_dyn[k][2]; ++k;
+            }
         }
         std::cout << "OPTIMJAM GS | floes=" << num_vertices(subgraph)
                   << " contacts=" << num_contacts(subgraph)
                   << " dyn_sweeps=" << d_it << " dyn_resid=" << d_resid
                   << " frc_sweeps=" << f_it << " frc_resid=" << f_resid
                   << " frozen=" << frozen << "/" << num_vertices(subgraph)
+                  << " probes=" << probes << " released=" << released
+                  << " sat=" << m_gs_solver.last_saturated_frozen()
+                  << "/" << m_gs_solver.last_active_frozen()
+                  << " ring=" << ring_exempt << " woken=" << contagion_woken
                   << " | reset=" << dbg_reset << " maxcnt=" << dbg_maxcnt
                   << " maxratio=" << dbg_maxratio << " diam=" << dbg_diam // DIAG
                   << " (committed)" << std::endl;
