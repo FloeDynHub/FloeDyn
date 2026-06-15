@@ -51,6 +51,28 @@ class Floe:
         """
         self.shape = reduce_shape(self.shape, nb_points)
         self.recenter_shape()
+    
+    def max_diameter(self):
+        """
+        Returns the maximum diameter of the floe shape
+        = largest possible distance between any two points on the polygon's boundary
+        """
+        max_diam = 0
+        for i in range(len(self.shape)):
+            for j in range(i + 1, len(self.shape)):
+                p1 = Point(self.shape[i])
+                p2 = Point(self.shape[j])
+                dist = p1.distance(p2)
+                if dist > max_diam:
+                    max_diam = dist
+        return max_diam
+    
+    def resize(self, resize_coeff):
+        """
+        Resize floe around its mass center by a given coefficient.
+        """
+        resize_floe(self, resize_coeff)
+    
 
     def __repr__(self):
         return f"Floe(shape={self.shape}, state={self.state}, obstacle={self.obstacle}, thickness={self.thickness}, cw={self.cw})"
@@ -157,7 +179,11 @@ def load_h5_input(filename, list_floe):
                 speed=f["floe_states"][0, i, 3:5],
                 rot=f["floe_states"][0, i, 5]
             )
-            list_floe.append(Floe(shape, state))
+            obstacle = bool(grp[f"{i}"].attrs.get('obstacle', 0))
+            thickness = grp[f"{i}"].attrs.get('thickness', None)
+            cw = grp[f"{i}"].attrs.get('C_w', None)
+            floe = Floe(shape.tolist(), state, obstacle, thickness, cw)
+            list_floe.append(floe)
         win = f["window"][...]
         # translate_pack(list_floe, -win[0], -win[2])
     return list(win)

@@ -64,10 +64,10 @@ public:
     using Uptr_geometry_type = std::unique_ptr<geometry_type>;
 
     //! Default constructor.
-    StaticFloe() : m_frame{0,0,0}, m_geometry{nullptr}, m_mesh{nullptr}, m_density{917}, m_mu_static{0.7},
+    StaticFloe() : m_frame{0,0,0}, m_geometry{nullptr}, m_mesh{}, m_density{917}, m_mu_static{0.7},
                     m_thickness{1}, m_C_w{5 * 1e-3}, m_area{-1}, m_moment_cst{-1}, m_min_crack_energy{0} {}
 
-    StaticFloe(geometry_type new_border) : m_frame{0,0,0}, m_geometry{new_border}, m_mesh{nullptr}, m_density{917}, m_mu_static{0.7},
+    StaticFloe(geometry_type new_border) : m_frame{0,0,0}, m_geometry{new_border}, m_mesh{}, m_density{917}, m_mu_static{0.7},
                     m_thickness{1}, m_C_w{5 * 1e-3}, m_area{-1}, m_moment_cst{-1}, m_min_crack_energy{0} {}
 
 
@@ -97,16 +97,11 @@ public:
     }
 
     //! Mesh accessors
-    inline  void                    attach_mesh_ptr( mesh_type* mesh)          { m_mesh = mesh; }
-    inline  mesh_type const&        mesh()                      const   { return *m_mesh; }
-    inline  mesh_type &             mesh()                              { return *m_mesh; }
-    inline  bool                    has_mesh()                  const   { return m_mesh != nullptr; }
-    inline  mesh_type const&        get_mesh()                  const   { return *m_mesh; }
-    inline  void                    set_mesh( mesh_type& mesh )
-    {
-        // if (! has_mesh() ) m_mesh = new mesh_type();
-        m_mesh = &mesh;
-    }
+    inline  mesh_type const&        mesh()                      const   { return m_mesh; }
+    inline  mesh_type &             mesh()                              { return m_mesh; }
+    inline  bool                    has_mesh()                  const   { return !m_mesh.points().empty(); }
+    inline  mesh_type const&        get_mesh()                  const   { return m_mesh; }
+    inline  void                    set_mesh( mesh_type const& mesh )   { m_mesh = mesh; }
 
     //! Mu accessors
     inline real_type const&    mu_static() const   { return m_mu_static; }
@@ -195,7 +190,7 @@ private:
 
     frame_type m_frame;         //!< Frame
     Uptr_geometry_type m_geometry;  //!< Geometry (border)
-    mesh_type* m_mesh;          //!< Mesh
+    mesh_type m_mesh;           //!< Mesh (relative frame, owned by value)
     density_type m_density;     //!< Density
     real_type m_mu_static;     //!< Static friction coefficient
     real_type m_thickness;     //!< Vertical thickness (constant over floe surface)
@@ -233,7 +228,7 @@ private:
                     {
                         return density * ( x*x + y*y );
                     },
-                    *m_mesh,
+                    m_mesh,
                     strategy
             );
             return m_moment_cst;

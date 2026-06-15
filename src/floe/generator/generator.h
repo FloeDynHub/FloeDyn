@@ -37,7 +37,7 @@ public:
     Generator(real_type alpha,int nbfpersize) : m_problem{0.0, 0}, m_alpha{alpha}, m_nbfpersize{nbfpersize} {}
 
     //! Generate floe set with given number of floe and concentration
-    void generate_floe_set(std::size_t number, real_type concentration, real_type max_size, 
+    void generate_floe_set(std::size_t number, real_type concentration, real_type max_size, real_type min_size,
         std::vector<int> force_modes, std::vector<real_type> force_speeds);
     typename TProblem::floe_group_type& get_floe_group() { return m_problem.get_floe_group(); }
     // std::array<real_type, 4> get_window() const { return m_window; }
@@ -52,9 +52,9 @@ private:
     std::array<real_type, 4> m_window;
     //! Floe size repartition (exponential)
     std::vector<real_type> random_size_repartition(std::size_t n, real_type R_max);
-    std::vector<real_type> exp_size_repartition(std::size_t n, real_type R_max);
+    std::vector<real_type> exp_size_repartition(std::size_t n, real_type R_max, real_type R_min);
     //! Random floe group
-    void random_floe_group(std::size_t n, real_type max_size);
+    void random_floe_group(std::size_t n, real_type max_size, real_type min_size);
     //! Spiral dispatcher
     std::vector<point_type> spiral_distribution(std::vector<real_type> const& size_distribution, real_type Rmax);
 

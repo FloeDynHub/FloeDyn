@@ -59,6 +59,7 @@ public:
 
         problem_type P(epsilon, OBL_status);
         P.QUIT = &QUIT;
+        P.get_dynamics_manager().get_external_forces().set_O_latitude(O_latitude);
         if (!generate_floes){
             try {
                 P.load_config(input_file_name);
@@ -97,7 +98,7 @@ public:
             }
             generator_type G( alpha, nbfpersize );
             G.set_exit_signal(&QUIT); // clean interrupt
-            G.generate_floe_set(nb_floes, concentration, max_size, force_modes, force_speeds);
+            G.generate_floe_set(nb_floes, concentration, max_size, min_size, force_modes, force_speeds);
             P.set_floe_group(G.get_floe_group());
             #ifdef PBC
             auto win = P.get_floe_group().get_initial_window();
@@ -222,11 +223,13 @@ protected:
     int                     OBL_status              = 0;
     value_type              epsilon                 = 0.4;
     value_type              mu_static               = 0.7;
+    value_type              O_latitude              = 80.207;
     value_type              random_thickness_coeff  = 0.01;
     value_type              random_oceanic_skin_drag_coeff = 0.01;
     value_type              min_thickness           = 0.01;
     string                  matlab_topaz_filename   = "io/library/DataTopaz01.mat";
     value_type              max_size                = 250;
+    value_type              min_size                = 0;
     bool                    fracture                = 0;
     bool                    melting                 = 0;
     bool                    rand_speed_add          = 1;
@@ -243,7 +246,7 @@ protected:
         // The third is description
         ("help,h", "print usage message")
         ("input,i", po::value(&input_file_name)->required(), "input file path")
-        ("output", po::value<string>(&output_file_name)->default_value("output.txt"), "name of the output file") // New option
+        ("output", po::value<string>(&output_file_name)->default_value(""), "name of the output file") // New option
         ("fext, z", po::value(&matlab_topaz_filename)->default_value(matlab_topaz_filename), "external forces input file")
         #ifdef MULTIOUTPUT
             ("nbsefloes", po::value<std::size_t>(&nb_floe_select)->required(), "the size of the floe selection for the multiple output files")
@@ -306,12 +309,15 @@ protected:
         ("concentration,c", po::value<value_type>(), "generator : floes concentration (between 0 and 1)")
         ("maxsize,m", po::value(&max_size)->default_value(
             max_size, std::to_string(max_size)), "generator : floe max size (radius)")
+        ("minsize", po::value(&min_size)->default_value(
+            min_size, std::to_string(min_size)), "generator : floe min size (radius)")
         ("alpha,a", po::value<value_type>(&alpha), "generator : fractal dimension for the distribution power law.")
         ("nbfpersize", po::value<int>(&nbfpersize), "generator : number of floes per size for the distribution power law.")
 
         ("epsilon,e", po::value(&epsilon)->default_value(
             epsilon, std::to_string(epsilon)), "collision restitution coeff")
         ("mu", po::value(&mu_static)->default_value(mu_static, std::to_string(mu_static)), "ice/ice static friction coeff")
+        ("lat0", po::value(&O_latitude)->default_value(O_latitude, std::to_string(O_latitude)), "origin latitude for Coriolis effect (degrees)")
         ("sigma", po::value(&random_thickness_coeff)->default_value(
             random_thickness_coeff, std::to_string(random_thickness_coeff)),
             "Normal distribution coeff (sigma) for random ice thickness variation around 1m")

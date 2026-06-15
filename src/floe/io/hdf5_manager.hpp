@@ -502,13 +502,10 @@ double HDF5Manager<TFloeGroup, TDynamicsMgr>::recover_states(
     floe_group.get_floes().filter_off(); // crack version
     floe_group.get_floes().resize(dims_out[1]); // Resize for crack version
     std::cout << "RECOVER_STATES floes resize : " << dims_out[1] << std::endl;
-    floe_group.get_floe_group_h().m_list_floe_h.resize(dims_out[1]);
     for (std::size_t floe_id = 0; floe_id < floe_group.get_floes().size(); floe_id++)
     {
         auto& floe = floe_group.get_floes()[floe_id];
-        // auto& new_state = floe.state();
         bool active = (data_out[floe_id][9] == 1.) ? true : false; // crack version
-        floe.static_floe().attach_mesh_ptr(&floe.get_floe_h().m_static_mesh); // TODO why is it needed ?
         floe.state().set_active(active); // crack version
         if (active) {
             floe.set_state({
@@ -595,6 +592,11 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::write_shapes() {
         auto val = this->get_floe(i).get_static_floe().C_w();
         Attribute att = dataset.createAttribute("C_w", datatype, att_space );
         att.write( datatype, &val );
+        
+        // add attribute for obstacle status
+        int obstacle_val = this->get_floe(i).is_obstacle() ? 1 : 0;
+        Attribute obstacle_att = dataset.createAttribute("obstacle", PredType::NATIVE_INT, att_space );
+        obstacle_att.write( PredType::NATIVE_INT, &obstacle_val );
     }
 
     m_nb_floe_shapes_written = this->nb_considered_floes();

@@ -39,11 +39,13 @@ public:
             // I'm the MASTER process
             std::cout << "MASTER OK" << std::endl;
             master_problem_type P(epsilon, OBL_status);
+            P.get_dynamics_manager().get_external_forces().set_O_latitude(O_latitude);
             return_value = this->run_problem(P);
         } else {
             // I'm a WORKER process
             std::cout << "WORKER #" << rank << " OK" << std::endl;
             worker_problem_type P(epsilon, OBL_status);
+            P.get_dynamics_manager().get_external_forces().set_O_latitude(O_latitude);
             return_value = this->run_problem(P);
         }
         MPI_Finalize();

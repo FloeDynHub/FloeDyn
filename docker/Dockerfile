@@ -39,7 +39,9 @@ RUN service ssh start
 RUN apt-get install python3-pip -y
 COPY requirements.txt .
 RUN pip install -r requirements.txt
-RUN apt-get install ffmpeg -y
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends ffmpeg \
+ && rm -rf /var/lib/apt/lists/*
 
 # entrypoint
 COPY --chmod=777 ./entrypoint.sh /usr/src/app/entrypoint.sh

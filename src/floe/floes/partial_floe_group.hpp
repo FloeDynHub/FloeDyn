@@ -111,14 +111,12 @@ PartialFloeGroup<TFloe, TFloeList>::fracture_biggest_floe()
 
     this->update_list_ids_active();
 
-    for (auto & floe : this->get_floes()) { // TODO why is it needed ?
-        floe.static_floe().attach_mesh_ptr(&floe.get_floe_h().m_static_mesh);
+    for (auto & floe : this->get_floes())
         floe.update();
-    }
 }
 
 template <typename TFloe, typename TFloeList>
-int 
+int
 PartialFloeGroup<TFloe, TFloeList>::fracture_floes()
 {
     int n_fractured = 0;
@@ -149,10 +147,8 @@ PartialFloeGroup<TFloe, TFloeList>::fracture_floes()
 
     this->update_list_ids_active();
     
-    for (auto & floe : this->get_floes()) { // TODO why is it needed ?
-        floe.static_floe().attach_mesh_ptr(&floe.get_floe_h().m_static_mesh);
+    for (auto & floe : this->get_floes())
         floe.update();
-    }
     return n_fractured;
 }
 
@@ -215,11 +211,7 @@ PartialFloeGroup<TFloe, TFloeList>::add_floe(geometry_type shape, std::size_t pa
     std::unique_ptr<typename floe_type::geometry_type> geometry(new typename floe_type::geometry_type(shape));
     static_floe.attach_geometry_ptr(std::move(geometry));
 
-    mesh_type& floe_mesh = floe.get_floe_h().m_static_mesh;
-    floe_mesh = mesh;
-    static_floe.attach_mesh_ptr(&floe_mesh);
-    
-    this->get_floe_group_h().add_floe(floe.get_floe_h());
+    static_floe.set_mesh(mesh);
     // Compute and set space-time state
     auto& parent_floe = list_floes[parent_floe_abs_id];
     point_type rotated_mc {
