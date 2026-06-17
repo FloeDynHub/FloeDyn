@@ -85,6 +85,7 @@ public:
     inline void set_gs_contagion(bool v) { m_jam.set_contagion(v); }
     inline void set_gs_compute_forces(bool v) { m_jam.set_compute_forces(v); }
     inline void set_gs_forces_max_iter(int n) { m_jam.set_forces_max_iter(n); }
+    inline void set_gs_unanchored(bool v) { m_jam.set_allow_unanchored(v); }
     inline void notify_recover(real_type time) { m_jam.notify_recover(time); }
 
     //! Solve collision represented by a contact graph

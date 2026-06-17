@@ -55,6 +55,7 @@ public:
 
     using time_scale_manager_type = domain::TimeScaleManager<typename TProxymityDetector::proximity_data_type>;
     using proximity_detector_type = TProxymityDetector;
+    using real_type = types::real_type; //!< exposed so wrappers (e.g. MPIProblem) can use TProblem::real_type
 
     //! Default constructor.
     Problem(real_type epsilon=0.4, int OBL_status=0);

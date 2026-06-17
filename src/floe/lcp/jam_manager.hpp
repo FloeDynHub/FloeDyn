@@ -129,6 +129,15 @@ public:
      *  diagnostic force chain tolerates a much lower cap than the dynamics solve that sets dt. */
     inline void set_forces_max_iter(int n) { m_gs_solver.set_max_iter_forces(n); }
 
+    /*! Route obstacle-free components too (CLI --jam_unanchored, default off). For the ice-pack
+     *  GENERATOR: the pack has no obstacles, it is confined by a convergent forcing, so the anchored
+     *  routing requirement must be relaxed. Physical sims keep it OFF (an unanchored free-drifting
+     *  cluster is not a jam — it should keep moving, not be frozen). */
+    inline void set_allow_unanchored(bool v) {
+        m_allow_unanchored = v;
+        if (v) std::cout << "OPTIMJAM unanchored routing ENABLED (obstacle-free packs, e.g. generator)" << std::endl;
+    }
+
     /*! Guard-rail: called by the problem each time "dt too small" forces a state recovery
      *  (safe_move_floe_group / detect_proximity). If recovery repeats WITHOUT simulated-time
      *  progress, the run is trapped in a deterministic INTER/RECOVER limit cycle (observed in
@@ -214,6 +223,7 @@ private:
     int       m_probe_ring{0};                    //!< cluster-probe period (every R-th probe; 0 = off)
     bool      m_contagion{false};                 //!< contagion wake (movers wake their contact neighbours)
     bool      m_compute_forces{true};             //!< run the diagnostic forces pass (off = ~2x faster, no chain)
+    bool      m_allow_unanchored{false};          //!< route obstacle-free packs too (generator; default off)
     solver::GaussSeidelSolver<real_type> m_gs_solver; //!< the alternative contact solver
 
     // Anti-limit-cycle guard-rail state (see notify_recover)
@@ -242,11 +252,18 @@ bool JamManager::route_to_gs(TSubgraph const& subgraph) const
 {
     if ((int)num_contacts(subgraph) < m_gs_min_contacts) return false;
 
-    // Must be anchored to a fixed boundary (obstacle): a force chain can only hold against one.
-    bool anchored = false;
-    for (auto v : boost::make_iterator_range(vertices(subgraph)))
-        if (subgraph[v].floe->is_obstacle()) { anchored = true; break; }
-    if (!anchored) return false;
+    // Normally a component must be anchored to a fixed boundary (obstacle): a force chain can only hold
+    // against one. Exception (--jam_unanchored, for the ICE-PACK GENERATOR): the generator confines the
+    // floes with a convergent wind/current and periodically stops those inside the target window — the
+    // confinement plays the role of the boundary, so a large quasi-static pack with NO obstacle is still
+    // a dense jam worth routing to GS. Off by default (physical sims keep the obstacle requirement).
+    if (!m_allow_unanchored)
+    {
+        bool anchored = false;
+        for (auto v : boost::make_iterator_range(vertices(subgraph)))
+            if (subgraph[v].floe->is_obstacle()) { anchored = true; break; }
+        if (!anchored) return false;
+    }
 
     // Route only if the contacts are quasi-static: max contact *approach* speed below threshold. This
     // gates on relative contact velocity (held / slowly grinding) rather than absolute floe velocity,

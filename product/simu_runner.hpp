@@ -100,6 +100,23 @@ public:
             }
             generator_type G( alpha, nbfpersize );
             G.set_exit_signal(&QUIT); // clean interrupt
+            // OPTIMJAM on the GENERATION loop itself (the generator has its own collision manager,
+            // distinct from P's, and runs before P is configured below). The generated pack has no
+            // obstacles, so --jam_unanchored is required for the GS path to engage; --jam_forces 0 is
+            // natural here (generation only needs polygons to fit, no force chain).
+            if (optim_jam) {
+                G.get_lcp_manager().set_optim_jam(optim_jam);
+                G.get_lcp_manager().set_gs_freeze(jam_freeze);
+                G.get_lcp_manager().set_gs_warm_start(jam_warmstart);
+                G.get_lcp_manager().set_gs_probe_ring(jam_probe_ring);
+                G.get_lcp_manager().set_gs_contagion(jam_contagion);
+                G.get_lcp_manager().set_gs_compute_forces(jam_forces);
+                G.get_lcp_manager().set_gs_forces_max_iter(jam_frc_iter);
+                G.get_lcp_manager().set_gs_unanchored(jam_unanchored);
+                if (jam_params.size() >= 6)
+                    G.get_lcp_manager().set_gs_params((int)jam_params[0], (int)jam_params[1], jam_params[2],
+                                                      jam_params[3], (int)jam_params[4], (int)jam_params[5]);
+            }
             G.generate_floe_set(nb_floes, concentration, max_size, min_size, force_modes, force_speeds);
             P.set_floe_group(G.get_floe_group());
             #ifdef PBC
@@ -126,6 +143,7 @@ public:
         P.get_lcp_manager().set_gs_contagion(jam_contagion);
         P.get_lcp_manager().set_gs_compute_forces(jam_forces);
         P.get_lcp_manager().set_gs_forces_max_iter(jam_frc_iter);
+        P.get_lcp_manager().set_gs_unanchored(jam_unanchored);
         if (jam_params.size() >= 6)
             P.get_lcp_manager().set_gs_params((int)jam_params[0], (int)jam_params[1], jam_params[2],
                                               jam_params[3], (int)jam_params[4], (int)jam_params[5]);
@@ -253,6 +271,7 @@ protected:
     bool                    jam_contagion           = 0; //!< OPTIMJAM: contagion wake (movers wake their neighbours)
     bool                    jam_forces              = 1; //!< OPTIMJAM: compute the diagnostic forces pass (0 = ~2x faster, no chain)
     int                     jam_frc_iter            = 0; //!< OPTIMJAM: forces-pass sweep cap (0 = same as dynamics cap)
+    bool                    jam_unanchored          = 0; //!< OPTIMJAM: route obstacle-free packs (generator); default off
     std::vector<value_type> jam_params              = std::vector<value_type>{50, 20000, 0.5, 3e-4, 10, 10}; //!< OPTIMJAM: [min_contacts, gs_max_iter, rel_speed_max, eps, stuck_N, probe_K] (validated set)
     bool                    rand_speed_add          = 1;
     value_type              rand_norm               = 1e-7;
@@ -388,6 +407,11 @@ protected:
         ("jam_frc_iter", po::value<int>(&jam_frc_iter)->default_value(0),
             "OPTIMJAM: separate sweep cap for the forces pass (0 = same as gs_max_iter). The diagnostic "
             "force chain tolerates a much lower cap than the dynamics solve that sets dt (e.g. 5000).\n")
+        ("jam_unanchored", po::value<bool>(&jam_unanchored)->default_value(false),
+            "OPTIMJAM: 0 (default) requires a component to touch an obstacle to be routed to Gauss-Seidel "
+            "(physical sims). Set 1 to also route large quasi-static OBSTACLE-FREE packs — needed for the "
+            "ice-pack GENERATOR, where the convergent forcing confines the floes (no walls). Pair with "
+            "--jam_forces 0 for generation.\n")
         ("jam_params", po::value< std::vector<value_type> >(&jam_params)->multitoken(),
             "OPTIMJAM tuning, 6 values [min_contacts gs_max_iter rel_speed_max eps stuck_N probe_K]\n"
             "(defaults are the validated set 50 20000 0.5 3e-4 10 10):\n"
