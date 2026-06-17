@@ -305,6 +305,19 @@ def build(bld):
         opts["linkflags"].extend(["-lmpi"])
         opts["defines"].append('MPIRUN')
         opts["cxxflags"].extend(subprocess.check_output(["mpicc", "--showme:compile"]).strip().split(b" "))
+        # OpenMPI C++ bindings (MPI::Comm, MPI::Op, ...) live in libmpi_cxx, present on some installs
+        # (e.g. local OpenMPI 4.1) but absent from others (the compute cluster). Link -lmpi_cxx only if it
+        # actually links with the current mpicxx — safe failure mode: absent on the cluster -> not added.
+        try:
+            probe = subprocess.run("echo 'int main(){}' | mpicxx -x c++ - -lmpi_cxx -o /dev/null",
+                                   shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+            if probe.returncode == 0:
+                opts["linkflags"].append("-lmpi_cxx")
+                print("MPI: libmpi_cxx detected -> linking the OpenMPI C++ bindings.")
+            else:
+                print("MPI: libmpi_cxx not linkable here -> skipping -lmpi_cxx (cluster-style build).")
+        except Exception:
+            pass
         opts["linkflags"].extend(subprocess.check_output(["mpicc", "--showme:link"]).strip().split(b" "))
     if bld.options.target in ["FLOE", "FLOE_PBC", "FLOE_MPI", "FLOE_MPI_PBC"]:
         opts["source"] = [f"product/FLOE.cpp"] + recursive_file_finder("src/floe", "*.cpp")

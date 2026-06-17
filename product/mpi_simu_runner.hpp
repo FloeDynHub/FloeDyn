@@ -73,7 +73,7 @@ private:
         }
 
         std::cout << "read TOPAZ" << std::endl;
-        P.load_matlab_topaz_data(this->vm["fext"].as<string>());
+        P.load_matlab_topaz_data(this->vm["ffile"].as<string>()); // option is "ffile" (was a stale "fext")
         P.get_dynamics_manager().set_rand_speed_add(rand_speed_add);
         P.get_dynamics_manager().set_norm_rand_speed(rand_norm);
         P.get_dynamics_manager().get_external_forces().get_physical_data().set_modes(force_modes[0],force_modes[1]);
