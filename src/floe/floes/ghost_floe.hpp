@@ -31,6 +31,7 @@ public:
 
     using frame_type = typename floe_type::frame_type;
     using geometry_type = typename floe_type::geometry_type;
+    using state_type = typename floe_type::state_type; // dependent-base member, needs an explicit typedef
     using floe_interface_type = FloeInterface<typename TFloe::static_floe_type, typename TFloe::state_type>;
     using translate_strategy_type = boost::geometry::strategy::transform::translate_transformer<real_type, 2,2>;
 
