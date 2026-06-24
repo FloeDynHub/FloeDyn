@@ -20,6 +20,8 @@
 
 // Matlab io
 #include <matio.h>
+// HDF5 io (new floe-shape libraries; see make_biblio_h5.py)
+#include "H5Cpp.h"
 
 #include <ctime>
 #include <algorithm>
@@ -66,7 +68,7 @@ Generator<TProblem>::generate_floe_set(std::size_t nb_floes, real_type concentra
     std::cout << "Generate " << nb_floes << " floes..." << std::endl;
     std::cout << "the restitution coefficient is fixed to: " << 
     m_problem.get_lcp_manager().get_solver().get_epsilon() << std::endl;
-    load_biblio_floe("io/library/Biblio_Floes.mat");
+    load_biblio_floe(m_biblio_path); // CLI --biblio (default: realistic HDF5 library)
     discretize_biblio_floe(25);
     generate_meshes();
     random_floe_group(nb_floes, max_size, min_size);
@@ -149,8 +151,14 @@ void
 Generator<TProblem>::random_floe_group(std::size_t n, real_type max_size, real_type min_size)
 {
     auto& list_floes = m_problem.get_floe_group().get_floes();
-    // auto sizes = random_size_repartition(n, max_size);
-    auto sizes = exp_size_repartition(n, max_size, min_size);
+    // Floe-size distribution selected by --sizerep (see set_size_rep)
+    std::vector<real_type> sizes;
+    switch (m_size_rep)
+    {
+        case 2:  sizes = two_sizes_repartition(n, max_size); break;
+        case 3:  sizes = random_size_repartition(n, max_size); break;
+        default: sizes = exp_size_repartition(n, max_size, min_size); break;
+    }
     std::vector<double>::iterator result = std::min_element(std::begin(sizes), std::end(sizes));
     std::cout << "min diameter: " << *result << "\n";
     auto min_s = *result;
@@ -230,7 +238,6 @@ Generator<TProblem>::exp_size_repartition(std::size_t n, real_type R_max, real_t
     // Yet, warning, since the exponential distribution of size is no longer corresponding to m_alpha!! 
     for (std::size_t i = 1; i <= n/m_nbfpersize; i++)
     {
-        // real_type R =  exp( (- 1 /  m_alpha) * log(i) + log(R_max));
         real_type R =  std::max(R_max * exp( (- 1 /  m_alpha) * log(i) ), R_min);
         for (int j=0; j<m_nbfpersize; ++j){
             v.push_back(R);
@@ -239,6 +246,24 @@ Generator<TProblem>::exp_size_repartition(std::size_t n, real_type R_max, real_t
     // std::srand ( unsigned ( std::time(0) ) ); // seed for not having pseudorandom
     std::shuffle ( v.begin() + 1, v.end(), g); // first floe(biggest) stays first (-> initially at center)
     // std::random_shuffle ( v.begin() + 1, v.end() ); // first floe(biggest) stays first (-> initially at center)
+    return v;
+}
+
+/*! Two-size distribution: each floe is R_max or R_max/ratio (~half each). Useful for binary-size packs.
+ *  The first floe is forced to R_max so the biggest stays at the spiral center, like exp_size_repartition. */
+template<typename TProblem>
+std::vector<real_type>
+Generator<TProblem>::two_sizes_repartition(std::size_t n, real_type R_max, real_type ratio)
+{
+    std::random_device rd;
+    std::mt19937 g(rd());
+    std::cout << "Two-size distribution: " << R_max << " and " << R_max / ratio << " (~half each)" << std::endl;
+    std::vector<real_type> v;
+    std::bernoulli_distribution coin(0.5);
+    for (std::size_t i = 0; i < n; ++i)
+        v.push_back(coin(g) ? R_max : R_max / ratio);
+    if (!v.empty()) v[0] = R_max;                 // biggest first -> initially at center
+    std::shuffle(v.begin() + 1, v.end(), g);
     return v;
 }
 
@@ -256,9 +281,9 @@ Generator<TProblem>::spiral_distribution(std::vector<real_type> const& size_dist
     {
         real_type d_theta, d_R, r = *it;
         if (R < R_max)
-            d_theta = r * 1.2 / R_max, d_R = r * 1.2;
+            d_theta = r * 1.2 / R_max, d_R = r * 2;
         else
-            d_theta = r * 1.2 / R, d_R = (Rmax / M_PI + 1) * (r / R);
+            d_theta = r * 1.2 / R, d_R = (Rmax / M_PI + 1) * 1.5 * (r / R);
 
         if (it == size_distribution.begin())
         {
@@ -277,6 +302,53 @@ Generator<TProblem>::spiral_distribution(std::vector<real_type> const& size_dist
 
 template<typename TProblem>
 void Generator<TProblem>::load_biblio_floe(std::string filename)
+{
+    // Dispatch on extension: ".h5" -> new HDF5 library, otherwise legacy matio (.mat).
+    if (filename.size() >= 3 && filename.compare(filename.size() - 3, 3, ".h5") == 0)
+        load_biblio_floe_h5(filename);
+    else
+        load_biblio_floe_mat(filename);
+}
+
+/*! HDF5 floe-shape library loader (schema written by pack_creator/make_biblio_h5.py):
+ *  group "shapes" with one (N,2) dataset per shape ("0".."M-1"), a "Rmin" (M) vector and a "Cmin"
+ *  (M,2). Each shape is normalized to radius 1 (scaled by 1/Rmin), exactly like the matio path. */
+template<typename TProblem>
+void Generator<TProblem>::load_biblio_floe_h5(std::string filename)
+{
+    using namespace H5;
+    H5File file(filename, H5F_ACC_RDONLY);
+
+    // radii (M) -> also gives the number of shapes
+    DataSet rmin_ds = file.openDataSet("Rmin");
+    hsize_t rdim[1] = {0};
+    rmin_ds.getSpace().getSimpleExtentDims(rdim, NULL);
+    m_biblio_size = rdim[0];
+    std::vector<real_type> rmin(m_biblio_size);
+    rmin_ds.read(rmin.data(), PredType::NATIVE_DOUBLE);
+
+    Group shapes = file.openGroup("shapes");
+    for (std::size_t i = 0; i < m_biblio_size; ++i)
+    {
+        DataSet ds = shapes.openDataSet(std::to_string(i));
+        hsize_t dims[2] = {0, 0};
+        ds.getSpace().getSimpleExtentDims(dims, NULL); // dims[0] = N points, dims[1] = 2
+        const std::size_t n = dims[0];
+        std::vector<real_type> buf(n * 2);
+        ds.read(buf.data(), PredType::NATIVE_DOUBLE);  // row-major: [x0,y0,x1,y1,...]
+
+        multi_point_type shape;
+        for (std::size_t j = 0; j < n; ++j)
+            shape.push_back(point_type{buf[2 * j], buf[2 * j + 1]});
+
+        const real_type radius = rmin[i];
+        geometry::transform(shape, shape, scale_transformer<real_type>{1 / radius});
+        m_biblio_floe.push_back(shape);
+    }
+}
+
+template<typename TProblem>
+void Generator<TProblem>::load_biblio_floe_mat(std::string filename)
 {
     mat_t *matfp;
 

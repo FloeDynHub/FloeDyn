@@ -100,6 +100,8 @@ public:
             }
             generator_type G( alpha, nbfpersize );
             G.set_exit_signal(&QUIT); // clean interrupt
+            G.set_biblio_path(biblio_path); // floe-shape library (--biblio; empty => generator default)
+            G.set_size_rep(sizerep);        // floe-size distribution (--sizerep)
             // OPTIMJAM on the GENERATION loop itself (the generator has its own collision manager,
             // distinct from P's, and runs before P is configured below). The generated pack has no
             // obstacles, so --jam_unanchored is required for the GS path to engage; --jam_forces 0 is
@@ -117,7 +119,19 @@ public:
                     G.get_lcp_manager().set_gs_params((int)jam_params[0], (int)jam_params[1], jam_params[2],
                                                       jam_params[3], (int)jam_params[4], (int)jam_params[5]);
             }
-            G.generate_floe_set(nb_floes, concentration, max_size, min_size, force_modes, force_speeds);
+            // The GENERATION phase always uses the convergent-air forcing it requires (modes 2,0),
+            // regardless of --fmodes (which is reserved for the post-generation simulation below). The
+            // convergent speed defaults to 20 m/s but honours --fspeeds if given.
+            std::vector<int> gen_modes = {2, 0};
+            std::vector<value_type> gen_speeds = vm.count("fspeeds") ? force_speeds
+                                                                     : std::vector<value_type>{20, 0};
+            // If no --fmodes was given, the post-generation run also defaults to (2,0) so a plain
+            // generation run doesn't try to load weather/TOPAZ forcing it doesn't need.
+            if (!vm.count("fmodes")) force_modes = {2, 0};
+            // Force the generation output filename to "<output>_gen" so a UI can follow it.
+            if (!output_file_name.empty())
+                G.get_out_manager().set_out_file_name(output_file_name + "_gen");
+            G.generate_floe_set(nb_floes, concentration, max_size, min_size, gen_modes, gen_speeds);
             P.set_floe_group(G.get_floe_group());
             #ifdef PBC
             auto win = P.get_floe_group().get_initial_window();
@@ -260,6 +274,8 @@ protected:
     value_type              random_thickness_coeff  = 0.01;
     value_type              min_thickness           = 0.01;
     string                  forcing_file_name       = "io/library/DataTopaz01.mat";
+    string                  biblio_path             = ""; //!< generator floe-shape library (empty => default)
+    int                     sizerep                 = 1;  //!< generator floe-size distribution (--sizerep)
     value_type              max_size                = 250;
     value_type              min_size                = 0;
     bool                    fracture                = 0;
@@ -356,6 +372,13 @@ protected:
             max_size, std::to_string(max_size)), "generator : floe max size (radius)")
         ("minsize", po::value(&min_size)->default_value(
             min_size, std::to_string(min_size)), "generator : floe min size (radius)")
+        ("biblio", po::value<string>(&biblio_path)->default_value(""),
+            "generator : floe-shape library path. '.h5' -> HDF5 loader (see pack_creator/make_biblio_h5.py), "
+            "else legacy .mat. Empty = default (io/library/biblio_realistic.h5). Use "
+            "io/library/biblio_circle.h5 for circular floes.")
+        ("sizerep", po::value<int>(&sizerep)->default_value(1),
+            "generator : floe-size distribution. 1 = power law (exp, default, uses --alpha/--nbfpersize), "
+            "2 = two sizes (R_max and R_max/1.4, ~half each), 3 = random (exponential).")
         ("alpha,a", po::value<value_type>(&alpha), "generator : fractal dimension for the distribution power law.")
         ("nbfpersize", po::value<int>(&nbfpersize), "generator : number of floes per size for the distribution power law.")
 
