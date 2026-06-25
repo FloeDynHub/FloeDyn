@@ -36,6 +36,11 @@ DynamicsManager<TExternalForces, TFloeGroup>::move_floes(floe_group_type& floe_g
     // for (auto& floe : floe_group.get_floes())
     //     move_floe(floe, delta_t);
 
+    // Void-seeking homogenizer (air mode 10): rebuild the coverage field from the current floes before
+    // the per-floe drag, so each floe is pushed down the up-to-date density gradient this step.
+    if (m_external_forces.get_physical_data().get_air_mode() == 10)
+        m_external_forces.get_physical_data().update_void_field(floe_group);
+
     #pragma omp parallel for
     for (std::size_t i=0; i < floe_group.get_floes().size(); ++i){
         this->move_floe(floe_group.get_floes()[i], delta_t);

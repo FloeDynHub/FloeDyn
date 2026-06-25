@@ -67,6 +67,60 @@ public:
         m_window_width = width;
         m_window_height = height;
     }
+
+    //! air mode 10: rebuild the coarse area-coverage field from the current floes (called once per step by
+    //! the dynamics manager when mode 10 is active). The grid spans the floe-group window, so the empty
+    //! borders of the target window register as low-coverage cells and pull floes outward to fill them;
+    //! a central hole pulls them inward. Each floe deposits its AREA into the cell of its centroid (robust
+    //! to extreme size dispersity — no per-floe length scale), then we store the centered coverage
+    //! differences, which are dimensionless and therefore scale-independent (same behaviour at 1 or 100 km).
+    template <typename TFloeGroup>
+    void update_void_field(TFloeGroup const& floe_group) {
+        auto const& w = floe_group.get_initial_window(); // [xmin, xmax, ymin, ymax]
+        m_void_x0 = w[0]; m_void_y0 = w[2];
+        m_void_dx = (w[1] - w[0]) / m_void_nx;
+        m_void_dy = (w[3] - w[2]) / m_void_ny;
+        m_void_ready = false;
+        if (m_void_dx <= 0 || m_void_dy <= 0) return;
+        std::vector<real_type> cov(m_void_nx * m_void_ny, 0);
+        const real_type cell_area = m_void_dx * m_void_dy;
+        for (auto const& floe : floe_group.get_floes()) {
+            if (floe.is_obstacle()) continue;
+            auto const p = floe.state().real_position();
+            int ix = (int)((p.x - m_void_x0) / m_void_dx);
+            int iy = (int)((p.y - m_void_y0) / m_void_dy);
+            if (ix < 0 || ix >= (int)m_void_nx || iy < 0 || iy >= (int)m_void_ny) continue;
+            cov[iy * m_void_nx + ix] += floe.area();
+        }
+        for (auto& c : cov) c /= cell_area; // area fraction per cell
+        auto at = [&](int ix, int iy) {
+            ix = std::max(0, std::min((int)m_void_nx - 1, ix));
+            iy = std::max(0, std::min((int)m_void_ny - 1, iy));
+            return cov[iy * m_void_nx + ix];
+        };
+        m_void_diffx.assign(m_void_nx * m_void_ny, 0);
+        m_void_diffy.assign(m_void_nx * m_void_ny, 0);
+        for (int iy = 0; iy < (int)m_void_ny; ++iy)
+            for (int ix = 0; ix < (int)m_void_nx; ++ix) {
+                m_void_diffx[iy * m_void_nx + ix] = (at(ix + 1, iy) - at(ix - 1, iy)) / 2;
+                m_void_diffy[iy * m_void_nx + ix] = (at(ix, iy + 1) - at(ix, iy - 1)) / 2;
+            }
+        m_void_ready = true;
+    }
+
+    //! air mode 10 field at pt: a wind toward the void = -air_speed * local coverage gradient, capped at
+    //! air_speed. In uniform regions the gradient (hence the wind) vanishes -> the pack settles.
+    point_type void_seeking_field(point_type pt) {
+        if (!m_void_ready) return {0, 0};
+        int ix = (int)((pt.x - m_void_x0) / m_void_dx);
+        int iy = (int)((pt.y - m_void_y0) / m_void_dy);
+        if (ix < 0 || ix >= (int)m_void_nx || iy < 0 || iy >= (int)m_void_ny) return {0, 0};
+        const std::size_t k = iy * m_void_nx + ix;
+        point_type wind{ -m_air_speed * m_void_diffx[k], -m_air_speed * m_void_diffy[k] };
+        const real_type n = std::sqrt(wind.x * wind.x + wind.y * wind.y);
+        if (n > m_air_speed && n > 0) { wind.x *= m_air_speed / n; wind.y *= m_air_speed / n; }
+        return wind;
+    }
     //! Air and water conditions mode setter
     void set_modes(int air_mode, int water_mode) {
         m_air_mode      = air_mode;
@@ -90,6 +144,9 @@ public:
         }
         else if (m_air_mode==9 && m_water_mode==9) {
             std::cout << "Inhomogeneous atmospheric and ocean forcing from NetCDF file" << std::endl;
+        }
+        else if (m_air_mode==10 && m_water_mode==0) {
+            std::cout << "Void-seeking homogenizer (area-coverage gradient, max wind = air speed)" << std::endl;
         }
         else { std::cout << "Error: air and/or water modes: " << m_air_mode << " and " << m_water_mode << " are unknown!" << std::endl; }
     }
@@ -127,6 +184,13 @@ public:
     void set_firstVortexZoneDistToOrigin(real_type firstVortexZoneDistToOrigin) {m_firstVortexZoneDistToOrigin = firstVortexZoneDistToOrigin;};
 
 private:
+
+    // Mode 10: "void-seeking" homogenizer — a coarse area-coverage field over the floe-group window,
+    // rebuilt each step; floes are pushed down its gradient (toward emptier cells). See update_void_field.
+    std::size_t m_void_nx{20}, m_void_ny{20};       //!< coarse grid resolution (~window/20)
+    real_type m_void_x0{0}, m_void_y0{0}, m_void_dx{0}, m_void_dy{0}; //!< grid origin and cell size
+    std::vector<real_type> m_void_diffx, m_void_diffy; //!< centered coverage differences (the field to descend)
+    bool m_void_ready{false};
 
     point_vector m_ocean_data_hours; //!< Geostrophic datas
     point_vector m_air_data_hours; //!< Geostrophic datas
@@ -553,6 +617,8 @@ PhysicalData<TPoint>::get_speed(point_type pt, int mode, real_type speed){
             return vortex(pt);
         case 7:
             return y_increasing(pt);
+        case 10:
+            return void_seeking_field(pt);
         case 0:
             return {0,0};
 
