@@ -22,6 +22,12 @@ class MultiOutManager
 {
 
 public:
+    // Derive the floe-group / dynamics-manager types from the WRAPPED manager (not the global types::*),
+    // so the forwarding signatures match in every build — incl. PBC where the real manager is the
+    // PeriodicDynamicsManager, not types::dynamics_manager_type.
+    using floe_group_type = typename TOutManager::floe_group_type;
+    using dynamics_manager_type = typename TOutManager::dynamics_mgr_type;
+
     //! Default constructor.
     MultiOutManager(floe_group_type const& floe_group) :
         m_out_managers{floe_group, floe_group},
@@ -141,8 +147,14 @@ public:
     void set_floe_group(floe_group_type const& floe_group) {
         for (auto& mgr : this->m_out_managers) mgr.set_floe_group(floe_group);
     };
-    inline std::string const& out_file_name() const { 
+    inline std::string const& out_file_name() const {
         return m_out_managers[0].out_file_name();
+    }
+    //! Name the outputs: [0] = full back-up file (the given name), [1] = partial/stats selection
+    //! (derived "<name>_partial" instead of the constructor's hardcoded "out_partial").
+    inline void set_out_file_name(std::string file_name) {
+        m_out_managers[0].set_out_file_name(file_name);
+        m_out_managers[1].set_out_file_name(file_name + "_partial");
     }
     inline void set_out_step(real_type out_step, real_type time) { 
         this->m_out_managers[0].set_out_step(out_step, time);
