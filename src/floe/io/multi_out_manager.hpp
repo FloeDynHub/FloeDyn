@@ -51,8 +51,10 @@ public:
         TOutManager& second_out_mgr = m_out_managers[1]; // second_out_mgr is a reference to m_out_manager[1]
         
         //!< First method: m_nb_floe_select is the size of the floe selection
-        // get floe_group window
-        auto win = floe_group.get_initial_window();
+        // Use the ACTUAL bounding box of the floes (not get_initial_window): the stored initial-window
+        // metadata can be inconsistent with where the floes really are (e.g. an uncompacted pack), which
+        // left the central sub-window empty and overran the selection vector below.
+        auto win = floe_group.bounding_window(0);
         real_type x_margin = (win[1] - win[0]) / 5;
         real_type y_margin = (win[3] - win[2]) / 5;
         typename std::remove_reference<decltype(win)>::type subwin{{
@@ -70,10 +72,11 @@ public:
         std::vector<std::size_t> interesting_floe_ids;
         std::size_t id = 0;
         for (auto const& floe : floe_group.get_floes()){
-            if (subwin[0] < floe.state().pos.x
-                and floe.state().pos.x < subwin[1]
-                and subwin[2] < floe.state().pos.y
-                and floe.state().pos.y < subwin[3])
+            auto rp = floe.state().real_position(); // same frame as bounding_window (geometry.outer())
+            if (subwin[0] < rp.x
+                and rp.x < subwin[1]
+                and subwin[2] < rp.y
+                and rp.y < subwin[3])
             {
                 interesting_floe_ids.push_back(id);
             }
@@ -87,16 +90,19 @@ public:
             std::default_random_engine(seed)
         );
 
-        // selecting floes for output
-        if (m_nb_floe_select>interesting_floe_ids.size()){
-            std::cout << "WARNING: the size of the floe selection exceeds the total number of floes whitin this pack part!! An error is occuring!\n";
-            std::cout << "size of the floe selection: " << m_nb_floe_select << " | floe number whitin the pack part: " << interesting_floe_ids.size() << std::endl;
+        // selecting floes for output (clamp to what is actually available — overrunning the vector with
+        // begin()+m_nb_floe_select was UB and segfaulted when too few floes fell in the sub-window).
+        std::size_t n_select = m_nb_floe_select;
+        if (n_select > interesting_floe_ids.size()){
+            std::cout << "WARNING: requested floe selection (" << m_nb_floe_select
+                << ") exceeds the floes in the central sub-window (" << interesting_floe_ids.size()
+                << "); selecting all of them instead." << std::endl;
+            n_select = interesting_floe_ids.size();
         }
-        assert(m_nb_floe_select<interesting_floe_ids.size());
 
         std::vector<std::size_t> selected_floe_ids(
             interesting_floe_ids.begin(),
-            interesting_floe_ids.begin() + m_nb_floe_select
+            interesting_floe_ids.begin() + n_select
         );
 
         //!< Second method: using the central cells:
@@ -110,7 +116,7 @@ public:
         second_out_mgr.restrain_floe_ids(selected_floe_ids);
 
         second_out_mgr.write_selected_floe_ids(selected_floe_ids);
-        std::cout << "I just wrote a selection of " << m_nb_floe_select << " floes." << std::endl;
+        std::cout << "I just wrote a selection of " << n_select << " floes." << std::endl;
         // second_out_mgr.set_out_file_name("");
     }
 
