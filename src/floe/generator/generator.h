@@ -62,6 +62,9 @@ public:
     //! Floe-size distribution used by the generator (CLI --sizerep): 1 = exp_size_repartition (power law,
     //! default), 2 = two_sizes_repartition (R_max and R_max/1.4, ~half each), 3 = random_size_repartition.
     inline void set_size_rep(int s) { if (s > 0) m_size_rep = s; }
+    //! Initial floe-placement layout (CLI --distrib): 0 = scattered_distribution (uniform random, default),
+    //! 1 = spiral_distribution (legacy, biggest at centre). See random_floe_group dispatch.
+    inline void set_distrib(int d) { if (d >= 0) m_distrib = d; }
 
 private:
     TProblem m_problem;
@@ -72,8 +75,10 @@ private:
     std::vector<real_type> two_sizes_repartition(std::size_t n, real_type R_max, real_type ratio = 1.4);
     //! Random floe group
     void random_floe_group(std::size_t n, real_type max_size, real_type min_size);
-    //! Spiral dispatcher
+    //! Spiral dispatcher (biggest at centre, spiralling out)
     std::vector<point_type> spiral_distribution(std::vector<real_type> const& size_distribution, real_type Rmax);
+    //! Uniform random (overlap-free) scatter: no spiral => no central hole / ring after compaction
+    std::vector<point_type> scattered_distribution(std::vector<real_type> const& size_distribution, real_type Rmax);
 
     void load_biblio_floe(std::string filename);     //!< dispatches on extension (.h5 vs .mat)
     void load_biblio_floe_h5(std::string filename);  //!< HDF5 library loader (see make_biblio_h5.py)
@@ -91,6 +96,7 @@ private:
     int         m_nbfpersize;
     std::string m_biblio_path{"io/library/biblio_realistic.h5"}; //!< floe-shape library (CLI --biblio)
     int         m_size_rep{1}; //!< floe-size distribution selector (CLI --sizerep; see set_size_rep)
+    int         m_distrib{0};  //!< initial placement layout (CLI --distrib; 0=scattered, 1=spiral)
 };
 
 

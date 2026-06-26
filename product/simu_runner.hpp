@@ -102,6 +102,7 @@ public:
             G.set_exit_signal(&QUIT); // clean interrupt
             G.set_biblio_path(biblio_path); // floe-shape library (--biblio; empty => generator default)
             G.set_size_rep(sizerep);        // floe-size distribution (--sizerep)
+            G.set_distrib(distrib);         // initial placement layout (--distrib; 0=scattered, 1=spiral)
             // OPTIMJAM on the GENERATION loop itself (the generator has its own collision manager,
             // distinct from P's, and runs before P is configured below). The generated pack has no
             // obstacles, so --jam_unanchored is required for the GS path to engage; --jam_forces 0 is
@@ -276,6 +277,7 @@ protected:
     string                  forcing_file_name       = "io/library/DataTopaz01.mat";
     string                  biblio_path             = ""; //!< generator floe-shape library (empty => default)
     int                     sizerep                 = 1;  //!< generator floe-size distribution (--sizerep)
+    int                     distrib                 = 0;  //!< generator initial placement layout (--distrib)
     value_type              max_size                = 250;
     value_type              min_size                = 0;
     bool                    fracture                = 0;
@@ -379,6 +381,9 @@ protected:
         ("sizerep", po::value<int>(&sizerep)->default_value(1),
             "generator : floe-size distribution. 1 = power law (exp, default, uses --alpha/--nbfpersize), "
             "2 = two sizes (R_max and R_max/1.4, ~half each), 3 = random (exponential).")
+        ("distrib", po::value<int>(&distrib)->default_value(0),
+            "generator : initial floe placement. 0 = scattered (uniform random, no central hole/ring, default), "
+            "1 = spiral (legacy, biggest at centre).")
         ("alpha,a", po::value<value_type>(&alpha), "generator : fractal dimension for the distribution power law.")
         ("nbfpersize", po::value<int>(&nbfpersize), "generator : number of floes per size for the distribution power law.")
 

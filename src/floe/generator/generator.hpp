@@ -26,6 +26,7 @@
 #include <ctime>
 #include <algorithm>
 #include <random>
+#include <unordered_map>
 #include "floe/utils/random.hpp"
 
 // assertion
@@ -165,7 +166,9 @@ Generator<TProblem>::random_floe_group(std::size_t n, real_type max_size, real_t
     result = std::max_element(std::begin(sizes), std::end(sizes));
     std::cout << "max diameter: " << *result << "\n";
     std::cout << "The size ratio is: " << *result/min_s << std::endl;
-    auto centers = spiral_distribution(sizes, max_size);
+    // Initial placement layout (CLI --distrib): 0 = uniform scatter (default), 1 = legacy spiral.
+    auto centers = (m_distrib == 1) ? spiral_distribution(sizes, max_size)
+                                    : scattered_distribution(sizes, max_size);
     auto generator = floe::random::get_uniquely_seeded_generator();
     std::uniform_int_distribution<int> distribution(0, m_biblio_size - 1);
     // unused pick to avoid first choice often being the same
@@ -265,6 +268,77 @@ Generator<TProblem>::two_sizes_repartition(std::size_t n, real_type R_max, real_
     if (!v.empty()) v[0] = R_max;                 // biggest first -> initially at center
     std::shuffle(v.begin() + 1, v.end(), g);
     return v;
+}
+
+/*! Uniform random scatter of overlap-free floes (stage A of pack prep). Unlike the spiral, it has no
+ *  radial bias, so after the convergent compaction there is no central hole nor edge ring to fix.
+ *  Algorithm: random sequential placement, biggest floes first (hardest to fit), rejecting any position
+ *  whose bounding disk overlaps an already-placed one; the search region (sized for a comfortable SEED
+ *  concentration) enlarges when a floe can't be placed, so late/over-crowded floes simply spill outside
+ *  the window — the convergent forcing (mode 2) then gathers them in. A spatial hash with per-floe
+ *  register/query radii keeps it O(N) despite the 100-200x size dispersity. */
+template<typename TProblem>
+std::vector<point_type>
+Generator<TProblem>::scattered_distribution(std::vector<real_type> const& sizes, real_type Rmax)
+{
+    const std::size_t n = sizes.size();
+    std::vector<point_type> centers(n);
+    if (n == 0) return centers;
+
+    real_type total_disk_area = 0;
+    for (auto s : sizes) total_disk_area += M_PI * s * s;
+    const real_type SEED_CONC = 0.45; // bounding-disk fill of the seed region (real floe fill is lower)
+    real_type half = 0.5 * std::sqrt(total_disk_area / SEED_CONC); // half-side of the square seed region
+
+    const real_type cell = std::max(Rmax / 4, std::numeric_limits<real_type>::min());
+    const real_type GAP = 1.02; // small no-overlap safety margin
+    std::unordered_map<long long, std::vector<std::size_t>> grid;
+    auto key = [](long long ix, long long iy) { return (ix + 2000000LL) * 4000000LL + (iy + 2000000LL); };
+    std::vector<point_type> pos(n);
+    std::vector<real_type> rad(n);
+
+    auto cells_radius = [&](real_type r) { return (long long)std::ceil(r / cell) + 1; };
+    auto overlaps = [&](point_type p, real_type r) -> bool {
+        const long long c = cells_radius(r);
+        const long long cx = (long long)std::floor(p.x / cell), cy = (long long)std::floor(p.y / cell);
+        for (long long ix = cx - c; ix <= cx + c; ++ix)
+            for (long long iy = cy - c; iy <= cy + c; ++iy) {
+                auto it = grid.find(key(ix, iy));
+                if (it == grid.end()) continue;
+                for (auto j : it->second) {
+                    const real_type dx = p.x - pos[j].x, dy = p.y - pos[j].y;
+                    const real_type rr = (r + rad[j]) * GAP;
+                    if (dx * dx + dy * dy < rr * rr) return true;
+                }
+            }
+        return false;
+    };
+    auto place = [&](std::size_t idx, point_type p, real_type r) {
+        pos[idx] = p; rad[idx] = r; centers[idx] = p;
+        const long long c = cells_radius(r);
+        const long long cx = (long long)std::floor(p.x / cell), cy = (long long)std::floor(p.y / cell);
+        for (long long ix = cx - c; ix <= cx + c; ++ix)
+            for (long long iy = cy - c; iy <= cy + c; ++iy)
+                grid[key(ix, iy)].push_back(idx);
+    };
+
+    std::vector<std::size_t> order(n);
+    for (std::size_t i = 0; i < n; ++i) order[i] = i;
+    std::sort(order.begin(), order.end(), [&](std::size_t a, std::size_t b) { return sizes[a] > sizes[b]; });
+
+    auto gen = floe::random::get_uniquely_seeded_generator();
+    for (std::size_t k = 0; k < n; ++k) {
+        const std::size_t i = order[k];
+        const real_type r = sizes[i];
+        real_type reach = half;
+        for (int attempt = 0; ; ++attempt) {
+            std::uniform_real_distribution<real_type> u(-reach, reach);
+            point_type p{ u(gen), u(gen) };
+            if (!overlaps(p, r)) { place(i, p, r); break; }
+            if ((attempt + 1) % 40 == 0) reach *= 1.08; // struggling: enlarge (floe spills outside window)
+        }
+    }
+    return centers;
 }
 
 template<typename TProblem>
