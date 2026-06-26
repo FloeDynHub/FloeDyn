@@ -72,8 +72,13 @@ private:
             // todo generator
         }
 
-        std::cout << "read TOPAZ" << std::endl;
-        P.load_matlab_topaz_data(this->vm["ffile"].as<string>()); // option is "ffile" (was a stale "fext")
+        // Forcing: mirror the sequential runner — NetCDF data for mode 9/9, Matlab/TOPAZ for mode 1,
+        // nothing otherwise (the old code loaded TOPAZ unconditionally from a non-existent "fext" option).
+        if (force_modes[0] == 9 && force_modes[1] == 9) {
+            P.get_dynamics_manager().get_external_forces().get_physical_data().load_nc_forcing_data(forcing_file_name);
+        } else if (force_modes[0] == 1 || force_modes[1] == 1) {
+            P.load_matlab_topaz_data(forcing_file_name);
+        }
         P.get_dynamics_manager().set_rand_speed_add(rand_speed_add);
         P.get_dynamics_manager().set_norm_rand_speed(rand_norm);
         P.get_dynamics_manager().get_external_forces().get_physical_data().set_modes(force_modes[0],force_modes[1]);
