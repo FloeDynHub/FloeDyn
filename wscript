@@ -302,23 +302,37 @@ def build(bld):
         print("compilation with LCP statistics storage.")
         opts["defines"].append('LCPSTATS')
     if "MPI" in bld.options.target:
-        opts["linkflags"].extend(["-lmpi"])
         opts["defines"].append('MPIRUN')
-        opts["cxxflags"].extend(subprocess.check_output(["mpicc", "--showme:compile"]).strip().split(b" "))
+        opts.setdefault("lib", [])
+        opts.setdefault("libpath", [])
+        opts["cxxflags"].extend(
+            subprocess.check_output(["mpicc", "--showme:compile"]).decode().split())
+        # MPI libs MUST be linked AFTER the objects: a recent ld defaults to --as-needed and drops a -lmpi
+        # placed before the object files (no MPI symbol required yet) -> undefined MPI_* / ompi_* at link
+        # (seen with gcc 14; the older gcc-11 ld did not). waf emits lib=/libpath= after the objects, so we
+        # route mpicc's link flags there (-L -> libpath, -l -> lib) instead of into linkflags.
+        for tok in subprocess.check_output(["mpicc", "--showme:link"]).decode().split():
+            if tok.startswith("-L"):
+                opts["libpath"].append(tok[2:])
+            elif tok.startswith("-l"):
+                opts["lib"].append(tok[2:])
+            else:
+                opts["linkflags"].append(tok)
+        if "mpi" not in opts["lib"]:
+            opts["lib"].append("mpi")
         # OpenMPI C++ bindings (MPI::Comm, MPI::Op, ...) live in libmpi_cxx, present on some installs
-        # (e.g. local OpenMPI 4.1) but absent from others (the compute cluster). Link -lmpi_cxx only if it
-        # actually links with the current mpicxx — safe failure mode: absent on the cluster -> not added.
+        # (e.g. local OpenMPI 4.1) but absent from others (the compute cluster / OpenMPI 5). Link it only
+        # if it actually links with the current mpicxx — safe failure mode: absent -> not added.
         try:
             probe = subprocess.run("echo 'int main(){}' | mpicxx -x c++ - -lmpi_cxx -o /dev/null",
                                    shell=True, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
             if probe.returncode == 0:
-                opts["linkflags"].append("-lmpi_cxx")
+                opts["lib"].append("mpi_cxx")
                 print("MPI: libmpi_cxx detected -> linking the OpenMPI C++ bindings.")
             else:
                 print("MPI: libmpi_cxx not linkable here -> skipping -lmpi_cxx (cluster-style build).")
         except Exception:
             pass
-        opts["linkflags"].extend(subprocess.check_output(["mpicc", "--showme:link"]).strip().split(b" "))
     if bld.options.target in ["FLOE", "FLOE_PBC", "FLOE_MPI", "FLOE_MPI_PBC"]:
         opts["source"] = [f"product/FLOE.cpp"] + recursive_file_finder("src/floe", "*.cpp")
         opts["target"] = bld.options.target
