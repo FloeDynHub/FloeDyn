@@ -77,8 +77,11 @@ private:
     void random_floe_group(std::size_t n, real_type max_size, real_type min_size);
     //! Spiral dispatcher (biggest at centre, spiralling out)
     std::vector<point_type> spiral_distribution(std::vector<real_type> const& size_distribution, real_type Rmax);
-    //! Uniform random (overlap-free) scatter: no spiral => no central hole / ring after compaction
-    std::vector<point_type> scattered_distribution(std::vector<real_type> const& size_distribution, real_type Rmax);
+    //! Uniform random (overlap-free) scatter: no spiral => no central hole / ring after compaction.
+    //! circum_factor = library's max circumscribed-radius / nominal-size, so the bounding disks cover the
+    //! real (off-round) floe extent whatever shape each floe later draws.
+    std::vector<point_type> scattered_distribution(std::vector<real_type> const& size_distribution, real_type Rmax,
+        real_type circum_factor = 1);
 
     void load_biblio_floe(std::string filename);     //!< dispatches on extension (.h5 vs .mat)
     void load_biblio_floe_h5(std::string filename);  //!< HDF5 library loader (see make_biblio_h5.py)

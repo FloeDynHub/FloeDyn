@@ -166,9 +166,17 @@ Generator<TProblem>::random_floe_group(std::size_t n, real_type max_size, real_t
     result = std::max_element(std::begin(sizes), std::end(sizes));
     std::cout << "max diameter: " << *result << "\n";
     std::cout << "The size ratio is: " << *result/min_s << std::endl;
+    // Largest circumscribed radius (about the centroid) over the library, per unit nominal size: shapes in
+    // m_biblio_floe_h are already recentred on their mass centre (generate_meshes) and normalized ~unit, so
+    // a floe scaled by sizes[i] has true circumradius <= circum_factor * sizes[i]. scattered_distribution
+    // bounds every floe by this max (each draws a random shape only afterwards) to stay overlap-free.
+    real_type circum_factor = 1;
+    for (auto const& s : m_biblio_floe_h)
+        for (auto const& p : s.outer())
+            circum_factor = std::max(circum_factor, std::sqrt(p.x * p.x + p.y * p.y));
     // Initial placement layout (CLI --distrib): 0 = uniform scatter (default), 1 = legacy spiral.
     auto centers = (m_distrib == 1) ? spiral_distribution(sizes, max_size)
-                                    : scattered_distribution(sizes, max_size);
+                                    : scattered_distribution(sizes, max_size, circum_factor);
     auto generator = floe::random::get_uniquely_seeded_generator();
     std::uniform_int_distribution<int> distribution(0, m_biblio_size - 1);
     // unused pick to avoid first choice often being the same
@@ -279,18 +287,23 @@ Generator<TProblem>::two_sizes_repartition(std::size_t n, real_type R_max, real_
  *  register/query radii keeps it O(N) despite the 100-200x size dispersity. */
 template<typename TProblem>
 std::vector<point_type>
-Generator<TProblem>::scattered_distribution(std::vector<real_type> const& sizes, real_type Rmax)
+Generator<TProblem>::scattered_distribution(std::vector<real_type> const& sizes, real_type Rmax,
+    real_type circum_factor)
 {
     const std::size_t n = sizes.size();
     std::vector<point_type> centers(n);
     if (n == 0) return centers;
 
+    // Bound each floe by its CIRCUMSCRIBED disk (circum_factor * nominal size): the nominal size is the
+    // 1/Rmin normalization, but the real recentred shape extends up to circum_factor times that, so a disk
+    // of radius = size alone underestimates the floe and lets neighbours interpenetrate (seen with
+    // --nbfpersize > 1, where bigger floes make the overlap large enough to fire an INTER at t=0).
     real_type total_disk_area = 0;
-    for (auto s : sizes) total_disk_area += M_PI * s * s;
+    for (auto s : sizes) total_disk_area += M_PI * (circum_factor * s) * (circum_factor * s);
     const real_type SEED_CONC = 0.45; // bounding-disk fill of the seed region (real floe fill is lower)
     real_type half = 0.5 * std::sqrt(total_disk_area / SEED_CONC); // half-side of the square seed region
 
-    const real_type cell = std::max(Rmax / 4, std::numeric_limits<real_type>::min());
+    const real_type cell = std::max(circum_factor * Rmax / 4, std::numeric_limits<real_type>::min());
     const real_type GAP = 1.02; // small no-overlap safety margin
     std::unordered_map<long long, std::vector<std::size_t>> grid;
     auto key = [](long long ix, long long iy) { return (ix + 2000000LL) * 4000000LL + (iy + 2000000LL); };
@@ -329,7 +342,7 @@ Generator<TProblem>::scattered_distribution(std::vector<real_type> const& sizes,
     auto gen = floe::random::get_uniquely_seeded_generator();
     for (std::size_t k = 0; k < n; ++k) {
         const std::size_t i = order[k];
-        const real_type r = sizes[i];
+        const real_type r = circum_factor * sizes[i]; // circumscribed bounding radius (see above)
         real_type reach = half;
         for (int attempt = 0; ; ++attempt) {
             std::uniform_real_distribution<real_type> u(-reach, reach);
