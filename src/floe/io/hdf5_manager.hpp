@@ -623,9 +623,10 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::write_window(){
 };
 
 template <typename TFloeGroup, typename TDynamicsMgr>
-void HDF5Manager<TFloeGroup, TDynamicsMgr>::make_input_file(const dynamics_mgr_type& dynamics_manager){
+std::string HDF5Manager<TFloeGroup, TDynamicsMgr>::make_input_file(const dynamics_mgr_type& dynamics_manager){
+    std::string input_file_name; // the written input path, returned to the caller (empty on failure)
     try
-    {   
+    {
         // Prepare manager for writting an input file
         flush();
         save_step(0, dynamics_manager);
@@ -641,6 +642,7 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::make_input_file(const dynamics_mgr_t
         int conc = round(m_floe_group->initial_concentration() * 100);
         m_out_file_name = "io/inputs/in_" + std::to_string(nb_floe)
             + "f_" + std::to_string(conc) + "p_" + floe::random::gen_random(5) + ".h5";
+        input_file_name = m_out_file_name;
         const H5std_string  FILE_NAME( m_out_file_name );
 
         m_out_file = new H5File( FILE_NAME.c_str(), H5F_ACC_TRUNC );
@@ -650,6 +652,11 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::make_input_file(const dynamics_mgr_t
         write_window();
         write_states();
 
+        // Close the "floe_shapes" group BEFORE the file: leaving this member handle open kept H5Fclose
+        // from fully finalizing the file, so a reader in the SAME process group (e.g. an MPI worker right
+        // after the master generated the pack) saw an incomplete file ("bad object header"). In sequential
+        // use it was masked because the file gets finalized at process exit.
+        delete m_shapes_group; m_shapes_group = nullptr;
         // Close the file after each flush to keep a valid ouput even if program crashes
         delete m_out_file;
         std::cout << m_out_file_name << " written" << std::endl;
@@ -680,6 +687,7 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::make_input_file(const dynamics_mgr_t
     {
         error.printErrorStack();
     }
+    return input_file_name;
 };
 
 

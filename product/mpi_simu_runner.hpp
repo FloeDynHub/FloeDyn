@@ -8,6 +8,7 @@
 #define PRODUCT_MPI_SIMU_RUNNER_HPP
 #include <mpi.h>
 #include <iostream>
+#include <cstdlib> // setenv
 #include "../product/simu_runner.hpp"
 
 namespace product {
@@ -18,7 +19,7 @@ public:
     MPISimuRunner( int argc, char* argv[] ) : SimuRunner(argc, argv) {}
 
     virtual int run() override {
-        if (this->vm.count("help")) {  
+        if (this->vm.count("help")) {
             cout << this->desc << "\n";
             return 0;
         }
@@ -57,10 +58,10 @@ private:
     template<typename TProblem>
     int run_problem(TProblem& P){
         P.QUIT = &QUIT;
-        bool generate_floes = false;
+        bool generate_floes = (input_file_name == "generator");
         if (!generate_floes){
             try {
-                P.load_config(this->vm["input"].as<string>());
+                P.load_config(input_file_name);
             }
             catch(std::exception& e)
             {
@@ -69,7 +70,36 @@ private:
             }
         }
         else {
-            // todo generator
+            // Only the MASTER generates the pack (sequentially, on a throwaway problem_type) and writes
+            // it to an input .h5; the path is broadcast so EVERY process load_config()s the same file —
+            // i.e. every rank holds the full floe geometries, exactly like a normal input run. (The
+            // generation itself isn't distributed yet; that's the next brick via InterProcessMessage.)
+            if (!vm.count("fmodes")) force_modes = {2, 0};
+            int rank; MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+            std::string fname;
+            if (rank == 0) {
+                problem_type genP(epsilon, OBL_status);
+                genP.QUIT = &QUIT;
+                genP.get_dynamics_manager().get_external_forces().set_O_latitude(O_latitude);
+                fname = this->run_generator(genP);
+            }
+            int len = (int)fname.size();
+            MPI_Bcast(&len, 1, MPI_INT, 0, MPI_COMM_WORLD); // workers block here until the master has written
+            if (len == 0) return 1; // generation failed on the master -> everyone aborts
+            fname.resize(len);
+            MPI_Bcast(&fname[0], len, MPI_CHAR, 0, MPI_COMM_WORLD);
+            // The file is written+closed by the master before the broadcasts above release the workers, so
+            // all ranks now load it concurrently, exactly like a normal multi-process input run.
+            try {
+                P.load_config(fname);
+            }
+            catch(std::exception& e)
+            {
+                handle_exception(e);
+                return 1;
+            }
+            input_file_name = fname; // from now on refer to the generated file, not the "generator" keyword
+                                     // (e.g. the h5_contains_floes_characs check before solve opens it)
         }
 
         // Forcing: mirror the sequential runner — NetCDF data for mode 9/9, Matlab/TOPAZ for mode 1,
@@ -83,7 +113,14 @@ private:
         P.get_dynamics_manager().set_norm_rand_speed(rand_norm);
         P.get_dynamics_manager().get_external_forces().get_physical_data().set_modes(force_modes[0],force_modes[1]);
         P.get_dynamics_manager().get_external_forces().get_physical_data().set_speeds(force_speeds[0],force_speeds[1]);
-        
+        // Honour --output in MPI (it was ignored, so the master kept its random default name). Only the
+        // master writes output, so set the name on rank 0 only; workers never write and don't need it.
+        {
+            int out_rank; MPI_Comm_rank(MPI_COMM_WORLD, &out_rank);
+            if (out_rank == 0 && !output_file_name.empty())
+                P.get_out_manager().set_out_file_name(output_file_name);
+        }
+
         #ifdef MULTIOUTPUT
             P.get_out_manager().set_size(nb_floe_select);
         #endif

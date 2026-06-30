@@ -64,8 +64,8 @@ public:
     //! Destructor
     ~HDF5Manager();
 
-    //! make input file from floe_group
-    void make_input_file(const dynamics_mgr_type& dynamics_manager);
+    //! make input file from floe_group; returns the written input path (empty on failure)
+    std::string make_input_file(const dynamics_mgr_type& dynamics_manager);
     //! Calls save_step() if this time needs to be saved
     void save_step_if_needed(real_type time, const dynamics_mgr_type&);
     //! Save the current simulation state for output

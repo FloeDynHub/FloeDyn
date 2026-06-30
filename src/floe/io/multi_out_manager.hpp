@@ -121,8 +121,8 @@ public:
     }
 
     //! make input file from floe_group
-    void make_input_file(const dynamics_manager_type& dynamics_manager){
-        this->m_out_managers[0].make_input_file(dynamics_manager);
+    std::string make_input_file(const dynamics_manager_type& dynamics_manager){
+        return this->m_out_managers[0].make_input_file(dynamics_manager);
     };
     //! Calls save_step() if this time needs to be saved
     void save_step_if_needed(real_type time, const dynamics_manager_type& dyn_mgr){

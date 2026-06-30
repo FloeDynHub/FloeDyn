@@ -86,62 +86,10 @@ public:
             }
         }
         else {
-            if (!vm.count("nbfloes") || !vm.count("concentration"))
-            {
-                cerr << "Error : Generator requires --nbfloes and --concentration options.\n";
-                return 1;
-            }
-            int nb_floes = vm["nbfloes"].as<int>();
-            double concentration = vm["concentration"].as<value_type>();
-            if (concentration <= 0 || concentration >= 1)
-            {
-                cerr << "Error : Generator constraint : 0 < concentration < 1.\n";
-                return 1;
-            }
-            generator_type G( alpha, nbfpersize );
-            G.set_exit_signal(&QUIT); // clean interrupt
-            G.set_biblio_path(biblio_path); // floe-shape library (--biblio; empty => generator default)
-            G.set_size_rep(sizerep);        // floe-size distribution (--sizerep)
-            G.set_distrib(distrib);         // initial placement layout (--distrib; 0=scattered, 1=spiral)
-            // OPTIMJAM on the GENERATION loop itself (the generator has its own collision manager,
-            // distinct from P's, and runs before P is configured below). The generated pack has no
-            // obstacles, so --jam_unanchored is required for the GS path to engage; --jam_forces 0 is
-            // natural here (generation only needs polygons to fit, no force chain).
-            if (optim_jam) {
-                G.get_lcp_manager().set_optim_jam(optim_jam);
-                G.get_lcp_manager().set_gs_freeze(jam_freeze);
-                G.get_lcp_manager().set_gs_warm_start(jam_warmstart);
-                G.get_lcp_manager().set_gs_probe_ring(jam_probe_ring);
-                G.get_lcp_manager().set_gs_contagion(jam_contagion);
-                G.get_lcp_manager().set_gs_compute_forces(jam_forces);
-                G.get_lcp_manager().set_gs_forces_max_iter(jam_frc_iter);
-                G.get_lcp_manager().set_gs_unanchored(jam_unanchored);
-                if (jam_params.size() >= 6)
-                    G.get_lcp_manager().set_gs_params((int)jam_params[0], (int)jam_params[1], jam_params[2],
-                                                      jam_params[3], (int)jam_params[4], (int)jam_params[5]);
-            }
-            // The GENERATION phase always uses the convergent-air forcing it requires (modes 2,0),
-            // regardless of --fmodes (which is reserved for the post-generation simulation below). The
-            // convergent speed defaults to 20 m/s but honours --fspeeds if given.
-            std::vector<int> gen_modes = {2, 0};
-            std::vector<value_type> gen_speeds = vm.count("fspeeds") ? force_speeds
-                                                                     : std::vector<value_type>{20, 0};
-            // If no --fmodes was given, the post-generation run also defaults to (2,0) so a plain
+            // If no --fmodes was given, the post-generation run defaults to convergent (2,0) so a plain
             // generation run doesn't try to load weather/TOPAZ forcing it doesn't need.
             if (!vm.count("fmodes")) force_modes = {2, 0};
-            // Force the generation output filename to "<output>_gen" so a UI can follow it.
-            if (!output_file_name.empty())
-                G.get_out_manager().set_out_file_name(output_file_name + "_gen");
-            G.generate_floe_set(nb_floes, concentration, max_size, min_size, gen_modes, gen_speeds);
-            P.set_floe_group(G.get_floe_group());
-            #ifdef PBC
-            auto win = P.get_floe_group().get_initial_window();
-            P.set_topology(topology_type(win[0], win[1], win[2], win[3]));
-            #endif
-            // randomize created floes' characteristics and create input file
-            P.get_floe_group().randomize_floes_thickness(random_thickness_coeff);
-            P.get_floe_group().randomize_floes_oceanic_skin_drag(random_oceanic_skin_drag_coeff);
-            P.make_input_file();
+            if (run_generator(P).empty()) return 1; // generate the pack into P + write the input file
         }
 
         if (force_modes[0] == 9 && force_modes[1] == 9) {
@@ -247,6 +195,62 @@ public:
         if (epsilon!=0.4) {std::cout << "Warning: the restitution coefficient is fixed to: " << epsilon << std::endl;}
         P.solve(endtime, default_time_step, out_time_step, true, fracture, melting);
         return 0;
+    }
+
+    //! Build an ice pack with the generator into P, write it to an input .h5, and return that path
+    //! (empty string on error). Shared by the sequential runner and the MPI runner (where the master
+    //! generates, then broadcasts the path so every process load_config()s the same file).
+    std::string run_generator(problem_type& P) {
+        if (!vm.count("nbfloes") || !vm.count("concentration")) {
+            cerr << "Error : Generator requires --nbfloes and --concentration options.\n";
+            return "";
+        }
+        int nb_floes = vm["nbfloes"].as<int>();
+        double concentration = vm["concentration"].as<value_type>();
+        if (concentration <= 0 || concentration >= 1) {
+            cerr << "Error : Generator constraint : 0 < concentration < 1.\n";
+            return "";
+        }
+        generator_type G( alpha, nbfpersize );
+        G.set_exit_signal(&QUIT); // clean interrupt
+        G.set_biblio_path(biblio_path); // floe-shape library (--biblio; empty => generator default)
+        G.set_size_rep(sizerep);        // floe-size distribution (--sizerep)
+        G.set_distrib(distrib);         // initial placement layout (--distrib; 0=scattered, 1=spiral)
+        // OPTIMJAM on the GENERATION loop itself (the generator has its own collision manager, distinct
+        // from P's). The generated pack has no obstacles, so --jam_unanchored is required for the GS path
+        // to engage; --jam_forces 0 is natural here (generation only needs polygons to fit, no force chain).
+        if (optim_jam) {
+            G.get_lcp_manager().set_optim_jam(optim_jam);
+            G.get_lcp_manager().set_gs_freeze(jam_freeze);
+            G.get_lcp_manager().set_gs_warm_start(jam_warmstart);
+            G.get_lcp_manager().set_gs_probe_ring(jam_probe_ring);
+            G.get_lcp_manager().set_gs_contagion(jam_contagion);
+            G.get_lcp_manager().set_gs_compute_forces(jam_forces);
+            G.get_lcp_manager().set_gs_forces_max_iter(jam_frc_iter);
+            G.get_lcp_manager().set_gs_unanchored(jam_unanchored);
+            if (jam_params.size() >= 6)
+                G.get_lcp_manager().set_gs_params((int)jam_params[0], (int)jam_params[1], jam_params[2],
+                                                  jam_params[3], (int)jam_params[4], (int)jam_params[5]);
+        }
+        // The GENERATION phase always uses the convergent-air forcing it requires (modes 2,0), regardless
+        // of --fmodes (reserved for the post-generation simulation). Convergent speed defaults to 20 m/s
+        // but honours --fspeeds if given.
+        std::vector<int> gen_modes = {2, 0};
+        std::vector<value_type> gen_speeds = vm.count("fspeeds") ? force_speeds
+                                                                 : std::vector<value_type>{20, 0};
+        // Force the generation output filename to "<output>_gen" so a UI can follow it.
+        if (!output_file_name.empty())
+            G.get_out_manager().set_out_file_name(output_file_name + "_gen");
+        G.generate_floe_set(nb_floes, concentration, max_size, min_size, gen_modes, gen_speeds);
+        P.set_floe_group(G.get_floe_group());
+        #ifdef PBC
+        auto win = P.get_floe_group().get_initial_window();
+        P.set_topology(topology_type(win[0], win[1], win[2], win[3]));
+        #endif
+        // randomize created floes' characteristics and write the input file (returns its path)
+        P.get_floe_group().randomize_floes_thickness(random_thickness_coeff);
+        P.get_floe_group().randomize_floes_oceanic_skin_drag(random_oceanic_skin_drag_coeff);
+        return P.make_input_file();
     }
 
 protected:

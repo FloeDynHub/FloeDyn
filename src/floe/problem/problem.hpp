@@ -83,7 +83,7 @@ public:
      * \return the floe concentration using FloeGroup::floe_concentration. (\f$ 0 <= \f$ floe concentration \f$ <= 1 \f$).
      */
     virtual real_type floe_concentration() { return m_floe_group.floe_concentration(); }
-    void make_input_file();
+    std::string make_input_file(); //!< returns the written input path (empty on failure)
     //! Access detector
     inline proximity_detector_type& proximity_detector() { return m_proximity_detector; }
     //! Initializing proximity detector with floe set
@@ -433,8 +433,8 @@ point_type PROBLEM::move_floe_group(){
 }
 
 TEMPLATE_PB
-void PROBLEM::make_input_file(){
-    m_out_manager.make_input_file(m_dynamics_manager);
+std::string PROBLEM::make_input_file(){
+    return m_out_manager.make_input_file(m_dynamics_manager);
 }
 
 }} // namespace floe::problem
