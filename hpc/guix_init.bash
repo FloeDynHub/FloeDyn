@@ -19,11 +19,11 @@ PROFILE="${GUIX_USER_PROFILE_DIR}/floe"
 guix time-machine -C "${HPC_DIR}/channels.scm" -- \
      package -p "${PROFILE}" -m "${HPC_DIR}/manifest_floedyn.scm"
 
-# Boost is currently NOT taken from Guix: FloeDyn wants Boost 1.72 (boost::geometry),
-# so we drop the manifest's boost and use a hand-built 1.72 from $HOME instead.
+# Boost is NOT taken from Guix (it's excluded from the manifest, so nothing to remove here — that keeps
+# this script idempotent: re-sourcing it creates no new profile generation when nothing changed).
+# FloeDyn wants Boost 1.72 (boost::geometry); we use a hand-built 1.72 from $HOME.
 # NOTE: this hand-built Boost is not in the repo -> not yet reproducible for others.
 # (Planned fix: take Boost from the pinned channel, or commit a build script.)
-guix remove -p "${PROFILE}" boost
 BOOST_ROOT="${BOOST_ROOT:-$HOME/install-gnu-4.7/boost_1_72}"
 export CFLAGS=-I${BOOST_ROOT}/include
 export LDFLAGS=-L${BOOST_ROOT}/lib
