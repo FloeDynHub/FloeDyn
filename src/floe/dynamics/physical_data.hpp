@@ -142,6 +142,9 @@ public:
             this->init_random_vortex();m_water_mode = 0;
             std::cout << "Storm defined as a wind vortex" << std::endl;
         }
+        else if ((m_air_mode==7 && m_water_mode==0) || (m_air_mode==0 && m_water_mode==7)) {
+            std::cout << "Time-increasing current (y_increasing)" << std::endl;
+        }
         else if (m_air_mode==9 && m_water_mode==9) {
             std::cout << "Inhomogeneous atmospheric and ocean forcing from NetCDF file" << std::endl;
         }
