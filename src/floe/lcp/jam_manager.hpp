@@ -81,6 +81,26 @@ public:
                       << " probe_K=" << m_gs_probe_K << std::endl;
     }
 
+    /*! No-progress TIME window (s) before freezing (CLI --jam_tstuck; 0 = legacy step-count criterion).
+     *  See the comment on m_gs_tstuck: makes the freeze a mean-speed threshold, invariant to the adaptive dt. */
+    inline void set_tstuck(real_type t) {
+        m_gs_tstuck = (t > 0) ? t : 0;
+        if (m_enabled) {
+            if (m_gs_tstuck > 0)
+                std::cout << "OPTIMJAM freeze criterion: TIME-based, window = " << m_gs_tstuck << " s" << std::endl;
+            else
+                std::cout << "OPTIMJAM freeze criterion: LEGACY step-count (stuck_N=" << m_gs_stuck_N << ")" << std::endl;
+        }
+    }
+
+    /*! Current simulated time, fed by the problem once per step (before contact solving). Drives the
+     *  time-based freeze criterion and the per-step dt used by the probe speed test. */
+    inline void set_current_time(real_type t) {
+        m_step_dt = (t > m_time_now) ? (t - m_time_now) : 0; // 0 on rewind (RECOVER) or repeated time
+        m_time_prev = m_time_now;
+        m_time_now = t;
+    }
+
     /*! Freeze the *move* of floes the temporal criterion detects as blocked (CLI --jam_freeze).
      *
      *  The GS solver gives the correct held contact forces but does not stop the floes from slowly
@@ -218,8 +238,18 @@ private:
     // net displacement stays below m_gs_eps*diameter for m_gs_stuck_N consecutive steps; every m_gs_probe_K
     // steps skip the freeze (staggered per floe) to let a released floe prove it can move again.
     real_type m_gs_eps{3e-4};                     //!< net-progress threshold, as a fraction of the floe diameter
-    int       m_gs_stuck_N{10};                   //!< consecutive no-progress steps before freezing
+    int       m_gs_stuck_N{10};                   //!< consecutive no-progress steps before freezing (legacy criterion, --jam_tstuck 0)
     int       m_gs_probe_K{10};                   //!< probe period: every K steps, release to retest mobility
+    // TIME-based freeze criterion (CLI --jam_tstuck, seconds; 0 = legacy step-count criterion). The step
+    // counter version froze arbitrarily under a collapsed adaptive dt (N tiny steps = almost no simulated
+    // time, so floes flowing at NORMAL speed could not cover eps*diam and got frozen "in flight" — visible
+    // as freeze flashes in --speedcolor videos). Counting simulated TIME makes the criterion a mean-speed
+    // threshold v < eps*diam/T, invariant to dt. Hard Zeno (time not advancing) stays covered by the
+    // EMERGENCY guard-rail, which is the safety net for that regime.
+    real_type m_gs_tstuck{600};                   //!< no-progress time window (s) before freezing (0 = use m_gs_stuck_N steps)
+    real_type m_time_now{0};                      //!< current simulated time (set by the problem each step)
+    real_type m_time_prev{0};                     //!< simulated time at the previous freeze decision
+    real_type m_step_dt{0};                       //!< time covered since the previous decision (0 on rewind/first step)
     int       m_probe_ring{0};                    //!< cluster-probe period (every R-th probe; 0 = off)
     bool      m_contagion{false};                 //!< contagion wake (movers wake their contact neighbours)
     bool      m_compute_forces{true};             //!< run the diagnostic forces pass (off = ~2x faster, no chain)
@@ -347,31 +377,68 @@ bool JamManager::try_solve_component(TSubgraph const& subgraph)
             if ( !floe->jam_tracked() ) // first observation: capture the reference, don't freeze
             {
                 floe->set_jam_ref_pos(cur);
+                floe->set_jam_ref_time(m_time_now);
+                floe->set_jam_prev_pos(cur);
                 floe->set_jam_tracked(true);
                 floe->set_jam_stuck_counter(0);
                 continue;
             }
+            const auto prev = floe->jam_prev_pos(); // position at the previous decision (probe speed test)
+            floe->set_jam_prev_pos(cur);
+            if ( floe->jam_ref_time() > m_time_now ) floe->set_jam_ref_time(m_time_now); // RECOVER rewound past the ref
             const auto ref = floe->jam_ref_pos();
             const real_type dx = cur.x - ref.x, dy = cur.y - ref.y;
             const real_type net_disp = std::sqrt(dx*dx + dy*dy);
             const real_type thresh = m_gs_eps * dbg_diam; // = m_gs_eps * max_diameter (already computed above)
             if ( thresh > 0 && net_disp / thresh > dbg_maxratio ) dbg_maxratio = net_disp / thresh; // DIAG
+            // Stuck = no net progress over the criterion window: a TIME window (jam_tstuck > 0, default —
+            // a mean-speed threshold invariant to the adaptive dt) or the legacy step count (jam_tstuck 0).
+            auto is_stuck = [&]() {
+                return (m_gs_tstuck > 0) ? (m_time_now - floe->jam_ref_time() >= m_gs_tstuck)
+                                         : (floe->jam_stuck_counter() >= m_gs_stuck_N);
+            };
             if ( net_disp > thresh ) // genuine net progress -> moving
             {
-                if ( floe->jam_stuck_counter() >= m_gs_stuck_N ) ++released; // a stuck floe escaped
+                if ( is_stuck() ) ++released; // a stuck floe escaped
                 floe->set_jam_ref_pos(cur);
+                floe->set_jam_ref_time(m_time_now);
                 floe->set_jam_stuck_counter(0);
                 ++dbg_reset; // DIAG
                 if ( m_contagion ) movers.push_back(v);
                 continue;
             }
-            const int cnt = floe->jam_stuck_counter() + 1; // no net progress this step
+            const int cnt_prev = floe->jam_stuck_counter(); // value from the previous decision (its probe pattern)
+            const int cnt = cnt_prev + 1;                   // no net progress this step
             floe->set_jam_stuck_counter(cnt);
             if ( cnt > dbg_maxcnt ) dbg_maxcnt = cnt; // DIAG
+            const bool stuck = is_stuck();
+            // Probe SPEED release (time criterion only): a floe frozen during a small-dt episode could only
+            // be released by crossing eps*diam in ONE probed step — impossible while dt stays small, so it
+            // stayed hostage of the small-dt regime (freezes lasting ~hours seen on --speedcolor videos).
+            // Instead, if the floe was probed at the previous decision (left mobile) and its one-step mean
+            // speed exceeds the criterion speed eps*diam/T, it is provably moving -> release it now.
+            // Rattlers (oscillation without net progress) only reach that speed at healthy dt, where they
+            // are re-caught by the net-progress test within one window.
+            if ( m_gs_tstuck > 0 && stuck && m_step_dt > 0
+                 && ( (cnt_prev + (int)v) % m_gs_probe_K == 0 ) ) // it was probed at the previous decision
+            {
+                const real_type sdx = cur.x - prev.x, sdy = cur.y - prev.y;
+                const real_type step_disp = std::sqrt(sdx*sdx + sdy*sdy);
+                if ( step_disp * m_gs_tstuck > thresh * m_step_dt ) // v_step > eps*diam/T
+                {
+                    ++released;
+                    floe->set_jam_ref_pos(cur);
+                    floe->set_jam_ref_time(m_time_now);
+                    floe->set_jam_stuck_counter(0);
+                    ++dbg_reset; // DIAG
+                    if ( m_contagion ) movers.push_back(v);
+                    continue;
+                }
+            }
             const bool probe = ( (cnt + (int)v) % m_gs_probe_K == 0 );
-            if ( cnt >= m_gs_stuck_N && probe ) ++probes; // left mobile: mobility re-test
-            if ( cnt >= m_gs_stuck_N && !probe ) would_freeze[v] = 1;
-            if ( m_probe_ring > 0 && cnt >= m_gs_stuck_N
+            if ( stuck && probe ) ++probes; // left mobile: mobility re-test
+            if ( stuck && !probe ) would_freeze[v] = 1;
+            if ( m_probe_ring > 0 && stuck
                  && ( (cnt + (int)v) % (m_gs_probe_K * m_probe_ring) == 0 ) )
                 ring_initiators.push_back(v); // its own probe fired too (K*R is a multiple of K)
         }
@@ -385,7 +452,8 @@ bool JamManager::try_solve_component(TSubgraph const& subgraph)
                 auto* nb = subgraph[w].floe;
                 if ( nb->is_obstacle() ) continue;
                 if ( would_freeze[w] && !exempt[w] ) { exempt[w] = 1; ++contagion_woken; }
-                if ( nb->jam_tracked() && nb->jam_stuck_counter() > 0 ) nb->set_jam_stuck_counter(0);
+                if ( nb->jam_tracked() && nb->jam_stuck_counter() > 0 )
+                    { nb->set_jam_stuck_counter(0); nb->set_jam_ref_time(m_time_now); } // fresh window (time criterion)
             }
         // Pass 3 — apply the freeze
         for ( std::size_t v = 0; v < nv; ++v )

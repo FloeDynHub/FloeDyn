@@ -134,6 +134,10 @@ public:
     inline void  set_jam_stuck_counter(int c)         const { m_jam_stuck_counter = c; }
     inline bool  jam_tracked()                        const { return m_jam_tracked; }
     inline void  set_jam_tracked(bool b)              const { m_jam_tracked = b; }
+    inline real_type jam_ref_time()                   const { return m_jam_ref_time; }
+    inline void  set_jam_ref_time(real_type t)        const { m_jam_ref_time = t; }
+    inline point_type const& jam_prev_pos()            const { return m_jam_prev_pos; }
+    inline void  set_jam_prev_pos(point_type const& p) const { m_jam_prev_pos = p; }
 
     //! Momentum constant
     inline real_type moment_cst()  const { return has_static_floe() ? ( m_floe->moment_cst() ) : -1; } // Better throw an exception ...
@@ -200,6 +204,8 @@ private:
     mutable point_type m_jam_ref_pos{0,0}; //!< reference position for the net-displacement test
     mutable int  m_jam_stuck_counter{0};   //!< consecutive GS steps with no net progress
     mutable bool m_jam_tracked{false};     //!< false until the reference position is first captured
+    mutable real_type m_jam_ref_time{0};   //!< sim time when the reference position was (re)set (time-based criterion)
+    mutable point_type m_jam_prev_pos{0,0};//!< position at the previous freeze decision (per-step speed test at probes)
 
     /*! keep track of recent collisions
      *  accumulate projected impulses on floe's boundary edges for discretized time

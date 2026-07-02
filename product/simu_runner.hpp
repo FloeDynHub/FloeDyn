@@ -110,6 +110,7 @@ public:
         if (jam_params.size() >= 6)
             P.get_lcp_manager().set_gs_params((int)jam_params[0], (int)jam_params[1], jam_params[2],
                                               jam_params[3], (int)jam_params[4], (int)jam_params[5]);
+        P.get_lcp_manager().set_gs_tstuck(jam_tstuck); // after set_gs_params (log shows the effective criterion)
         if (vortex_characs[0]>0) {
             P.get_dynamics_manager().get_external_forces().get_physical_data().set_nb_vortex(vortex_characs[0]);
            P.get_dynamics_manager().get_external_forces().get_physical_data().set_nbVortexByZone(vortex_characs[1]);
@@ -231,6 +232,7 @@ public:
             if (jam_params.size() >= 6)
                 G.get_lcp_manager().set_gs_params((int)jam_params[0], (int)jam_params[1], jam_params[2],
                                                   jam_params[3], (int)jam_params[4], (int)jam_params[5]);
+            G.get_lcp_manager().set_gs_tstuck(jam_tstuck);
         }
         // The GENERATION phase always uses the convergent-air forcing it requires (modes 2,0), regardless
         // of --fmodes (reserved for the post-generation simulation). Convergent speed defaults to 20 m/s
@@ -295,6 +297,7 @@ protected:
     bool                    jam_forces              = 1; //!< OPTIMJAM: compute the diagnostic forces pass (0 = ~2x faster, no chain)
     int                     jam_frc_iter            = 0; //!< OPTIMJAM: forces-pass sweep cap (0 = same as dynamics cap)
     bool                    jam_unanchored          = 0; //!< OPTIMJAM: route obstacle-free packs (generator); default off
+    value_type              jam_tstuck              = 600; //!< OPTIMJAM: no-progress TIME window (s) before freeze (0 = legacy step count)
     std::vector<value_type> jam_params              = std::vector<value_type>{50, 20000, 0.5, 3e-4, 10, 10}; //!< OPTIMJAM: [min_contacts, gs_max_iter, rel_speed_max, eps, stuck_N, probe_K] (validated set)
     bool                    rand_speed_add          = 1;
     value_type              rand_norm               = 1e-7;
@@ -448,6 +451,12 @@ protected:
             "(physical sims). Set 1 to also route large quasi-static OBSTACLE-FREE packs — needed for the "
             "ice-pack GENERATOR, where the convergent forcing confines the floes (no walls). Pair with "
             "--jam_forces 0 for generation.\n")
+        ("jam_tstuck", po::value<value_type>(&jam_tstuck)->default_value(600),
+            "OPTIMJAM: no-progress TIME window in SIMULATED seconds before freezing a floe (default 600). "
+            "A floe is frozen when it fails to cover eps*diameter within this window, i.e. its mean speed "
+            "stays below eps*diameter/T — invariant to the adaptive dt (the legacy step-count criterion "
+            "froze floes flowing at normal speed whenever dt collapsed). Set 0 to fall back to the legacy "
+            "stuck_N step-count criterion (A/B comparisons).\n")
         ("jam_params", po::value< std::vector<value_type> >(&jam_params)->multitoken(),
             "OPTIMJAM tuning, 6 values [min_contacts gs_max_iter rel_speed_max eps stuck_N probe_K]\n"
             "(defaults are the validated set 50 20000 0.5 3e-4 10 10):\n"

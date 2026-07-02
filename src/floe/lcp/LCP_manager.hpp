@@ -86,6 +86,8 @@ public:
     inline void set_gs_compute_forces(bool v) { m_jam.set_compute_forces(v); }
     inline void set_gs_forces_max_iter(int n) { m_jam.set_forces_max_iter(n); }
     inline void set_gs_unanchored(bool v) { m_jam.set_allow_unanchored(v); }
+    inline void set_gs_tstuck(real_type t) { m_jam.set_tstuck(t); }
+    inline void set_current_time(real_type t) { m_jam.set_current_time(t); }
     inline void notify_recover(real_type time) { m_jam.notify_recover(time); }
 
     //! Solve collision represented by a contact graph
@@ -145,6 +147,8 @@ int LCPManager<T>::solve_contacts(TContactGraph& contact_graph, real_type time, 
     int nb_lcp_failed_stats[3]={0,0,0};
 
     // OPTIMJAM: rotate the warm-start caches and tick the anti-cycle emergency window, once per step.
+    // Also feed the simulated time: the freeze criterion is a TIME window (see jam_manager set_tstuck).
+    m_jam.set_current_time(time);
     m_jam.begin_step();
 
     const std::size_t limit_sup_loop_cnt    = 800;//5000; // from Quentin: 1000
