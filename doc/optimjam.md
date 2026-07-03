@@ -12,7 +12,8 @@
 > l'amas voit comme des murs, résout le mouvement autour, et re-teste périodiquement leur mobilité.
 > Les **forces**, elles, sont toujours calculées sur le système physique complet.
 
-Activation : `--optim_jam 1 --jam_freeze 1` (les défauts correspondent au jeu de paramètres validé).
+Activation : `--optim_jam 1` — **tous les autres défauts sont le jeu validé** (gel on, warm-start on,
+sonde collective ring 5, critère temporel 600 s, passe forces on) ; les flags ne servent qu'aux études A/B.
 Avec `--optim_jam 0` (défaut), le comportement est **strictement identique à la baseline**.
 
 ---
@@ -209,11 +210,12 @@ contre du progrès, jamais de la validité.
 | `gs_max_iter` (20000) | plafond de sweeps (quasi gratuit grâce au warm-start) | meilleure convergence des chaînes de forces | chaînes tronquées → scintillement des impulsions |
 | `rel_speed_max` (0.5 m/s) | porte quasi-statique du routage (vitesse d'*approche* aux contacts, le seul seuil dimensionné) | route des chocs que Lemke devrait traiter | les jams qui grincent restent sur Lemke |
 | `eps` (3e-4) | seuil de progrès net, fraction du diamètre | gèle du mouvement lent légitime | le fluage passe sous le seuil → Zeno revient |
-| `N` (10) | pas consécutifs sans progrès avant gel | plus fidèle, réagit plus lentement au blocage | gèle sur un creux transitoire |
+| `N` (10) | pas consécutifs sans progrès avant gel (**critère hérité**, actif seulement si `--jam_tstuck 0`) | plus fidèle, réagit plus lentement au blocage | gèle sur un creux transitoire |
 | `K` (10) | période de sonde (release) | pack sur-figé, dégels tardifs | dégels réactifs (quasi gratuit depuis le solve cohérent) ; un peu plus de mobiles par pas |
+| `--jam_tstuck T` (600 s) | fenêtre de TEMPS simulé sans progrès avant gel = seuil de vitesse moyenne `eps·diam/T`, **invariant au dt adaptatif** (l'ancien critère à N pas gelait des floes en écoulement normal dès que dt s'effondrait — flashes de gel sur les vidéos --speedcolor). La sonde libère immédiatement un floe dont la vitesse du pas dépasse ce seuil. `0` = critère hérité à N pas (A/B) | T↑ : seuil de vitesse plus bas → le fluage réel peut passer dessous (Zeno) | T↓ : seuil plus haut → re-gèle de l'écoulement lent légitime |
 | `--jam_freeze` (1) | 0 = GS seul, sans gel | — | pour comparer ; GS seul = Zeno garanti |
 | `--jam_warmstart` (1) | 0 = cold start | — | pour mesurer le gain (~×10 sur le solve) |
-| `--jam_probe_ring R` (0=off) | sonde collective : toutes les R sondes d'un floe coincé, exempte aussi ses voisins de contact (test du mode charnière) | sondes collectives plus rares | plus fréquentes (R=3-5) : casse les arches collectivement instables que les sondes individuelles maintenaient |
+| `--jam_probe_ring R` (5) | sonde collective : toutes les R sondes d'un floe coincé, exempte aussi ses voisins de contact (test du mode charnière). Défaut 5 = réglage validé par l'arch-lab ; 0 = off | sondes collectives plus rares (le biais de sur-stabilité collective revient) | plus fréquentes (R=3) : dégels collectifs plus réactifs |
 | `--jam_contagion` (0) | un floe qui bouge vraiment réveille ses voisins (cascade à vitesse physique) | — | 1 = cascades de release plus vives |
 | `--jam_forces` (1) | calcule la passe forces (chaîne de forces : fracture + viz) | — | **0 = ~2× plus rapide**, dynamique identique, mais aucune force enregistrée dans les jams — pour études vitesses (temps de jamming) |
 | `--jam_frc_iter N` (0) | plafond de sweeps séparé pour la passe forces (0 = comme gs_max_iter) | — | abaisser (~5000) si on veut la chaîne mais plus vite : la passe forces, diagnostique, tolère un plafond bas |

@@ -292,7 +292,7 @@ protected:
     bool                    optim_jam               = 0; //!< OPTIMJAM: enable the Gauss-Seidel path
     bool                    jam_freeze              = 1; //!< OPTIMJAM: freeze the move of GS-confirmed held components
     bool                    jam_warmstart           = 1; //!< OPTIMJAM: warm-start the Gauss-Seidel solver across steps
-    int                     jam_probe_ring          = 0; //!< OPTIMJAM: cluster-probe period (0 = off)
+    int                     jam_probe_ring          = 5; //!< OPTIMJAM: cluster-probe period (0 = off; default 5, the arch-lab-validated setting)
     bool                    jam_contagion           = 0; //!< OPTIMJAM: contagion wake (movers wake their neighbours)
     bool                    jam_forces              = 1; //!< OPTIMJAM: compute the diagnostic forces pass (0 = ~2x faster, no chain)
     int                     jam_frc_iter            = 0; //!< OPTIMJAM: forces-pass sweep cap (0 = same as dynamics cap)
@@ -428,12 +428,13 @@ protected:
             "OPTIMJAM: 1 (default) to warm-start the Gauss-Seidel solver from the previous step's contact "
             "impulses (a held jam barely changes step to step, so it resumes near-converged and needs far "
             "fewer sweeps). Set 0 for a cold start each step (to measure the warm-start speed-up).\n")
-        ("jam_probe_ring", po::value<int>(&jam_probe_ring)->default_value(0),
-            "OPTIMJAM cluster probe (0 = off, default): every R-th probe of a stuck floe also exempts its "
-            "contact neighbours from freezing, testing the cluster TOGETHER. Fixes the collective-lock bias "
-            "(per-floe probes cannot detect hinge-mode arch instability; the arch lab showed clogging "
-            "statistics were set by the knobs instead of the physics). A mechanically stable cluster yields "
-            "v~0 for all (costless); an unstable arch dies at its physical time. Try R=3..5.\n")
+        ("jam_probe_ring", po::value<int>(&jam_probe_ring)->default_value(5),
+            "OPTIMJAM cluster probe (default 5, the validated setting; 0 = off): every R-th probe of a "
+            "stuck floe also exempts its contact neighbours from freezing, testing the cluster TOGETHER. "
+            "Fixes the collective-lock bias (per-floe probes cannot detect hinge-mode arch instability; the "
+            "arch lab showed clogging statistics were set by the knobs instead of the physics). A "
+            "mechanically stable cluster yields v~0 for all (costless); an unstable arch dies at its "
+            "physical time.\n")
         ("jam_contagion", po::value<bool>(&jam_contagion)->default_value(false),
             "OPTIMJAM contagion wake (0 = off, default): a floe that genuinely moved wakes its contact "
             "neighbours (freeze exemption + counter reset), so release cascades propagate at physical speed "
