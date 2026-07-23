@@ -14,6 +14,10 @@ COPY --chmod=777 ./install/hdf5.sh ./install/hdf5-1.14.2.tar.gz ./deps/
 RUN ./deps/hdf5.sh
 COPY --chmod=777 ./install/boost.sh ./deps/
 RUN ./deps/boost.sh
+# Bullseye EOL: point to archive, drop security repo (not mirrored there)
+RUN sed -i 's/deb.debian.org/archive.debian.org/g' /etc/apt/sources.list \
+    && sed -i '/bullseye-security/d' /etc/apt/sources.list \
+    && echo 'Acquire::Check-Valid-Until "false";' > /etc/apt/apt.conf.d/99no-check-valid-until
 RUN apt-get update && apt-get install libcgal-dev -y
 COPY --chmod=777 ./install/cereal.sh ./deps/
 RUN ./deps/cereal.sh
