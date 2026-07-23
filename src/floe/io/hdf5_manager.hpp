@@ -9,6 +9,8 @@
 
 #include "floe/io/hdf5_manager.h"
 #include "floe/utils/random.hpp"
+#include <cmath>
+#include <stdexcept>
 
 namespace floe { namespace io
 {
@@ -458,11 +460,16 @@ double HDF5Manager<TFloeGroup, TDynamicsMgr>::recover_states(
     * Read data from the file
     */
     time_dataset.read( data_time.data(), PredType::NATIVE_DOUBLE, time_memspace, time_dataspace );
-    // find time index to read
+    // Find the snapshot to restart from: the LAST one with time <= requested time (a small relative
+    // tolerance absorbs float accumulation). The historical strict '<' scan missed a snapshot lying
+    // exactly at the requested time — e.g. -r 2400 on a file ending at t=2400 restarted from t=2100
+    // and silently disabled the continue-into-recover-file mode below (the "prolong a simulation"
+    // feature), leaving the output on its previous name — or worse, TRUNCATING the recover file when
+    // --output pointed to it. It also read one element past the end of data_time.
+    const real_type t_tol = 1e-9 * std::max<real_type>(real_type(1), std::abs(time));
     hsize_t i = 0;
-    while (data_time[i] < time && i < dims_out[0])
+    while (i + 1 < dims_out[0] && data_time[i + 1] <= time + t_tol)
         ++i;
-    --i;
 
 
     {
@@ -540,10 +547,27 @@ double HDF5Manager<TFloeGroup, TDynamicsMgr>::recover_states(
 
     }
 
-    if (keep_as_outfile and i + 1 == dims_out[0]){
-        // We keep recover file as output file
-        m_step_count = i + 1;
-        m_out_file_name = filename;
+    if (keep_as_outfile) {
+        if (i + 1 == dims_out[0]) {
+            // Restarting from the LAST snapshot: continue INTO the recovered file (new states are
+            // appended after snapshot i) — this is the "prolong a simulation" feature.
+            m_step_count = i + 1;
+            m_out_file_name = filename;
+            std::cout << "RECOVER: restart from t=" << data_time[i]
+                      << " (last snapshot) -> continuing into " << filename << std::endl;
+        } else {
+            // Mid-file restart: the recover file is left untouched, output goes elsewhere. Refuse to
+            // proceed if the output name IS the recover file: the first flush would TRUNCATE it and
+            // destroy the very history the user is restarting from.
+            std::cout << "RECOVER: restart from t=" << data_time[i] << " (snapshot " << (i + 1)
+                      << "/" << dims_out[0] << ", not the last) -> recover file left untouched, "
+                      << "output goes to " << m_out_file_name << std::endl;
+            if (m_out_file_name == std::string(filename))
+                throw std::runtime_error(
+                    "recover: --output points to the recover file, but the restart is not at its last "
+                    "snapshot: writing would destroy the recovered history. Restart at the last snapshot "
+                    "(or beyond) to extend the file, or choose a different --output.");
+        }
     }
 
     return data_time[i];

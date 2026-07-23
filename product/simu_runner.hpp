@@ -135,7 +135,14 @@ public:
 
         if (vm.count("rectime"))
         {
-            P.recover_states_from_file(vm["recfile"].as<string>(), vm["rectime"].as<value_type>());
+            try {
+                P.recover_states_from_file(vm["recfile"].as<string>(), vm["rectime"].as<value_type>());
+            }
+            catch(std::exception& e) // e.g. refusing to truncate the recover file (see hdf5 recover_states)
+            {
+                handle_exception(e);
+                return 1;
+            }
 
             //!< \remark    useful for taking over the generation of floe packs. 
             //!< /warning   no suitable with the following "P.get_floe_group()" and "P.solve" yet.
