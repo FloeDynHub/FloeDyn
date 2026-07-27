@@ -29,7 +29,7 @@ struct radius_type < circle_tag, Circle >
 };
 
 template < typename Circle, std::size_t Dimension >
-struct radius_access < circle_tag, Circle, Dimension, boost::false_type >
+struct radius_access < circle_tag, Circle, Dimension, std::false_type >
     : detail::radius_access<circle_tag, Circle, Dimension>
 {
     BOOST_STATIC_ASSERT(Dimension < 2);

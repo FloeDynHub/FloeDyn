@@ -1,5 +1,5 @@
 # pull official base image
-FROM gcc:11-bullseye
+FROM gcc:12-bookworm
 
 
 # Create code dir
@@ -14,17 +14,15 @@ COPY --chmod=777 ./install/hdf5.sh ./install/hdf5-1.14.2.tar.gz ./deps/
 RUN ./deps/hdf5.sh
 COPY --chmod=777 ./install/boost.sh ./deps/
 RUN ./deps/boost.sh
-# Bullseye EOL: point to archive, drop security repo (not mirrored there)
-RUN sed -i 's/deb.debian.org/archive.debian.org/g' /etc/apt/sources.list \
-    && sed -i '/bullseye-security/d' /etc/apt/sources.list \
-    && echo 'Acquire::Check-Valid-Until "false";' > /etc/apt/apt.conf.d/99no-check-valid-until
+# Update dynamic linker cache so /usr/local/lib libs (matio, hdf5, boost) are found at runtime
+RUN ldconfig
 RUN apt-get update && apt-get install libcgal-dev -y
 COPY --chmod=777 ./install/cereal.sh ./deps/
 RUN ./deps/cereal.sh
 COPY --chmod=777 ./install/eigen.sh ./deps/
 RUN ./deps/eigen.sh
 # Fix for gfortran not found when installing openmpi
-RUN ln -s /usr/bin/gfortran-10 /usr/bin/gfortran
+RUN ln -s /usr/bin/gfortran-12 /usr/bin/gfortran
 RUN apt-get install -y libopenmpi-dev openmpi-bin
 
 RUN apt install openssh-server -y
@@ -42,7 +40,7 @@ RUN service ssh start
 # Install visu dependencies
 RUN apt-get install python3-pip -y
 COPY requirements.txt .
-RUN pip install -r requirements.txt
+RUN pip install -r requirements.txt --break-system-packages
 RUN apt-get update \
  && apt-get install -y --no-install-recommends ffmpeg \
  && rm -rf /var/lib/apt/lists/*
