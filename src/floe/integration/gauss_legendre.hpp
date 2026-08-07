@@ -76,6 +76,15 @@ public :
             + weight[2] * f( p3[0], p3[1] )
         ;
     }
+
+    Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> pointsAndWeights()  
+    {
+        Eigen::Matrix<T, 3, 3> m;
+        m << p1[0], p1[1], weight[0],
+            p2[0], p2[1], weight[1],
+            p3[0], p3[1], weight[2];
+        return m;
+    }
 };
 
 template <typename T>

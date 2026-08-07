@@ -59,7 +59,7 @@ public:
         bool generate_floes = false;
         if (input_file_name == "generator") generate_floes = true; 
 
-        problem_type P(epsilon, OBL_status);
+        problem_type P(epsilon, OBL_status, export_mesh, use_predictor);
         P.QUIT = &QUIT;
         P.get_dynamics_manager().get_external_forces().set_O_latitude(O_latitude);
         if (!generate_floes){
@@ -201,7 +201,7 @@ public:
         P.get_floe_group().set_min_thickness(min_thickness);
         if (mu_static!=0.7) {std::cout << "Warning: the ice/ice static friction coefficient is fixed to: " << mu_static << std::endl;}
         if (epsilon!=0.4) {std::cout << "Warning: the restitution coefficient is fixed to: " << epsilon << std::endl;}
-        P.solve(endtime, default_time_step, out_time_step, true, fracture, melting);
+        P.solve(endtime, default_time_step, out_time_step, true, fracture, use_predictor, melting);
         return 0;
     }
 
@@ -295,6 +295,7 @@ protected:
     value_type              max_size                = 250;
     value_type              min_size                = 0;
     bool                    fracture                = 0;
+    bool                    use_predictor           = 0;
     bool                    melting                 = 0;
     bool                    optim_jam               = 0; //!< OPTIMJAM: enable the Gauss-Seidel path
     bool                    jam_freeze              = 1; //!< OPTIMJAM: freeze the move of GS-confirmed held components
@@ -306,6 +307,8 @@ protected:
     bool                    jam_unanchored          = 0; //!< OPTIMJAM: route obstacle-free packs (generator); default off
     value_type              jam_tstuck              = 600; //!< OPTIMJAM: no-progress TIME window (s) before freeze (0 = legacy step count)
     std::vector<value_type> jam_params              = std::vector<value_type>{50, 20000, 0.5, 3e-4, 10, 10}; //!< OPTIMJAM: [min_contacts, gs_max_iter, rel_speed_max, eps, stuck_N, probe_K] (validated set)
+    bool                    export_mesh             = 0; //!< export FEM mesh + per-element stress / per-node solution fields (fracture / VTK)
+
     bool                    rand_speed_add          = 1;
     value_type              rand_norm               = 1e-7;
     value_type              alpha                   = 1.5;
@@ -352,7 +355,15 @@ protected:
             "   or  air mode: 0     water mode: 4\n\n"
 
             "   Inhomogeneous forcing from a NetCDF file (requires --ffile): \n"
-            "       air mode: 9      water mode: 9\n\n")
+            "       air mode: 9      water mode: 9\n\n"
+
+            "   For the simulation of pressure imposed on a floe: \n"
+            "       air mode: 8      water mode: 0\n\n"
+
+            "   For rotating converging wind/current without physical sense (forcing the floes to gather to a particular location in spiral): \n"
+            "       air mode: 11     water mode: 0\n"
+            "       air mode: 0      water mode: 11\n"
+            "       air mode: 11     water mode: 11\n")
 
         ("fspeeds", po::value< std::vector<value_type> >(&force_speeds)->multitoken(), "forces speeds [air, water] (m/s).\n"
             "Possibilities: \n\n"
@@ -422,6 +433,8 @@ protected:
 
             "   4/ the distance of the first ring to the ice field origin (in [km]).\n")
         ("crack", po::value<bool>(&fracture), "1 to activate floe cracking model.\n")
+        ("use_predictor", po::value<bool>(&use_predictor), "1 to activate fast fracture predictor.\n")
+        ("exportmesh", po::value<bool>(&export_mesh), "1 to activate mesh export in the output file.\n")
         ("melting", po::value<bool>(&melting), "1 to activate floe melting model.\n")
         ("optim_jam", po::value<bool>(&optim_jam)->default_value(false),
             "1 to activate the Gauss-Seidel path: large anchored quasi-static contact components (dense "

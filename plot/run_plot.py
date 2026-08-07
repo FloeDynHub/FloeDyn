@@ -33,6 +33,8 @@ def run():
                              '(SIGKILL) in memory-limited containers.')
     parser.add_argument('-c', '--codec', dest="codec", default=None, help='Video codec')
     parser.add_argument('-a', '--axes', dest="static_axes", type=str, help='Initial Axes (xmin,xmax,ymin,ymax)', default=None)
+    parser.add_argument('--mesh', '-m', action="store_true", dest="disp_mesh", default=False, help='Display mesh')
+    # parser.add_argument('--colorby', '-C', dest="colorby", type=str, default='None', help='Displays mesh colored by specified data')
     parser.add_argument('-o', '--outname', dest="outname", help='Plot output filename to write (without extension, ex: my_name)')
     OPTIONS = parser.parse_args()
     if OPTIONS.static_axes:

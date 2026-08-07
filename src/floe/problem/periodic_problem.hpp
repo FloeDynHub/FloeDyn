@@ -44,7 +44,7 @@ public:
     using base_class = Problem<TFloeGroup, TProxymityDetector, TCollisionManager, TDynamicsManager, TDomain>;
 
     //! Default constructor
-    PeriodicProblem(real_type epsilon, int OBL_status) : base_class(epsilon, OBL_status) {}
+    PeriodicProblem(real_type epsilon, int OBL_status, bool export_mesh=false, bool use_predictor=false) : base_class(epsilon, OBL_status, export_mesh, use_predictor) {}
     //! Constructor from topology
     PeriodicProblem(TSpaceTopology& topology) : base_class(), m_space_topology{topology} {}
 

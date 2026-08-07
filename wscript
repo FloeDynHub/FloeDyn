@@ -53,7 +53,8 @@ def timeit(func):
 
 floedyn_deps = {
     'gmp' : ['gmp'],
-    'boost' : ['boost_system', 'boost_program_options'],
+    'boost' : ['boost_system', 'boost_program_options', 'boost_thread'],
+    # 'boost' : ['boost_program_options', 'boost_thread'],
     'eigen' : [], # header only
     'matio' : ['matio'],
     'hdf5'  : ['hdf5_cpp'],
@@ -138,7 +139,7 @@ def configure_package(conf, name, required_libs=None, includes_suffix=None):
 
 
 
-    
+
 def configure(conf):
     # Check waf version
     conf.check_waf_version(mini='1.8.8')
@@ -158,7 +159,7 @@ def configure(conf):
 
 
     conf.env.default_search_path = conf.options.default_search_path.split()
-    
+
     for dep in floedyn_deps:
         value = getattr(conf.options, dep,
                         conf.options.default_search_path)
@@ -184,7 +185,7 @@ def configure(conf):
     #'boost', ['boost_system', 'boost_program_options'])
     #configure_package(conf, 'matio',['matio'])
     #configure_package(conf, 'matio',['matio'])
-    
+
     # Boost setup
     #conf.load('find_boost', tooldir='.')
     # conf.env.BOOST = conf.env.default_search_path
@@ -241,7 +242,7 @@ def get_option_dict(debug=True):
     OPTION_DICT = {
         "includes": ['../src'
                     ], #+ [path for path in os.environ["PATH"].split(":") if not "bin" in path],
-        "lib": ['boost_system',
+        "lib": [#'boost_system',
                 'boost_program_options',
                 'matio',
                 "hdf5",
@@ -258,7 +259,9 @@ def get_option_dict(debug=True):
                 '-g',
                 '-std=c++14',
                  '-O0',
-                 "-Wall", #"-Wextra",
+                 # "-Wall", #"-Wextra",
+                 "-Wno-deprecated",
+                 "-Wno-enum-constexpr-conversion",
             ],
             "defines": []
         })
@@ -269,13 +272,16 @@ def get_option_dict(debug=True):
                 '-std=c++14',
                  "-O3",
                  # "-march=native", # g++ fails with this
-                 "-mtune=native",
-                 "-Wall", "-Wextra", #"-Wshadow",
-                 "-Wno-unused-parameter", "-Wno-unused-local-typedef",
-                 "-Wno-gnu-anonymous-struct", "-Wno-nested-anon-types", # floe/geometry/geometries/point.hpp
-                 "-Wno-redeclared-class-member",
-                 #"-isystem /usr/local/include/boost/",
-                 # "-pedantic"
+                #  "-mtune=native",
+                #  "-Wall", "-Wextra",
+                #  "-Wno-unused-parameter",
+                #  "-Wno-unused-local-typedef",
+                #  "-Wno-gnu-anonymous-struct", "-Wno-nested-anon-types", # floe/geometry/geometries/point.hpp
+                #  "-Wno-redeclared-class-member",
+                #  "-isystem /usr/local/include/boost/",
+                "-Wno-deprecated",
+                "-Wno-enum-constexpr-conversion",
+                 # "-pedantic",
              ],
             "defines": ["NDEBUG"]
         })
@@ -289,9 +295,13 @@ import subprocess
 def build(bld):
     opts = get_option_dict(bld.options.debug)
     opts['use']= []
+    opts["rpath"] = []
     bld.options.install_path = '${PREFIX}'
     for dep in floedyn_deps:
         opts['use'].append(dep.upper())
+    for dep in floedyn_deps:
+        libpaths = getattr(bld.env, 'LIBPATH_' + dep.upper(), [])
+        opts["rpath"].extend(libpaths)
     if bld.options.omp:
         opts["linkflags"].append("-fopenmp")
         opts["cxxflags"].append("-fopenmp")
@@ -354,7 +364,7 @@ def build(bld):
         bld.program(**opts)
     else:
         print("Nothing to build.")
-  
+
 def forward_options(opt_list, options):
     def my_str(var):
         return " " + var if isinstance(var, basestring) else ""
@@ -378,4 +388,3 @@ def TEST(ctx):
     ctx.exec_command('./waf build --target TEST {}'.format(
         forward_options(["omp", "name", "debug"], ctx.options)))
     print("to run the test : ./build/%s <args>" % TEST_target)
-

@@ -44,28 +44,28 @@ public:
     MPIWorkerProblem(real_type epsilon, int OBL_status) : base_class(epsilon, OBL_status), m_terminate{false} {}
 
     //! Solver of the problem (main method)
-    virtual void solve(real_type end_time, real_type dt_default, real_type out_step = 0, bool reset = true, bool fracture = false, bool melting = false) override;
+    virtual void solve(real_type end_time, real_type dt_default, real_type out_step = 0, bool reset = true, bool fracture = false, bool use_predictor = false, bool melting = false) override;
 
 private:
     bool m_terminate;
     //! Move one time step forward
-    virtual void step_solve(bool crack = false) override;
+    virtual void step_solve(bool crack = false, bool use_predictor = false) override;
     message_type receive_request();
     void send_response(message_type&, message_type&);
 };
 
 
 template<typename TProblem>
-void MPIWorkerProblem<TProblem>::solve(real_type end_time, real_type dt_default, real_type out_step, bool reset, bool fracture, bool melting) {
+void MPIWorkerProblem<TProblem>::solve(real_type end_time, real_type dt_default, real_type out_step, bool reset, bool fracture, bool use_predictor, bool melting) {
     if (reset) this->create_optim_vars();
     while (!m_terminate)
     {
-        step_solve();
+        step_solve(fracture, use_predictor);
     }
 }
 
 template<typename TProblem>
-void MPIWorkerProblem<TProblem>::step_solve(bool crack){
+void MPIWorkerProblem<TProblem>::step_solve(bool crack, bool use_predictor){
     // auto t_start = std::chrono::high_resolution_clock::now();
     message_type request = receive_request();
     // auto t_1 = std::chrono::high_resolution_clock::now();

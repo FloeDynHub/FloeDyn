@@ -47,7 +47,7 @@ public:
     }
 
     //! Solver of the problem (main method)
-    virtual void solve(real_type end_time, real_type dt_default, real_type out_step = 0, bool reset = true, bool fracture = false, bool melting = false) override;
+    virtual void solve(real_type end_time, real_type dt_default, real_type out_step = 0, bool reset = true, bool fracture = false, bool use_predictor = false, bool melting = false) override;
     virtual void recover_states_from_file(std::string const& filename, real_type t, bool keep_as_outfile=true) override;
 
     void load_config(std::string const& filename) override {
@@ -65,7 +65,7 @@ private:
     //! last message id (increment for unicity)
     int msg_pk = 0;
     //! Move one time step forward
-    virtual void step_solve(bool crack = false) override;
+    virtual void step_solve(bool crack = false, bool use_predictor = false) override;
      //! Collision solving
     virtual int manage_collisions() override;
     //! Compute next time step
@@ -84,7 +84,7 @@ private:
 
 
 template<typename TProblem>
-void MPIMasterProblem<TProblem>::solve(real_type end_time, real_type dt_default, real_type out_step, bool reset, bool fracture, bool melting) {
+void MPIMasterProblem<TProblem>::solve(real_type end_time, real_type dt_default, real_type out_step, bool reset, bool fracture, bool use_predictor, bool melting) {
     if (reset) this->create_optim_vars();
     this->m_domain.set_default_time_step(dt_default);
     this->m_out_manager.set_out_step(out_step, this->m_domain.time());
@@ -92,7 +92,7 @@ void MPIMasterProblem<TProblem>::solve(real_type end_time, real_type dt_default,
     while (this->m_domain.time() < end_time)
     {   
         auto t_start = std::chrono::high_resolution_clock::now();
-        step_solve();
+        step_solve(fracture, use_predictor);
         auto t_end = std::chrono::high_resolution_clock::now();
         std::cout << "Chrono Time STEP : " << std::chrono::duration<double, std::milli>(t_end-t_start).count() << " ms" << std::endl;
         if (*this->QUIT) break; // exit normally after SIGINT
@@ -102,7 +102,7 @@ void MPIMasterProblem<TProblem>::solve(real_type end_time, real_type dt_default,
 }
 
 template<typename TProblem>
-void MPIMasterProblem<TProblem>::step_solve(bool crack) {
+void MPIMasterProblem<TProblem>::step_solve(bool crack, bool use_predictor) {
     auto t_start = std::chrono::high_resolution_clock::now();
     this->m_proximity_detector.distribute_floes();
     auto t_end = std::chrono::high_resolution_clock::now();

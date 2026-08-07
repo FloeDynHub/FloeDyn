@@ -8,7 +8,11 @@
 #ifndef PROBLEM_PROBLEM_HPP
 #define PROBLEM_PROBLEM_HPP
 
+#define WHEREAMI std::cout << std::endl << "no crash until line " << __LINE__ << " in the file " __FILE__ << std::endl;
+
+
 #include "floe/io/hdf5_manager.h"
+// #include "floe/io/hdf5_manager_mesh.h"
 // #include "floe/io/false_hdf5_manager.hpp"
 #include "floe/io/multi_out_manager.hpp"
 
@@ -51,6 +55,7 @@ public:
         using out_manager_type = io::MultiOutManager<io::HDF5Manager<TFloeGroup, TDynamicsManager>>;
     #else
         using out_manager_type = io::HDF5Manager<TFloeGroup, TDynamicsManager>;
+        // using out_manager_type = io::HDF5ManagerWithMesh<TFloeGroup, TDynamicsManager>;
     #endif
 
     using time_scale_manager_type = domain::TimeScaleManager<typename TProxymityDetector::proximity_data_type>;
@@ -58,10 +63,10 @@ public:
     using real_type = types::real_type; //!< exposed so wrappers (e.g. MPIProblem) can use TProblem::real_type
 
     //! Default constructor.
-    Problem(real_type epsilon=0.4, int OBL_status=0);
+    Problem(real_type epsilon=0.4, int OBL_status=0, bool export_mesh=false, bool use_predictor=false);
 
     //! Solver of the problem (main method)
-    virtual void solve(real_type end_time, real_type dt_default, real_type out_step = 0, bool reset = true, bool fracture = false, bool melting = false);
+    virtual void solve(real_type end_time, real_type dt_default, real_type out_step = 0, bool reset = true, bool fracture = false, bool use_predictor = false, bool melting = false);
 
     virtual void load_config(std::string const& filename);
     //! Load ocean and wind data from a topaz file
@@ -126,7 +131,7 @@ protected:
     //! Load floes set and initial states from hdf5 file
     virtual void load_h5_config(std::string const& filename);
     //! Move one time step forward
-    virtual void step_solve(bool crack);
+    virtual void step_solve(bool crack, bool use_predictor);
     //! Proximity detection (inter-floe distance and eventual collisions)
     void detect_proximity();
     //! Collision solving
@@ -144,6 +149,7 @@ protected:
     bool m_is_generator;
     // run time breakdown  
     std::chrono::duration<double, std::nano> m_collisionTime;
+    std::chrono::duration<double, std::nano> m_fractureTime;
     std::chrono::duration<double, std::nano> m_timeStepTime;
     std::chrono::duration<double, std::nano> m_moveTime;
 };
@@ -161,15 +167,15 @@ protected:
 
 
 TEMPLATE_PB
-PROBLEM::Problem(real_type epsilon, int OBL_status) :
+PROBLEM::Problem(real_type epsilon, int OBL_status, bool export_mesh, bool use_predictor) :
         QUIT{nullptr},
         m_domain{},
         m_proximity_detector{},
         m_collision_manager{epsilon},
         m_dynamics_manager{m_domain.time(), OBL_status},
-        m_floe_group{},
+        m_floe_group{use_predictor},
         m_step_nb{0},
-        m_out_manager{m_floe_group},
+        m_out_manager{m_floe_group, export_mesh},
         m_is_generator{false},
         m_collisionTime{},
         m_timeStepTime{},
@@ -238,7 +244,7 @@ void PROBLEM::update_optim_vars() {
 
 
 TEMPLATE_PB
-void PROBLEM::solve(real_type end_time, real_type dt_default, real_type out_step, bool reset, bool fracture, bool melting){
+void PROBLEM::solve(real_type end_time, real_type dt_default, real_type out_step, bool reset, bool fracture, bool use_predictor, bool melting){
     if (reset) this->create_optim_vars();
     m_fracture = fracture;
     m_melting = melting;
@@ -258,11 +264,13 @@ void PROBLEM::solve(real_type end_time, real_type dt_default, real_type out_step
     {   
         // auto t_start = std::chrono::high_resolution_clock::now();
         // arbritrary crack every N steps until Pth step : no physical meaning / only for demo
-        bool do_fracture = true;
+        // bool do_fracture = true;
         // bool do_fracture = (fracture && this->m_step_nb > 0 && this->m_step_nb < 50000 && this->m_step_nb % 18 == 0);
         // bool do_fracture = (fracture && m_domain.time() > 22000 && m_domain.time() - last_frac_time > 1000);
-        // if (do_fracture) last_frac_time = m_domain.time();
-        this->step_solve(do_fracture);
+        bool do_fracture = fracture;
+        if (do_fracture) last_frac_time = m_domain.time();
+        // this->step_solve(do_fracture, melting);
+        this->step_solve(do_fracture, use_predictor);
         // auto t_end = std::chrono::high_resolution_clock::now();
         // std::cout << "Chrono STEP : " << std::chrono::duration<double, std::milli>(t_end-t_start).count() << " ms" << std::endl;
         if (*this->QUIT) break; // exit normally after SIGINT
@@ -272,48 +280,48 @@ void PROBLEM::solve(real_type end_time, real_type dt_default, real_type out_step
     std::cout << " total collision time : " << time_taken*1e-9 << " s" << std::endl;
     std::cout << " total time step time : " << std::chrono::duration_cast<std::chrono::nanoseconds>(m_timeStepTime).count()*1e-9 << " s" << std::endl;
     std::cout << " total move time : " << std::chrono::duration_cast<std::chrono::nanoseconds>(m_moveTime).count()*1e-9 << " s" << std::endl;
+    if (m_fracture) 
+        std::cout << " total fracture time : " << std::chrono::duration_cast<std::chrono::nanoseconds>(m_fractureTime).count()*1e-9 << " s" << std::endl;
 }
 
 
 TEMPLATE_PB
-void PROBLEM::step_solve(bool crack) {
+void PROBLEM::step_solve(bool crack, bool use_predictor) {
     auto t0 = std::chrono::high_resolution_clock::now();
     m_floe_group.unjam_all_floes(); // OPTIMJAM
     manage_collisions(); // OPTIMJAM some floes are marked jammed after this
     m_floe_group.get_floes()[0].get_dirichlet_condition(m_domain.time());
+    auto t1 = std::chrono::high_resolution_clock::now();
     // fracture
     if (m_fracture && crack) {
     	std::size_t nb_before = m_floe_group.get_floes().size();
     	// m_floe_group.fracture_biggest_floe();
         // auto nb_fractured = 1;
-        auto nb_fractured = m_floe_group.fracture_floes();
-        if (nb_fractured > 0) {
+        auto nb_fractured = m_floe_group.fracture_floes(m_dynamics_manager.is_mode_eight(), use_predictor, m_domain.time_step());
+        if (nb_before != m_floe_group.get_floes().size() || nb_fractured > 0) {
             this->update_optim_vars();
             std::cout << "Fracture of " << nb_fractured << " floes - nb floes : " << nb_before << " -> " << m_floe_group.get_floes().size() << std::endl;
         }
     }
-    auto t1 = std::chrono::high_resolution_clock::now();
-    compute_time_step();
     auto t2 = std::chrono::high_resolution_clock::now();
-    safe_move_floe_group();
+    compute_time_step();
     auto t3 = std::chrono::high_resolution_clock::now();
+    safe_move_floe_group();
+    auto t4 = std::chrono::high_resolution_clock::now();
     if (m_melting) {
         m_floe_group.melt_floes();
         this->update_optim_vars();
     }
-    // if (this->m_dynamics_manager.get_external_forces().get_physical_data().get_air_mode()==5) { //!< only if the external forces is a vortex
-    //     std::cout << "the vortex wind speed is: " << 
-    //         this->m_dynamics_manager.get_external_forces().get_physical_data().get_vortex_wind_speed() 
-    //         << std::endl;
-    // }
     std::cout << "Chrono : collisions " << std::chrono::duration<double, std::milli>(t1-t0).count() << " ms + "
-    << "time_step " << std::chrono::duration<double, std::milli>(t2-t1).count() << " ms + "
-    << "move " << std::chrono::duration<double, std::milli>(t3-t2).count() << " ms = "
-    << std::chrono::duration<double, std::milli>(t3-t0).count() << " ms" << std::endl;
+    << "fracture " << std::chrono::duration<double, std::milli>(t2-t1).count() << " ms + "
+    << "time_step " << std::chrono::duration<double, std::milli>(t3-t2).count() << " ms + "
+    << "move " << std::chrono::duration<double, std::milli>(t4-t3).count() << " ms = "
+    << std::chrono::duration<double, std::milli>(t4-t0).count() << " ms" << std::endl;
 
     m_collisionTime+=std::chrono::duration<double, std::nano>(t1-t0);
-    m_timeStepTime+=std::chrono::duration<double, std::nano>(t2-t1);
-    m_moveTime+=std::chrono::duration<double, std::nano>(t3-t2);
+    m_fractureTime+=std::chrono::duration<double, std::nano>(t2-t1);
+    m_timeStepTime+=std::chrono::duration<double, std::nano>(t3-t2);
+    m_moveTime+=std::chrono::duration<double, std::nano>(t4-t3);
 
     output_data();
     m_step_nb++;
@@ -333,7 +341,7 @@ void PROBLEM::safe_move_floe_group(){
         if (m_domain.time_step() < m_domain.default_time_step() / 1e8) // 1e8 from Q.Jouet
         {   
             // Hack to bypass repeating interpenetrations...
-            std::cout << "dt too small -> RECOVER STATES FROM OUT FILE (safe_move_floe_group)" << std::endl;
+            std::cout << "dt too small (" << m_domain.time_step() << ") -> RECOVER STATES FROM OUT FILE (safe_move_floe_group)" << std::endl;
             // OPTIMJAM diagnostic: who was intersecting on the last (smallest-dt) attempt? Tells whether
             // the culprits are inside the jam (frozen? probed?) or elsewhere (e.g. the discharge stream).
             {
@@ -427,7 +435,7 @@ void PROBLEM::compute_time_step(){
 
 TEMPLATE_PB
 point_type PROBLEM::move_floe_group(){
-    point_type resp = m_dynamics_manager.move_floes(m_floe_group, m_domain.time_step());
+    point_type resp = m_dynamics_manager.move_floes(m_floe_group, m_domain.time_step(), m_domain.time());
     m_domain.update_time();
     return resp;
 }
