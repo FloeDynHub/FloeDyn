@@ -29,7 +29,8 @@ RUN apt-get install -y libopenmpi-dev openmpi-bin
 
 RUN apt install openssh-server -y
 # Create a user “sshuser” and group “sshgroup”
-RUN groupadd sshgroup && useradd -ms /bin/bash -g sshgroup sshuser
+ARG APP_UID=10295
+RUN groupadd -g ${APP_UID} sshgroup && useradd -ms /bin/bash -g sshgroup -u ${APP_UID} sshuser
 # Create sshuser directory in home
 RUN mkdir -p /home/sshuser/.ssh
 # Copy the ssh public key in the authorized_keys file. The idkey.pub below is a public key file you get from ssh-keygen. They are under ~/.ssh directory by default.
