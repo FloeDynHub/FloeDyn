@@ -42,6 +42,7 @@ public:
         real_type out_step = 0,
         bool reset = true,
         bool fracture = false,
+        bool use_predictor = false,
         bool melting = false) override = 0;
     virtual mpi_terminal_type& mpi() { return m_mpi_term; }
 

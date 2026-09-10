@@ -12,22 +12,30 @@
 #include <cmath>
 #include <stdexcept>
 
+#define WHEREAMI std::cout << std::endl << "no crash until line " << __LINE__ << " in the file " __FILE__ << std::endl;
+
+
 namespace floe { namespace io
 {
 
 //! Default constructor.
 template <typename TFloeGroup, typename TDynamicsMgr>
-HDF5Manager<TFloeGroup, TDynamicsMgr>::HDF5Manager(floe_group_type const& floe_group) :
+HDF5Manager<TFloeGroup, TDynamicsMgr>::HDF5Manager(floe_group_type const& floe_group, bool export_mesh) :
     m_out_file_name{"io/outputs/out_" + floe::random::gen_random(5) + ".h5"},
     m_out_file{nullptr}, m_step_count{0}, m_chunk_step_count{0},
     m_flush_max_step{2}, // min val = 2
     m_floe_group{&floe_group},
     m_data_chunk_states(boost::extents[0][0][0]),
+    m_data_chunk_elem_data(boost::extents[0][0][0]),
+    m_data_chunk_node_data(boost::extents[0][0][0]),
     m_data_chunk_time{new real_type[m_flush_max_step]},
     m_data_chunk_mass_center(boost::extents[m_flush_max_step][2]),
     m_data_chunk_OBL_speed(boost::extents[m_flush_max_step][2]),
     m_data_chunk_kinE{new real_type[m_flush_max_step]},
-    m_out_step{0}, m_next_out_limit{0}, m_nb_floe_shapes_written{0}, m_shapes_group{nullptr}
+    m_out_step{0}, m_next_out_limit{0}, m_nb_floe_shapes_written{0}, m_nb_floe_meshes_coord_written{0}, m_nb_floe_meshes_connect_written{0}, m_shapes_group{nullptr}, m_meshes_coord_group{nullptr}, m_meshes_connect_group{nullptr},
+    m_max_elem{0},
+    m_max_nodes{0},
+    m_export_mesh{export_mesh}
     {}
 
 //! Definition of the destructor:
@@ -55,12 +63,22 @@ template <typename TFloeGroup, typename TDynamicsMgr>
 void HDF5Manager<TFloeGroup, TDynamicsMgr>::save_step(real_type time, const dynamics_mgr_type& dynamics_manager)
 {
     floe_group_type const& floe_group = *m_floe_group;
+    m_max_elem = m_floe_group->get_max_elem();
+    m_max_nodes = m_floe_group->get_max_nodes();
+
     // Handle fracture
     if (m_data_chunk_states.size() > 0 && m_data_chunk_states[0].size() != this->nb_considered_floes()) {
         flush();
         m_chunk_step_count = 0;
         m_data_chunk_states.resize(boost::extents[m_flush_max_step][this->nb_considered_floes()][array_size<saved_state_type>::size]);
+        m_data_chunk_elem_data.resize(boost::extents[m_flush_max_step][this->nb_considered_floes()][m_max_elem]);
+        m_data_chunk_node_data.resize(boost::extents[m_flush_max_step][this->nb_considered_floes()][m_max_nodes*2]);
         write_shapes();
+        if (m_export_mesh)
+        {
+            write_meshes_coord();
+            write_meshes_connect();
+        }
     }
     // save states
     if (m_data_chunk_states.size() == 0) m_data_chunk_states.resize(boost::extents[m_flush_max_step][this->nb_considered_floes()][array_size<saved_state_type>::size]);
@@ -80,9 +98,75 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::save_step(real_type time, const dyna
             floe.state().pos.y,
             (floe.state().is_active()) ? 1. : 0.,
             floe.static_floe().thickness()
-            
+
         }){
             m_data_chunk_states[m_chunk_step_count][id][k++] = val;
+        }
+    }
+    if (m_export_mesh)
+    {
+        // WHEREAMI
+        // save elem data
+        if (m_data_chunk_elem_data.size() == 0) m_data_chunk_elem_data.resize(boost::extents[m_flush_max_step][this->nb_considered_floes()][m_max_elem]);
+        for(std::size_t iFloe = 0; iFloe < this->nb_considered_floes(); ++iFloe)
+        {
+            auto const& floe = this->get_floe(iFloe);
+            size_t nElem(floe.mesh().get_n_cells());
+            std::vector<real_type> femSolStress = floe.get_fem_stress();
+            for (std::size_t iElem = 0 ; iElem < nElem ; ++iElem)
+            {
+                if (femSolStress.size() == nElem*3)
+                {
+                    real_type sigma_von_mises = sqrt(pow(femSolStress[iElem], 2) + pow(femSolStress[iElem+nElem], 2) - femSolStress[iElem]*femSolStress[iElem+nElem] + 3*pow(femSolStress[iElem+2*nElem], 2));
+                    m_data_chunk_elem_data[m_chunk_step_count][iFloe][iElem] = sigma_von_mises;
+                }
+                else
+                {
+                    if (floe.is_obstacle())
+                        m_data_chunk_elem_data[m_chunk_step_count][iFloe][iElem] = 0;
+                    else
+                        // m_data_chunk_elem_data[m_chunk_step_count][iFloe][iElem] = (real_type)iElem;
+                        m_data_chunk_elem_data[m_chunk_step_count][iFloe][iElem] = 0;
+                }
+            }
+        }
+        // saving nodal data
+        if (m_data_chunk_node_data.size() == 0) m_data_chunk_node_data.resize(boost::extents[m_flush_max_step][this->nb_considered_floes()][m_max_nodes*2]);
+        for(std::size_t iFloe = 0; iFloe < this->nb_considered_floes(); ++iFloe)
+        {
+            auto const& floe = this->get_floe(iFloe);
+            std::vector<real_type> femSol = floe.get_fem_solution();
+            size_t nNodes (floe.mesh().get_n_nodes());
+            // just making sure...
+            if (nNodes > m_max_nodes)
+            {
+                WHEREAMI
+                std::cerr << "Size mismatch during hdf5 export" << std::endl;
+            }
+            if (femSol.size() != nNodes*2)
+            {
+                // std::cout << "No FEM solution available for floe " << iFloe << " (I found a vector of size : " << femSol.size() << " instead of " << nNodes*2 << "). Writing zeros instead" << std::endl;
+                // the elasticity computation has not been performed and has never been prepared, the floe might be too small or could be an obstacle for instance.
+            }
+
+            for (std::size_t iNode = 0 ; iNode < nNodes*2 ; ++iNode)
+            {
+                if (femSol.size() == 2*nNodes)
+                {
+                    m_data_chunk_node_data[m_chunk_step_count][iFloe][iNode] = (real_type)femSol[iNode];
+                    // m_data_chunk_node_data[m_chunk_step_count][iFloe][iNode+nNodes] = (real_type)femSol[iNode+nNodes];
+                }
+                else
+                { // computation has not yet been performed or floe is an obstacle.
+                    if (floe.is_obstacle())
+                        m_data_chunk_node_data[m_chunk_step_count][iFloe][iNode] = 0;
+                    else
+                        m_data_chunk_node_data[m_chunk_step_count][iFloe][iNode] = (real_type)(std::floor(iNode/2)); // allows to plot node id instead of null displacement
+                    // m_data_chunk_node_data[m_chunk_step_count][iFloe][iNode] = (real_type)(iNode % nNodes);
+                    // std::cout << "writing " << (real_type)(std::floor(iNode/2)) << " at location " << iNode << std::endl;
+                    // m_data_chunk_node_data[m_chunk_step_count][iFloe][iNode+nNodes] = 0;
+                }
+            }
         }
     }
 
@@ -118,7 +202,7 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::flush() {
     if (m_chunk_step_count == 0)
         return;
     try
-    {   
+    {
         /*
          * Turn off the auto-printing when failure occurs so that we can
          * handle the errors appropriately
@@ -147,12 +231,30 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::flush() {
             m_shapes_group = new Group( m_out_file->createGroup("floe_shapes") );
             write_shapes();
         }
+        if (m_export_mesh)
+        {
+            try { m_out_file->openGroup("floe_meshes_coord"); }
+            catch (...) {
+                m_meshes_coord_group = new Group( m_out_file->createGroup("floe_meshes_coord") );
+                write_meshes_coord();
+            }
+            try { m_out_file->openGroup("floe_meshes_connect"); }
+            catch (...) {
+                m_meshes_connect_group = new Group( m_out_file->createGroup("floe_meshes_connect") );
+                write_meshes_connect();
+            }
+        }
 
         try { m_out_file->openDataSet("window"); }
         catch (...) { write_window(); }
 
         // write_boundaries();
         write_states();
+        if (m_export_mesh)
+        {
+            write_elem_data();
+            write_node_data();
+        }
         write_time();
         write_mass_center();
         write_OBL_speed();
@@ -187,7 +289,7 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::flush() {
 
 template <typename TFloeGroup, typename TDynamicsMgr>
 void HDF5Manager<TFloeGroup, TDynamicsMgr>::write_boundaries() {
-    
+
     H5File& file( *m_out_file );
     const int   SPACE_DIM = 2;
 
@@ -197,7 +299,7 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::write_boundaries() {
     } catch (...) {
         floe_state_group = file.createGroup("floe_outlines");
     }
-    
+
     for (std::size_t i = 0; i!= m_data_chunk_boundaries.size(); ++i)
     {
         const int   RANK = 3;
@@ -222,7 +324,7 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::write_boundaries() {
 
         // Extend the dataset.
         dimsf[0] += m_chunk_step_count;
-        dataset.extend(dimsf); 
+        dataset.extend(dimsf);
 
         DataSpace filespace = dataset.getSpace();
         hsize_t offset[RANK] = {m_step_count - m_chunk_step_count, 0, 0}; // for dataset extension
@@ -252,7 +354,7 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::write_boundaries() {
 
 template <typename TFloeGroup, typename TDynamicsMgr>
 void HDF5Manager<TFloeGroup, TDynamicsMgr>::write_states() {
-    
+
     H5File& file( *m_out_file );
     const int   RANK = 3;
 
@@ -266,7 +368,7 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::write_states() {
     } catch (...) {
         FloatType datatype( PredType::NATIVE_DOUBLE );
         datatype.setOrder( H5T_ORDER_LE );
-        hsize_t maxdims[RANK] = {H5S_UNLIMITED, H5S_UNLIMITED, dims[2]}; 
+        hsize_t maxdims[RANK] = {H5S_UNLIMITED, H5S_UNLIMITED, dims[2]};
         DataSpace dataspace( RANK, dims, maxdims );
         // Modify dataset creation property to enable chunking
         DSetCreatPropList prop;
@@ -276,7 +378,7 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::write_states() {
     }
     // Extend the dataset.
     dims[0] += chunk_dims[0];
-    states_dataset.extend(dims); 
+    states_dataset.extend(dims);
 
     DataSpace filespace = states_dataset.getSpace();
     hsize_t offset[RANK] = {m_step_count - m_chunk_step_count, 0, 0};
@@ -287,9 +389,92 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::write_states() {
     states_dataset.write(m_data_chunk_states.data(), PredType::NATIVE_DOUBLE, memspace, filespace);
 };
 
+
+template <typename TFloeGroup, typename TDynamicsMgr>
+void HDF5Manager<TFloeGroup, TDynamicsMgr>::write_elem_data() {
+
+    H5File& file( *m_out_file );
+    const int   RANK = 3;
+
+    /* saving time */
+    DataSet elem_data_dataset;
+    const hsize_t nb_floes = m_data_chunk_elem_data[0].size();
+
+    m_max_elem = m_floe_group->get_max_elem();
+
+    hsize_t     dims[RANK] = {m_step_count - m_chunk_step_count, nb_floes, m_max_elem};
+    const hsize_t     chunk_dims[RANK] = {m_chunk_step_count, dims[1], dims[2]};
+    try {
+        elem_data_dataset = file.openDataSet("floe_elem_data");
+    } catch (...) {
+        FloatType datatype( PredType::NATIVE_DOUBLE );
+        datatype.setOrder( H5T_ORDER_LE );
+        hsize_t maxdims[RANK] = {H5S_UNLIMITED, H5S_UNLIMITED, H5S_UNLIMITED};
+        DataSpace dataspace( RANK, dims, maxdims );
+        // Modify dataset creation property to enable chunking
+        DSetCreatPropList prop;
+        prop.setChunk(RANK, chunk_dims);
+
+        elem_data_dataset = file.createDataSet("floe_elem_data", datatype, dataspace, prop);
+    }
+    // Extend the dataset.
+    dims[0] += chunk_dims[0];
+    elem_data_dataset.extend(dims);
+    DataSpace filespace = elem_data_dataset.getSpace();
+    hsize_t offset[RANK] = {m_step_count - m_chunk_step_count, 0, 0};
+    filespace.selectHyperslab(H5S_SELECT_SET, chunk_dims, offset);
+    // Define memory space.
+    DataSpace memspace{RANK, chunk_dims, NULL};
+
+    elem_data_dataset.write(m_data_chunk_elem_data.data(), PredType::NATIVE_DOUBLE, memspace, filespace);
+};
+
+
+template <typename TFloeGroup, typename TDynamicsMgr>
+void HDF5Manager<TFloeGroup, TDynamicsMgr>::write_node_data() {
+
+    H5File& file( *m_out_file );
+    // const int   RANK = 4;
+    const int   RANK = 3;
+
+    /* saving time */
+    DataSet node_data_dataset;
+    const hsize_t nb_floes = m_data_chunk_elem_data[0].size();
+    // const hsize_t nb_data = array_size<saved_elem_data_type>::size;
+
+    m_max_nodes = m_floe_group->get_max_nodes();
+
+    hsize_t     dims[RANK] = {m_step_count - m_chunk_step_count, nb_floes, m_max_nodes*2};
+    const hsize_t     chunk_dims[RANK] = {m_chunk_step_count, dims[1], dims[2]};
+    try {
+        node_data_dataset = file.openDataSet("floe_node_data");
+    } catch (...) {
+        FloatType datatype( PredType::NATIVE_DOUBLE );
+        datatype.setOrder( H5T_ORDER_LE );
+        hsize_t maxdims[RANK] = {H5S_UNLIMITED, H5S_UNLIMITED, H5S_UNLIMITED};
+        DataSpace dataspace( RANK, dims, maxdims );
+        // Modify dataset creation property to enable chunking
+        DSetCreatPropList prop;
+        prop.setChunk(RANK, chunk_dims);
+        node_data_dataset = file.createDataSet("floe_node_data", datatype, dataspace, prop);
+    }
+    // Extend the dataset.
+    dims[0] += chunk_dims[0];
+    node_data_dataset.extend(dims);
+
+    DataSpace filespace = node_data_dataset.getSpace();
+    hsize_t offset[RANK] = {m_step_count - m_chunk_step_count, 0, 0};
+    filespace.selectHyperslab(H5S_SELECT_SET, chunk_dims, offset);
+    // Define memory space.
+    DataSpace memspace{RANK, chunk_dims, NULL};
+
+    node_data_dataset.write(m_data_chunk_node_data.data(), PredType::NATIVE_DOUBLE, memspace, filespace);
+};
+
+
 template <typename TFloeGroup, typename TDynamicsMgr>
 void HDF5Manager<TFloeGroup, TDynamicsMgr>::write_time() {
-    
+
     H5File& file( *m_out_file );
 
     /* saving time */
@@ -301,7 +486,7 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::write_time() {
     } catch (...) {
         FloatType datatype( PredType::NATIVE_DOUBLE );
         datatype.setOrder( H5T_ORDER_LE );
-        hsize_t maxdims[1] = {H5S_UNLIMITED}; 
+        hsize_t maxdims[1] = {H5S_UNLIMITED};
         DataSpace dataspace( 1, dimst, maxdims );
         // Modify dataset creation property to enable chunking
         DSetCreatPropList prop;
@@ -311,7 +496,7 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::write_time() {
     }
     // Extend the dataset.
     dimst[0] += chunk_dimst[0];
-    time_dataset.extend(dimst); 
+    time_dataset.extend(dimst);
 
     DataSpace filespace = time_dataset.getSpace();
     hsize_t offset[1] = {m_step_count - m_chunk_step_count};
@@ -323,7 +508,7 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::write_time() {
 
 template <typename TFloeGroup, typename TDynamicsMgr>
 void HDF5Manager<TFloeGroup, TDynamicsMgr>::write_mass_center() {
-    
+
     H5File& file( *m_out_file );
     const int   RANK = 2;
 
@@ -336,7 +521,7 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::write_mass_center() {
     } catch (...) {
         FloatType datatype( PredType::NATIVE_DOUBLE );
         datatype.setOrder( H5T_ORDER_LE );
-        hsize_t maxdims[RANK] = {H5S_UNLIMITED, 2}; 
+        hsize_t maxdims[RANK] = {H5S_UNLIMITED, 2};
         DataSpace dataspace( RANK, dimst, maxdims );
         // Modify dataset creation property to enable chunking
         DSetCreatPropList prop;
@@ -346,7 +531,7 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::write_mass_center() {
     }
     // Extend the dataset.
     dimst[0] += chunk_dims[0];
-    dataset.extend(dimst); 
+    dataset.extend(dimst);
 
     DataSpace filespace = dataset.getSpace();
     hsize_t offset[RANK] = {m_step_count - m_chunk_step_count, 0};
@@ -359,7 +544,7 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::write_mass_center() {
 
 template <typename TFloeGroup, typename TDynamicsMgr>
 void HDF5Manager<TFloeGroup, TDynamicsMgr>::write_OBL_speed() {
-    
+
     H5File& file( *m_out_file );
     const int   RANK = 2;
 
@@ -372,7 +557,7 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::write_OBL_speed() {
     } catch (...) {
         FloatType datatype( PredType::NATIVE_DOUBLE );
         datatype.setOrder( H5T_ORDER_LE );
-        hsize_t maxdims[RANK] = {H5S_UNLIMITED, 2}; 
+        hsize_t maxdims[RANK] = {H5S_UNLIMITED, 2};
         DataSpace dataspace( RANK, dimst, maxdims );
         // Modify dataset creation property to enable chunking
         DSetCreatPropList prop;
@@ -382,7 +567,7 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::write_OBL_speed() {
     }
     // Extend the dataset.
     dimst[0] += chunk_dims[0];
-    dataset.extend(dimst); 
+    dataset.extend(dimst);
 
     DataSpace filespace = dataset.getSpace();
     hsize_t offset[RANK] = {m_step_count - m_chunk_step_count, 0};
@@ -395,7 +580,7 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::write_OBL_speed() {
 
 template <typename TFloeGroup, typename TDynamicsMgr>
 void HDF5Manager<TFloeGroup, TDynamicsMgr>::write_kinE() {
-    
+
     H5File& file( *m_out_file );
 
     /* saving kinE */
@@ -407,7 +592,7 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::write_kinE() {
     } catch (...) {
         FloatType datatype( PredType::NATIVE_DOUBLE );
         // datatype.setOrder( H5T_ORDER_LE );
-        hsize_t maxdims[1] = {H5S_UNLIMITED}; 
+        hsize_t maxdims[1] = {H5S_UNLIMITED};
         DataSpace dataspace( 1, dimst, maxdims );
         // Modify dataset creation property to enable chunking
         DSetCreatPropList prop;
@@ -417,7 +602,7 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::write_kinE() {
     }
     // Extend the dataset.
     dimst[0] += chunk_dimst[0];
-    kinE_dataset.extend(dimst); 
+    kinE_dataset.extend(dimst);
 
     DataSpace filespace = kinE_dataset.getSpace();
     hsize_t offset[1] = {m_step_count - m_chunk_step_count};
@@ -432,7 +617,7 @@ double HDF5Manager<TFloeGroup, TDynamicsMgr>::recover_states(
         H5std_string filename, real_type time, floe_group_type& floe_group,
         dynamics_mgr_type& dynamics_manager, bool keep_as_outfile)
 {
-    
+
     /*
      * Open the specified file and the specified dataset in the file.
      */
@@ -527,6 +712,7 @@ double HDF5Manager<TFloeGroup, TDynamicsMgr>::recover_states(
     }
     floe_group.get_floes().filter_on(); // crack version
     floe_group.update_list_ids_active(); // crack version
+
     {
     // Load OBL speed
     DataSet dataset = file.openDataSet( "OBL_speed" );
@@ -580,7 +766,7 @@ template <
     typename TDynamicsMgr
 >
 void HDF5Manager<TFloeGroup, TDynamicsMgr>::write_shapes() {
-    
+
     H5File& file( *m_out_file );
     const int   SPACE_DIM = 2;
 
@@ -627,6 +813,93 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::write_shapes() {
 
 };
 
+
+template <
+    typename TFloeGroup,
+    typename TDynamicsMgr
+>
+void HDF5Manager<TFloeGroup, TDynamicsMgr>::write_meshes_coord() {
+
+    H5File& file( *m_out_file );
+    const int   SPACE_DIM = 2;
+
+    const int   RANK = 2;
+    FloatType datatype( PredType::NATIVE_DOUBLE );
+    datatype.setOrder( H5T_ORDER_LE );
+    hsize_t     dimsf[2];              // dataset dimensions
+    dimsf[1] = SPACE_DIM;
+    for (std::size_t iFloe=m_nb_floe_meshes_coord_written; iFloe != this->nb_considered_floes(); ++iFloe)
+    {
+        // exporting the coordinate table
+        boost::geometry::model::multi_point<point_type> coord = this->get_floe(iFloe).get_mesh().points();
+
+        dimsf[0] = coord.size();
+        DataSpace dataspace( RANK, dimsf );
+        DataSet dataset = m_meshes_coord_group->createDataSet(H5std_string{std::to_string(iFloe)},datatype, dataspace);
+        boost::multi_array<real_type, 2> data(boost::extents[dimsf[0]][dimsf[1]]);
+        for (std::size_t iPoint = 0; iPoint < dimsf[0]; ++iPoint)
+        {
+            // coordinates are first put in the floe coordinate system. (< -pos.x -pos.y > translation, and -theta rotation)
+            real_type x = coord[iPoint][0] - this->get_floe(iFloe).state().pos.x;
+            real_type y = coord[iPoint][1] - this->get_floe(iFloe).state().pos.y;
+            real_type theta = this->get_floe(iFloe).state().theta;
+
+            data[iPoint][0] = x*cos(theta) + y*sin(theta);
+            data[iPoint][1] = -x*sin(theta) + y*cos(theta);
+        }
+        /*
+            * Write the data to the dataset using default memory space, file
+            * space, and transfer properties.
+            */
+        dataset.write( data.data(), PredType::NATIVE_DOUBLE );
+        // add attribute for floe id
+        DataSpace att_space(H5S_SCALAR);
+        auto val = (double)iFloe ;
+        Attribute att = dataset.createAttribute("index", datatype, att_space );
+        att.write( datatype, &val );
+    }
+    m_nb_floe_meshes_coord_written = this->nb_considered_floes();
+};
+
+
+template <
+    typename TFloeGroup,
+    typename TDynamicsMgr
+>
+void HDF5Manager<TFloeGroup, TDynamicsMgr>::write_meshes_connect() {
+
+    H5File& file( *m_out_file );
+    // const int   SPACE_DIM = 2;
+    const int   RANK = 2;
+    FloatType datatype( PredType::NATIVE_DOUBLE );
+    datatype.setOrder( H5T_ORDER_LE );
+    hsize_t     dimsf[2];              // dataset dimensions
+    dimsf[1] = 3; // we're supposed to have only linear triangles. Would'nt it be nice, to, add, a check here...
+    // or even better, add something like this->get_floe(iFloe).get_mesh().getn_max_nodes()
+    for (std::size_t iFloe=m_nb_floe_meshes_connect_written; iFloe != this->nb_considered_floes(); ++iFloe)
+    {
+        // exporting the connectivity table
+        std::vector<std::array<std::size_t,3>> connect =this->get_floe(iFloe).get_mesh().connectivity();
+        dimsf[0] = connect.size();
+        DataSpace dataspace( RANK, dimsf );
+        DataSet dataset = m_meshes_connect_group->createDataSet(H5std_string{std::to_string(iFloe)},datatype, dataspace);
+        boost::multi_array<int, 2> data(boost::extents[dimsf[0]][dimsf[1]]);
+        for (std::size_t iElem = 0; iElem < dimsf[0]; ++iElem)
+        {
+            data[iElem][0] = (int)connect[iElem][0];
+            data[iElem][1] = (int)connect[iElem][1];
+            data[iElem][2] = (int)connect[iElem][2];
+        }
+        dataset.write( data.data(), PredType::NATIVE_INT );
+        // add attribute for floe id
+        DataSpace att_space(H5S_SCALAR);
+        auto val = (double)iFloe ;
+        Attribute att = dataset.createAttribute("index", datatype, att_space );
+        att.write( datatype, &val );
+    }
+    m_nb_floe_meshes_connect_written = this->nb_considered_floes();
+};
+
 template <
     typename TFloeGroup,
     typename TDynamicsMgr
@@ -671,10 +944,15 @@ std::string HDF5Manager<TFloeGroup, TDynamicsMgr>::make_input_file(const dynamic
 
         m_out_file = new H5File( FILE_NAME.c_str(), H5F_ACC_TRUNC );
         m_shapes_group = new Group( m_out_file->createGroup("floe_shapes") );
-    
+
         write_shapes();
         write_window();
         write_states();
+        if (m_export_mesh)
+        {
+            write_elem_data();
+            write_node_data();
+        }
 
         // Close the "floe_shapes" group BEFORE the file: leaving this member handle open kept H5Fclose
         // from fully finalizing the file, so a reader in the SAME process group (e.g. an MPI worker right

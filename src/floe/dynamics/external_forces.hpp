@@ -158,6 +158,8 @@ template <typename TFloe, typename TPhysicalData>
 real_type
 ExternalForces<TFloe, TPhysicalData>::coriolis_coeff(point_type p)
 {
+    if ((m_physical_data.get_air_mode() == 8) || (m_physical_data.get_water_mode() == 8))
+        return 0;
     auto phi = (m_O_latitude * M_PI / 180 + p.y / R_earth); // in radian
     return 2 * V_earth * sin(phi);
 }

@@ -145,11 +145,19 @@ public:
         else if ((m_air_mode==7 && m_water_mode==0) || (m_air_mode==0 && m_water_mode==7)) {
             std::cout << "Time-increasing current (y_increasing)" << std::endl;
         }
+        else if (m_air_mode==8 || m_water_mode==8) {
+            m_water_mode = 8;
+            m_air_mode = 8;
+            std::cout << "Force and no rotation imposed on the first floe." << std::endl;
+        }
         else if (m_air_mode==9 && m_water_mode==9) {
             std::cout << "Inhomogeneous atmospheric and ocean forcing from NetCDF file" << std::endl;
         }
         else if (m_air_mode==10 && m_water_mode==0) {
             std::cout << "Void-seeking homogenizer (area-coverage gradient, max wind = air speed)" << std::endl;
+        }
+        else if (m_air_mode==11 || m_water_mode==11) {
+            std::cout << "Converging winds" << std::endl;
         }
         else { std::cout << "Error: air and/or water modes: " << m_air_mode << " and " << m_water_mode << " are unknown!" << std::endl; }
     }
@@ -174,6 +182,10 @@ public:
 
     //!< air mode accessor 
     int get_air_mode() {return m_air_mode;};
+    int get_water_mode() {return m_water_mode;};
+    //!< air and wind accessor 
+    int get_air_speed() {return m_air_speed;};
+    int get_water_speed() {return m_water_speed;};
 
 
     //!< vortex getter and setter
@@ -291,6 +303,18 @@ private:
         //     return speed_current;
         // }
     }
+    point_type converging_rotating_speed(point_type pt = {0,0}, real_type speed=1)
+    {
+        size_t n = 10; // reduction factor for the tangential component 
+        real_type r = norm2(pt);
+        real_type L = m_window_width/2;
+        real_type norm = speed*n/(r*std::sqrt(n*n+1));
+        real_type x{-(pt.x+pt.y/n)*norm}, y{-(pt.y-pt.x/n)*norm};
+        real_type amplitude = 1-std::exp(-r/(2*L));
+        return {amplitude*x,amplitude*y};
+    }
+
+    
     //! vortex storm
     point_type vortex_center(std::size_t i){
         return m_vortex_origin[i] + m_time_ref * m_vortex_speed[i];
@@ -620,8 +644,14 @@ PhysicalData<TPoint>::get_speed(point_type pt, int mode, real_type speed){
             return vortex(pt);
         case 7:
             return y_increasing(pt);
+        case 8:
+            // std::cout << "no speed\n";
+            return {0,0};
         case 10:
             return void_seeking_field(pt);
+        case 11:
+            // std::cout << "converging rotating speed (was mode 9 on Silouane's branch; renumbered — mode 9 is NetCDF forcing here)
+            return converging_rotating_speed(pt, speed);
         case 0:
             return {0,0};
 

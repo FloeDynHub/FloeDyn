@@ -159,6 +159,7 @@ int LCPManager<T>::solve_contacts(TContactGraph& contact_graph, real_type time, 
         static bool end_recording = false;
     #endif
 
+    size_t n_collisions (0);
     for ( auto& subgraph : subgraphs )
     {
         // OPTIMJAM fast path (see jam_manager.hpp / doc/optimjam.md): large, anchored, quasi-static
@@ -183,6 +184,7 @@ int LCPManager<T>::solve_contacts(TContactGraph& contact_graph, real_type time, 
         int contact_loop_stats[2]={0,0};    // number of contact points, indicator for be out of loop due to all success (1) or no success (0)
                                             // or no enough iteration (2)
         contact_loop_stats[0] = static_cast<int>(num_contacts(subgraph));
+        n_collisions += num_contacts(subgraph);
         contact_loop_stats[1] = 1;
 
         while (asubgraphs.size() != 0
@@ -254,7 +256,10 @@ int LCPManager<T>::solve_contacts(TContactGraph& contact_graph, real_type time, 
 
     #ifndef MPIRUN
     if (LCP_count)
+    {
         std::cout << " #LCP solve: "<< nb_success << " / " << LCP_count << std::endl;
+        std::cout << " #contacts: " << n_collisions << std::endl;
+    }
     #endif
     return nb_success;
 }
@@ -264,10 +269,24 @@ template<typename T>
 template<typename TContactGraph>
 void LCPManager<T>::update_floes_state(TContactGraph& graph, const value_vector Sol, real_type time){
 
+    for ( auto const& edge : make_iterator_range( edges( graph ) ) )
+    {
+        for ( std::size_t i = 0; i < graph[edge].size(); ++i ) // iter over contacts
+        {
+            // Add impact masses and speeds to corresponding floes
+            graph[source(edge, graph)].floe->add_contact_mass_and_speed(graph[edge][i].frame.center(), graph[target(edge, graph)].floe->mass(), graph[target(edge, graph)].floe->get_state().speed, time);
+            graph[target(edge, graph)].floe->add_contact_mass_and_speed(graph[edge][i].frame.center(), graph[source(edge, graph)].floe->mass(), graph[source(edge, graph)].floe->get_state().speed, time);
+        }
+    }
     for ( auto const v : boost::make_iterator_range( vertices(graph) ) )
     {
         graph[v].floe->state().speed = {Sol(3*v), Sol(3*v + 1)}; // fv_test
         graph[v].floe->state().rot = Sol(3*v + 2); // fv_test
+    }
+    // filling another variable containing only the impulse received during the last impach time step 
+    for ( auto const v : boost::make_iterator_range( vertices(graph) ) )
+    {
+        graph[v].floe->add_current_impulse(Sol(3*v)); // fv_test    }
     }
 }
 

@@ -10,6 +10,7 @@
 
 #include <boost/geometry/core/access.hpp>
 #include <boost/type_traits/is_pointer.hpp>
+#include <type_traits>
 
 #include "floe/geometry/core/tags.hpp"
 
@@ -70,7 +71,7 @@ template <
     typename TCoordinate,
     std::size_t Dimension
 >
-struct access < circle_tag, TCircle, TCoordinate, Dimension, boost::false_type >
+struct access < circle_tag, TCircle, TCoordinate, Dimension, std::false_type >
     : detail::access_non_pointer<TCircle, TCoordinate, Dimension>
 {};
 
@@ -80,7 +81,7 @@ template <
     typename TCoordinate,
     std::size_t Dimension
 >
-struct access < circle_tag, TCircle, TCoordinate, Dimension, boost::true_type >
+struct access < circle_tag, TCircle, TCoordinate, Dimension, std::true_type >
     : detail::access_pointer<TCircle, TCoordinate, Dimension>
 {};
 
@@ -90,7 +91,7 @@ template <
     typename TCoordinate,
     std::size_t Dimension
 >
-struct access < static_ring_tag, TStaticRing, TCoordinate, Dimension, boost::false_type >
+struct access < static_ring_tag, TStaticRing, TCoordinate, Dimension, std::false_type >
     : detail::access_non_pointer<TStaticRing, TCoordinate, Dimension>
 {};
 
@@ -100,7 +101,7 @@ template <
     typename TCoordinate,
     std::size_t Dimension
 >
-struct access < static_ring_tag, TStaticRing, TCoordinate, Dimension, boost::true_type >
+struct access < static_ring_tag, TStaticRing, TCoordinate, Dimension, std::true_type >
     : detail::access_pointer<TStaticRing, TCoordinate, Dimension>
 {};
 
@@ -113,7 +114,7 @@ template <
     typename TCoordinate,
     std::size_t Dimension
 >
-struct access < simple_static_polygon_tag, TSimpleStaticPolygon, TCoordinate, Dimension, boost::false_type >
+struct access < simple_static_polygon_tag, TSimpleStaticPolygon, TCoordinate, Dimension, std::false_type >
     : detail::access_non_pointer<TSimpleStaticPolygon, TCoordinate, Dimension>
 {};
 
@@ -123,7 +124,7 @@ template <
     typename TCoordinate,
     std::size_t Dimension
 >
-struct access < simple_static_polygon_tag, TSimpleStaticPolygon, TCoordinate, Dimension, boost::true_type >
+struct access < simple_static_polygon_tag, TSimpleStaticPolygon, TCoordinate, Dimension, std::true_type >
     : detail::access_pointer<TSimpleStaticPolygon, TCoordinate, Dimension>
 {};
 */
@@ -134,7 +135,7 @@ template <
     std::size_t Index,
     std::size_t Dimension
 >
-struct indexed_access< simple_static_polygon_tag, TSimpleStaticPolygon, TCoordinate, Index, Dimension, boost::false_type >
+struct indexed_access< simple_static_polygon_tag, TSimpleStaticPolygon, TCoordinate, Index, Dimension, std::false_type >
     : detail::indexed_access_non_pointer<TSimpleStaticPolygon, TCoordinate, Index, Dimension>
 {};
 
@@ -145,7 +146,7 @@ template <
     std::size_t Index,
     std::size_t Dimension
 >
-struct indexed_access< simple_static_polygon_tag, TSimpleStaticPolygon, TCoordinate, Index, Dimension, boost::true_type >
+struct indexed_access< simple_static_polygon_tag, TSimpleStaticPolygon, TCoordinate, Index, Dimension, std::true_type >
     : detail::indexed_access_pointer<TSimpleStaticPolygon, TCoordinate, Index, Dimension>
 {};
 
@@ -155,7 +156,7 @@ template <
     std::size_t Index,
     std::size_t Dimension
 >
-struct indexed_access< triangle_tag, TSimpleStaticPolygon, TCoordinate, Index, Dimension, boost::false_type >
+struct indexed_access< triangle_tag, TSimpleStaticPolygon, TCoordinate, Index, Dimension, std::false_type >
     : detail::indexed_access_non_pointer<TSimpleStaticPolygon, TCoordinate, Index, Dimension>
 {};
 
@@ -166,7 +167,7 @@ template <
     std::size_t Index,
     std::size_t Dimension
 >
-struct indexed_access< triangle_tag, TSimpleStaticPolygon, TCoordinate, Index, Dimension, boost::true_type >
+struct indexed_access< triangle_tag, TSimpleStaticPolygon, TCoordinate, Index, Dimension, std::true_type >
     : detail::indexed_access_pointer<TSimpleStaticPolygon, TCoordinate, Index, Dimension>
 {};
 
