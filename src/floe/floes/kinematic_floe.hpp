@@ -523,6 +523,21 @@ std::vector<typename TStaticFloe::geometry_type>
 KinematicFloe<TStaticFloe,TState>::fracture_floe_from_collisions_fem(bool use_predictor, fem::FracturePredictor<KinematicFloe> const &predictor, real_type time_step){
     // 0 - obstacles and blocks that did not collide won't break. Floes without meshes are not considered either.
     if (this->is_obstacle() || m_total_current_impulse_received == 0) return {};
+
+    // (A) OPTIMJAM/perf gate — cheap energy pre-filter ahead of the expensive FEM (Quentin's validated
+    // criterion). Unless the contact energy accumulated over the last ~1s (m_detailed_impulse_received)
+    // can physically open even the smallest crack (Griffith: Gc * crack area = min_crack_energy), there
+    // is nothing for the FEM to find. This is a NECESSARY condition (energy conservation), so it never
+    // hides a real fracture; but it skips the FEM for the flood of sub-threshold jam micro-contacts that
+    // otherwise (a) cost a full FEM solve each and (b) keep the pack churning so OPTIMJAM never freezes.
+    {
+        const real_type e_impulse = this->impulse_energy();
+        const real_type e_crack   = this->static_floe().min_crack_energy();
+        if (e_impulse < e_crack) return {};
+        std::cout << "Fracture candidate: impulse_energy=" << e_impulse
+                  << " >= min_crack_energy=" << e_crack << std::endl;
+    }
+
     if (!m_floe->has_mesh()) {WHEREAMI return {};}
     if (!has_static_floe()) {WHEREAMI return {};}
     if (m_fem_problem.is_disabled())
@@ -586,7 +601,55 @@ KinematicFloe<TStaticFloe,TState>::fracture_floe_from_collisions_fem(bool use_pr
         bool print_summary(true);// enable this only for database building and piml training: the features of each impact sample are written in the logs
         if (energy > 0)
         {
-            if (print_summary){    
+            auto pieces = this->static_floe().fracture_floe_along(best_a, best_b);
+
+            // (D) sliver guard — reject a crack that would carve a thin sliver. A thin floe is a dt
+            // killer (its OptimizedFloe local disks collapse -> tiny proximity distances -> dt Zeno),
+            // and it re-cracks lengthwise into ever thinner slivers (area->0 => crack_width->0 => dt->0).
+            // Isoperimetric ratio P^2/(4A) is ~pi for a round piece, large for a sliver: rather than
+            // create the sliver we keep the parent whole (this also blocks the lengthwise re-crack, since
+            // both products of such a crack are thin). max_aspect ~ P^2/(4A) threshold (round=~3.1).
+            const real_type max_aspect    = 10.0;                 // isoperimetric P^2/(4A): ~pi (round) .. large (elongated)
+            const real_type min_angle_deg = 15.0;                 // reject spiky pieces (the acute apex of the sliver fan)
+            const real_type min_angle_rad = min_angle_deg * M_PI / 180.0;
+            for (auto const& g : pieces)
+            {
+                auto const& ring = g.outer();
+
+                // elongation — isoperimetric ratio P^2/(4A)
+                const real_type A = std::abs(geometry::area(g));
+                real_type P = 0;
+                for (std::size_t k = 1; k < ring.size(); ++k) P += norm2(ring[k] - ring[k - 1]);
+                if (ring.size() > 1) P += norm2(ring.front() - ring.back());
+                const real_type iso = (A > 0) ? P * P / (4 * A) : 1e30;
+                const bool too_elongated = (iso > max_aspect);
+
+                // acute spike — smallest interior angle between adjacent edges
+                std::size_t m = ring.size();
+                if (m > 1 && ring.front() == ring.back()) --m; // drop the closing duplicate vertex
+                real_type min_angle = M_PI;
+                for (std::size_t k = 0; m >= 3 && k < m; ++k)
+                {
+                    point_type const& p  = ring[k];
+                    point_type const& pm = ring[(k + m - 1) % m];
+                    point_type const& pp = ring[(k + 1) % m];
+                    const point_type u = pm - p, v = pp - p;
+                    const real_type ang = std::atan2(std::abs(u.x * v.y - u.y * v.x), u.x * v.x + u.y * v.y);
+                    if (ang < min_angle) min_angle = ang;
+                }
+                const bool too_spiky = (min_angle < min_angle_rad);
+
+                if (too_elongated || too_spiky)
+                {
+                    std::cout << "Fracture rejected (iso=" << iso << " [max " << max_aspect
+                              << "], min_angle=" << (min_angle * 180.0 / M_PI) << " deg [min " << min_angle_deg << "])" << std::endl;
+                    if (print_summary)
+                        std::cout << "Impact summary : " <<  m_fem_problem.get_impact_definition() << " ; theta = " << m_state.theta << " ; is_broken = False " << std::endl;
+                    return {};
+                }
+            }
+
+            if (print_summary){
                 std::cout << std::endl << "Breaking along (" << best_a.x << ";" << best_a.y << ")" << " -- (" << best_b.x << ";" << best_b.y << ")" << std::endl;
                 std::cout << "energy released : " << energy << std::endl;
                 const auto& vec = m_fem_problem.get_stress_vector();
@@ -599,9 +662,9 @@ KinematicFloe<TStaticFloe,TState>::fracture_floe_from_collisions_fem(bool use_pr
                 if (max_it2 != vec2.end()) {
                     std::cout << "maximum value of displacement : " << *max_it2 << std::endl;
                 }
-                std::cout << "Impact summary : " <<  m_fem_problem.get_impact_definition() << " ; theta = " << m_state.theta << " ; is_broken = True " << std::endl; // this print is used to help build a database by parsing the logs 
+                std::cout << "Impact summary : " <<  m_fem_problem.get_impact_definition() << " ; theta = " << m_state.theta << " ; is_broken = True " << std::endl; // this print is used to help build a database by parsing the logs
             }
-            return this->static_floe().fracture_floe_along(best_a, best_b);
+            return pieces;
         }
         else if (print_summary)
         {

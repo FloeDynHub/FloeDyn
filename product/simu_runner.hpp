@@ -111,6 +111,7 @@ public:
             P.get_lcp_manager().set_gs_params((int)jam_params[0], (int)jam_params[1], jam_params[2],
                                               jam_params[3], (int)jam_params[4], (int)jam_params[5]);
         P.get_lcp_manager().set_gs_tstuck(jam_tstuck); // after set_gs_params (log shows the effective criterion)
+        P.get_floe_group().set_crack_min_area(crack_min_area); // fracture size floor (--crack_min_area)
         if (vortex_characs[0]>0) {
             P.get_dynamics_manager().get_external_forces().get_physical_data().set_nb_vortex(vortex_characs[0]);
            P.get_dynamics_manager().get_external_forces().get_physical_data().set_nbVortexByZone(vortex_characs[1]);
@@ -295,6 +296,7 @@ protected:
     value_type              max_size                = 250;
     value_type              min_size                = 0;
     bool                    fracture                = 0;
+    value_type              crack_min_area          = 10; //!< fracture size floor (world area): no fracture below it, sub-floor products deactivated
     bool                    use_predictor           = 0;
     bool                    melting                 = 0;
     bool                    optim_jam               = 0; //!< OPTIMJAM: enable the Gauss-Seidel path
@@ -433,6 +435,7 @@ protected:
 
             "   4/ the distance of the first ring to the ice field origin (in [km]).\n")
         ("crack", po::value<bool>(&fracture), "1 to activate floe cracking model.\n")
+        ("crack_min_area", po::value<value_type>(&crack_min_area), "min floe area (world units) below which no fracture is performed; fracture products below it are deactivated (default 10).\n")
         ("use_predictor", po::value<bool>(&use_predictor), "1 to activate fast fracture predictor.\n")
         ("exportmesh", po::value<bool>(&export_mesh), "1 to activate mesh export in the output file.\n")
         ("melting", po::value<bool>(&melting), "1 to activate floe melting model.\n")

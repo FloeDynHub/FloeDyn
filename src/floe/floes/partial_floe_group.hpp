@@ -74,9 +74,13 @@ public:
     int fracture_floes(bool mode_eight = false, bool use_predictor = false, real_type time_step = 1.0);
     void melt_floes();
     void update_list_ids_active();//{std::cout<<"test"<<std::endl;}
+    //! Fracture ELIGIBILITY floor (world area units): a floe smaller than this is not fractured. It is
+    //! NOT removed — it just stays whole. CLI --crack_min_area. Default 10 keeps the historical behaviour.
+    inline void set_crack_min_area(real_type a) { m_crack_min_area = a; }
 
 private:
     std::vector<int> m_states_origin;
+    real_type m_crack_min_area{10};
     typename TFloe::fracture_predictor_type m_fracture_predictor;
 };
 
@@ -187,57 +191,55 @@ int
 PartialFloeGroup<TFloe, TFloeList>::fracture_floes(bool mode_eight, bool use_predictor, real_type time_step)
 {
     int n_fractured = 0;
-    // real_type min_area(400);
-    // real_type min_area(0.0001);
-    // real_type min_area(500);
-    real_type min_area(10);
+    const real_type min_area = m_crack_min_area;  // CLI --crack_min_area: fracture ELIGIBILITY floor only
+    const real_type min_valid_area = 10;          // "dust" floor: discard/deactivate only degenerate floes
     std::map<std::size_t, std::vector<geometry_type>> all_new_geometries;
     for (std::size_t i = 0; i < base_class::get_floes().size(); ++i){
         auto& floe = base_class::get_floes()[i];
         if (floe.is_obstacle())
         {
-            std::cout << "Ignoring Floe " << i << " (obstacle)." << std::endl;
+            // std::cout << "Ignoring Floe " << i << " (obstacle)." << std::endl;
             continue;
         }
         if (floe.area() < min_area)
         {
-            std::cout << "Ignoring Floe " << i << " (too small). " << std::endl;
+            // std::cout << "Ignoring Floe " << i << " (too small). " << std::endl;
             continue;
         }
         if (!floe.has_been_impacted())
         {
-            std::cout << "Ignoring Floe " << i << " (no impact). " << std::endl;
+            // std::cout << "Ignoring Floe " << i << " (no impact). " << std::endl;
             continue;
         }
         // do not look for fracture if mode 8 is activated
         if (mode_eight && i == 0)
         {
-            std::cout << "Ignoring Floe " << i << " (mode 8). " << std::endl;
+            // std::cout << "Ignoring Floe " << i << " (mode 8). " << std::endl;
             continue;
         }
         // auto new_geometries = base_class::get_floes()[i].fracture_floe_from_collisions();
         auto new_geometries = floe.fracture_floe_from_collisions_fem(use_predictor, m_fracture_predictor, time_step);
-        std::cout << "Looking for fracture in Floe " << i << ":";
+        // std::cout << "Looking for fracture in Floe " << i << ":";
         if (new_geometries.size() > 0){
-            std::cout << " fractured in " << new_geometries.size() << " parts, of sizes :"; 
+            // std::cout << " fractured in " << new_geometries.size() << " parts, of sizes :"; 
             // check geometry area and output the sizes ;
-            for (std::size_t j = 0; j < new_geometries.size(); ++j){
-                std::cout << " " << geometry::area(new_geometries[j]);
-            }
-            std::cout << std::endl;
+            // for (std::size_t j = 0; j < new_geometries.size(); ++j){
+            //     std::cout << " " << geometry::area(new_geometries[j]);
+            // }
+            // std::cout << std::endl;
             all_new_geometries[i] = new_geometries;
             n_fractured++;
         }
-        else{
-            std::cout << " not fractured " << std::endl;
-        }
+        // else{
+        //     std::cout << " not fractured " << std::endl;
+        // }
     }
 
     // Add new floes
     for (auto const& iter : all_new_geometries){
         for (std::size_t j = 0; j < iter.second.size(); ++j){
             // check geometry area
-            if (geometry::area(iter.second[j]) < min_area)
+            if (geometry::area(iter.second[j]) < min_valid_area)
             {
                 std::cout << "  - New floe " << j << " is too small and will be ignored. " << std::endl;
                 continue;
@@ -253,9 +255,9 @@ PartialFloeGroup<TFloe, TFloeList>::fracture_floes(bool mode_eight, bool use_pre
     }
     this->update_list_ids_active();
 
-    // Deactivate too small floes
+    // Deactivate degenerate (dust) floes only — NOT the --crack_min_area eligibility floor
     for (auto & floe : base_class::get_floes()){
-        if ((floe.area() < min_area) && !floe.is_obstacle())
+        if ((floe.area() < min_valid_area) && !floe.is_obstacle())
         {
             floe.state().desactivate();
             std::cout << "Floe is too small and has been deactivated." << std::endl;

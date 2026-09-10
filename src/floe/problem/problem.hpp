@@ -290,7 +290,7 @@ void PROBLEM::step_solve(bool crack, bool use_predictor) {
     auto t0 = std::chrono::high_resolution_clock::now();
     m_floe_group.unjam_all_floes(); // OPTIMJAM
     manage_collisions(); // OPTIMJAM some floes are marked jammed after this
-    m_floe_group.get_floes()[0].get_dirichlet_condition(m_domain.time());
+    // m_floe_group.get_floes()[0].get_dirichlet_condition(m_domain.time());
     auto t1 = std::chrono::high_resolution_clock::now();
     // fracture
     if (m_fracture && crack) {
