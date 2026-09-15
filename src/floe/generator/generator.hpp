@@ -397,24 +397,41 @@ void Generator<TProblem>::load_biblio_floe(std::string filename)
         load_biblio_floe_mat(filename);
 }
 
+/*! Normalize a shape (boundary point list) in place to unit AREA-EQUIVALENT radius:
+ *  r_eq = sqrt(area/pi), area via the shoelace formula (works for open or closed rings). A
+ *  shape-derived size, so the library only needs the shapes (no stored Rmin/Cmin). */
+template<typename TProblem>
+void Generator<TProblem>::normalize_to_unit_area(multi_point_type& shape)
+{
+    real_type a2 = 0;            // twice the signed area (shoelace)
+    bool first = true;
+    point_type p0{0, 0}, prev{0, 0};
+    for (auto const& p : shape)
+    {
+        if (first) { p0 = p; prev = p; first = false; continue; }
+        a2 += prev.x * p.y - p.x * prev.y;
+        prev = p;
+    }
+    a2 += prev.x * p0.y - p0.x * prev.y; // closing edge (last -> first)
+    const real_type area = std::abs(a2) * real_type(0.5);
+    if (area <= 0) return;               // degenerate shape: leave it untouched
+    const real_type r_eq = std::sqrt(area / M_PI);
+    geometry::transform(shape, shape, scale_transformer<real_type>{1 / r_eq});
+}
+
 /*! HDF5 floe-shape library loader (schema written by pack_creator/make_biblio_h5.py):
- *  group "shapes" with one (N,2) dataset per shape ("0".."M-1"), a "Rmin" (M) vector and a "Cmin"
- *  (M,2). Each shape is normalized to radius 1 (scaled by 1/Rmin), exactly like the matio path. */
+ *  group "shapes" with one (N,2) dataset per shape ("0".."M-1"). Each shape is normalized to unit
+ *  area-equivalent radius (see normalize_to_unit_area); legacy Rmin/Cmin datasets are ignored. */
 template<typename TProblem>
 void Generator<TProblem>::load_biblio_floe_h5(std::string filename)
 {
     using namespace H5;
     H5File file(filename, H5F_ACC_RDONLY);
 
-    // radii (M) -> also gives the number of shapes
-    DataSet rmin_ds = file.openDataSet("Rmin");
-    hsize_t rdim[1] = {0};
-    rmin_ds.getSpace().getSimpleExtentDims(rdim, NULL);
-    m_biblio_size = rdim[0];
-    std::vector<real_type> rmin(m_biblio_size);
-    rmin_ds.read(rmin.data(), PredType::NATIVE_DOUBLE);
-
+    // Only the shapes are read; each is normalized by its own area-equivalent radius (see
+    // normalize_to_unit_area). Legacy "Rmin"/"Cmin" datasets, if present, are ignored.
     Group shapes = file.openGroup("shapes");
+    m_biblio_size = shapes.getNumObjs();
     for (std::size_t i = 0; i < m_biblio_size; ++i)
     {
         DataSet ds = shapes.openDataSet(std::to_string(i));
@@ -428,8 +445,7 @@ void Generator<TProblem>::load_biblio_floe_h5(std::string filename)
         for (std::size_t j = 0; j < n; ++j)
             shape.push_back(point_type{buf[2 * j], buf[2 * j + 1]});
 
-        const real_type radius = rmin[i];
-        geometry::transform(shape, shape, scale_transformer<real_type>{1 / radius});
+        normalize_to_unit_area(shape);
         m_biblio_floe.push_back(shape);
     }
 }
@@ -437,38 +453,29 @@ void Generator<TProblem>::load_biblio_floe_h5(std::string filename)
 template<typename TProblem>
 void Generator<TProblem>::load_biblio_floe_mat(std::string filename)
 {
-    mat_t *matfp;
-
     // Opening file
-    matfp = Mat_Open( filename.c_str(), MAT_ACC_RDONLY );
+    mat_t *matfp = Mat_Open( filename.c_str(), MAT_ACC_RDONLY );
     if ( matfp == nullptr )
     {
         throw std::ios_base::failure("Error opening MAT file \"" + filename + "\"");
     }
 
-    matvar_t *shape_list, *Rmin, *Cmin;
-
-    shape_list = Mat_VarRead(matfp,"G");
-    Rmin = Mat_VarRead(matfp,"Rmin"); // surrounding disks radius
-    Cmin = Mat_VarRead(matfp,"Cmin"); // surrounding disks centers
-
-    m_biblio_size = shape_list->dims[0];
-
-    // checking vars
-    for (auto* matvar : {shape_list, Rmin, Cmin})
+    // Only the shapes ("G") are read; each is normalized by its own area-equivalent radius (see
+    // normalize_to_unit_area). Legacy "Rmin"/"Cmin" are no longer read (also avoids the old Cmin deref).
+    matvar_t *shape_list = Mat_VarRead(matfp, "G");
+    if ( shape_list == nullptr )
     {
-        if ( NULL == matvar ) {
-            fprintf(stderr,"Variable not found, or error reading MAT file\n");
-        }
+        Mat_Close(matfp);
+        throw std::ios_base::failure("MAT file \"" + filename + "\": variable \"G\" (shapes) not found");
     }
+    m_biblio_size = shape_list->dims[0];
 
     // Get the cells
     matvar_t **cells = (matvar_t **)shape_list->data;
 
     // Import shapes
     for (std::size_t i = 0; i < m_biblio_size; i++)
-    {   
-        // Read geometry
+    {
         auto cell = cells[i];
         multi_point_type shape;
         for (std::size_t j = 0; j < cell->dims[0]; j++)
@@ -476,19 +483,11 @@ void Generator<TProblem>::load_biblio_floe_mat(std::string filename)
             shape.push_back(point_type{static_cast<real_type*>(cell->data)[j], static_cast<real_type*>(cell->data)[cell->dims[0] + j]});
         }
 
-        // Center and normalize geometry
-        real_type radius{static_cast<real_type*>(Rmin->data)[i]};
-        point_type center{static_cast<real_type*>(Cmin->data)[i], static_cast<real_type*>(Cmin->data)[m_biblio_size + i]};
-        // geometry::transform( shape, shape, geometry::frame::transformer( typename floe_type::frame_type{-center, 0} )); // done when creating mesh
-        geometry::transform( shape, shape, scale_transformer<real_type>{ 1 / radius } );
-
-        // Save geometry
+        normalize_to_unit_area(shape);
         m_biblio_floe.push_back(shape);
     }
 
-    // freeing memory
     Mat_VarFree(shape_list);
-
     Mat_Close(matfp);
 }
 

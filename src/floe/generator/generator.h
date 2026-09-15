@@ -86,6 +86,9 @@ private:
     void load_biblio_floe(std::string filename);     //!< dispatches on extension (.h5 vs .mat)
     void load_biblio_floe_h5(std::string filename);  //!< HDF5 library loader (see make_biblio_h5.py)
     void load_biblio_floe_mat(std::string filename); //!< legacy matio (.mat) library loader
+    //! Normalize a library shape in place to unit AREA-EQUIVALENT radius (r_eq = sqrt(area/pi)),
+    //! computed from the shape itself — so the library only needs the shapes (no stored Rmin/Cmin).
+    void normalize_to_unit_area(multi_point_type& shape);
     void discretize_biblio_floe(std::size_t n);
     void generate_meshes();
 
