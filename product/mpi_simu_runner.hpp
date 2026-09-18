@@ -112,6 +112,7 @@ private:
         P.get_dynamics_manager().set_rand_speed_add(rand_speed_add);
         P.get_dynamics_manager().set_norm_rand_speed(rand_norm);
         P.get_dynamics_manager().get_external_forces().get_physical_data().set_modes(force_modes[0],force_modes[1]);
+        P.get_out_manager().set_export_forcing(export_forcing); // --exportforcing (dataset floe_forcing)
         P.get_dynamics_manager().get_external_forces().get_physical_data().set_speeds(force_speeds[0],force_speeds[1]);
         // Honour --output in MPI (it was ignored, so the master kept its random default name). Only the
         // master writes output, so set the name on rank 0 only; workers never write and don't need it.

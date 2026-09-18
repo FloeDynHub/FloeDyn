@@ -113,6 +113,10 @@ public:
 
     void write_selected_floe_ids(std::vector<std::size_t> selected_floe_ids);
 
+    //! Enable exporting, per floe and per output step, the wind + current velocity seen at the floe
+    //! centre (state.pos) into the "floe_forcing" dataset. CLI --exportforcing.
+    inline void set_export_forcing(bool b) { m_export_forcing = b; }
+
 
 
 private:
@@ -132,7 +136,8 @@ private:
     boost::multi_array<real_type, 3> m_data_chunk_states; //!< Temp saved floe states
     // boost::multi_array<real_type, 4> m_data_chunk_elem_data; //!< Temp saved data at mesh elems 
     boost::multi_array<real_type, 3> m_data_chunk_elem_data; //!< Temp saved data at mesh elems 
-    boost::multi_array<real_type, 3> m_data_chunk_node_data; //!< Temp saved data at mesh nodes 
+    boost::multi_array<real_type, 3> m_data_chunk_node_data; //!< Temp saved data at mesh nodes
+    boost::multi_array<real_type, 3> m_data_chunk_forcing; //!< Temp saved wind+current velocity at floe centres [air_x,air_y,ocn_x,ocn_y]
     real_type* m_data_chunk_time; //!< Temp saved times
     boost::multi_array<real_type, 2> m_data_chunk_mass_center; //!< Temp saved floe group mass centers
     boost::multi_array<real_type, 2> m_data_chunk_OBL_speed; //!< Temp saved ocean datas
@@ -153,6 +158,7 @@ private:
     //! Partial writings :
     void write_boundaries();
     void write_states();
+    void write_forcing();
     void write_elem_data();
     void write_node_data();
     void write_time();
@@ -172,6 +178,7 @@ private:
     size_t m_max_elem; // contains the highest number of elements among all floe meshes, among all time steps 
     size_t m_max_nodes; // contains the highest number of nodes among all floe meshes, among all time steps 
     bool m_export_mesh;
+    bool m_export_forcing; //!< export the wind+current velocity seen at each floe centre (--exportforcing)
 };
 
 

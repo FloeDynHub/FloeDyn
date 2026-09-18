@@ -153,6 +153,9 @@ public:
     void set_floe_group(floe_group_type const& floe_group) {
         for (auto& mgr : this->m_out_managers) mgr.set_floe_group(floe_group);
     };
+    inline void set_export_forcing(bool b) {
+        for (auto& mgr : this->m_out_managers) mgr.set_export_forcing(b);
+    };
     inline std::string const& out_file_name() const {
         return m_out_managers[0].out_file_name();
     }

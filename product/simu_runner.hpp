@@ -112,6 +112,7 @@ public:
                                               jam_params[3], (int)jam_params[4], (int)jam_params[5]);
         P.get_lcp_manager().set_gs_tstuck(jam_tstuck); // after set_gs_params (log shows the effective criterion)
         P.get_floe_group().set_crack_min_area(crack_min_area); // fracture size floor (--crack_min_area)
+        P.get_out_manager().set_export_forcing(export_forcing); // --exportforcing (dataset floe_forcing)
         if (vortex_characs[0]>0) {
             P.get_dynamics_manager().get_external_forces().get_physical_data().set_nb_vortex(vortex_characs[0]);
            P.get_dynamics_manager().get_external_forces().get_physical_data().set_nbVortexByZone(vortex_characs[1]);
@@ -310,6 +311,7 @@ protected:
     value_type              jam_tstuck              = 600; //!< OPTIMJAM: no-progress TIME window (s) before freeze (0 = legacy step count)
     std::vector<value_type> jam_params              = std::vector<value_type>{50, 20000, 0.5, 3e-4, 10, 10}; //!< OPTIMJAM: [min_contacts, gs_max_iter, rel_speed_max, eps, stuck_N, probe_K] (validated set)
     bool                    export_mesh             = 0; //!< export FEM mesh + per-element stress / per-node solution fields (fracture / VTK)
+    bool                    export_forcing          = 0; //!< export wind+current velocity seen at each floe centre (dataset floe_forcing)
 
     bool                    rand_speed_add          = 1;
     value_type              rand_norm               = 1e-7;
@@ -438,6 +440,7 @@ protected:
         ("crack_min_area", po::value<value_type>(&crack_min_area), "min floe area (world units) below which no fracture is performed; fracture products below it are deactivated (default 10).\n")
         ("use_predictor", po::value<bool>(&use_predictor), "1 to activate fast fracture predictor.\n")
         ("exportmesh", po::value<bool>(&export_mesh), "1 to activate mesh export in the output file.\n")
+        ("exportforcing", po::value<bool>(&export_forcing), "1 to export, per floe and per output step, the wind & current velocity seen at the floe centre (state.pos). Dataset \"floe_forcing\" [time, floe, 4] = [air_x, air_y, ocean_x, ocean_y].\n")
         ("melting", po::value<bool>(&melting), "1 to activate floe melting model.\n")
         ("optim_jam", po::value<bool>(&optim_jam)->default_value(false),
             "1 to activate the Gauss-Seidel path: large anchored quasi-static contact components (dense "

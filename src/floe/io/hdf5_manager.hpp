@@ -28,6 +28,7 @@ HDF5Manager<TFloeGroup, TDynamicsMgr>::HDF5Manager(floe_group_type const& floe_g
     m_data_chunk_states(boost::extents[0][0][0]),
     m_data_chunk_elem_data(boost::extents[0][0][0]),
     m_data_chunk_node_data(boost::extents[0][0][0]),
+    m_data_chunk_forcing(boost::extents[0][0][0]),
     m_data_chunk_time{new real_type[m_flush_max_step]},
     m_data_chunk_mass_center(boost::extents[m_flush_max_step][2]),
     m_data_chunk_OBL_speed(boost::extents[m_flush_max_step][2]),
@@ -35,7 +36,8 @@ HDF5Manager<TFloeGroup, TDynamicsMgr>::HDF5Manager(floe_group_type const& floe_g
     m_out_step{0}, m_next_out_limit{0}, m_nb_floe_shapes_written{0}, m_nb_floe_meshes_coord_written{0}, m_nb_floe_meshes_connect_written{0}, m_shapes_group{nullptr}, m_meshes_coord_group{nullptr}, m_meshes_connect_group{nullptr},
     m_max_elem{0},
     m_max_nodes{0},
-    m_export_mesh{export_mesh}
+    m_export_mesh{export_mesh},
+    m_export_forcing{false}
     {}
 
 //! Definition of the destructor:
@@ -73,6 +75,7 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::save_step(real_type time, const dyna
         m_data_chunk_states.resize(boost::extents[m_flush_max_step][this->nb_considered_floes()][array_size<saved_state_type>::size]);
         m_data_chunk_elem_data.resize(boost::extents[m_flush_max_step][this->nb_considered_floes()][m_max_elem]);
         m_data_chunk_node_data.resize(boost::extents[m_flush_max_step][this->nb_considered_floes()][m_max_nodes*2]);
+        if (m_export_forcing) m_data_chunk_forcing.resize(boost::extents[m_flush_max_step][this->nb_considered_floes()][4]);
         write_shapes();
         if (m_export_mesh)
         {
@@ -170,6 +173,24 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::save_step(real_type time, const dyna
         }
     }
 
+    // save wind + current velocity "seen" at each floe centre (state.pos): [air_x, air_y, ocn_x, ocn_y]
+    if (m_export_forcing)
+    {
+        if (m_data_chunk_forcing.size() == 0) m_data_chunk_forcing.resize(boost::extents[m_flush_max_step][this->nb_considered_floes()][4]);
+        // Read-only field evaluation; the forcing accessors aren't const-qualified, hence the const_cast.
+        auto& phys = const_cast<dynamics_mgr_type&>(dynamics_manager).get_external_forces().get_physical_data();
+        for (std::size_t id = 0; id < this->nb_considered_floes(); id++)
+        {
+            auto const& floe = this->get_floe(id);
+            const auto wind    = phys.air_speed(floe.state().pos);
+            const auto current = phys.water_speed(floe.state().pos);
+            m_data_chunk_forcing[m_chunk_step_count][id][0] = wind.x;
+            m_data_chunk_forcing[m_chunk_step_count][id][1] = wind.y;
+            m_data_chunk_forcing[m_chunk_step_count][id][2] = current.x;
+            m_data_chunk_forcing[m_chunk_step_count][id][3] = current.y;
+        }
+    }
+
     // save time
     m_data_chunk_time[m_chunk_step_count] = time;
 
@@ -250,6 +271,8 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::flush() {
 
         // write_boundaries();
         write_states();
+        if (m_export_forcing)
+            write_forcing();
         if (m_export_mesh)
         {
             write_elem_data();
@@ -387,6 +410,42 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::write_states() {
     DataSpace memspace{RANK, chunk_dims, NULL};
 
     states_dataset.write(m_data_chunk_states.data(), PredType::NATIVE_DOUBLE, memspace, filespace);
+};
+
+
+//! Wind + current velocity seen at each floe centre (state.pos): dataset "floe_forcing"
+//! [time, floe, 4] with components [air_x, air_y, ocean_x, ocean_y]. Mirrors write_states().
+template <typename TFloeGroup, typename TDynamicsMgr>
+void HDF5Manager<TFloeGroup, TDynamicsMgr>::write_forcing() {
+
+    H5File& file( *m_out_file );
+    const int   RANK = 3;
+
+    DataSet forcing_dataset;
+    const hsize_t nb_floes = m_data_chunk_forcing[0].size();
+    hsize_t     dims[RANK] = {m_step_count - m_chunk_step_count, nb_floes, 4};
+    const hsize_t     chunk_dims[RANK] = {m_chunk_step_count, dims[1], dims[2]};
+    try {
+        forcing_dataset = file.openDataSet("floe_forcing");
+    } catch (...) {
+        FloatType datatype( PredType::NATIVE_DOUBLE );
+        datatype.setOrder( H5T_ORDER_LE );
+        hsize_t maxdims[RANK] = {H5S_UNLIMITED, H5S_UNLIMITED, dims[2]};
+        DataSpace dataspace( RANK, dims, maxdims );
+        DSetCreatPropList prop;
+        prop.setChunk(RANK, chunk_dims);
+        forcing_dataset = file.createDataSet("floe_forcing", datatype, dataspace, prop);
+    }
+    // Extend the dataset.
+    dims[0] += chunk_dims[0];
+    forcing_dataset.extend(dims);
+
+    DataSpace filespace = forcing_dataset.getSpace();
+    hsize_t offset[RANK] = {m_step_count - m_chunk_step_count, 0, 0};
+    filespace.selectHyperslab(H5S_SELECT_SET, chunk_dims, offset);
+    DataSpace memspace{RANK, chunk_dims, NULL};
+
+    forcing_dataset.write(m_data_chunk_forcing.data(), PredType::NATIVE_DOUBLE, memspace, filespace);
 };
 
 
