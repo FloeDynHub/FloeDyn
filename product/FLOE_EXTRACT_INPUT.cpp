@@ -43,8 +43,8 @@ int main( int argc, char* argv[] )
         P.load_matlab_topaz_data(matlab_topaz_filename); // segfault otherwise (?)
         P.recover_states_from_file(input_list_floe_filename, rectime, false);
     }
-    P.make_input_file();
-    // cout << P.get_floe_group().total_area();
+    auto out = P.make_input_file();
+    if (!out.empty()) std::cout << out << std::endl;
 
     return 0;
 }
