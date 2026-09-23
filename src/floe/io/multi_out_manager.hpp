@@ -28,9 +28,10 @@ public:
     using floe_group_type = typename TOutManager::floe_group_type;
     using dynamics_manager_type = typename TOutManager::dynamics_mgr_type;
 
-    //! Default constructor.
-    MultiOutManager(floe_group_type const& floe_group) :
-        m_out_managers{floe_group, floe_group},
+    //! Default constructor. export_mesh is forwarded to both wrapped managers (matches the single-manager
+    //! path in Problem, whose out_manager is built with {floe_group, export_mesh}).
+    MultiOutManager(floe_group_type const& floe_group, bool export_mesh = false) :
+        m_out_managers{ {floe_group, export_mesh}, {floe_group, export_mesh} },
         m_floe_group{&floe_group}
     {
         TOutManager& second_out_mgr = m_out_managers[1];
@@ -114,9 +115,9 @@ public:
 
         //!< common part between the two methods:
         second_out_mgr.restrain_floe_ids(selected_floe_ids);
-
-        second_out_mgr.write_selected_floe_ids(selected_floe_ids);
-        std::cout << "I just wrote a selection of " << n_select << " floes." << std::endl;
+        // The selection is now written into the partial file itself (see HDF5Manager::flush ->
+        // write_selected_floe_ids), so it is per-run and survives concurrent runs.
+        std::cout << "Selected " << n_select << " floes for the partial output." << std::endl;
         // second_out_mgr.set_out_file_name("");
     }
 
@@ -145,8 +146,15 @@ public:
         real_type recover_time = m_out_managers[0].recover_states(
             filename, time, floe_group, dyn_mgr, keep_as_outfile
         );
-        const H5std_string selec_floe_file("io/outputs/selected_floes.h5");
-        m_out_managers[1].recover_restrained_floes( selec_floe_file );
+        // The floe selection lives in the partial file accompanying the recover (full) file:
+        // "<recfile>.h5" -> "<recfile>_partial.h5". Per-run, so robust to concurrent runs.
+        std::string partial_file = filename;
+        const std::string ext(".h5");
+        if (partial_file.size() >= ext.size() && partial_file.compare(partial_file.size() - ext.size(), ext.size(), ext) == 0)
+            partial_file = partial_file.substr(0, partial_file.size() - ext.size()) + "_partial.h5";
+        else
+            partial_file += "_partial.h5";
+        m_out_managers[1].recover_restrained_floes( partial_file );
         m_out_managers[1].auto_step_count(recover_time);
         return recover_time;
     }

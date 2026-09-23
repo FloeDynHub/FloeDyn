@@ -269,6 +269,13 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::flush() {
         try { m_out_file->openDataSet("window"); }
         catch (...) { write_window(); }
 
+        // Restrained (partial) manager: record its floe selection in its own file, once, so a restart
+        // recovers the same floes from the continued file (not a shared global file).
+        if (!m_floe_ids.empty()) {
+            try { m_out_file->openDataSet("selected_floe_ids"); }
+            catch (...) { write_selected_floe_ids(m_floe_ids); }
+        }
+
         // write_boundaries();
         write_states();
         if (m_export_forcing)
@@ -1095,6 +1102,11 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::recover_restrained_floes(const H5std
 
         this->restrain_floe_ids(selected_floe_ids);
         std::cout << "the selection of floes has been recovered!" << std::endl;
+
+        // Close the handle: the selection now lives in the partial output file itself, which the
+        // manager re-opens (RDWR) to append after restart — a leaked RDONLY handle would block it.
+        delete dataset;
+        delete file;
     }
     catch( FileIException error )
     {
@@ -1112,53 +1124,26 @@ void HDF5Manager<TFloeGroup, TDynamicsMgr>::recover_restrained_floes(const H5std
     }
 };
 
+//! Store the floe selection INSIDE this manager's own output file (for the partial manager:
+//! "<output>_partial.h5") as dataset "selected_floe_ids". A restart then recovers the same floes from
+//! the file being continued — robust to multiple concurrent runs (the old global
+//! io/outputs/selected_floes.h5 was overwritten by any other run sharing io/outputs). Called from
+//! flush() while m_out_file is open.
 template <typename TFloeGroup, typename TDynamicsMgr>
 void HDF5Manager<TFloeGroup, TDynamicsMgr>::write_selected_floe_ids(std::vector<std::size_t> selected_floe_ids){
 
-    const H5std_string FILE_NAME( "io/outputs/selected_floes.h5" );
+    H5File& file( *m_out_file );
     const H5std_string SFI("selected_floe_ids");
 
-    /*
-     * Try block to detect exceptions raised by any of the calls inside it
-     */
-    try{
-        /*
-         * Turn off the auto-printing when failure occurs so that we can
-         * handle the errors appropriately
-         */
-        Exception::dontPrint();
-        /*
-         * Create a file.
-         */
-        H5File* file;
-        file = new H5File( FILE_NAME, H5F_ACC_TRUNC );
+    const hsize_t dim[1] = {selected_floe_ids.size()};
+    DataSpace space( 1, dim );
+    DataSet data_floes( file.createDataSet( SFI, PredType::NATIVE_INT, space ) );
 
-        /* write list of selected floes */
-        const hsize_t dim[1] = {selected_floe_ids.size()};
-        DataSpace space( 1, dim );
+    std::vector<int> val(selected_floe_ids.size());
+    for (size_t i=0; i<selected_floe_ids.size(); ++i)
+        val[i] = static_cast<int>(selected_floe_ids[i]);
 
-        DataSet* data_floes = new DataSet(file->createDataSet( SFI, PredType::NATIVE_INT, space ));
-
-        int val[selected_floe_ids.size()];
-        for (size_t i=0; i<selected_floe_ids.size(); ++i) {
-            val[i] = selected_floe_ids[i];
-        }
-
-        data_floes->write(val, PredType::NATIVE_INT);
-
-        delete data_floes;
-        delete file;
-    } // end of try block
-    // catch failure caused by the H5File operations
-    catch( FileIException error )
-    {
-        error.printErrorStack();
-    }
-    // catch failure caused by the DataSet operations
-    catch( DataSetIException error )
-    {
-        error.printErrorStack();
-    }
+    data_floes.write(val.data(), PredType::NATIVE_INT);
 };
 
 }} // namespace floe::io
