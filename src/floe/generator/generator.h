@@ -46,6 +46,8 @@ public:
     //! caller enable OPTIMJAM on the generation loop itself (see simu_runner — needs --jam_unanchored
     //! since the generated pack has no obstacles).
     auto& get_lcp_manager() { return m_problem.get_lcp_manager(); }
+    //! Access the generator's own dynamics manager (e.g. to pass it the bustle, see simu_runner)
+    auto& get_dynamics_manager() { return m_problem.get_dynamics_manager(); }
     //! Access the generator's own out_manager: lets the caller name the GENERATION output file (e.g.
     //! "<output>_gen" so a UI can follow the generation run — see simu_runner --output handling).
     auto& get_out_manager() { return m_problem.get_out_manager(); }
@@ -65,6 +67,15 @@ public:
     //! Initial floe-placement layout (CLI --distrib): 0 = scattered_distribution (uniform random, default),
     //! 1 = spiral_distribution (legacy, biggest at centre). See random_floe_group dispatch.
     inline void set_distrib(int d) { if (d >= 0) m_distrib = d; }
+    //! Homogenization phase (CLI --homogen): after compaction, run T seconds in air mode 10 (void-seeking),
+    //! then a final convergence (mode 2) to bring back the floes that left the window. 0 = no phase.
+    inline void set_homogen_time(real_type t) { m_homogen_time = t; }
+    //! Floe-size definition (CLI --sizedef): false = same area-equivalent radius (default), true = same
+    //! minimal width (a floe of nominal size R has a minimal width 2R, whatever its shape).
+    inline void set_size_by_width(bool b) { m_size_by_width = b; }
+    //! Periodic stop of the floes inside the calm window during the convergence (CLI --stopfloes, default
+    //! true): keeps big floes (power law, spiral) from pushing the small ones out; hinders mode 12.
+    inline void set_stop_floes(bool b) { m_stop_floes = b; }
 
 private:
     TProblem m_problem;
@@ -89,6 +100,14 @@ private:
     //! Normalize a library shape in place to unit AREA-EQUIVALENT radius (r_eq = sqrt(area/pi)),
     //! computed from the shape itself — so the library only needs the shapes (no stored Rmin/Cmin).
     void normalize_to_unit_area(multi_point_type& shape);
+    //! Analytic shapes (CLI --biblio "p4" or "p3,p6"): fills the library if EVERY token is a known shape
+    //! name (see analytic_shape), returns false otherwise (the string is then a library file path).
+    bool load_analytic_biblio(std::string const& spec);
+    //! Named analytic shape -> boundary (CCW, unit circumradius). "pN" = regular N-gon. Add special
+    //! shapes here (e.g. a star). Returns false for an unknown name.
+    bool analytic_shape(std::string const& name, multi_point_type& shape);
+    //! Minimal width of a polygon (smallest distance between two parallel lines enclosing it).
+    real_type min_width(polygon_type const& shape);
     void discretize_biblio_floe(std::size_t n);
     void generate_meshes();
 
@@ -103,6 +122,10 @@ private:
     std::string m_biblio_path{"io/library/biblio_realistic.h5"}; //!< floe-shape library (CLI --biblio)
     int         m_size_rep{1}; //!< floe-size distribution selector (CLI --sizerep; see set_size_rep)
     int         m_distrib{0};  //!< initial placement layout (CLI --distrib; 0=scattered, 1=spiral)
+    real_type   m_homogen_time{0};     //!< mode-10 homogenization duration (CLI --homogen; 0 = none)
+    bool        m_size_by_width{false}; //!< size definition (CLI --sizedef width)
+    bool        m_random_theta{false};  //!< random floe orientation (set for analytic shapes)
+    bool        m_stop_floes{true};     //!< periodic stop of the floes in the calm window (CLI --stopfloes)
 };
 
 

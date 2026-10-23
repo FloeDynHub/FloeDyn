@@ -27,6 +27,9 @@
 #include <algorithm>
 #include <random>
 #include <unordered_map>
+#include <sstream>
+#include <array>
+#include <cctype>
 #include "floe/utils/random.hpp"
 
 // assertion
@@ -71,6 +74,15 @@ Generator<TProblem>::generate_floe_set(std::size_t nb_floes, real_type concentra
     m_problem.get_lcp_manager().get_solver().get_epsilon() << std::endl;
     load_biblio_floe(m_biblio_path); // CLI --biblio (default: realistic HDF5 library)
     discretize_biblio_floe(25);
+    if (m_size_by_width) // --sizedef width: nominal size R <=> minimal width 2R, whatever the shape
+    {
+        for (auto& shape : m_biblio_floe_h)
+        {
+            const real_type w = min_width(shape);
+            if (w > 0) geometry::transform(polygon_type(shape), shape, scale_transformer<real_type>{2 / w});
+        }
+        std::cout << "Floe size definition: minimal width (size R <=> min width 2R)" << std::endl;
+    }
     generate_meshes();
     random_floe_group(nb_floes, max_size, min_size);
     real_type mu_static = 0;
@@ -103,7 +115,21 @@ Generator<TProblem>::generate_floe_set(std::size_t nb_floes, real_type concentra
     assert( (force_modes[0]==2 && force_modes[1]==0) || (force_modes[0]==0 && force_modes[1]==2) 
         && "Error : The Atmospheric or/and Oceanic currents are not suitable for initial ice pack generation.\n" 
         && "Please type:   air mode = 2 and water mode = 0 or air mode = 0 and water mode = 2.\n");
-    physical_data.set_modes(force_modes[0],force_modes[1]);
+    // --distrib scattered: most floes start outside the window and pile up in a ring at its border; mode 12
+    // adds the void-seeking homogenizer inside the calm window so the ring spreads toward the centre.
+    // Mode 13: the calm core starts at a quarter of the window and grows as soon as the band pushed around it
+    // is filled (see loop): the wind only pushes around a zone that is still below the target concentration
+    const bool growing_core = (m_distrib == 0 && force_modes[0] == 2);
+    real_type core_half = win_width / 8;
+    // the core grows up to the window minus the largest floe radius (only floes really overlapping the border
+    // are still pushed), but never less than the historical calm window (very big floes of exp distributions)
+    const real_type core_max = std::max(win_width / 2 - max_radius, win_width * shrinkFactor / 2);
+    if (growing_core) {
+        physical_data.set_modes(13, 0);
+        physical_data.set_window_size(2 * core_half, 2 * core_half);
+    }
+    else
+        physical_data.set_modes(force_modes[0],force_modes[1]);
 
     physical_data.set_speeds(force_speeds[0],force_speeds[1]);
     for (auto& floe : m_problem.get_floe_group().get_floes()){
@@ -116,21 +142,61 @@ Generator<TProblem>::generate_floe_set(std::size_t nb_floes, real_type concentra
     
     m_problem.set_is_generator();
     do {
-        m_problem.solve(end_time, 10, 10, init);
+        m_problem.solve(end_time, 10, 60, init); // same snapshot step as the homogenization (videos at constant speed)
         // Trick for helping floe to stay within the target area 
-        if (end_time>time_to_stop_floe_in_target_window) {
+        if (m_stop_floes && end_time>time_to_stop_floe_in_target_window) {
             std::cout << "It is time to stop floes within the target area." << std::endl;
             m_problem.get_floe_group().stop_floes_in_window(win_width * shrinkFactor, win_width * shrinkFactor);
             // time_to_stop_floe_in_target_window += 500; //500
             time_to_stop_floe_in_target_window += 5*end_time; //500
         }
         std::cout << " Concentration : " << m_problem.floe_concentration() << std::endl;
-        end_time += 20; init = false;
+        // Grow the calm core as soon as half of the 8 angular sectors (45 deg, equal areas by symmetry) of the
+        // band [h, h+step] around it reach 70% of the target concentration (floe areas counted at their
+        // centroid): the lobes fill some sectors only, the filled band becomes calm and the wind moves on
+        // to the next one. Up to the official calm window
+        if (growing_core && core_half < core_max) {
+            const real_type step = max_radius; // fine steps: the pushing front follows the filling closely
+            auto band_full = [&](real_type h) {
+                std::array<real_type, 8> a{};
+                for (auto const& floe : m_problem.get_floe_group().get_floes()) {
+                    auto const& p = floe.state().pos;
+                    const real_type d = std::max(std::abs(p.x), std::abs(p.y));
+                    if (d < h || d >= h + step) continue;
+                    const int sec = static_cast<int>(std::floor((std::atan2(p.y, p.x) + M_PI) / (M_PI / 4))) % 8;
+                    a[sec] += floe.area();
+                }
+                const real_type sector_area = (4 * (h + step) * (h + step) - 4 * h * h) / 8;
+                int full = 0;
+                for (auto v : a) if (v / sector_area >= 0.7 * concentration) ++full;
+                return full >= 4;
+            };
+            const real_type old_half = core_half;
+            while (core_half < core_max && band_full(core_half))
+                core_half = std::min(core_half + step, core_max);
+            if (core_half != old_half) {
+                physical_data.set_window_size(2 * core_half, 2 * core_half);
+                std::cout << " Calm core : " << 2 * core_half << " m (" << 100 * core_half / (core_max) << " %)" << std::endl;
+            }
+        }
+        end_time += 10; init = false; // 10 s chunks: frequent checks of the calm core
         if (*m_problem.QUIT) break; // exit normally after SIGINT
     } 
     // while (m_problem.get_floe_group().kinetic_energy() != 0 && end_time < 1e6 );
     while (m_problem.get_floe_group().count_floes_outside_window(win_width*0.999, win_width*0.999) > 0 && end_time < 1e6 );
     m_problem.get_floe_group().stop_floes_in_window(win_width, win_width);
+    // Homogenization phase (--homogen): air mode 10 pushes floes toward the emptier cells of the window
+    // (its coverage grid spans the initial window = the generation window). A few border floes may end
+    // slightly outside the window (concentration slightly below the target): accepted, a final
+    // re-compaction would bias the border.
+    if (m_homogen_time > 0 && !*m_problem.QUIT)
+    {
+        std::cout << "Homogenization: " << m_homogen_time << " s in air mode 10" << std::endl;
+        physical_data.set_modes(10, 0);
+        m_problem.solve(end_time + m_homogen_time, 10, 60, false);
+        m_problem.get_floe_group().stop_floes_in_window(2 * win_width, 2 * win_width);
+        std::cout << " Concentration : " << m_problem.floe_concentration() << std::endl;
+    }
     // m_problem.get_floe_group().stop_floes_in_window(win_width, win_width); // not sure that's useful, just in case the velocities are written in the input file 
 
     //!< \remark    It is better do not use the while condition below since for building a big floe packs as
@@ -182,6 +248,7 @@ Generator<TProblem>::random_floe_group(std::size_t n, real_type max_size, real_t
     // unused pick to avoid first choice often being the same
     // (for quasi-simultaneous execs, even with different seeds)
     distribution(generator);
+    std::uniform_real_distribution<real_type> angle(0, 2 * M_PI); // random orientation (analytic shapes)
     list_floes.resize(n);
 
     for (std::size_t i = 0; i < n; i++)
@@ -213,6 +280,7 @@ Generator<TProblem>::random_floe_group(std::size_t n, real_type max_size, real_t
         // Set space-time state
         typename floe_type::state_type state {{0, 0}, 0, {0, 0}, 0, {0, 0}};
         state.pos = centers[i];
+        if (m_random_theta) state.theta = angle(generator);
         floe.set_state( state );
     }
 
@@ -390,7 +458,9 @@ Generator<TProblem>::spiral_distribution(std::vector<real_type> const& size_dist
 template<typename TProblem>
 void Generator<TProblem>::load_biblio_floe(std::string filename)
 {
-    // Dispatch on extension: ".h5" -> new HDF5 library, otherwise legacy matio (.mat).
+    // Analytic shapes ("p4", "p3,p6"), else dispatch on extension: ".h5" -> HDF5 library, otherwise matio (.mat).
+    if (load_analytic_biblio(filename))
+        return;
     if (filename.size() >= 3 && filename.compare(filename.size() - 3, 3, ".h5") == 0)
         load_biblio_floe_h5(filename);
     else
@@ -417,6 +487,78 @@ void Generator<TProblem>::normalize_to_unit_area(multi_point_type& shape)
     if (area <= 0) return;               // degenerate shape: leave it untouched
     const real_type r_eq = std::sqrt(area / M_PI);
     geometry::transform(shape, shape, scale_transformer<real_type>{1 / r_eq});
+}
+
+template<typename TProblem>
+bool Generator<TProblem>::analytic_shape(std::string const& name, multi_point_type& shape)
+{
+    shape.clear();
+    // "pN": regular N-gon (N >= 3)
+    if (name.size() > 1 && name[0] == 'p' && name.find_first_not_of("0123456789", 1) == std::string::npos)
+    {
+        const int n = std::stoi(name.substr(1));
+        if (n < 3) return false;
+        // m points per edge (corner + m-1 on the edge), n*m <= 25 so that discretize_biblio_floe(25)
+        // keeps every point (corners included)
+        const int m = std::max(1, 25 / n);
+        for (int k = 0; k < n; ++k)
+        {
+            const point_type a{std::cos(2 * M_PI * k / n), std::sin(2 * M_PI * k / n)};
+            const point_type b{std::cos(2 * M_PI * (k + 1) / n), std::sin(2 * M_PI * (k + 1) / n)};
+            for (int j = 0; j < m; ++j)
+                shape.push_back(point_type{a.x + (b.x - a.x) * j / m, a.y + (b.y - a.y) * j / m});
+        }
+        return true;
+    }
+    // Special named shapes go here, e.g. if (name == "star") { ...; return true; }
+    return false;
+}
+
+template<typename TProblem>
+bool Generator<TProblem>::load_analytic_biblio(std::string const& spec)
+{
+    std::vector<multi_point_type> shapes;
+    std::string token;
+    std::stringstream ss(spec);
+    while (std::getline(ss, token, ','))
+    {
+        token.erase(std::remove_if(token.begin(), token.end(), ::isspace), token.end());
+        if (token.empty()) continue;
+        multi_point_type shape;
+        if (!analytic_shape(token, shape)) return false; // not an analytic spec: a library file path
+        normalize_to_unit_area(shape);
+        shapes.push_back(shape);
+    }
+    if (shapes.empty()) return false;
+    m_biblio_floe = shapes;
+    m_biblio_size = shapes.size();
+    m_random_theta = true; // regular shapes would otherwise all be aligned
+    std::cout << "Analytic floe shapes: " << spec << " (random orientation)" << std::endl;
+    return true;
+}
+
+/*! Minimal width: for a convex polygon it is reached perpendicular to a hull edge, i.e. to the line through
+ *  two of its vertices; testing every vertex pair covers the hull edges of any (even non-convex) shape. */
+template<typename TProblem>
+real_type Generator<TProblem>::min_width(polygon_type const& shape)
+{
+    auto const& pts = shape.outer();
+    real_type w_min = std::numeric_limits<real_type>::max();
+    for (std::size_t i = 0; i < pts.size(); ++i)
+        for (std::size_t j = i + 1; j < pts.size(); ++j)
+        {
+            const real_type dx = pts[j].x - pts[i].x, dy = pts[j].y - pts[i].y;
+            const real_type len = std::sqrt(dx * dx + dy * dy);
+            if (len <= 0) continue;
+            real_type lo = std::numeric_limits<real_type>::max(), hi = std::numeric_limits<real_type>::lowest();
+            for (auto const& p : pts)
+            {
+                const real_type d = ((p.x - pts[i].x) * dy - (p.y - pts[i].y) * dx) / len;
+                lo = std::min(lo, d); hi = std::max(hi, d);
+            }
+            w_min = std::min(w_min, hi - lo);
+        }
+    return (w_min == std::numeric_limits<real_type>::max()) ? 0 : w_min;
 }
 
 /*! HDF5 floe-shape library loader (schema written by pack_creator/make_biblio_h5.py):

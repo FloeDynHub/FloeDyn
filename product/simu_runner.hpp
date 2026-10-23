@@ -226,6 +226,15 @@ public:
         G.set_biblio_path(biblio_path); // floe-shape library (--biblio; empty => generator default)
         G.set_size_rep(sizerep);        // floe-size distribution (--sizerep)
         G.set_distrib(distrib);         // initial placement layout (--distrib; 0=scattered, 1=spiral)
+        G.set_homogen_time(homogen);    // mode-10 homogenization phase (--homogen)
+        if (sizedef != "area" && sizedef != "width") {
+            cerr << "Error : --sizedef must be 'area' or 'width'.\n";
+            return "";
+        }
+        G.set_size_by_width(sizedef == "width");
+        G.set_stop_floes(stopfloes);   // periodic stop of the floes in the calm window (--stopfloes)
+        G.get_dynamics_manager().set_rand_speed_add(rand_speed_add); // bustle (--bustle/--nbustle) on the generation
+        G.get_dynamics_manager().set_norm_rand_speed(rand_norm);     // loop too: breaks deterministic RECOVER loops
         // OPTIMJAM on the GENERATION loop itself (the generator has its own collision manager, distinct
         // from P's). The generated pack has no obstacles, so --jam_unanchored is required for the GS path
         // to engage; --jam_forces 0 is natural here (generation only needs polygons to fit, no force chain).
@@ -243,12 +252,10 @@ public:
                                                   jam_params[3], (int)jam_params[4], (int)jam_params[5]);
             G.get_lcp_manager().set_gs_tstuck(jam_tstuck);
         }
-        // The GENERATION phase always uses the convergent-air forcing it requires (modes 2,0), regardless
-        // of --fmodes (reserved for the post-generation simulation). Convergent speed defaults to 20 m/s
-        // but honours --fspeeds if given.
+        // The GENERATION phase always uses the convergent-air forcing it requires (modes 2,0) at --genspeed,
+        // regardless of --fmodes/--fspeeds (reserved for the post-generation simulation).
         std::vector<int> gen_modes = {2, 0};
-        std::vector<value_type> gen_speeds = vm.count("fspeeds") ? force_speeds
-                                                                 : std::vector<value_type>{20, 0};
+        std::vector<value_type> gen_speeds = {genspeed, 0};
         // Force the generation output filename to "<output>_gen" so a UI can follow it.
         if (!output_file_name.empty())
             G.get_out_manager().set_out_file_name(output_file_name + "_gen");
@@ -294,6 +301,10 @@ protected:
     string                  biblio_path             = ""; //!< generator floe-shape library (empty => default)
     int                     sizerep                 = 1;  //!< generator floe-size distribution (--sizerep)
     int                     distrib                 = 0;  //!< generator initial placement layout (--distrib)
+    value_type              genspeed                = 20; //!< generator convergent/homogenization air speed (--genspeed)
+    value_type              homogen                 = 0;  //!< generator mode-10 homogenization duration (--homogen)
+    string                  sizedef                 = "area"; //!< generator floe-size definition (--sizedef)
+    bool                    stopfloes               = true; //!< generator periodic stop of the floes in the window (--stopfloes)
     value_type              max_size                = 250;
     value_type              min_size                = 0;
     bool                    fracture                = 0;
@@ -407,7 +418,19 @@ protected:
         ("biblio", po::value<string>(&biblio_path)->default_value(""),
             "generator : floe-shape library path. '.h5' -> HDF5 loader (see pack_creator/make_biblio_h5.py), "
             "else legacy .mat. Empty = default (io/library/biblio_realistic.h5). Use "
-            "io/library/biblio_circle.h5 for circular floes.")
+            "io/library/biblio_circle.h5 for circular floes. Analytic shapes: 'pN' = regular N-gon, "
+            "comma-separated for a mix (e.g. 'p4' or 'p3,p6'), randomly oriented.")
+        ("genspeed", po::value<value_type>(&genspeed)->default_value(genspeed, std::to_string(genspeed)),
+            "generator : air speed (m/s) of the convergent (mode 2) and homogenization (mode 10) phases.")
+        ("homogen", po::value<value_type>(&homogen)->default_value(homogen, std::to_string(homogen)),
+            "generator : duration (s) of the homogenization phase (air mode 10) after compaction. 0 = none.")
+        ("sizedef", po::value<string>(&sizedef)->default_value(sizedef),
+            "generator : floe-size definition. 'area' = same area-equivalent radius (default), "
+            "'width' = same minimal width (size R <=> min width 2R).")
+        ("stopfloes", po::value<bool>(&stopfloes)->default_value(stopfloes),
+            "generator : 1 (default) = periodically stop the floes inside the target area during the convergence "
+            "(useful with big floes: power law, spiral). 0 = no stop (recommended with --distrib 0, whose air "
+            "mode 12 homogenizes the target area).")
         ("sizerep", po::value<int>(&sizerep)->default_value(1),
             "generator : floe-size distribution. 1 = power law (exp, default, uses --alpha/--nbfpersize), "
             "2 = two sizes (R_max and R_max/1.4, ~half each), 3 = random (exponential).")

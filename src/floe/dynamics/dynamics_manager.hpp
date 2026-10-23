@@ -36,9 +36,9 @@ DynamicsManager<TExternalForces, TFloeGroup>::move_floes(floe_group_type& floe_g
     // for (auto& floe : floe_group.get_floes())
     //     move_floe(floe, delta_t);
 
-    // Void-seeking homogenizer (air mode 10): rebuild the coverage field from the current floes before
+    // Void-seeking homogenizer (air mode 10, or 12 in the generator): rebuild the coverage field from the current floes before
     // the per-floe drag, so each floe is pushed down the up-to-date density gradient this step.
-    if (m_external_forces.get_physical_data().get_air_mode() == 10)
+    if (m_external_forces.get_physical_data().get_air_mode() == 10 || m_external_forces.get_physical_data().get_air_mode() == 12)
         m_external_forces.get_physical_data().update_void_field(floe_group);
 
     bool mode_eight = false;
@@ -114,7 +114,8 @@ DynamicsManager<TExternalForces, TFloeGroup>::move_floe(floe_type& floe, real_ty
             auto dist_rot = std::uniform_real_distribution<real_type>{-m_rand_norm, m_rand_norm};
             auto dist_angle = std::uniform_real_distribution<real_type>{0, 2 * M_PI};
             auto rand_theta = dist_angle(this->m_random_generator);
-            auto rand_rot = dist_rot(this->m_random_generator);
+            // rotation noise scaled by the floe radius: its edge moves at ~m_rand_norm (m/s), like the speed noise
+            auto rand_rot = dist_rot(this->m_random_generator) / std::sqrt(floe.area() / M_PI);
             auto rand_speed = m_rand_norm * point_type{cos(rand_theta), sin(rand_theta)};
             new_state.speed += rand_speed;
             new_state.rot += rand_rot;

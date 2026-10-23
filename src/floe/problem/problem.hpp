@@ -331,7 +331,6 @@ TEMPLATE_PB
 void PROBLEM::safe_move_floe_group(){
     m_floe_group.backup_step_states();
     move_floe_group();
-    real_type norm_rand_speed(0);
     while (!m_proximity_detector.update())
     {
         std::cout << "INTER "; 
@@ -365,22 +364,6 @@ void PROBLEM::safe_move_floe_group(){
             // OPTIMJAM guard-rail: report the recovery; repeated recoveries without simulated-time progress
             // trigger an emergency en-bloc freeze of the routed components (see LCPManager::notify_recover).
             m_collision_manager.notify_recover(m_domain.time());
-            // adding a random velocity component to avoid infinite loops
-            // used only in generator mode. 
-            if (m_is_generator) 
-            {
-                norm_rand_speed = static_cast <real_type> (std::rand()) / static_cast <real_type> (RAND_MAX);
-                std::cout << "Adding a random component to velocities of " << norm_rand_speed << std::endl;
-                m_dynamics_manager.set_rand_speed_add(true);
-                m_dynamics_manager.set_norm_rand_speed(norm_rand_speed); 
-            }
-            // else
-            // { // trying to do the same in un mode, but it does not solve the problem. There is work to be done to find a correct epsilon value for the random component  
-            //     std::cout << "Adding a random epsilon to velocities to all floes " << std::endl;
-            //     norm_rand_speed = static_cast <real_type> (std::rand()) / static_cast <real_type> (RAND_MAX);
-            //     m_dynamics_manager.set_rand_speed_add(true);
-            //     m_dynamics_manager.set_norm_rand_speed(norm_rand_speed); 
-            // } 
             continue;
         }
         move_floe_group();

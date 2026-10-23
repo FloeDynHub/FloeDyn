@@ -76,7 +76,7 @@ public:
     //! differences, which are dimensionless and therefore scale-independent (same behaviour at 1 or 100 km).
     template <typename TFloeGroup>
     void update_void_field(TFloeGroup const& floe_group) {
-        auto const& w = floe_group.get_initial_window(); // [xmin, xmax, ymin, ymax]
+        auto w = floe_group.get_initial_window(); // [xmin, xmax, ymin, ymax]
         m_void_x0 = w[0]; m_void_y0 = w[2];
         m_void_dx = (w[1] - w[0]) / m_void_nx;
         m_void_dy = (w[3] - w[2]) / m_void_ny;
@@ -114,7 +114,13 @@ public:
         if (!m_void_ready) return {0, 0};
         int ix = (int)((pt.x - m_void_x0) / m_void_dx);
         int iy = (int)((pt.y - m_void_y0) / m_void_dy);
-        if (ix < 0 || ix >= (int)m_void_nx || iy < 0 || iy >= (int)m_void_ny) return {0, 0};
+        if (ix < 0 || ix >= (int)m_void_nx || iy < 0 || iy >= (int)m_void_ny) {
+            // outside the grid (= the window): convergent wind per axis (like mode 2), so the floes pulled
+            // out by the half-empty border cells come back instead of drifting away
+            const real_type x1 = m_void_x0 + m_void_nx * m_void_dx, y1 = m_void_y0 + m_void_ny * m_void_dy;
+            return { pt.x < m_void_x0 ? m_air_speed : (pt.x > x1 ? -m_air_speed : 0),
+                     pt.y < m_void_y0 ? m_air_speed : (pt.y > y1 ? -m_air_speed : 0) };
+        }
         const std::size_t k = iy * m_void_nx + ix;
         point_type wind{ -m_air_speed * m_void_diffx[k], -m_air_speed * m_void_diffy[k] };
         const real_type n = std::sqrt(wind.x * wind.x + wind.y * wind.y);
@@ -158,6 +164,12 @@ public:
         }
         else if (m_air_mode==11 || m_water_mode==11) {
             std::cout << "Converging winds" << std::endl;
+        }
+        else if (m_air_mode==12 && m_water_mode==0) {
+            std::cout << "Convergent current outside the target area + void-seeking homogenizer inside (generator)" << std::endl;
+        }
+        else if (m_air_mode==13 && m_water_mode==0) {
+            std::cout << "Radial convergent current outside a growing calm core, two rotating strong lobes (generator)" << std::endl;
         }
         else { std::cout << "Error: air and/or water modes: " << m_air_mode << " and " << m_water_mode << " are unknown!" << std::endl; }
     }
@@ -649,6 +661,32 @@ PhysicalData<TPoint>::get_speed(point_type pt, int mode, real_type speed){
             return {0,0};
         case 10:
             return void_seeking_field(pt);
+        case 12:
+            // generator (--distrib scattered): mode 2 outside the calm window, mode 10 inside it, so the
+            // dense ring of arriving floes can spread toward the centre (incoming floes are never pushed out)
+            // Only the inward part of the homogenizer is kept (per axis, like mode 2): it makes room for the
+            // incoming floes, the empty arrival band never pulls floes outward
+            if (std::abs(pt.x) <= m_window_width / 2 && std::abs(pt.y) <= m_window_height / 2) {
+                point_type wind = void_seeking_field(pt);
+                if (wind.x * pt.x > 0) wind.x = 0;
+                if (wind.y * pt.y > 0) wind.y = 0;
+                return wind;
+            }
+            return convergent_outside_window_field(pt, speed);
+        case 13:
+            // generator (--distrib scattered): calm square core grown by the generator (set_window_size) as the
+            // band around it fills; outside, a RADIAL wind toward the origin (no per-axis lines of jammed floes)
+            // whose norm depends strongly on the polar angle: two narrow opposite lobes 10x stronger than the
+            // rest, slowly rotating, shoot floes toward the centre and shift the incoming ones (no arches)
+            {
+                if (std::abs(pt.x) <= m_window_width / 2 && std::abs(pt.y) <= m_window_height / 2) return {0, 0};
+                const real_type period = 10000;           // s, full turn of the lobes
+                const real_type low = 0.25, high = 2.5;   // x speed: between the lobes / lobe axis
+                const real_type phi = std::atan2(pt.y, pt.x) - 2 * M_PI * m_time_ref / period;
+                const real_type lobe = std::pow(std::cos(phi), 8); // narrow (~±25° at half height), two opposite lobes
+                const real_type r = std::sqrt(pt.x * pt.x + pt.y * pt.y);
+                return - speed * (low + (high - low) * lobe) / r * pt;
+            }
         case 11:
             // std::cout << "converging rotating speed (was mode 9 on Silouane's branch; renumbered — mode 9 is NetCDF forcing here)
             return converging_rotating_speed(pt, speed);
