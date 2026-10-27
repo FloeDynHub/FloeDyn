@@ -27,6 +27,7 @@
 #include "floe/fem/fracture_descriptor.hpp"
 
 #include <Eigen/Dense>
+#include <cmath>
 #include <Eigen/Sparse>
 
 namespace floe { namespace fem {
@@ -227,7 +228,7 @@ FemProblem<TFloe>::assembleK()
                 m_KTriplet[k++] = Eigen::Triplet<real_type>(globalI+1, globalJ, Ke.coeff(2*i+1,2*j));
                 m_KTriplet[k++] = Eigen::Triplet<real_type>(globalI+1, globalJ+1, Ke.coeff(2*i+1,2*j+1));
                 m_KTriplet[k++] = Eigen::Triplet<real_type>(globalI, globalJ+1, Ke.coeff(2*i,2*j+1));
-                if((isnan((Ke)(i,j))) || (isnan((Ke)(i+1,j))) || (isnan((Ke)(i+1,j+1))) || (isnan((Ke)(i+1,j+1))))
+                if((std::isnan((Ke)(i,j))) || (std::isnan((Ke)(i+1,j))) || (std::isnan((Ke)(i+1,j+1))) || (std::isnan((Ke)(i+1,j+1))))
                 {
                     std::cerr << "Found a nan in Ke, element " << i_elem << ". Stopping right now. " <<std:: endl << Ke << std::endl;
                     return false;

@@ -13,8 +13,8 @@ source /applis/site/guix-start.sh   # defines GUIX_USER_PROFILE_DIR (no lock, no
 PROFILE="${GUIX_USER_PROFILE_DIR}/floe"
 
 # FloeDyn binaries find the profile's libraries (hdf5, matio, ...) via their rpath to the /gnu/store paths,
-# so no LD_LIBRARY_PATH is needed for those. Only the hand-built Boost 1.72 (outside Guix) must be found.
-BOOST_ROOT="${BOOST_ROOT:-$HOME/install-gnu-4.7/boost_1_72}"
+# so no LD_LIBRARY_PATH is needed for those. Only the hand-built Boost 1.76 (outside Guix, hpc/build_boost.sh) must be found.
+BOOST_ROOT="${BOOST_ROOT:-$HOME/install-gnu-4.7/boost_1_76}"
 export LD_LIBRARY_PATH="${BOOST_ROOT}/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
 
 # For MPI jobs: make the profile's mpirun/openmpi available.

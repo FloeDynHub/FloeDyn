@@ -21,10 +21,9 @@ guix time-machine -C "${HPC_DIR}/channels.scm" -- \
 
 # Boost is NOT taken from Guix (it's excluded from the manifest, so nothing to remove here — that keeps
 # this script idempotent: re-sourcing it creates no new profile generation when nothing changed).
-# FloeDyn wants Boost 1.72 (boost::geometry); we use a hand-built 1.72 from $HOME.
-# NOTE: this hand-built Boost is not in the repo -> not yet reproducible for others.
-# (Planned fix: take Boost from the pinned channel, or commit a build script.)
-BOOST_ROOT="${BOOST_ROOT:-$HOME/install-gnu-4.7/boost_1_72}"
+# FloeDyn wants Boost 1.76 (boost::geometry, same as the docker); Guix only offers >= 1.88, whose geometry
+# traits break FloeDyn, so we use a hand-built 1.76 from $HOME: build it once with hpc/build_boost.sh.
+BOOST_ROOT="${BOOST_ROOT:-$HOME/install-gnu-4.7/boost_1_76}"
 export CFLAGS=-I${BOOST_ROOT}/include
 export LDFLAGS=-L${BOOST_ROOT}/lib
 export LD_LIBRARY_PATH=${BOOST_ROOT}/lib

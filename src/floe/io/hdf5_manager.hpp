@@ -1033,6 +1033,7 @@ std::string HDF5Manager<TFloeGroup, TDynamicsMgr>::make_input_file(const dynamic
         m_out_file_name = saved_out_filename;
         m_chunk_step_count = 0;
         m_step_count = 0;
+        m_nb_floe_shapes_written = 0; // the shapes went to the input file: rewrite them in the output file
 
     }  // end of try block
     // catch failure caused by the H5File operations
